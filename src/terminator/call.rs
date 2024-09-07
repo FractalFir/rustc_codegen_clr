@@ -13,9 +13,10 @@ use cilly::{
     call, call_virt,
     cil_node::{CILNode, CallOpArgs},
     cil_root::CILRoot,
-    conv_usize, ld_field, ldc_i32, ptr, size_of,
+    conv_usize, ld_field, ldc_i32, size_of,
+    v2::{ClassRef, Int},
 };
-use cilly::{call_site::CallSite, field_desc::FieldDescriptor, fn_sig::FnSig, DotnetTypeRef, Type};
+use cilly::{call_site::CallSite, field_desc::FieldDescriptor, fn_sig::FnSig, Type};
 use rustc_middle::ty::InstanceKind;
 use rustc_middle::{
     mir::{Operand, Place},
@@ -35,30 +36,30 @@ fn call_managed<'tcx>(
     args: &[Spanned<Operand<'tcx>>],
     destination: &Place<'tcx>,
     fn_instance: Instance<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> CILRoot {
     let argument_count = argc_from_fn_name(function_name, MANAGED_CALL_FN_NAME);
     //FIXME: figure out the proper argc.
     //assert!(subst_ref.len() as u32 == argc + 3 || subst_ref.len() as u32 == argc + 4);
     assert!(args.len() == argument_count as usize);
     let asm = AssemblyRef::decode_assembly_ref(subst_ref[0], ctx.tcx());
-    let asm = asm.name();
+    let asm = asm.name().map(|name| ctx.asm_mut().alloc_string(name));
     let class_name = garg_to_string(subst_ref[1], ctx.tcx());
+    let class_name = ctx.asm_mut().alloc_string(class_name);
     let is_valuetype = crate::utilis::garag_to_bool(subst_ref[2], ctx.tcx());
     let managed_fn_name = garg_to_string(subst_ref[3], ctx.tcx());
-    let mut tpe = DotnetTypeRef::new(asm, class_name);
-    tpe.set_valuetype(is_valuetype);
+    let tpe = ClassRef::new(class_name, asm, is_valuetype, [].into());
+
     //eprintln!("tpe:{tpe:?}");
-    let signature =
-        crate::function_sig::sig_from_instance_(fn_instance, ctx.tcx(), ctx.type_cache())
-            .expect("Can't get the function signature");
+    let signature = crate::function_sig::sig_from_instance_(fn_instance, ctx)
+        .expect("Can't get the function signature");
 
     if argument_count == 0 {
         let ret = cilly::Type::Void;
         let call_site = CallSite::new(
-            Some(tpe.clone()),
+            Some(ctx.asm_mut().alloc_class_ref(tpe)),
             managed_fn_name,
-            FnSig::new(&[], ret),
+            FnSig::new([], ret),
             true,
         );
         if *signature.output() == cilly::Type::Void {
@@ -77,7 +78,7 @@ fn call_managed<'tcx>(
             call_args.push(crate::operand::handle_operand(&arg.node, ctx));
         }
         let call = CallSite::new(
-            Some(tpe.clone()),
+            Some(ctx.asm_mut().alloc_class_ref(tpe)),
             managed_fn_name,
             signature.clone(),
             is_static,
@@ -99,7 +100,7 @@ fn callvirt_managed<'tcx>(
     args: &[Spanned<Operand<'tcx>>],
     destination: &Place<'tcx>,
     fn_instance: Instance<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> CILRoot {
     let argument_count = argc_from_fn_name(function_name, MANAGED_CALL_VIRT_FN_NAME);
     //assert!(subst_ref.len() as u32 == argc + 3 || subst_ref.len() as u32 == argc + 4);
@@ -107,25 +108,24 @@ fn callvirt_managed<'tcx>(
         u32::try_from(args.len()).expect("More than 2^32 function arguments.") == argument_count
     );
     let asm = AssemblyRef::decode_assembly_ref(subst_ref[0], ctx.tcx());
-    let asm = asm.name();
+    let asm = asm.name().map(|name| ctx.asm_mut().alloc_string(name));
     let class_name = garg_to_string(subst_ref[1], ctx.tcx());
+    let class_name = ctx.asm_mut().alloc_string(class_name);
     let is_valuetype = crate::utilis::garag_to_bool(subst_ref[2], ctx.tcx());
 
     let managed_fn_garg = &subst_ref[3];
     let managed_fn_garg = ctx.monomorphize(*managed_fn_garg);
     let managed_fn_name = garg_to_string(managed_fn_garg, ctx.tcx());
 
-    let mut tpe = DotnetTypeRef::new(asm, class_name);
-    tpe.set_valuetype(is_valuetype);
-    let signature =
-        crate::function_sig::sig_from_instance_(fn_instance, ctx.tcx(), ctx.type_cache())
-            .expect("Can't get the function signature");
+    let tpe = ClassRef::new(class_name, asm, is_valuetype, [].into());
+    let signature = crate::function_sig::sig_from_instance_(fn_instance, ctx)
+        .expect("Can't get the function signature");
     if argument_count == 0 {
         let ret = cilly::Type::Void;
         let call = CallSite::new(
-            Some(tpe.clone()),
+            Some(ctx.asm_mut().alloc_class_ref(tpe)),
             managed_fn_name,
-            FnSig::new(&[], ret),
+            FnSig::new([], ret),
             true,
         );
         if *signature.output() == cilly::Type::Void {
@@ -144,7 +144,7 @@ fn callvirt_managed<'tcx>(
             call_args.push(crate::operand::handle_operand(&arg.node, ctx));
         }
         let call = CallSite::new(
-            Some(tpe.clone()),
+            Some(ctx.asm_mut().alloc_class_ref(tpe)),
             managed_fn_name,
             signature.clone(),
             is_static,
@@ -165,7 +165,7 @@ fn call_ctor<'tcx>(
     function_name: &str,
     args: &[Spanned<Operand<'tcx>>],
     destination: &Place<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> CILRoot {
     let argument_count = argc_from_fn_name(function_name, CTOR_FN_NAME);
     // Check that there are enough function path and argument specifers
@@ -174,25 +174,23 @@ fn call_ctor<'tcx>(
     assert!(args.len() == argument_count as usize);
     // Get the name of the assembly the constructed object resides in
     let asm = AssemblyRef::decode_assembly_ref(subst_ref[0], ctx.tcx());
-    let asm = asm.name();
+    let asm = asm.name().map(|name| ctx.asm_mut().alloc_string(name));
     // Get the name of the constructed object
     let class_name = garg_to_string(subst_ref[1], ctx.tcx());
+    let class_name = ctx.asm_mut().alloc_string(class_name);
     // Check if the costructed object is valuetype. TODO: this may be unnecesary. Are valuetpes constructed using newobj?
     let is_valuetype = crate::utilis::garag_to_bool(subst_ref[2], ctx.tcx());
-    let mut tpe = DotnetTypeRef::new(asm, class_name);
-    tpe.set_valuetype(is_valuetype);
+    let tpe = ClassRef::new(class_name, asm, is_valuetype, [].into());
+    let tpe = ctx.asm_mut().alloc_class_ref(tpe);
     // If no arguments, inputs don't have to be handled, so a simpler call handling is used.
     if argument_count == 0 {
         crate::place::place_set(
             destination,
             CILNode::NewObj(Box::new(CallOpArgs {
                 site: CallSite::boxed(
-                    Some(tpe.clone()),
+                    Some(tpe),
                     ".ctor".into(),
-                    FnSig::new(
-                        &[Type::DotnetType(tpe.clone().into())],
-                        cilly::r#type::Type::Void,
-                    ),
+                    FnSig::new([Type::ClassRef(tpe)], Type::Void),
                     false,
                 ),
                 args: [].into(),
@@ -210,7 +208,7 @@ fn call_ctor<'tcx>(
                 )
             })
             .collect();
-        inputs.insert(0, tpe.clone().into());
+        inputs.insert(0, Type::ClassRef(tpe));
         let sig = FnSig::new(inputs, cilly::Type::Void);
         let mut call = Vec::new();
         for arg in args {
@@ -220,7 +218,7 @@ fn call_ctor<'tcx>(
         crate::place::place_set(
             destination,
             CILNode::NewObj(Box::new(CallOpArgs {
-                site: CallSite::boxed(Some(tpe.clone()), ".ctor".into(), sig, false),
+                site: CallSite::boxed(Some(tpe), ".ctor".into(), sig, false),
                 args: call.into(),
             })),
             ctx,
@@ -232,7 +230,7 @@ pub fn call_closure<'tcx>(
     destination: &Place<'tcx>,
     sig: FnSig,
     function_name: &str,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> CILRoot {
     let last_arg = args
         .last()
@@ -264,7 +262,7 @@ pub fn call_closure<'tcx>(
                     }
                     let tuple_element_name = format!("Item{}", index + 1);
                     let field_descriptor = FieldDescriptor::boxed(
-                        tuple_type.as_dotnet().expect("Invalid tuple type"),
+                        tuple_type.as_class_ref().expect("Invalid tuple type"),
                         element_type,
                         tuple_element_name.into(),
                     );
@@ -298,7 +296,7 @@ pub fn call_closure<'tcx>(
 /// Calls `fn_type` with `args`, placing the return value in destination.
 pub fn call<'tcx>(
     fn_type: Ty<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
     args: &[Spanned<Operand<'tcx>>],
     destination: &Place<'tcx>,
     span: rustc_span::Span,
@@ -321,37 +319,41 @@ pub fn call<'tcx>(
         assert!(!args.is_empty());
 
         let fat_ptr_address = operand_address(&args[0].node, ctx);
-
+        let fat_ptr_dyn = ctx.asm_mut().alloc_string("FatPtrn3Dyn");
         let vtable_ptr = ld_field!(
             fat_ptr_address.clone(),
             FieldDescriptor::new(
-                DotnetTypeRef::new::<&str, _>(None, "FatPtrDyn"),
-                Type::USize,
+                ctx.asm_mut()
+                    .alloc_class_ref(ClassRef::new(fat_ptr_dyn, None, true, [].into())),
+                Type::Int(Int::USize),
                 crate::METADATA.into()
             )
         );
 
         let vtable_index =
             ldc_i32!(i32::try_from(fn_idx).expect("More tahn 2^31 functions in a vtable!"));
-        let vtable_offset = conv_usize!(vtable_index * size_of!(Type::USize));
+        let vtable_offset = conv_usize!(vtable_index * size_of!(Type::Int(Int::USize)));
         // Get the address of the function ptr, and load it
         let fn_ptr = CILNode::LDIndISize {
-            ptr: Box::new((vtable_ptr + vtable_offset).cast_ptr(ptr!(Type::ISize))),
+            ptr: Box::new(
+                (vtable_ptr + vtable_offset).cast_ptr(ctx.asm_mut().nptr(Type::Int(Int::ISize))),
+            ),
         };
         // Get the addres of the object
         let obj_ptr = ld_field!(
             fat_ptr_address,
             FieldDescriptor::new(
-                DotnetTypeRef::new::<&str, _>(None, "FatPtrDyn"),
-                Type::Ptr(Type::Void.into()),
+                ctx.asm_mut()
+                    .alloc_class_ref(ClassRef::new(fat_ptr_dyn, None, true, [].into())),
+                ctx.asm_mut().nptr(Type::Void),
                 crate::DATA_PTR.into()
             )
         );
         // Get the call info
-        let call_info = CallInfo::sig_from_instance_(instance, ctx.tcx(), ctx.type_cache());
+        let call_info = CallInfo::sig_from_instance_(instance, ctx);
 
         let mut signature = call_info.sig().clone();
-        signature.inputs_mut()[0] = ptr!(Type::Void);
+        signature.inputs_mut()[0] = ctx.asm_mut().nptr(Type::Void);
         let mut call_args = [obj_ptr].to_vec();
         if call_info.split_last_tuple() {
             let last_arg = args
@@ -383,7 +385,7 @@ pub fn call<'tcx>(
                             }
                             let tuple_element_name = format!("Item{}", index + 1);
                             let field_descriptor = FieldDescriptor::boxed(
-                                tuple_type.as_dotnet().expect("Invalid tuple type"),
+                                tuple_type.as_class_ref().expect("Invalid tuple type"),
                                 element_type,
                                 tuple_element_name.into(),
                             );
@@ -421,7 +423,7 @@ pub fn call<'tcx>(
             )
         };
     }
-    let call_info = CallInfo::sig_from_instance_(instance, ctx.tcx(), ctx.type_cache());
+    let call_info = CallInfo::sig_from_instance_(instance, ctx);
 
     let function_name = crate::utilis::function_name(ctx.tcx().symbol_name(instance));
     if crate::utilis::is_fn_intrinsic(fn_type, ctx.tcx()) {
@@ -480,13 +482,13 @@ pub fn call<'tcx>(
 
         return crate::place::place_set(
             destination,
-            CILNode::LdNull(tpe.as_dotnet().unwrap()),
+            CILNode::LdNull(tpe.as_class_ref().unwrap()),
             ctx,
         );
     } else if function_name.contains(MANAGED_CHECKED_CAST) {
         let tpe = ctx
             .type_from_cache(subst_ref[0].as_type().unwrap())
-            .as_dotnet()
+            .as_class_ref()
             .unwrap();
         let input = crate::operand::handle_operand(&args[0].node, ctx);
         // Not-Virtual (for interop)
@@ -498,7 +500,7 @@ pub fn call<'tcx>(
     } else if function_name.contains(MANAGED_IS_INST) {
         let tpe = ctx
             .type_from_cache(subst_ref[0].as_type().unwrap())
-            .as_dotnet()
+            .as_class_ref()
             .unwrap();
         let input = crate::operand::handle_operand(&args[0].node, ctx);
         // Not-Virtual (for interop)
@@ -524,15 +526,7 @@ pub fn call<'tcx>(
 
     let mut call_args = Vec::new();
     for arg in args {
-        let method_instance = ctx.instance();
-        let tcx = ctx.tcx();
-        let res_calc = crate::r#type::tycache::validity_check(
-            crate::operand::handle_operand(&arg.node, ctx),
-            ctx.monomorphize(arg.node.ty(ctx.body(), ctx.tcx())),
-            ctx.type_cache(),
-            method_instance,
-            tcx,
-        );
+        let res_calc = crate::operand::handle_operand(&arg.node, ctx);
         call_args.push(res_calc);
     }
     if crate::function_sig::is_fn_variadic(fn_type, ctx.tcx()) {
@@ -545,7 +539,7 @@ pub fn call<'tcx>(
         );
     }
     if args.len() < signature.inputs().len() {
-        let tpe: cilly::Type = signature.inputs()[signature.inputs().len() - 1].clone();
+        let tpe: cilly::Type = signature.inputs()[signature.inputs().len() - 1];
         // let arg_len = args.len();
         //assert_eq!(args.len() + 1,signature.inputs().len(),"ERROR: mismatched argument count. \nsignature inputs:{:?} \narguments:{args:?}\narg_len:{arg_len}\n",signature.inputs());
         // assert_eq!(signature.inputs()[signature.inputs().len() - 1],tpe);
@@ -571,15 +565,7 @@ pub fn call<'tcx>(
             args: call_args.into(),
         }
     } else {
-        let method_instance = ctx.instance();
-        let tcx = ctx.tcx();
-        let res_calc = crate::r#type::tycache::validity_check(
-            call!(call_site, call_args),
-            ctx.monomorphize(destination.ty(ctx.body(), ctx.tcx()).ty),
-            ctx.type_cache(),
-            method_instance,
-            tcx,
-        );
+        let res_calc = call!(call_site, call_args);
         crate::place::place_set(destination, res_calc, ctx)
     }
 }

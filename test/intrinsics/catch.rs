@@ -15,7 +15,14 @@ include!("../common.rs");
 use core::mem::ManuallyDrop;
 
 fn main() {
-    let _ = unsafe { r#try(|| black_box(2) + 2) };
+    let res = unsafe { r#try(|| black_box(2) + 2) };
+    match res {
+        Ok(_) => return,
+        Err(_) => {
+            unsafe { printf(c"Closure panicked when it should not.\n".as_ptr()) };
+            core::intrinsics::abort();
+        }
+    }
 }
 /// Invoke a closure, capturing the cause of an unwinding panic if one occurs.
 pub unsafe fn r#try<R, F: FnOnce() -> R>(f: F) -> Result<R, ()> {

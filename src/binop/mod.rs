@@ -2,9 +2,16 @@ use self::checked::{add_signed, add_unsigned, sub_signed, sub_unsigned};
 use crate::assembly::MethodCompileCtx;
 use bitop::{bit_and_unchecked, bit_or_unchecked, bit_xor_unchecked};
 use cilly::{
-    call, call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, conv_i8, conv_u16, conv_u32,
-    conv_u64, conv_u8, div, eq, field_desc::FieldDescriptor, fn_sig::FnSig, gt_un, ld_false, lt_un,
-    rem, rem_un, size_of, sub, DotnetTypeRef, Type,
+    call,
+    call_site::CallSite,
+    cil_node::CILNode,
+    cil_root::CILRoot,
+    conv_i8, conv_u16, conv_u32, conv_u64, conv_u8, div, eq,
+    field_desc::FieldDescriptor,
+    fn_sig::FnSig,
+    gt_un, ld_false, lt_un, rem, rem_un, size_of, sub,
+    v2::{ClassRef, Float, Int},
+    Type,
 };
 use cmp::{eq_unchecked, gt_unchecked, lt_unchecked, ne_unchecked};
 use rustc_hir::lang_items::LangItem;
@@ -24,7 +31,7 @@ pub(crate) fn binop<'tcx>(
     binop: BinOp,
     operand_a: &Operand<'tcx>,
     operand_b: &Operand<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> CILNode {
     let ops_a = crate::operand::handle_operand(operand_a, ctx);
     let ops_b = crate::operand::handle_operand(operand_b, ctx);
@@ -47,10 +54,10 @@ pub(crate) fn binop<'tcx>(
             }
         }
         BinOp::Sub | BinOp::SubUnchecked => sub_unchecked(ty_a, ty_b, ctx, ops_a, ops_b),
-        BinOp::Ne => ne_unchecked(ty_a, ops_a, ops_b),
-        BinOp::Eq => eq_unchecked(ty_a, ops_a, ops_b),
-        BinOp::Lt => lt_unchecked(ty_a, ops_a, ops_b),
-        BinOp::Gt => gt_unchecked(ty_a, ops_a, ops_b),
+        BinOp::Ne => ne_unchecked(ty_a, ops_a, ops_b, ctx.asm_mut()),
+        BinOp::Eq => eq_unchecked(ty_a, ops_a, ops_b, ctx.asm_mut()),
+        BinOp::Lt => lt_unchecked(ty_a, ops_a, ops_b, ctx.asm_mut()),
+        BinOp::Gt => gt_unchecked(ty_a, ops_a, ops_b, ctx.asm_mut()),
         BinOp::BitAnd => bit_and_unchecked(ty_a, ty_b, ctx, ops_a, ops_b),
         BinOp::BitOr => bit_or_unchecked(ty_a, ty_b, ctx, ops_a, ops_b),
         BinOp::BitXor => bit_xor_unchecked(ty_a, ty_b, ctx, ops_a, ops_b),
@@ -70,12 +77,15 @@ pub(crate) fn binop<'tcx>(
             TyKind::Float(FloatTy::F128) => call!(
                 CallSite::builtin(
                     "__getf2".into(),
-                    FnSig::new([Type::F128, Type::F128], Type::Bool),
+                    FnSig::new(
+                        [Type::Float(Float::F128), Type::Float(Float::F128)],
+                        Type::Bool
+                    ),
                     true
                 ),
                 [ops_a, ops_b]
             ),
-            _ => eq!(lt_unchecked(ty_a, ops_a, ops_b), ld_false!()),
+            _ => eq!(lt_unchecked(ty_a, ops_a, ops_b, ctx.asm_mut()), ld_false!()),
         },
         BinOp::Le => match ty_a.kind() {
             // Unordered, to handle NaNs propely
@@ -83,12 +93,15 @@ pub(crate) fn binop<'tcx>(
             TyKind::Float(FloatTy::F128) => call!(
                 CallSite::builtin(
                     "__letf2".into(),
-                    FnSig::new([Type::F128, Type::F128], Type::Bool),
+                    FnSig::new(
+                        [Type::Float(Float::F128), Type::Float(Float::F128)],
+                        Type::Bool
+                    ),
                     true
                 ),
                 [ops_a, ops_b]
             ),
-            _ => eq!(gt_unchecked(ty_a, ops_a, ops_b), ld_false!()),
+            _ => eq!(gt_unchecked(ty_a, ops_a, ops_b, ctx.asm_mut()), ld_false!()),
         },
         BinOp::Offset => {
             let pointed_ty = if let TyKind::RawPtr(inner, _) = ty_a.kind() {
@@ -99,7 +112,14 @@ pub(crate) fn binop<'tcx>(
             let pointed_ty = ctx.monomorphize(pointed_ty);
             let pointed_ty = Box::new(ctx.type_from_cache(pointed_ty));
             let offset_tpe = ctx.type_from_cache(ty_b);
-            ops_a + ops_b * crate::casts::int_to_int(Type::U64, &offset_tpe, size_of!(pointed_ty))
+            ops_a
+                + ops_b
+                    * crate::casts::int_to_int(
+                        Type::Int(Int::U64),
+                        offset_tpe,
+                        size_of!(pointed_ty),
+                        ctx.asm_mut(),
+                    )
         }
         BinOp::Cmp => {
             let ordering = ctx
@@ -113,17 +133,17 @@ pub(crate) fn binop<'tcx>(
                     .unwrap();
             let ordering_ty = ordering.ty(ctx.tcx(), ParamEnv::reveal_all());
             let ordering_type = ctx.type_from_cache(ordering_ty);
-            let lt = -lt_unchecked(ty_a, ops_a.clone(), ops_b.clone());
-            let gt = gt_unchecked(ty_a, ops_a, ops_b);
+            let lt = -lt_unchecked(ty_a, ops_a.clone(), ops_b.clone(), ctx.asm_mut());
+            let gt = gt_unchecked(ty_a, ops_a, ops_b, ctx.asm_mut());
             let res = conv_i8!(lt | gt);
             CILNode::TemporaryLocal(Box::new((
-                ordering_type.clone(),
+                ordering_type,
                 [CILRoot::SetField {
                     addr: Box::new(CILNode::LoadAddresOfTMPLocal),
                     value: Box::new(res),
                     desc: Box::new(FieldDescriptor::new(
-                        ordering_type.as_dotnet().unwrap(),
-                        Type::I8,
+                        ordering_type.as_class_ref().unwrap(),
+                        Type::Int(Int::I8),
                         crate::ENUM_TAG.into(),
                     )),
                 }]
@@ -137,7 +157,7 @@ pub(crate) fn binop<'tcx>(
 pub fn add_unchecked<'tcx>(
     ty_a: Ty<'tcx>,
     ty_b: Ty<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
     ops_a: CILNode,
     ops_b: CILNode,
 ) -> CILNode {
@@ -148,9 +168,9 @@ pub fn add_unchecked<'tcx>(
                 let ty_b = ctx.type_from_cache(ty_b);
                 call!(
                     CallSite::new_extern(
-                        DotnetTypeRef::int_128(),
+                        ClassRef::int_128(ctx.asm_mut()),
                         "op_Addition".into(),
-                        FnSig::new(&[ty_a.clone(), ty_b], ty_a),
+                        FnSig::new([ty_a, ty_b], ty_a),
                         true,
                     ),
                     [ops_a, ops_b]
@@ -165,9 +185,9 @@ pub fn add_unchecked<'tcx>(
                 let ty_b = ctx.type_from_cache(ty_b);
                 call!(
                     CallSite::new_extern(
-                        DotnetTypeRef::uint_128(),
+                        ClassRef::uint_128(ctx.asm_mut()),
                         "op_Addition".into(),
-                        FnSig::new(&[ty_a.clone(), ty_b], ty_a),
+                        FnSig::new([ty_a, ty_b], ty_a),
                         true,
                     ),
                     [ops_a, ops_b]
@@ -186,7 +206,10 @@ pub fn add_unchecked<'tcx>(
         TyKind::Float(FloatTy::F128) => call!(
             CallSite::builtin(
                 "__addtf3".into(),
-                FnSig::new([Type::F128, Type::F128], Type::F128),
+                FnSig::new(
+                    [Type::Float(Float::F128), Type::Float(Float::F128)],
+                    Type::Float(Float::F128)
+                ),
                 true
             ),
             [ops_a, ops_b,]
@@ -198,7 +221,7 @@ pub fn add_unchecked<'tcx>(
 pub fn sub_unchecked<'tcx>(
     ty_a: Ty<'tcx>,
     ty_b: Ty<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
     ops_a: CILNode,
     ops_b: CILNode,
 ) -> CILNode {
@@ -209,9 +232,9 @@ pub fn sub_unchecked<'tcx>(
                 let ty_b = ctx.type_from_cache(ty_b);
                 call!(
                     CallSite::new_extern(
-                        DotnetTypeRef::int_128(),
+                        ClassRef::int_128(ctx.asm_mut()),
                         "op_Subtraction".into(),
-                        FnSig::new(&[ty_a.clone(), ty_b], ty_a),
+                        FnSig::new([ty_a, ty_b], ty_a),
                         true,
                     ),
                     [ops_a, ops_b]
@@ -226,9 +249,9 @@ pub fn sub_unchecked<'tcx>(
                 let ty_b = ctx.type_from_cache(ty_b);
                 call!(
                     CallSite::new_extern(
-                        DotnetTypeRef::uint_128(),
+                        ClassRef::uint_128(ctx.asm_mut()),
                         "op_Subtraction".into(),
-                        FnSig::new(&[ty_a.clone(), ty_b], ty_a),
+                        FnSig::new([ty_a, ty_b], ty_a),
                         true,
                     ),
                     [ops_a, ops_b]
@@ -241,7 +264,10 @@ pub fn sub_unchecked<'tcx>(
         TyKind::Float(FloatTy::F128) => call!(
             CallSite::builtin(
                 "__subtf3".into(),
-                FnSig::new([Type::F128, Type::F128], Type::F128),
+                FnSig::new(
+                    [Type::Float(Float::F128), Type::Float(Float::F128)],
+                    Type::Float(Float::F128)
+                ),
                 true
             ),
             [ops_a, ops_b,]
@@ -253,7 +279,7 @@ pub fn sub_unchecked<'tcx>(
 fn rem_unchecked<'tcx>(
     ty_a: Ty<'tcx>,
     ty_b: Ty<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
     ops_a: CILNode,
     ops_b: CILNode,
 ) -> CILNode {
@@ -263,9 +289,9 @@ fn rem_unchecked<'tcx>(
             let ty_b = ctx.type_from_cache(ty_b);
             call!(
                 CallSite::new_extern(
-                    DotnetTypeRef::int_128(),
+                    ClassRef::int_128(ctx.asm_mut()),
                     "op_Modulus".into(),
-                    FnSig::new(&[ty_a.clone(), ty_b], ty_a),
+                    FnSig::new([ty_a, ty_b], ty_a),
                     true,
                 ),
                 [ops_a, ops_b]
@@ -276,9 +302,9 @@ fn rem_unchecked<'tcx>(
             let ty_b = ctx.type_from_cache(ty_b);
             call!(
                 CallSite::new_extern(
-                    DotnetTypeRef::uint_128(),
+                    ClassRef::uint_128(ctx.asm_mut()),
                     "op_Modulus".into(),
-                    FnSig::new(&[ty_a.clone(), ty_b], ty_a),
+                    FnSig::new([ty_a, ty_b], ty_a),
                     true,
                 ),
                 [ops_a, ops_b]
@@ -290,7 +316,10 @@ fn rem_unchecked<'tcx>(
         TyKind::Float(FloatTy::F128) => call!(
             CallSite::builtin(
                 "fmodl".into(),
-                FnSig::new([Type::F128, Type::F128], Type::F128),
+                FnSig::new(
+                    [Type::Float(Float::F128), Type::Float(Float::F128)],
+                    Type::Float(Float::F128)
+                ),
                 true
             ),
             [ops_a, ops_b]
@@ -304,7 +333,7 @@ fn rem_unchecked<'tcx>(
 fn mul_unchecked<'tcx>(
     ty_a: Ty<'tcx>,
     ty_b: Ty<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
     operand_a: CILNode,
     operand_b: CILNode,
 ) -> CILNode {
@@ -314,9 +343,9 @@ fn mul_unchecked<'tcx>(
             let ty_b = ctx.type_from_cache(ty_b);
             call!(
                 CallSite::new_extern(
-                    DotnetTypeRef::int_128(),
+                    ClassRef::int_128(ctx.asm_mut()),
                     "op_Multiply".into(),
-                    FnSig::new(&[ty_a.clone(), ty_b], ty_a),
+                    FnSig::new([ty_a, ty_b], ty_a),
                     true,
                 ),
                 [operand_a, operand_b]
@@ -327,9 +356,9 @@ fn mul_unchecked<'tcx>(
             let ty_b = ctx.type_from_cache(ty_b);
             call!(
                 CallSite::new_extern(
-                    DotnetTypeRef::uint_128(),
+                    ClassRef::uint_128(ctx.asm_mut()),
                     "op_Multiply".into(),
-                    FnSig::new(&[ty_a.clone(), ty_b], ty_a),
+                    FnSig::new([ty_a, ty_b], ty_a),
                     true,
                 ),
                 [operand_a, operand_b]
@@ -338,7 +367,10 @@ fn mul_unchecked<'tcx>(
         TyKind::Float(FloatTy::F128) => call!(
             CallSite::builtin(
                 "__multf3".into(),
-                FnSig::new([Type::F128, Type::F128], Type::F128),
+                FnSig::new(
+                    [Type::Float(Float::F128), Type::Float(Float::F128)],
+                    Type::Float(Float::F128)
+                ),
                 true
             ),
             [operand_a, operand_b]
@@ -349,7 +381,7 @@ fn mul_unchecked<'tcx>(
 fn div_unchecked<'tcx>(
     ty_a: Ty<'tcx>,
     ty_b: Ty<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
     operand_a: CILNode,
     operand_b: CILNode,
 ) -> CILNode {
@@ -359,9 +391,9 @@ fn div_unchecked<'tcx>(
             let ty_b = ctx.type_from_cache(ty_b);
             call!(
                 CallSite::new_extern(
-                    DotnetTypeRef::int_128(),
+                    ClassRef::int_128(ctx.asm_mut()),
                     "op_Division".into(),
-                    FnSig::new(&[ty_a.clone(), ty_b], ty_a),
+                    FnSig::new([ty_a, ty_b], ty_a),
                     true,
                 ),
                 [operand_a, operand_b]
@@ -372,9 +404,9 @@ fn div_unchecked<'tcx>(
             let ty_b = ctx.type_from_cache(ty_b);
             call!(
                 CallSite::new_extern(
-                    DotnetTypeRef::uint_128(),
+                    ClassRef::uint_128(ctx.asm_mut()),
                     "op_Division".into(),
-                    FnSig::new(&[ty_a.clone(), ty_b], ty_a),
+                    FnSig::new([ty_a, ty_b], ty_a),
                     true,
                 ),
                 [operand_a, operand_b]
@@ -387,7 +419,10 @@ fn div_unchecked<'tcx>(
         TyKind::Float(FloatTy::F128) => call!(
             CallSite::builtin(
                 "__divtf3".into(),
-                FnSig::new([Type::F128, Type::F128], Type::F128),
+                FnSig::new(
+                    [Type::Float(Float::F128), Type::Float(Float::F128)],
+                    Type::Float(Float::F128)
+                ),
                 true
             ),
             [operand_a, operand_b]

@@ -2,12 +2,18 @@ use crate::{
     assembly::MethodCompileCtx,
     operand::handle_operand,
     place::place_get,
-    r#type::pointer_to_is_fat,
+    r#type::{get_type, pointer_to_is_fat},
     utilis::{adt::set_discr, field_name},
 };
 use cilly::{
-    call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, conv_usize,
-    field_desc::FieldDescriptor, ldc_u64, ptr, DotnetTypeRef, Type,
+    call_site::CallSite,
+    cil_node::CILNode,
+    cil_root::CILRoot,
+    conv_usize,
+    field_desc::FieldDescriptor,
+    ldc_u64,
+    v2::{ClassRef, Int},
+    Type,
 };
 use rustc_index::IndexVec;
 use rustc_middle::{
@@ -17,7 +23,7 @@ use rustc_middle::{
 use rustc_target::abi::FieldIdx;
 /// Returns the CIL ops to create the aggreagate value specifed by `aggregate_kind` at `target_location`. Uses indivlidual values specifed by `value_index`
 pub fn handle_aggregate<'tcx>(
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
     target_location: &Place<'tcx>,
     aggregate_kind: &AggregateKind<'tcx>,
     value_index: &IndexVec<FieldIdx, Operand<'tcx>>,
@@ -68,10 +74,14 @@ pub fn handle_aggregate<'tcx>(
 
             let element = ctx.monomorphize(*element);
             let element = ctx.type_from_cache(element);
-            let array_type = DotnetTypeRef::array(&element, value_index.len());
+            let array_type = ClassRef::fixed_array(element, value_index.len(), ctx.asm_mut());
             let array_getter = super::place::place_adress(target_location, ctx);
             let sig = cilly::fn_sig::FnSig::new(
-                &[ptr!(array_type.clone().into()), Type::USize, element],
+                [
+                    ctx.asm_mut().nref(array_type.into()),
+                    Type::Int(Int::USize),
+                    element,
+                ],
                 Type::Void,
             );
             let site = CallSite::new(Some(array_type), "set_Item".into(), sig, false);
@@ -99,14 +109,14 @@ pub fn handle_aggregate<'tcx>(
                 .iter()
                 .map(|operand| {
                     let operand_ty = ctx.monomorphize(operand.ty(ctx.body(), ctx.tcx()));
-                    ctx.type_from_cache(operand_ty)
+                    get_type(operand_ty, ctx)
                 })
                 .collect();
-            let dotnet_tpe = crate::r#type::simple_tuple(&types);
+            let dotnet_tpe = crate::r#type::simple_tuple(&types, ctx.asm_mut());
             let mut sub_trees = Vec::new();
             for field in &values {
                 // Assigining to a Void field is a NOP and must be skipped(since it can have wierd side-effects).
-                if types[field.0 as usize] == Type::Void {
+                if types[field.0 as usize] == cilly::v2::Type::Void {
                     continue;
                 }
                 let name = format!("Item{}", field.0 + 1);
@@ -115,8 +125,8 @@ pub fn handle_aggregate<'tcx>(
                     addr: Box::new(tuple_getter.clone()),
                     value: Box::new(field.1.clone()),
                     desc: Box::new(FieldDescriptor::new(
-                        dotnet_tpe.clone(),
-                        types[field.0 as usize].clone(),
+                        dotnet_tpe,
+                        types[field.0 as usize],
                         name.into(),
                     )),
                 });
@@ -130,22 +140,22 @@ pub fn handle_aggregate<'tcx>(
             let closure_ty = ctx
                 .monomorphize(target_location.ty(ctx.body(), ctx.tcx()))
                 .ty;
-            let closure_type = ctx.type_from_cache(closure_ty);
-            let closure_dotnet = closure_type.as_dotnet().expect("Invalid closure type!");
+            let closure_type = get_type(closure_ty, ctx);
+            let closure_dotnet = closure_type.as_class_ref().expect("Invalid closure type!");
             let closure_getter = super::place::place_adress(target_location, ctx);
             let mut sub_trees = vec![];
             for (index, value) in value_index.iter_enumerated() {
                 let field_ty = ctx.monomorphize(value.ty(ctx.body(), ctx.tcx()));
-                let field_ty = ctx.type_from_cache(field_ty);
-                if field_ty == Type::Void {
+                let field_type = get_type(field_ty, ctx);
+                if field_type == cilly::v2::Type::Void {
                     continue;
                 }
                 sub_trees.push(CILRoot::SetField {
                     addr: Box::new(closure_getter.clone()),
                     value: Box::new(handle_operand(value, ctx)),
                     desc: Box::new(FieldDescriptor::new(
-                        closure_dotnet.clone(),
-                        field_ty,
+                        closure_dotnet,
+                        field_type,
                         format!("f_{}", index.as_u32()).into(),
                     )),
                 });
@@ -169,32 +179,34 @@ pub fn handle_aggregate<'tcx>(
             let fat_ptr_type = ctx.type_from_cache(fat_ptr);
             if !pointer_to_is_fat(pointee, ctx.tcx(), ctx.instance()) {
                 // Double-check the pointer is REALLY thin
-                assert!(fat_ptr_type.as_dotnet().is_none());
+                assert!(fat_ptr_type.as_class_ref().is_none());
                 assert!(
                     !crate::utilis::is_zst(data_ty, ctx.tcx()),
                     "data_ty:{data_ty:?} is a zst. That is bizzare, cause it should be a pointer?"
                 );
                 let data_type = ctx.type_from_cache(data_ty);
+                let fat_ptr_type_ptr = ctx.asm_mut().nptr(fat_ptr_type);
                 assert_ne!(data_type, Type::Void);
                 // Pointer is thin, just directly assign
                 return CILNode::SubTrees(Box::new((
                     [CILRoot::STIndPtr(
                         init_addr,
-                        handle_operand(data, ctx).cast_ptr(ptr!(ptr!(fat_ptr_type.clone()))),
-                        Box::new(ptr!(fat_ptr_type)),
+                        handle_operand(data, ctx).cast_ptr(ctx.asm_mut().nptr(fat_ptr_type_ptr)),
+                        Box::new(ctx.asm_mut().nptr(fat_ptr_type)),
                     )]
                     .into(),
                     Box::new(place_get(target_location, ctx)),
                 )));
             }
             assert!(pointer_to_is_fat(pointee,ctx.tcx(), ctx.instance()), "A pointer to {pointee:?} is not fat, but its metadata is {meta_ty:?}, and not a zst:{is_meta_zst}",is_meta_zst = crate::utilis::is_zst(meta_ty,  ctx.tcx()));
+            let fat_ptr_type = get_type(fat_ptr, ctx);
             // Assign the components
             let assign_ptr = CILRoot::SetField {
                 addr: Box::new(init_addr.clone()),
-                value: Box::new(values[0].1.clone().cast_ptr(ptr!(Type::Void))),
+                value: Box::new(values[0].1.clone().cast_ptr(ctx.asm_mut().nptr(Type::Void))),
                 desc: Box::new(FieldDescriptor::new(
-                    fat_ptr_type.as_dotnet().unwrap(),
-                    ptr!(Type::Void),
+                    fat_ptr_type.as_class_ref().unwrap(),
+                    ctx.asm_mut().nptr(cilly::v2::Type::Void),
                     crate::DATA_PTR.into(),
                 )),
             };
@@ -202,8 +214,8 @@ pub fn handle_aggregate<'tcx>(
                 addr: Box::new(init_addr),
                 value: Box::new(handle_operand(meta, ctx)),
                 desc: Box::new(FieldDescriptor::new(
-                    fat_ptr_type.as_dotnet().unwrap(),
-                    Type::USize,
+                    fat_ptr_type.as_class_ref().unwrap(),
+                    cilly::v2::Type::Int(Int::USize),
                     crate::METADATA.into(),
                 )),
             };
@@ -218,7 +230,7 @@ pub fn handle_aggregate<'tcx>(
 }
 /// Builds an Algebraic Data Type (struct,enum,union) at location `target_location`, with fields set using ops in `fields`.
 fn aggregate_adt<'tcx>(
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
     target_location: &Place<'tcx>,
     adt: AdtDef<'tcx>,
     adt_type: Ty<'tcx>,
@@ -228,12 +240,7 @@ fn aggregate_adt<'tcx>(
     active_field: Option<FieldIdx>,
 ) -> CILNode {
     let adt_type = ctx.monomorphize(adt_type);
-    let adt_type_ref = ctx.type_from_cache(adt_type);
-    let adt_type_ref = if let Type::DotnetType(type_ref) = adt_type_ref {
-        type_ref.as_ref().clone()
-    } else {
-        panic!("Can't get fields of type {adt_type:?}");
-    };
+    let adt_type_ref = get_type(adt_type, ctx).as_class_ref().unwrap();
     match adt.adt_kind() {
         AdtKind::Struct => {
             let obj_getter = crate::place::place_adress(target_location, ctx);
@@ -282,37 +289,32 @@ fn aggregate_adt<'tcx>(
                     fname = crate::r#type::escape_field_name(&field.name.to_string())
                 )
                 .into();
-                let field_type = ctx.type_from_cache(field.ty(ctx.tcx(), subst));
+                let field_type = get_type(field.ty(ctx.tcx(), subst), ctx);
                 // Seting a void field is a no-op.
-                if field_type == Type::Void {
+                if field_type == cilly::v2::Type::Void {
                     continue;
                 }
 
                 sub_trees.push(CILRoot::SetField {
                     addr: Box::new(variant_address.clone()),
                     value: Box::new(field_value.1.clone()),
-                    desc: Box::new(FieldDescriptor::new(
-                        adt_type_ref.clone(),
-                        field_type,
-                        field_name,
-                    )),
+                    desc: Box::new(FieldDescriptor::new(adt_type_ref, field_type, field_name)),
                 });
             }
-            // Set tag
-            {
-                let layout = ctx.layout_of(adt_type);
-                let (disrc_type, _) = crate::utilis::adt::enum_tag_info(layout.layout, ctx.tcx());
-                if disrc_type != Type::Void {
-                    sub_trees.push(set_discr(
-                        layout.layout,
-                        variant_idx.into(),
-                        adt_adress_ops,
-                        &adt_type_ref,
-                        ctx.tcx(),
-                        layout.ty,
-                    ));
-                }
+
+            let layout = ctx.layout_of(adt_type);
+            let (disrc_type, _) = crate::utilis::adt::enum_tag_info(layout.layout, ctx.asm_mut());
+            if disrc_type != Type::Void {
+                sub_trees.push(set_discr(
+                    layout.layout,
+                    variant_idx.into(),
+                    adt_adress_ops,
+                    adt_type_ref,
+                    layout.ty,
+                    ctx,
+                ));
             }
+
             CILNode::SubTrees(Box::new((
                 sub_trees.into(),
                 Box::new(crate::place::place_get(target_location, ctx)),
@@ -328,16 +330,17 @@ fn aggregate_adt<'tcx>(
                 .all_fields()
                 .nth(active_field.as_u32() as usize)
                 .expect("Could not find field!");
-            let field_type = field_def.ty(ctx.tcx(), subst);
-            let field_type = ctx.monomorphize(field_type);
-            let field_type = ctx.type_from_cache(field_type);
-            // Assgiements to void types are a NOP and should ALWAYS be skipped.
-            if field_type == Type::Void {
+
+            let field_ty = ctx.monomorphize(field_def.ty(ctx.tcx(), subst));
+            let field_type = get_type(field_ty, ctx);
+            // Seting a void field is a no-op.
+            if field_type == cilly::v2::Type::Void {
                 return crate::place::place_get(target_location, ctx);
             }
+
             let field_name = field_name(adt_type, active_field.as_u32());
 
-            let desc = FieldDescriptor::new(adt_type_ref.clone(), field_type, field_name);
+            let desc = FieldDescriptor::new(adt_type_ref, field_type, field_name);
             sub_trees.push(CILRoot::SetField {
                 addr: Box::new(obj_getter.clone()),
                 value: Box::new(fields[0].1.clone()),

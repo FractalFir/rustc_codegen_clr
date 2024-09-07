@@ -9,12 +9,12 @@ use super::{
 use crate::IString;
 use crate::{asm::Assembly as V1Asm, v2::MethodImpl};
 use fxhash::{FxHashMap, FxHashSet};
-use lazy_static::*;
+use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use std::any::type_name;
 
 #[derive(Default, Serialize, Deserialize, Eq, PartialEq, Clone, Debug)]
-pub(super) struct IStringWrapper(pub(super) IString);
+pub(crate) struct IStringWrapper(pub(super) IString);
 impl std::hash::Hash for IStringWrapper {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         calculate_hash(&0xC0FE_BEEFu32).hash(state);
@@ -45,9 +45,11 @@ pub struct Assembly {
     //cache: CachedAssemblyInfo<NodeIdx, NonMaxU32, StackUsage>,
 }
 impl Assembly {
+    #[must_use]
     pub fn class_defs(&self) -> &FxHashMap<ClassDefIdx, ClassDef> {
         &self.class_defs
     }
+    #[must_use]
     pub fn method_ref_to_def(&self, class: MethodRefIdx) -> Option<MethodDefIdx> {
         if self.method_defs.contains_key(&MethodDefIdx(class)) {
             Some(MethodDefIdx(class))
@@ -55,6 +57,7 @@ impl Assembly {
             None
         }
     }
+    #[must_use]
     pub fn fuel_from_env(&self) -> OptFuel {
         match std::env::var("OPT_FUEL") {
             Ok(fuel) => match fuel.parse::<u32>() {
@@ -64,6 +67,7 @@ impl Assembly {
             Err(_) => self.default_fuel(),
         }
     }
+    #[must_use]
     pub fn default_fuel(&self) -> OptFuel {
         OptFuel::new((self.method_defs.len() * 4 + self.roots.len() * 4) as u32)
     }
@@ -156,18 +160,22 @@ impl Assembly {
     pub fn class_mut(&mut self, id: ClassDefIdx) -> &mut ClassDef {
         self.class_defs.get_mut(&id).unwrap()
     }
+    #[must_use]
     pub fn get_class_def(&self, id: ClassDefIdx) -> &ClassDef {
         self.class_defs.get(&id).unwrap()
     }
+    #[must_use]
     pub fn class_ref(&self, cref: ClassRefIdx) -> &ClassRef {
         self.class_refs.get(cref)
     }
+    #[must_use]
     pub fn method_def(&self, dref: MethodDefIdx) -> &MethodDef {
         self.method_defs.get(&dref).unwrap()
     }
     pub fn alloc_string(&mut self, string: impl Into<IString>) -> StringIdx {
         self.strings.alloc(IStringWrapper(string.into()))
     }
+    #[must_use]
     pub fn get_string(&self, key: StringIdx) -> &IString {
         &self.strings.get(key).0
     }
@@ -178,6 +186,7 @@ impl Assembly {
         let sig = self.sig(input, output);
         Type::FnPtr(sig)
     }
+    #[must_use]
     pub fn get_sig(&self, key: SigIdx) -> &FnSig {
         self.sigs.get(key)
     }
@@ -187,12 +196,15 @@ impl Assembly {
     pub fn nref(&mut self, inner: Type) -> Type {
         Type::Ref(self.types.alloc(inner))
     }
+    #[must_use]
     pub fn get_type(&self, idx: TypeIdx) -> &Type {
         self.types.get(idx)
     }
+    #[must_use]
     pub fn get_mref(&self, idx: MethodRefIdx) -> &MethodRef {
         self.method_refs.get(idx)
     }
+    #[must_use]
     pub fn get_root(&self, root: RootIdx) -> &CILRoot {
         self.roots.get(root)
     }
@@ -221,7 +233,7 @@ impl Assembly {
         self.class_refs.alloc(cref)
     }
 
-    pub(crate) fn alloc_sig(&mut self, sig: FnSig) -> SigIdx {
+    pub fn alloc_sig(&mut self, sig: FnSig) -> SigIdx {
         self.sigs.alloc(sig)
     }
 
@@ -255,12 +267,14 @@ impl Assembly {
     pub(crate) fn alloc_field(&mut self, field: FieldDesc) -> FieldIdx {
         self.fields.alloc(field)
     }
+    #[must_use]
     pub fn get_field(&self, key: FieldIdx) -> &FieldDesc {
         self.fields.get(key)
     }
-    pub(crate) fn alloc_sfld(&mut self, sfld: StaticFieldDesc) -> StaticFieldIdx {
+    pub fn alloc_sfld(&mut self, sfld: StaticFieldDesc) -> StaticFieldIdx {
         self.statics.alloc(sfld)
     }
+    #[must_use]
     pub fn get_static_field(&self, key: StaticFieldIdx) -> &StaticFieldDesc {
         self.statics.get(key)
     }
@@ -308,7 +322,6 @@ impl Assembly {
             false,
             0,
             None,
-            vec![],
             vec![],
             vec![],
             Access::Public,
@@ -373,6 +386,78 @@ impl Assembly {
             self.new_method(cctor_def)
         }
     }
+    /// Returns a reference to tht thread local constructor.
+    pub fn tcctor(&mut self) -> MethodDefIdx {
+        let main_module = self.main_module();
+        let user_init = self.alloc_string(TCCTOR);
+        let ctor_sig = self.sig([], Type::Void);
+        let mref = MethodRef::new(
+            *main_module,
+            user_init,
+            ctor_sig,
+            MethodKind::Static,
+            vec![].into(),
+        );
+        let mref = self.alloc_methodref(mref);
+        if self.method_defs.contains_key(&MethodDefIdx(mref)) {
+            MethodDefIdx(mref)
+        } else {
+            let mimpl = MethodImpl::MethodBody {
+                blocks: vec![super::BasicBlock::new(
+                    vec![self.alloc_root(CILRoot::VoidRet)],
+                    0,
+                    None,
+                )],
+                locals: vec![],
+            };
+            let cctor_def = MethodDef::new(
+                Access::Extern,
+                main_module,
+                user_init,
+                ctor_sig,
+                MethodKind::Static,
+                mimpl,
+                vec![],
+            );
+            self.new_method(cctor_def)
+        }
+    }
+    /// Returns a reference to the static initializer
+    pub fn cctor(&mut self) -> MethodDefIdx {
+        let main_module = self.main_module();
+        let user_init = self.alloc_string(CCTOR);
+        let ctor_sig = self.sig([], Type::Void);
+        let mref = MethodRef::new(
+            *main_module,
+            user_init,
+            ctor_sig,
+            MethodKind::Static,
+            vec![].into(),
+        );
+        let mref = self.alloc_methodref(mref);
+        if self.method_defs.contains_key(&MethodDefIdx(mref)) {
+            MethodDefIdx(mref)
+        } else {
+            let mimpl = MethodImpl::MethodBody {
+                blocks: vec![super::BasicBlock::new(
+                    vec![self.alloc_root(CILRoot::VoidRet)],
+                    0,
+                    None,
+                )],
+                locals: vec![],
+            };
+            let cctor_def = MethodDef::new(
+                Access::Extern,
+                main_module,
+                user_init,
+                ctor_sig,
+                MethodKind::Static,
+                mimpl,
+                vec![],
+            );
+            self.new_method(cctor_def)
+        }
+    }
     /// Adds new rooots to the user init list.
     pub fn add_user_init(&mut self, roots: &[RootIdx]) {
         let user_init = self.user_init();
@@ -394,13 +479,68 @@ impl Assembly {
             last.roots_mut().insert(idx + last_root_idx, *root);
         }
     }
+    /// Adds new rooots to the thread local intiailzer .
+    pub fn add_tcctor(&mut self, roots: &[RootIdx]) {
+        let user_init = self.tcctor();
+        let user_init = self.method_defs.get_mut(&user_init).unwrap();
+        let blocks = user_init
+            .implementation_mut()
+            .blocks_mut()
+            .expect("EROROR: {TCCTOR} has no body.");
+        let last = blocks
+            .iter_mut()
+            .last()
+            .expect("ERROR: {TCCTOR} has a body without blocks.");
+        let last_root_idx = if last.roots().is_empty() {
+            0
+        } else {
+            last.roots().len() - 1
+        };
+        for (idx, root) in roots.iter().enumerate() {
+            last.roots_mut().insert(idx + last_root_idx, *root);
+        }
+    }
+    /// Adds new rooots to the static initializer
+    pub fn add_cctor(&mut self, roots: &[RootIdx]) {
+        let user_init = self.cctor();
+        let user_init = self.method_defs.get_mut(&user_init).unwrap();
+        let blocks = user_init
+            .implementation_mut()
+            .blocks_mut()
+            .expect("EROROR: {CCTOR} has no body.");
+        let last = blocks
+            .iter_mut()
+            .last()
+            .expect("ERROR: {CCTOR} has a body without blocks.");
+        let last_root_idx = if last.roots().is_empty() {
+            0
+        } else {
+            last.roots().len() - 1
+        };
+
+        for (idx, root) in roots.iter().enumerate() {
+            last.roots_mut().insert(idx + last_root_idx, *root);
+        }
+    }
     /// Serializes and saves this assembly
     pub fn save_tmp<W: std::io::Write>(&self, w: &mut W) -> std::io::Result<()> {
         w.write_all(&postcard::to_stdvec(&self).unwrap())
     }
     /// Converts the old assembly repr to the new one.
+    #[must_use]
     pub fn from_v1(v1: &V1Asm) -> Self {
         let mut empty: Assembly = v1.inner().clone();
+        let rust_void = empty.alloc_string("RustVoid");
+        empty.class_def(ClassDef::new(
+            rust_void,
+            true,
+            0,
+            None,
+            vec![],
+            vec![],
+            Access::Public,
+            None,
+        ));
         // Add the user defined roots
         let roots = v1
             .initializers()
@@ -416,9 +556,8 @@ impl Assembly {
             .static_fields()
             .iter()
             .map(|(name, (tpe, thread_local))| {
-                let tpe = Type::from_v1(tpe, &mut empty);
                 let name = empty.alloc_string(name.clone());
-                (tpe, name, *thread_local)
+                (*tpe, name, *thread_local)
             })
             .collect();
         let main_module = empty.main_module();
@@ -432,7 +571,7 @@ impl Assembly {
         v1.extern_fns()
             .iter()
             .for_each(|((fn_name, sig, preserve_errno), lib_name)| {
-                let v2_sig = FnSig::from_v1(sig, &mut empty);
+                let v2_sig = FnSig::from_v1(sig);
                 let name = empty.alloc_string(fn_name.clone());
                 let sigidx = empty.alloc_sig(v2_sig);
                 let lib = empty.alloc_string(lib_name.clone());
@@ -463,11 +602,11 @@ impl Assembly {
     #[track_caller]
     pub fn sanity_check(&self) {
         self.class_defs.values().for_each(|class| {
-            crate::utilis::assert_unique(class.methods(), class.ref_to().display(self))
-        })
+            crate::utilis::assert_unique(class.methods(), class.ref_to().display(self));
+        });
     }
     pub fn export(&self, out: impl AsRef<std::path::Path>, exporter: impl Exporter) {
-        exporter.export(self, out.as_ref()).unwrap()
+        exporter.export(self, out.as_ref()).unwrap();
     }
     pub fn memory_info(&self) {
         let mut stats = vec![
@@ -570,7 +709,7 @@ impl Assembly {
             .values()
             .flat_map(|method| method.iter_types(self))
             .flat_map(|tpe| tpe.iter_class_refs(self).collect::<Vec<_>>())
-            .flat_map(|cref| self.class_ref_to_def(cref))
+            .filter_map(|cref| self.class_ref_to_def(cref))
             .collect();
         let rust_void = self.alloc_string("RustVoid");
         let rust_void = self.alloc_class_ref(ClassRef::new(rust_void, None, true, vec![].into()));
@@ -586,12 +725,12 @@ impl Assembly {
         let mut to_resurrect: FxHashSet<ClassDefIdx> = FxHashSet::default();
         let mut alive: FxHashSet<ClassDefIdx> = FxHashSet::default();
         while !previosly_ressurected.is_empty() {
-            for def in previosly_ressurected.iter() {
+            for def in &previosly_ressurected {
                 let defids: FxHashSet<ClassDefIdx> = self
                     .get_class_def(*def)
                     .iter_types()
                     .flat_map(|tpe| tpe.iter_class_refs(self).collect::<Vec<_>>())
-                    .flat_map(|cref| self.class_ref_to_def(cref))
+                    .filter_map(|cref| self.class_ref_to_def(cref))
                     .filter(|refid| !alive.contains(refid))
                     .collect();
 
@@ -619,7 +758,7 @@ impl Assembly {
         for block in self
             .method_defs
             .values_mut()
-            .flat_map(|def| def.implementation_mut().blocks_mut())
+            .filter_map(|def| def.implementation_mut().blocks_mut())
             .flatten()
         {
             let (handler, roots) = block.handler_and_root_mut();
@@ -627,7 +766,7 @@ impl Assembly {
                 handler
                     .into_iter()
                     .flat_map(|blocks| blocks.iter_mut())
-                    .flat_map(|b| b.roots_mut()),
+                    .flat_map(super::basic_block::BasicBlock::roots_mut),
             ) {
                 *root = new_roots.alloc(self.roots.get(*root).clone());
             }
@@ -728,6 +867,7 @@ impl Assembly {
         }
     }
 
+    #[must_use]
     pub fn class_ref_to_def(&self, class: ClassRefIdx) -> Option<ClassDefIdx> {
         if self.class_defs.contains_key(&ClassDefIdx(class)) {
             Some(ClassDefIdx(class))
@@ -735,6 +875,7 @@ impl Assembly {
             None
         }
     }
+    #[must_use]
     pub fn link(mut self, other: Self) -> Self {
         let original_str = self.alloc_string(MAIN_MODULE);
         for def in other.iter_class_defs() {
@@ -742,7 +883,7 @@ impl Assembly {
             let class_ref = self.alloc_class_ref(translated.ref_to());
             match self.class_defs.entry(ClassDefIdx(class_ref)) {
                 std::collections::hash_map::Entry::Occupied(mut occupied) => {
-                    occupied.get_mut().merge_defs(translated, &self.strings)
+                    occupied.get_mut().merge_defs(translated, &self.strings);
                 }
                 std::collections::hash_map::Entry::Vacant(vacant) => {
                     vacant.insert(translated);
@@ -753,10 +894,6 @@ impl Assembly {
         self
     }
 
-    pub(crate) fn method_defs_mut(&mut self) -> &mut FxHashMap<MethodDefIdx, MethodDef> {
-        &mut self.method_defs
-    }
-
     pub(crate) fn method_defs(&self) -> &FxHashMap<MethodDefIdx, MethodDef> {
         &self.method_defs
     }
@@ -765,8 +902,18 @@ impl Assembly {
         self.class_ref_to_def(cref).is_some()
     }
     /// Checks if this assembly contains a reference [`ClassRef`]
+    #[must_use]
     pub fn contains_ref(&self, cref: &ClassRef) -> bool {
         self.class_refs.1.contains_key(cref)
+    }
+
+    pub(crate) fn class_defs_mut_strings(
+        &mut self,
+    ) -> (
+        &mut FxHashMap<ClassDefIdx, ClassDef>,
+        &BiMap<StringIdx, IStringWrapper>,
+    ) {
+        (&mut self.class_defs, &self.strings)
     }
 }
 /// An initializer, which runs before everything else. By convention, it is used to initialize static / const data. Should not execute any user code
@@ -813,6 +960,7 @@ pub enum IlasmFlavour {
     Clasic,
     Modern,
 }
+#[must_use]
 pub fn ilasm_path() -> &'static str {
     ILASM_PATH.as_str()
 }
@@ -903,7 +1051,7 @@ fn export2() {
                 super::BasicBlock::new(
                     body1,
                     0,
-                    Some(vec![super::BasicBlock::new(hbody, 1, None)].into()),
+                    Some(vec![super::BasicBlock::new(hbody, 1, None)]),
                 ),
                 super::BasicBlock::new(body2, 2, None),
             ],
@@ -960,7 +1108,7 @@ fn link() {
                     super::BasicBlock::new(
                         body1,
                         0,
-                        Some(vec![super::BasicBlock::new(hbody, 1, None)].into()),
+                        Some(vec![super::BasicBlock::new(hbody, 1, None)]),
                     ),
                     super::BasicBlock::new(body2, 2, None),
                 ],

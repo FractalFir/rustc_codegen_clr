@@ -1,4 +1,6 @@
-use crate::{codegen_error::CodegenError, r#type::TyCache};
+use crate::codegen_error::CodegenError;
+use crate::fn_ctx::MethodCompileCtx;
+use crate::r#type::get_type;
 use cilly::{FnSig, Type};
 use rustc_middle::ty::{Instance, List, ParamEnv, ParamEnvAnd, Ty, TyCtxt, TyKind};
 use rustc_target::abi::call::Conv;
@@ -7,36 +9,23 @@ use rustc_target::spec::abi::Abi as TargetAbi;
 /// Creates a `FnSig` from ` `. May not match the result of `sig_from_instance_`!
 /// Use ONLY for function pointers!
 pub fn from_poly_sig<'tcx>(
-    method_instance: Instance<'tcx>,
-    tcx: TyCtxt<'tcx>,
-    tycache: &mut TyCache,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
     sig: rustc_middle::ty::FnSigTys<TyCtxt<'tcx>>,
 ) -> FnSig {
-    let output = tycache.type_from_cache(
-        crate::utilis::monomorphize(&method_instance, sig.output(), tcx),
-        tcx,
-        method_instance,
-    );
+    let output = get_type(ctx.monomorphize(sig.output()), ctx);
     let inputs: Box<[Type]> = sig
         .inputs()
         .iter()
-        .map(|input| {
-            tycache.type_from_cache(
-                crate::utilis::monomorphize(&method_instance, *input, tcx),
-                tcx,
-                method_instance,
-            )
-        })
+        .map(|input| get_type(ctx.monomorphize(*input), ctx))
         .collect();
     FnSig::new(inputs, output)
 }
 /// Returns the signature of function behind `function`.
 pub fn sig_from_instance_<'tcx>(
     function: Instance<'tcx>,
-    tcx: TyCtxt<'tcx>,
-    tycache: &mut TyCache,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> Result<FnSig, CodegenError> {
-    let fn_abi = tcx.fn_abi_of_instance(ParamEnvAnd {
+    let fn_abi = ctx.tcx().fn_abi_of_instance(ParamEnvAnd {
         param_env: ParamEnv::reveal_all(),
         value: (function, List::empty()),
     });
@@ -50,17 +39,17 @@ pub fn sig_from_instance_<'tcx>(
         _ => panic!("ERROR:calling using convention {conv:?} is not supported!"),
     }
     //assert!(!fn_abi.c_variadic);
-    let ret = crate::utilis::monomorphize(&function, fn_abi.ret.layout.ty, tcx);
-    let ret = tycache.type_from_cache(ret, tcx, function);
+    let ret = ctx.monomorphize(fn_abi.ret.layout.ty);
+    let ret = get_type(ret, ctx);
     let mut args = Vec::with_capacity(fn_abi.args.len());
     for arg in &fn_abi.args {
-        let arg = crate::utilis::monomorphize(&function, arg.layout.ty, tcx);
-        args.push(tycache.type_from_cache(arg, tcx, function));
+        let arg = ctx.monomorphize(arg.layout.ty);
+        args.push(get_type(arg, ctx));
     }
     // There are 2 ABI enums for some reasons(they differ in what memebers they have)
-    let fn_ty = function.ty(tcx, ParamEnv::reveal_all());
+    let fn_ty = function.ty(ctx.tcx(), ParamEnv::reveal_all());
     let internal_abi = match fn_ty.kind() {
-        TyKind::FnDef(_, _) => fn_ty.fn_sig(tcx),
+        TyKind::FnDef(_, _) => fn_ty.fn_sig(ctx.tcx()),
         TyKind::Closure(_, args) => args.as_closure().sig(),
         _ => todo!("Can't get signature of {fn_ty}"),
     }

@@ -1,8 +1,15 @@
 use crate::{assembly::MethodCompileCtx, operand::handle_operand, place::place_set};
 use cilly::{
-    and, call, call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, conv_i16, conv_i32,
-    conv_i8, conv_isize, conv_u16, conv_u32, conv_u64, conv_u8, conv_usize, div, fn_sig::FnSig,
-    ldc_i32, ldc_u32, ldc_u64, rem_un, size_of, sub, DotnetTypeRef, Type,
+    and, call,
+    call_site::CallSite,
+    cil_node::CILNode,
+    cil_root::CILRoot,
+    conv_i16, conv_i32, conv_i8, conv_isize, conv_u16, conv_u32, conv_u64, conv_u8, conv_usize,
+    div,
+    fn_sig::FnSig,
+    ldc_i32, ldc_u32, ldc_u64, rem_un, size_of, sub,
+    v2::{ClassRef, Int},
+    Type,
 };
 use rustc_middle::{
     mir::{Operand, Place},
@@ -14,7 +21,7 @@ pub fn ctpop<'tcx>(
     destination: &Place<'tcx>,
 
     call_instance: Instance<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> CILRoot {
     debug_assert_eq!(
         args.len(),
@@ -28,92 +35,96 @@ pub fn ctpop<'tcx>(
                 .expect("needs_drop works only on types!"),
         ),
     );
-    let bit_operations = DotnetTypeRef::bit_operations();
+    let bit_operations = ClassRef::bit_operations(ctx.asm_mut());
     let bit_operations = Some(bit_operations);
     let operand = handle_operand(&args[0].node, ctx);
     place_set(
         destination,
         match tpe {
-            Type::U64 => conv_u32!(call!(
+            Type::Int(Int::U64) => conv_u32!(call!(
                 CallSite::boxed(
-                    bit_operations.clone(),
+                    bit_operations,
                     "PopCount".into(),
-                    FnSig::new(&[Type::U64], Type::I32),
+                    FnSig::new([Type::Int(Int::U64)], Type::Int(Int::I32)),
                     true,
                 ),
                 [operand]
             )),
-            Type::I64 => conv_u32!(call!(
+            Type::Int(Int::I64) => conv_u32!(call!(
                 CallSite::boxed(
-                    bit_operations.clone(),
+                    bit_operations,
                     "PopCount".into(),
-                    FnSig::new(&[Type::U64], Type::I32),
+                    FnSig::new([Type::Int(Int::U64)], Type::Int(Int::I32)),
                     true,
                 ),
                 [conv_u64!(operand)]
             )),
-            Type::U32 => conv_u32!(call!(
+            Type::Int(Int::U32) => conv_u32!(call!(
                 CallSite::boxed(
-                    bit_operations.clone(),
+                    bit_operations,
                     "PopCount".into(),
-                    FnSig::new(&[Type::U32], Type::I32),
+                    FnSig::new([Type::Int(Int::U32)], Type::Int(Int::I32)),
                     true,
                 ),
                 [operand]
             )),
 
-            Type::U8 | Type::U16 | Type::I8 | Type::I16 | Type::I32 => conv_u32!(call!(
+            Type::Int(Int::U8 | Int::U16 | Int::I8 | Int::I16 | Int::I32) => {
+                conv_u32!(call!(
+                    CallSite::boxed(
+                        bit_operations,
+                        "PopCount".into(),
+                        FnSig::new([Type::Int(Int::U32)], Type::Int(Int::I32)),
+                        true,
+                    ),
+                    [conv_u32!(operand)]
+                ))
+            }
+            Type::Int(Int::USize) => conv_u32!(call!(
                 CallSite::boxed(
-                    bit_operations.clone(),
+                    bit_operations,
                     "PopCount".into(),
-                    FnSig::new(&[Type::U32], Type::I32),
-                    true,
-                ),
-                [conv_u32!(operand)]
-            )),
-            Type::USize => conv_u32!(call!(
-                CallSite::boxed(
-                    bit_operations.clone(),
-                    "PopCount".into(),
-                    FnSig::new(&[Type::USize], Type::I32),
+                    FnSig::new([Type::Int(Int::USize)], Type::Int(Int::I32)),
                     true,
                 ),
                 [operand]
             )),
-            Type::ISize => conv_u32!(call!(
+            Type::Int(Int::ISize) => conv_u32!(call!(
                 CallSite::boxed(
-                    bit_operations.clone(),
+                    bit_operations,
                     "PopCount".into(),
-                    FnSig::new(&[Type::USize], Type::I32),
+                    FnSig::new([Type::Int(Int::USize)], Type::Int(Int::I32)),
                     true,
                 ),
                 [conv_isize!(operand)]
             )),
-            Type::U128 => crate::casts::int_to_int(
-                Type::U128,
-                &Type::U32,
+            Type::Int(Int::U128) => crate::casts::int_to_int(
+                Type::Int(Int::U128),
+                Type::Int(Int::U32),
                 call!(
                     CallSite::new_extern(
-                        DotnetTypeRef::uint_128().clone(),
+                        ClassRef::uint_128(ctx.asm_mut()),
                         "PopCount".into(),
-                        FnSig::new(&[Type::U128], Type::U128),
+                        FnSig::new([Type::Int(Int::U128)], Type::Int(Int::U128)),
                         true,
                     ),
                     [operand]
                 ),
+                ctx.asm_mut(),
             ),
-            Type::I128 => crate::casts::int_to_int(
-                Type::I128,
-                &Type::U32,
+            Type::Int(Int::I128) => crate::casts::int_to_int(
+                Type::Int(Int::I128),
+                Type::Int(Int::U32),
                 call!(
                     CallSite::new_extern(
-                        DotnetTypeRef::int_128().clone(),
+                        ClassRef::int_128(ctx.asm_mut()),
                         "PopCount".into(),
-                        FnSig::new(&[Type::I128], Type::I128),
+                        FnSig::new([Type::Int(Int::I128)], Type::Int(Int::I128)),
                         true,
                     ),
                     [operand]
                 ),
+                ctx.asm_mut(),
             ),
             _ => todo!("Unsported pop count type {tpe:?}"),
         },
@@ -124,14 +135,14 @@ pub fn ctlz<'tcx>(
     args: &[Spanned<Operand<'tcx>>],
     destination: &Place<'tcx>,
     call_instance: Instance<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> CILRoot {
     debug_assert_eq!(
         args.len(),
         1,
         "The intrinsic `ctlz` MUST take in exactly 1 argument!"
     );
-    let bit_operations = DotnetTypeRef::bit_operations();
+    let bit_operations = ClassRef::bit_operations(ctx.asm_mut());
     let bit_operations = Some(bit_operations);
 
     let tpe = ctx.monomorphize(
@@ -142,21 +153,21 @@ pub fn ctlz<'tcx>(
     let tpe = ctx.type_from_cache(tpe);
     // TODO: this assumes a 64 bit system!
     let sub = match tpe {
-        Type::ISize | Type::USize | Type::Ptr(_) => {
-            ldc_i32!(64) - (size_of!(tpe.clone()) * ldc_i32!(8))
+        Type::Int(Int::ISize | Int::USize) | Type::Ptr(_) => {
+            ldc_i32!(64) - (size_of!(tpe) * ldc_i32!(8))
         }
-        Type::I64 | Type::U64 => ldc_i32!(0),
-        Type::I32 | Type::U32 => ldc_i32!(32),
-        Type::I16 | Type::U16 => ldc_i32!(48),
-        Type::I8 | Type::U8 => ldc_i32!(56),
-        Type::I128 => {
+        Type::Int(Int::I64 | Int::U64) => ldc_i32!(0),
+        Type::Int(Int::I32 | Int::U32) => ldc_i32!(32),
+        Type::Int(Int::I16 | Int::U16) => ldc_i32!(48),
+        Type::Int(Int::I8 | Int::U8) => ldc_i32!(56),
+        Type::Int(Int::I128) => {
             return place_set(
                 destination,
                 conv_u32!(call!(
                     CallSite::new_extern(
-                        DotnetTypeRef::int_128(),
+                        ClassRef::int_128(ctx.asm_mut()),
                         "LeadingZeroCount".into(),
-                        FnSig::new([Type::I128], Type::I128),
+                        FnSig::new([Type::Int(Int::I128)], Type::Int(Int::I128)),
                         true
                     ),
                     [handle_operand(&args[0].node, ctx)]
@@ -164,14 +175,14 @@ pub fn ctlz<'tcx>(
                 ctx,
             )
         }
-        Type::U128 => {
+        Type::Int(Int::U128) => {
             return place_set(
                 destination,
                 conv_u32!(call!(
                     CallSite::new_extern(
-                        DotnetTypeRef::uint_128(),
+                        ClassRef::uint_128(ctx.asm_mut()),
                         "LeadingZeroCount".into(),
-                        FnSig::new([Type::U128], Type::U128),
+                        FnSig::new([Type::Int(Int::U128)], Type::Int(Int::U128)),
                         true
                     ),
                     [handle_operand(&args[0].node, ctx)]
@@ -186,9 +197,9 @@ pub fn ctlz<'tcx>(
         conv_u32!(sub!(
             call!(
                 CallSite::boxed(
-                    bit_operations.clone(),
+                    bit_operations,
                     "LeadingZeroCount".into(),
-                    FnSig::new(&[Type::U64], Type::I32),
+                    FnSig::new([Type::Int(Int::U64)], Type::Int(Int::I32)),
                     true,
                 ),
                 [conv_u64!(handle_operand(&args[0].node, ctx))]
@@ -201,7 +212,7 @@ pub fn ctlz<'tcx>(
 pub fn cttz<'tcx>(
     args: &[Spanned<Operand<'tcx>>],
     destination: &Place<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
     call_instance: Instance<'tcx>,
 ) -> CILRoot {
     debug_assert_eq!(
@@ -209,7 +220,7 @@ pub fn cttz<'tcx>(
         1,
         "The intrinsic `ctlz` MUST take in exactly 1 argument!"
     );
-    let bit_operations = DotnetTypeRef::bit_operations();
+    let bit_operations = ClassRef::bit_operations(ctx.asm_mut());
     let tpe = ctx.monomorphize(
         call_instance.args[0]
             .as_type()
@@ -219,12 +230,12 @@ pub fn cttz<'tcx>(
     let bit_operations = Some(bit_operations);
     let operand = handle_operand(&args[0].node, ctx);
     match tpe {
-        Type::I8 => {
+        Type::Int(Int::I8) => {
             let value_calc = conv_u32!(call!(
                 CallSite::boxed(
-                    bit_operations.clone(),
+                    bit_operations,
                     "TrailingZeroCount".into(),
-                    FnSig::new(&[Type::I32], Type::I32),
+                    FnSig::new([Type::Int(Int::I32)], Type::Int(Int::I32)),
                     true,
                 ),
                 [conv_i32!(operand)]
@@ -233,9 +244,12 @@ pub fn cttz<'tcx>(
                 destination,
                 call!(
                     CallSite::new_extern(
-                        DotnetTypeRef::math(),
+                        ClassRef::math(ctx.asm_mut()),
                         "Min".into(),
-                        FnSig::new([Type::U32, Type::U32], Type::U32),
+                        FnSig::new(
+                            [Type::Int(Int::U32), Type::Int(Int::U32)],
+                            Type::Int(Int::U32)
+                        ),
                         true
                     ),
                     [value_calc, ldc_u32!(i8::BITS)]
@@ -243,12 +257,12 @@ pub fn cttz<'tcx>(
                 ctx,
             )
         }
-        Type::I16 => {
+        Type::Int(Int::I16) => {
             let value_calc = conv_u32!(call!(
                 CallSite::boxed(
-                    bit_operations.clone(),
+                    bit_operations,
                     "TrailingZeroCount".into(),
-                    FnSig::new(&[Type::I32], Type::I32),
+                    FnSig::new([Type::Int(Int::I32)], Type::Int(Int::I32)),
                     true,
                 ),
                 [conv_i32!(operand)]
@@ -257,9 +271,12 @@ pub fn cttz<'tcx>(
                 destination,
                 call!(
                     CallSite::new_extern(
-                        DotnetTypeRef::math(),
+                        ClassRef::math(ctx.asm_mut()),
                         "Min".into(),
-                        FnSig::new([Type::U32, Type::U32], Type::U32),
+                        FnSig::new(
+                            [Type::Int(Int::U32), Type::Int(Int::U32)],
+                            Type::Int(Int::U32)
+                        ),
                         true
                     ),
                     [value_calc, ldc_u32!(i16::BITS)]
@@ -267,12 +284,12 @@ pub fn cttz<'tcx>(
                 ctx,
             )
         }
-        Type::U8 => {
+        Type::Int(Int::U8) => {
             let value_calc = conv_u32!(call!(
                 CallSite::boxed(
-                    bit_operations.clone(),
+                    bit_operations,
                     "TrailingZeroCount".into(),
-                    FnSig::new(&[Type::U32], Type::I32),
+                    FnSig::new([Type::Int(Int::U32)], Type::Int(Int::I32)),
                     true,
                 ),
                 [conv_u32!(operand)]
@@ -281,9 +298,12 @@ pub fn cttz<'tcx>(
                 destination,
                 call!(
                     CallSite::new_extern(
-                        DotnetTypeRef::math(),
+                        ClassRef::math(ctx.asm_mut()),
                         "Min".into(),
-                        FnSig::new([Type::U32, Type::U32], Type::U32),
+                        FnSig::new(
+                            [Type::Int(Int::U32), Type::Int(Int::U32)],
+                            Type::Int(Int::U32)
+                        ),
                         true
                     ),
                     [value_calc, ldc_u32!(u8::BITS)]
@@ -291,12 +311,12 @@ pub fn cttz<'tcx>(
                 ctx,
             )
         }
-        Type::U16 => {
+        Type::Int(Int::U16) => {
             let value_calc = conv_u32!(call!(
                 CallSite::boxed(
-                    bit_operations.clone(),
+                    bit_operations,
                     "TrailingZeroCount".into(),
-                    FnSig::new(&[Type::U32], Type::I32),
+                    FnSig::new([Type::Int(Int::U32)], Type::Int(Int::I32)),
                     true,
                 ),
                 [conv_u32!(operand)]
@@ -305,9 +325,12 @@ pub fn cttz<'tcx>(
                 destination,
                 call!(
                     CallSite::new_extern(
-                        DotnetTypeRef::math(),
+                        ClassRef::math(ctx.asm_mut()),
                         "Min".into(),
-                        FnSig::new([Type::U32, Type::U32], Type::U32),
+                        FnSig::new(
+                            [Type::Int(Int::U32), Type::Int(Int::U32)],
+                            Type::Int(Int::U32)
+                        ),
                         true
                     ),
                     [value_calc, ldc_u32!(u16::BITS)]
@@ -315,26 +338,26 @@ pub fn cttz<'tcx>(
                 ctx,
             )
         }
-        Type::I128 => place_set(
+        Type::Int(Int::I128) => place_set(
             destination,
             conv_u32!(call!(
                 CallSite::new_extern(
-                    DotnetTypeRef::int_128(),
+                    ClassRef::int_128(ctx.asm_mut()),
                     "TrailingZeroCount".into(),
-                    FnSig::new([Type::I128], Type::I128),
+                    FnSig::new([Type::Int(Int::I128)], Type::Int(Int::I128)),
                     true
                 ),
                 [handle_operand(&args[0].node, ctx)]
             )),
             ctx,
         ),
-        Type::U128 => place_set(
+        Type::Int(Int::U128) => place_set(
             destination,
             conv_u32!(call!(
                 CallSite::new_extern(
-                    DotnetTypeRef::uint_128(),
+                    ClassRef::uint_128(ctx.asm_mut()),
                     "TrailingZeroCount".into(),
-                    FnSig::new([Type::U128], Type::U128),
+                    FnSig::new([Type::Int(Int::U128)], Type::Int(Int::U128)),
                     true
                 ),
                 [handle_operand(&args[0].node, ctx)]
@@ -345,9 +368,9 @@ pub fn cttz<'tcx>(
             destination,
             conv_u32!(call!(
                 CallSite::boxed(
-                    bit_operations.clone(),
+                    bit_operations,
                     "TrailingZeroCount".into(),
-                    FnSig::new(&[tpe], Type::I32),
+                    FnSig::new([tpe], Type::Int(Int::I32)),
                     true,
                 ),
                 [operand]
@@ -359,7 +382,7 @@ pub fn cttz<'tcx>(
 pub fn rotate_left<'tcx>(
     args: &[Spanned<Operand<'tcx>>],
     destination: &Place<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
     call_instance: Instance<'tcx>,
 ) -> CILRoot {
     debug_assert_eq!(
@@ -376,156 +399,192 @@ pub fn rotate_left<'tcx>(
     let val = handle_operand(&args[0].node, ctx);
     let rot = handle_operand(&args[1].node, ctx);
     match val_tpe {
-        Type::U8 => place_set(
+        Type::Int(Int::U8) => place_set(
             destination,
             call!(
                 CallSite::new_extern(
-                    DotnetTypeRef::byte(),
+                    ClassRef::byte(ctx.asm_mut()),
                     "RotateLeft".into(),
-                    FnSig::new([Type::U8, Type::I32], Type::U8),
+                    FnSig::new(
+                        [Type::Int(Int::U8), Type::Int(Int::I32)],
+                        Type::Int(Int::U8)
+                    ),
                     true
                 ),
                 [val, conv_i32!(rot)]
             ),
             ctx,
         ),
-        Type::U16 => place_set(
+        Type::Int(Int::U16) => place_set(
             destination,
             call!(
                 CallSite::new_extern(
-                    DotnetTypeRef::uint16(),
+                    ClassRef::uint16(ctx.asm_mut()),
                     "RotateLeft".into(),
-                    FnSig::new([Type::U16, Type::I32], Type::U16),
+                    FnSig::new(
+                        [Type::Int(Int::U16), Type::Int(Int::I32)],
+                        Type::Int(Int::U16)
+                    ),
                     true
                 ),
                 [val, conv_i32!(rot)]
             ),
             ctx,
         ),
-        Type::U32 => place_set(
+        Type::Int(Int::U32) => place_set(
             destination,
             call!(
                 CallSite::new_extern(
-                    DotnetTypeRef::bit_operations(),
+                    ClassRef::bit_operations(ctx.asm_mut()),
                     "RotateLeft".into(),
-                    FnSig::new([Type::U32, Type::I32], Type::U32),
+                    FnSig::new(
+                        [Type::Int(Int::U32), Type::Int(Int::I32)],
+                        Type::Int(Int::U32)
+                    ),
                     true
                 ),
                 [val, conv_i32!(rot)]
             ),
             ctx,
         ),
-        Type::U64 => place_set(
+        Type::Int(Int::U64) => place_set(
             destination,
             call!(
                 CallSite::new_extern(
-                    DotnetTypeRef::bit_operations(),
+                    ClassRef::bit_operations(ctx.asm_mut()),
                     "RotateLeft".into(),
-                    FnSig::new([Type::U64, Type::I32], Type::U64),
+                    FnSig::new(
+                        [Type::Int(Int::U64), Type::Int(Int::I32)],
+                        Type::Int(Int::U64)
+                    ),
                     true
                 ),
                 [val, conv_i32!(rot)]
             ),
             ctx,
         ),
-        Type::USize => place_set(
+        Type::Int(Int::USize) => place_set(
             destination,
             call!(
                 CallSite::new_extern(
-                    DotnetTypeRef::bit_operations(),
+                    ClassRef::bit_operations(ctx.asm_mut()),
                     "RotateLeft".into(),
-                    FnSig::new([Type::USize, Type::I32], Type::USize),
+                    FnSig::new(
+                        [Type::Int(Int::USize), Type::Int(Int::I32)],
+                        Type::Int(Int::USize)
+                    ),
                     true
                 ),
                 [val, conv_i32!(rot)]
             ),
             ctx,
         ),
-        Type::I8 => place_set(
+        Type::Int(Int::I8) => place_set(
             destination,
             call!(
                 CallSite::new_extern(
-                    DotnetTypeRef::sbyte(),
+                    ClassRef::sbyte(ctx.asm_mut()),
                     "RotateLeft".into(),
-                    FnSig::new([Type::I8, Type::I32], Type::I8),
+                    FnSig::new(
+                        [Type::Int(Int::I8), Type::Int(Int::I32)],
+                        Type::Int(Int::I8)
+                    ),
                     true
                 ),
                 [val, conv_i32!(rot)]
             ),
             ctx,
         ),
-        Type::I16 => place_set(
+        Type::Int(Int::I16) => place_set(
             destination,
             call!(
                 CallSite::new_extern(
-                    DotnetTypeRef::int16(),
+                    ClassRef::int16(ctx.asm_mut()),
                     "RotateLeft".into(),
-                    FnSig::new([Type::I16, Type::I32], Type::I16),
+                    FnSig::new(
+                        [Type::Int(Int::I16), Type::Int(Int::I32)],
+                        Type::Int(Int::I16)
+                    ),
                     true
                 ),
                 [val, conv_i32!(rot)]
             ),
             ctx,
         ),
-        Type::I32 => place_set(
+        Type::Int(Int::I32) => place_set(
             destination,
             call!(
                 CallSite::new_extern(
-                    DotnetTypeRef::bit_operations(),
+                    ClassRef::bit_operations(ctx.asm_mut()),
                     "RotateLeft".into(),
-                    FnSig::new([Type::U32, Type::I32], Type::U32),
+                    FnSig::new(
+                        [Type::Int(Int::U32), Type::Int(Int::I32)],
+                        Type::Int(Int::U32)
+                    ),
                     true
                 ),
                 [conv_u32!(val), conv_i32!(rot)]
             ),
             ctx,
         ),
-        Type::I64 => place_set(
+        Type::Int(Int::I64) => place_set(
             destination,
             call!(
                 CallSite::new_extern(
-                    DotnetTypeRef::bit_operations(),
+                    ClassRef::bit_operations(ctx.asm_mut()),
                     "RotateLeft".into(),
-                    FnSig::new([Type::U64, Type::I32], Type::U32),
+                    FnSig::new(
+                        [Type::Int(Int::U64), Type::Int(Int::I32)],
+                        Type::Int(Int::U32)
+                    ),
                     true
                 ),
                 [conv_u64!(val), conv_i32!(rot)]
             ),
             ctx,
         ),
-        Type::ISize => place_set(
+        Type::Int(Int::ISize) => place_set(
             destination,
             call!(
                 CallSite::new_extern(
-                    DotnetTypeRef::bit_operations(),
+                    ClassRef::bit_operations(ctx.asm_mut()),
                     "RotateLeft".into(),
-                    FnSig::new([Type::USize, Type::I32], Type::U32),
+                    FnSig::new(
+                        [Type::Int(Int::USize), Type::Int(Int::I32)],
+                        Type::Int(Int::U32)
+                    ),
                     true
                 ),
                 [conv_usize!(val), conv_i32!(rot)]
             ),
             ctx,
         ),
-        Type::U128 => place_set(
+        Type::Int(Int::U128) => place_set(
             destination,
             call!(
                 CallSite::new_extern(
-                    DotnetTypeRef::uint_128(),
+                    ClassRef::uint_128(ctx.asm_mut()),
                     "RotateLeft".into(),
-                    FnSig::new([Type::U128, Type::I32], Type::U128),
+                    FnSig::new(
+                        [Type::Int(Int::U128), Type::Int(Int::I32)],
+                        Type::Int(Int::U128)
+                    ),
                     true
                 ),
                 [val, conv_i32!(rot)]
             ),
             ctx,
         ),
-        Type::I128 => place_set(
+        Type::Int(Int::I128) => place_set(
             destination,
             call!(
                 CallSite::new_extern(
-                    DotnetTypeRef::int_128(),
+                    ClassRef::int_128(ctx.asm_mut()),
                     "RotateLeft".into(),
-                    FnSig::new([Type::I128, Type::I32], Type::I128),
+                    FnSig::new(
+                        [Type::Int(Int::I128), Type::Int(Int::I32)],
+                        Type::Int(Int::I128)
+                    ),
                     true
                 ),
                 [val, conv_i32!(rot)]
@@ -538,7 +597,7 @@ pub fn rotate_left<'tcx>(
 pub fn rotate_right<'tcx>(
     args: &[Spanned<Operand<'tcx>>],
     destination: &Place<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
     call_instance: Instance<'tcx>,
 ) -> CILRoot {
     debug_assert_eq!(
@@ -555,156 +614,192 @@ pub fn rotate_right<'tcx>(
     let val = handle_operand(&args[0].node, ctx);
     let rot = handle_operand(&args[1].node, ctx);
     match val_tpe {
-        Type::U16 => place_set(
+        Type::Int(Int::U16) => place_set(
             destination,
             call!(
                 CallSite::new_extern(
-                    DotnetTypeRef::uint16(),
+                    ClassRef::uint16(ctx.asm_mut()),
                     "RotateRight".into(),
-                    FnSig::new([Type::U16, Type::I32], Type::U16),
+                    FnSig::new(
+                        [Type::Int(Int::U16), Type::Int(Int::I32)],
+                        Type::Int(Int::U16)
+                    ),
                     true
                 ),
                 [val, conv_i32!(rot)]
             ),
             ctx,
         ),
-        Type::U8 => place_set(
+        Type::Int(Int::U8) => place_set(
             destination,
             call!(
                 CallSite::new_extern(
-                    DotnetTypeRef::byte(),
+                    ClassRef::byte(ctx.asm_mut()),
                     "RotateRight".into(),
-                    FnSig::new([Type::U8, Type::I32], Type::U8),
+                    FnSig::new(
+                        [Type::Int(Int::U8), Type::Int(Int::I32)],
+                        Type::Int(Int::U8)
+                    ),
                     true
                 ),
                 [val, conv_i32!(rot)]
             ),
             ctx,
         ),
-        Type::U32 => place_set(
+        Type::Int(Int::U32) => place_set(
             destination,
             call!(
                 CallSite::new_extern(
-                    DotnetTypeRef::bit_operations(),
+                    ClassRef::bit_operations(ctx.asm_mut()),
                     "RotateRight".into(),
-                    FnSig::new([Type::U32, Type::I32], Type::U32),
+                    FnSig::new(
+                        [Type::Int(Int::U32), Type::Int(Int::I32)],
+                        Type::Int(Int::U32)
+                    ),
                     true
                 ),
                 [val, conv_i32!(rot)]
             ),
             ctx,
         ),
-        Type::U64 => place_set(
+        Type::Int(Int::U64) => place_set(
             destination,
             call!(
                 CallSite::new_extern(
-                    DotnetTypeRef::bit_operations(),
+                    ClassRef::bit_operations(ctx.asm_mut()),
                     "RotateRight".into(),
-                    FnSig::new([Type::U64, Type::I32], Type::U64),
+                    FnSig::new(
+                        [Type::Int(Int::U64), Type::Int(Int::I32)],
+                        Type::Int(Int::U64)
+                    ),
                     true
                 ),
                 [val, conv_i32!(rot)]
             ),
             ctx,
         ),
-        Type::USize => place_set(
+        Type::Int(Int::USize) => place_set(
             destination,
             call!(
                 CallSite::new_extern(
-                    DotnetTypeRef::bit_operations(),
+                    ClassRef::bit_operations(ctx.asm_mut()),
                     "RotateRight".into(),
-                    FnSig::new([Type::USize, Type::I32], Type::USize),
+                    FnSig::new(
+                        [Type::Int(Int::USize), Type::Int(Int::I32)],
+                        Type::Int(Int::USize)
+                    ),
                     true
                 ),
                 [val, conv_i32!(rot)]
             ),
             ctx,
         ),
-        Type::I8 => place_set(
+        Type::Int(Int::I8) => place_set(
             destination,
             call!(
                 CallSite::new_extern(
-                    DotnetTypeRef::sbyte(),
+                    ClassRef::sbyte(ctx.asm_mut()),
                     "RotateRight".into(),
-                    FnSig::new([Type::I8, Type::I32], Type::I8),
+                    FnSig::new(
+                        [Type::Int(Int::I8), Type::Int(Int::I32)],
+                        Type::Int(Int::I8)
+                    ),
                     true
                 ),
                 [val, conv_i32!(rot)]
             ),
             ctx,
         ),
-        Type::I16 => place_set(
+        Type::Int(Int::I16) => place_set(
             destination,
             call!(
                 CallSite::new_extern(
-                    DotnetTypeRef::int16(),
+                    ClassRef::int16(ctx.asm_mut()),
                     "RotateRight".into(),
-                    FnSig::new([Type::I16, Type::I32], Type::I16),
+                    FnSig::new(
+                        [Type::Int(Int::I16), Type::Int(Int::I32)],
+                        Type::Int(Int::I16)
+                    ),
                     true
                 ),
                 [val, conv_i32!(rot)]
             ),
             ctx,
         ),
-        Type::I32 => place_set(
+        Type::Int(Int::I32) => place_set(
             destination,
             call!(
                 CallSite::new_extern(
-                    DotnetTypeRef::bit_operations(),
+                    ClassRef::bit_operations(ctx.asm_mut()),
                     "RotateRight".into(),
-                    FnSig::new([Type::U32, Type::I32], Type::U32),
+                    FnSig::new(
+                        [Type::Int(Int::U32), Type::Int(Int::I32)],
+                        Type::Int(Int::U32)
+                    ),
                     true
                 ),
                 [conv_u32!(val), conv_i32!(rot)]
             ),
             ctx,
         ),
-        Type::I64 => place_set(
+        Type::Int(Int::I64) => place_set(
             destination,
             call!(
                 CallSite::new_extern(
-                    DotnetTypeRef::bit_operations(),
+                    ClassRef::bit_operations(ctx.asm_mut()),
                     "RotateRight".into(),
-                    FnSig::new([Type::U64, Type::I32], Type::U32),
+                    FnSig::new(
+                        [Type::Int(Int::U64), Type::Int(Int::I32)],
+                        Type::Int(Int::U32)
+                    ),
                     true
                 ),
                 [conv_u64!(val), conv_i32!(rot)]
             ),
             ctx,
         ),
-        Type::ISize => place_set(
+        Type::Int(Int::ISize) => place_set(
             destination,
             call!(
                 CallSite::new_extern(
-                    DotnetTypeRef::bit_operations(),
+                    ClassRef::bit_operations(ctx.asm_mut()),
                     "RotateRight".into(),
-                    FnSig::new([Type::USize, Type::I32], Type::U32),
+                    FnSig::new(
+                        [Type::Int(Int::USize), Type::Int(Int::I32)],
+                        Type::Int(Int::U32)
+                    ),
                     true
                 ),
                 [conv_usize!(val), conv_i32!(rot)]
             ),
             ctx,
         ),
-        Type::U128 => place_set(
+        Type::Int(Int::U128) => place_set(
             destination,
             call!(
                 CallSite::new_extern(
-                    DotnetTypeRef::uint_128(),
+                    ClassRef::uint_128(ctx.asm_mut()),
                     "RotateRight".into(),
-                    FnSig::new([Type::U128, Type::I32], Type::U128),
+                    FnSig::new(
+                        [Type::Int(Int::U128), Type::Int(Int::I32)],
+                        Type::Int(Int::U128)
+                    ),
                     true
                 ),
                 [val, conv_i32!(rot)]
             ),
             ctx,
         ),
-        Type::I128 => place_set(
+        Type::Int(Int::I128) => place_set(
             destination,
             call!(
                 CallSite::new_extern(
-                    DotnetTypeRef::int_128(),
+                    ClassRef::int_128(ctx.asm_mut()),
                     "RotateRight".into(),
-                    FnSig::new([Type::I128, Type::I32], Type::I128),
+                    FnSig::new(
+                        [Type::Int(Int::I128), Type::Int(Int::I32)],
+                        Type::Int(Int::I128)
+                    ),
                     true
                 ),
                 [val, conv_i32!(rot)]
@@ -733,7 +828,7 @@ fn bitreverse_u16(ushort: CILNode) -> CILNode {
 pub fn bitreverse<'tcx>(
     args: &[Spanned<Operand<'tcx>>],
     destination: &Place<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
     call_instance: Instance<'tcx>,
 ) -> CILRoot {
     debug_assert_eq!(
@@ -751,69 +846,87 @@ pub fn bitreverse<'tcx>(
     place_set(
         destination,
         match val_tpe {
-            Type::U8 => bitreverse_u8(val),
-            Type::I8 => conv_i8!(bitreverse_u8(val)),
-            Type::U16 => bitreverse_u16(val),
-            Type::I16 => conv_i16!(bitreverse_u16(conv_u16!(val))),
-            Type::U32 => call!(
+            Type::Int(Int::U8) => bitreverse_u8(val),
+            Type::Int(Int::I8) => conv_i8!(bitreverse_u8(val)),
+            Type::Int(Int::U16) => bitreverse_u16(val),
+            Type::Int(Int::I16) => conv_i16!(bitreverse_u16(conv_u16!(val))),
+            Type::Int(Int::U32) => call!(
                 CallSite::builtin(
                     "bitreverse_u32".into(),
-                    FnSig::new(&[Type::U32], Type::U32),
+                    FnSig::new([Type::Int(Int::U32)], Type::Int(Int::U32)),
                     true
                 ),
                 [val]
             ),
-            Type::I32 => crate::casts::int_to_int(
-                Type::U32,
-                &Type::I32,
+            Type::Int(Int::I32) => crate::casts::int_to_int(
+                Type::Int(Int::U32),
+                Type::Int(Int::I32),
                 call!(
                     CallSite::builtin(
                         "bitreverse_u32".into(),
-                        FnSig::new(&[Type::U32], Type::U32),
+                        FnSig::new([Type::Int(Int::U32)], Type::Int(Int::U32)),
                         true
                     ),
-                    [crate::casts::int_to_int(Type::I32, &Type::U32, val)]
+                    [crate::casts::int_to_int(
+                        Type::Int(Int::I32),
+                        Type::Int(Int::U32),
+                        val,
+                        ctx.asm_mut()
+                    )]
                 ),
+                ctx.asm_mut(),
             ),
-            Type::U64 => call!(
+            Type::Int(Int::U64) => call!(
                 CallSite::builtin(
                     "bitreverse_u64".into(),
-                    FnSig::new(&[Type::U64], Type::U64),
+                    FnSig::new([Type::Int(Int::U64)], Type::Int(Int::U64)),
                     true
                 ),
                 [val]
             ),
-            Type::I64 => crate::casts::int_to_int(
-                Type::U64,
-                &Type::I64,
+            Type::Int(Int::I64) => crate::casts::int_to_int(
+                Type::Int(Int::U64),
+                Type::Int(Int::I64),
                 call!(
                     CallSite::builtin(
                         "bitreverse_u64".into(),
-                        FnSig::new(&[Type::U64], Type::U64),
+                        FnSig::new([Type::Int(Int::U64)], Type::Int(Int::U64)),
                         true
                     ),
-                    [crate::casts::int_to_int(Type::I64, &Type::U64, val)]
+                    [crate::casts::int_to_int(
+                        Type::Int(Int::I64),
+                        Type::Int(Int::U64),
+                        val,
+                        ctx.asm_mut()
+                    )]
                 ),
+                ctx.asm_mut(),
             ),
-            Type::U128 => call!(
+            Type::Int(Int::U128) => call!(
                 CallSite::builtin(
                     "bitreverse_u128".into(),
-                    FnSig::new(&[Type::U128], Type::U128,),
+                    FnSig::new([Type::Int(Int::U128)], Type::Int(Int::U128),),
                     true
                 ),
                 [val]
             ),
-            Type::I128 => crate::casts::int_to_int(
-                Type::U128,
-                &Type::I128,
+            Type::Int(Int::I128) => crate::casts::int_to_int(
+                Type::Int(Int::U128),
+                Type::Int(Int::I128),
                 call!(
                     CallSite::builtin(
                         "bitreverse_u128".into(),
-                        FnSig::new(&[Type::U128], Type::U128,),
+                        FnSig::new([Type::Int(Int::U128)], Type::Int(Int::U128),),
                         true
                     ),
-                    [crate::casts::int_to_int(Type::I128, &Type::U128, val)]
+                    [crate::casts::int_to_int(
+                        Type::Int(Int::I128),
+                        Type::Int(Int::U128),
+                        val,
+                        ctx.asm_mut()
+                    )]
                 ),
+                ctx.asm_mut(),
             ),
 
             _ => todo!("can't yet bitreverse {val_tpe:?}"),

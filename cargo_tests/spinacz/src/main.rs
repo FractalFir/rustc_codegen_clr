@@ -38,7 +38,7 @@ fn main() {
             continue;
         }
         root_asm.add_tpe(
-            DotNetTypeDef {
+            DotNetClassDef {
                 asm: tpe_asm,
                 full_name: name.clone(),
                 is_valuetype,
@@ -91,7 +91,7 @@ enum MethodKind {
     Instance,
     Virtual,
 }
-struct DotNetTypeDef {
+struct DotNetClassDef {
     full_name: String,
     asm: String,
     is_valuetype: bool,
@@ -99,12 +99,12 @@ struct DotNetTypeDef {
 }
 struct Namespace {
     inner: HashMap<String, Self>,
-    types: Vec<DotNetTypeDef>,
+    types: Vec<DotNetClassDef>,
     name: String,
     depth: u32,
 }
 impl Namespace {
-    pub fn add_tpe(&mut self, tpe: DotNetTypeDef, full_name_: &str) {
+    pub fn add_tpe(&mut self, tpe: DotNetClassDef, full_name_: &str) {
         let mut full_name = full_name_.split(".");
         let curr = full_name.next().unwrap();
         if let Some(next) = full_name.next() {

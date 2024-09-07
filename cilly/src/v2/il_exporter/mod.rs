@@ -1,5 +1,5 @@
 use crate::v2::MethodImpl;
-use lazy_static::*;
+use lazy_static::lazy_static;
 use std::io::Write;
 
 use super::{
@@ -13,6 +13,7 @@ pub struct ILExporter {
     is_lib: bool,
 }
 impl ILExporter {
+    #[must_use]
     pub fn new(flavour: IlasmFlavour, is_lib: bool) -> Self {
         Self { flavour, is_lib }
     }
@@ -104,7 +105,7 @@ impl ILExporter {
                         format!("pinvokeimpl(\"{lib}\" cdecl)")
                     }
                 } else {
-                    "".into()
+                    String::new()
                 };
                 let name = asm.get_string(method.name());
                 let sig = asm.get_sig(method.sig());
@@ -192,7 +193,7 @@ impl ILExporter {
                     if let Some(handler) = block.handler(){
                         writeln!(out,"}} catch [System.Runtime]System.Object{{")?;
                         // Check for the GetException intrinsic. If it is not used, put a pop here.
-                        if !handler.iter().flat_map(|block|block.roots()).flat_map(|root|CILIter::new(asm.get_root(*root).clone(),asm)).any(|elem|matches!(elem,CILIterElem::Node(CILNode::GetException))){
+                        if !handler.iter().flat_map(super::basic_block::BasicBlock::roots).flat_map(|root|CILIter::new(asm.get_root(*root).clone(),asm)).any(|elem|matches!(elem,CILIterElem::Node(CILNode::GetException))){
                             writeln!(out,"pop")?;
                         }
                         for hblock in handler{
@@ -423,45 +424,41 @@ impl ILExporter {
             } => {
                 self.export_node(asm, out, *input)?;
                 match (target, extend) {
-                    (super::Int::U8, super::cilnode::ExtendKind::ZeroExtend)
-                    | (super::Int::I8, super::cilnode::ExtendKind::ZeroExtend) => {
+                    (super::Int::U8 | super::Int::I8, super::cilnode::ExtendKind::ZeroExtend) => {
                         writeln!(out, "conv.u1")
                     }
-                    (super::Int::U8, super::cilnode::ExtendKind::SignExtend)
-                    | (super::Int::I8, super::cilnode::ExtendKind::SignExtend) => {
+                    (super::Int::U8 | super::Int::I8, super::cilnode::ExtendKind::SignExtend) => {
                         writeln!(out, "conv.i1")
                     }
-                    (super::Int::U16, super::cilnode::ExtendKind::ZeroExtend)
-                    | (super::Int::I16, super::cilnode::ExtendKind::ZeroExtend) => {
+                    (super::Int::U16 | super::Int::I16, super::cilnode::ExtendKind::ZeroExtend) => {
                         writeln!(out, "conv.u2")
                     }
-                    (super::Int::U16, super::cilnode::ExtendKind::SignExtend)
-                    | (super::Int::I16, super::cilnode::ExtendKind::SignExtend) => {
+                    (super::Int::U16 | super::Int::I16, super::cilnode::ExtendKind::SignExtend) => {
                         writeln!(out, "conv.i2")
                     }
-                    (super::Int::U32, super::cilnode::ExtendKind::ZeroExtend)
-                    | (super::Int::I32, super::cilnode::ExtendKind::ZeroExtend) => {
+                    (super::Int::U32 | super::Int::I32, super::cilnode::ExtendKind::ZeroExtend) => {
                         writeln!(out, "conv.u4")
                     }
-                    (super::Int::U32, super::cilnode::ExtendKind::SignExtend)
-                    | (super::Int::I32, super::cilnode::ExtendKind::SignExtend) => {
+                    (super::Int::U32 | super::Int::I32, super::cilnode::ExtendKind::SignExtend) => {
                         writeln!(out, "conv.i4")
                     }
 
-                    (super::Int::U64, super::cilnode::ExtendKind::ZeroExtend)
-                    | (super::Int::I64, super::cilnode::ExtendKind::ZeroExtend) => {
+                    (super::Int::U64 | super::Int::I64, super::cilnode::ExtendKind::ZeroExtend) => {
                         writeln!(out, "conv.u8")
                     }
-                    (super::Int::U64, super::cilnode::ExtendKind::SignExtend)
-                    | (super::Int::I64, super::cilnode::ExtendKind::SignExtend) => {
+                    (super::Int::U64 | super::Int::I64, super::cilnode::ExtendKind::SignExtend) => {
                         writeln!(out, "conv.i8")
                     }
-                    (super::Int::USize, super::cilnode::ExtendKind::SignExtend)
-                    | (super::Int::ISize, super::cilnode::ExtendKind::SignExtend) => {
+                    (
+                        super::Int::USize | super::Int::ISize,
+                        super::cilnode::ExtendKind::SignExtend,
+                    ) => {
                         writeln!(out, "conv.i")
                     }
-                    (super::Int::USize, super::cilnode::ExtendKind::ZeroExtend)
-                    | (super::Int::ISize, super::cilnode::ExtendKind::ZeroExtend) => {
+                    (
+                        super::Int::USize | super::Int::ISize,
+                        super::cilnode::ExtendKind::ZeroExtend,
+                    ) => {
                         writeln!(out, "conv.u")
                     }
                     (super::Int::U128, super::cilnode::ExtendKind::ZeroExtend) => todo!(),
@@ -590,7 +587,7 @@ impl ILExporter {
                     (Type::PlatformGeneric(_, _), false) => todo!(),
                     (Type::Bool, true) => writeln!(out, "volatile. ldind.i1"),
                     (Type::Bool, false) => writeln!(out, "ldind.i1"),
-                    (Type::Void, true) | (Type::Void, false) => {
+                    (Type::Void, true | false) => {
                         panic!("Void can't be dereferenced!")
                     }
                     (Type::PlatformArray { .. }, true) => writeln!(out, "volatile. ldind.ref"),
@@ -665,7 +662,10 @@ impl ILExporter {
                     crate::v2::cilnode::MethodKind::Virtual => " ldftn instance",
                     crate::v2::cilnode::MethodKind::Constructor => "ldftn instance",
                 };
-                writeln!(out, "{ldftn_op} {output} {class}::'{name}'({inputs})")
+                writeln!(
+                    out,
+                    "{ldftn_op} {output} {class}::'{name}'({inputs}) //{ftn:?}"
+                )
             }
             super::CILNode::LdTypeToken(tok) => {
                 writeln!(out, "ldtoken {tok}", tok = type_il(asm.get_type(*tok), asm))
@@ -808,6 +808,54 @@ impl ILExporter {
                         }
                     }
                 }
+                Some(BranchCond::Le(a, b, kind)) => {
+                    self.export_node(asm, out, *a)?;
+                    self.export_node(asm, out, *b)?;
+                    match kind {
+                        super::cilroot::CmpKind::Ordered | super::cilroot::CmpKind::Signed => {
+                            if branch.1 == 0 {
+                                writeln!(out, "ble bb{}", branch.0)
+                            } else if is_handler {
+                                writeln!(out, "ble h{}_{}", branch.0, branch.1)
+                            } else {
+                                writeln!(out, "ble jp{}_{}", branch.0, branch.1)
+                            }
+                        }
+                        super::cilroot::CmpKind::Unordered | super::cilroot::CmpKind::Unsigned => {
+                            if branch.1 == 0 {
+                                writeln!(out, "ble.un bb{}", branch.0)
+                            } else if is_handler {
+                                writeln!(out, "ble.un h{}_{}", branch.0, branch.1)
+                            } else {
+                                writeln!(out, "ble.un jp{}_{}", branch.0, branch.1)
+                            }
+                        }
+                    }
+                }
+                Some(BranchCond::Ge(a, b, kind)) => {
+                    self.export_node(asm, out, *a)?;
+                    self.export_node(asm, out, *b)?;
+                    match kind {
+                        super::cilroot::CmpKind::Ordered | super::cilroot::CmpKind::Signed => {
+                            if branch.1 == 0 {
+                                writeln!(out, "bge bb{}", branch.0)
+                            } else if is_handler {
+                                writeln!(out, "bge h{}_{}", branch.0, branch.1)
+                            } else {
+                                writeln!(out, "bge jp{}_{}", branch.0, branch.1)
+                            }
+                        }
+                        super::cilroot::CmpKind::Unordered | super::cilroot::CmpKind::Unsigned => {
+                            if branch.1 == 0 {
+                                writeln!(out, "bge.un bb{}", branch.0)
+                            } else if is_handler {
+                                writeln!(out, "bge.un h{}_{}", branch.0, branch.1)
+                            } else {
+                                writeln!(out, "bge.un jp{}_{}", branch.0, branch.1)
+                            }
+                        }
+                    }
+                }
                 Some(BranchCond::True(cond)) => {
                     self.export_node(asm, out, *cond)?;
                     if branch.1 == 0 {
@@ -847,8 +895,8 @@ impl ILExporter {
                 col_len,
                 file,
             } => {
-                let col_end = *col_start as u32 + *col_len as u32;
-                let line_end = *line_start + *line_len as u32;
+                let col_end = u32::from(*col_start) + u32::from(*col_len);
+                let line_end = *line_start + u32::from(*line_len);
                 let file = asm.get_string(*file);
                 match self.flavour {
                     IlasmFlavour::Clasic => {
@@ -1055,14 +1103,14 @@ impl Exporter for ILExporter {
         let out = cmd.output().unwrap();
         let stdout = String::from_utf8_lossy(&out.stdout);
         let stderr = String::from_utf8_lossy(&out.stderr);
-        if stderr.contains("\nError\n") || stderr.contains("FAILURE") || stdout.contains("FAILURE")
-        {
-            panic!(
-                "stdout:{} stderr:{} cmd:{cmd:?}",
-                stdout,
-                String::from_utf8_lossy(&out.stderr)
-            );
-        }
+        assert!(
+            !(stderr.contains("\nError\n")
+                || stderr.contains("FAILURE")
+                || stdout.contains("FAILURE")),
+            "stdout:{} stderr:{} cmd:{cmd:?}",
+            stdout,
+            String::from_utf8_lossy(&out.stderr)
+        );
 
         Ok(())
     }
@@ -1086,7 +1134,7 @@ pub(crate) fn class_ref(cref: ClassRefIdx, asm: &Assembly) -> String {
         "class"
     };
     let generic_list = if cref.generics().is_empty() {
-        "".into()
+        String::new()
     } else {
         format!(
             "<{generics}>",
@@ -1099,7 +1147,7 @@ pub(crate) fn class_ref(cref: ClassRefIdx, asm: &Assembly) -> String {
         )
     };
     let generic_postfix = if cref.generics().is_empty() {
-        "".into()
+        String::new()
     } else {
         format!("`{}", cref.generics().len())
     };
@@ -1144,7 +1192,7 @@ fn type_il(tpe: &Type, asm: &Assembly) -> String {
         },
         Type::PlatformChar => "char".into(),
         Type::PlatformGeneric(arg, generic) => match generic {
-            super::tpe::GenericKind::MethodGeneric => todo!(),
+            super::tpe::GenericKind::MethodGeneric => format!("!{arg}"),
             super::tpe::GenericKind::CallGeneric => format!("!!{arg}"),
             super::tpe::GenericKind::TypeGeneric => format!("!{arg}"),
         },

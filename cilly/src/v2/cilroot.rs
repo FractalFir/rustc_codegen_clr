@@ -4,8 +4,8 @@ use super::{
     bimap::{BiMapIndex, IntoBiMapIndex},
     cilnode::MethodKind,
     field::FieldIdx,
-    Assembly, CILNode, ClassRef, FieldDesc, Float, FnSig, Int, MethodRef, MethodRefIdx, NodeIdx,
-    SigIdx, StaticFieldDesc, StaticFieldIdx, StringIdx, Type,
+    Assembly, CILNode, FieldDesc, Float, FnSig, Int, MethodRef, MethodRefIdx, NodeIdx, SigIdx,
+    StaticFieldDesc, StaticFieldIdx, StringIdx, Type,
 };
 use crate::cil_root::CILRoot as V1Root;
 //use crate::cil_node::CILNode as V1Node;
@@ -28,7 +28,7 @@ pub enum CILRoot {
         col_len: u16,
         file: StringIdx,
     },
-    /// Field, value, addr
+    /// Field,  addr,value
     SetField(Box<(FieldIdx, NodeIdx, NodeIdx)>),
     Call(Box<(MethodRefIdx, Box<[NodeIdx]>)>),
     /// addr, value, type
@@ -61,6 +61,8 @@ pub enum BranchCond {
     Ne(NodeIdx, NodeIdx),
     Lt(NodeIdx, NodeIdx, CmpKind),
     Gt(NodeIdx, NodeIdx, CmpKind),
+    Le(NodeIdx, NodeIdx, CmpKind),
+    Ge(NodeIdx, NodeIdx, CmpKind),
 }
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub enum CmpKind {
@@ -104,7 +106,9 @@ impl CILRoot {
                     BranchCond::Eq(lhs, rhs)
                     | BranchCond::Ne(lhs, rhs)
                     | BranchCond::Lt(lhs, rhs, _)
-                    | BranchCond::Gt(lhs, rhs, _) => [lhs, rhs].into(),
+                    | BranchCond::Gt(lhs, rhs, _)
+                    | BranchCond::Le(lhs, rhs, _)
+                    | BranchCond::Ge(lhs, rhs, _) => [lhs, rhs].into(),
                 }
             }
             CILRoot::SetField(info) => {
@@ -116,13 +120,9 @@ impl CILRoot {
                 let (addr, val, _, _) = info.as_mut();
                 [addr, val].into()
             }
-            CILRoot::InitBlk(info) => {
+            CILRoot::InitBlk(info) | CILRoot::CpBlk(info) => {
                 let (addr, val, len) = info.as_mut();
                 [addr, val, len].into()
-            }
-            CILRoot::CpBlk(info) => {
-                let (dst, src, len) = info.as_mut();
-                [dst, src, len].into()
             }
             CILRoot::CallI(info) => {
                 let (ptr, _, args) = info.as_mut();
@@ -132,14 +132,16 @@ impl CILRoot {
             }
         }
     }
+    #[allow(clippy::too_many_lines)]
     pub fn from_v1(v1: &V1Root, asm: &mut Assembly) -> Self {
         match v1 {
             V1Root::SourceFileInfo(sfi) => {
-                let line_start = sfi.0.start.min(u32::MAX as u64) as u32;
-                let line_end = sfi.0.end.min(u32::MAX as u64) as u32;
-                let line_len = (line_end - line_start).min(u16::MAX as u32) as u16;
-                let col_start = sfi.1.start.min(u16::MAX as u64) as u16;
-                let col_end = sfi.1.end.min(u16::MAX as u64) as u16;
+                let line_start = u32::try_from(sfi.0.start.min(u64::from(u32::MAX))).unwrap();
+                let line_end = u32::try_from(sfi.0.end.min(u64::from(u32::MAX))).unwrap();
+                let line_len =
+                    u16::try_from((line_end - line_start).min(u32::from(u16::MAX))).unwrap();
+                let col_start = u16::try_from(sfi.1.start.min(u64::from(u16::MAX))).unwrap();
+                let col_end = u16::try_from(sfi.1.end.min(u64::from(u16::MAX))).unwrap();
                 let col_len = col_end - col_start;
                 let file = asm.alloc_string(sfi.2.clone());
                 Self::SourceFileInfo {
@@ -235,20 +237,10 @@ impl CILRoot {
                         asm.alloc_node(node)
                     })
                     .collect();
-                let sig = FnSig::from_v1(site.signature(), asm);
+                let sig = FnSig::from_v1(site.signature());
                 let sig = asm.alloc_sig(sig);
-                let generics: Box<[_]> = site
-                    .generics()
-                    .iter()
-                    .map(|gen| Type::from_v1(gen, asm))
-                    .collect();
-                let class = site
-                    .class()
-                    .map(|dt| {
-                        let cref = ClassRef::from_v1(dt, asm);
-                        asm.alloc_class_ref(cref)
-                    })
-                    .unwrap_or_else(|| *asm.main_module());
+                let generics: Box<[_]> = (site.generics()).into();
+                let class = site.class().unwrap_or_else(|| *asm.main_module());
                 let name = asm.alloc_string(site.name());
                 let method_ref = if site.is_static() {
                     MethodRef::new(class, name, sig, MethodKind::Static, generics)
@@ -266,20 +258,10 @@ impl CILRoot {
                         asm.alloc_node(node)
                     })
                     .collect();
-                let sig = FnSig::from_v1(site.signature(), asm);
+                let sig = FnSig::from_v1(site.signature());
                 let sig = asm.alloc_sig(sig);
-                let generics: Box<[_]> = site
-                    .generics()
-                    .iter()
-                    .map(|gen| Type::from_v1(gen, asm))
-                    .collect();
-                let class = site
-                    .class()
-                    .map(|dt| {
-                        let cref = ClassRef::from_v1(dt, asm);
-                        asm.alloc_class_ref(cref)
-                    })
-                    .unwrap_or_else(|| *asm.main_module());
+                let generics: Box<[_]> = (site.generics()).into();
+                let class = site.class().unwrap_or_else(|| *asm.main_module());
                 let name = asm.alloc_string(site.name());
                 assert!(!site.is_static());
                 let method_ref = MethodRef::new(class, name, sig, MethodKind::Virtual, generics);
@@ -337,8 +319,8 @@ impl CILRoot {
                 let val = asm.alloc_node(val);
                 let addr = CILNode::from_v1(addr, asm);
                 let addr = asm.alloc_node(addr);
-                let ptr = Type::from_v1(ptr, asm);
-                let ptr = asm.nptr(ptr);
+
+                let ptr = asm.nptr(**ptr);
                 Self::StInd(Box::new((addr, val, ptr, false)))
             }
             V1Root::STObj {
@@ -350,8 +332,8 @@ impl CILRoot {
                 let value_calc = asm.alloc_node(value_calc);
                 let addr_calc = CILNode::from_v1(addr_calc, asm);
                 let addr_calc = asm.alloc_node(addr_calc);
-                let tpe = Type::from_v1(tpe, asm);
-                Self::StInd(Box::new((addr_calc, value_calc, tpe, false)))
+
+                Self::StInd(Box::new((addr_calc, value_calc, **tpe, false)))
             }
             V1Root::STIndF32(addr, val) => {
                 let val = CILNode::from_v1(val, asm);
@@ -388,7 +370,7 @@ impl CILRoot {
                 Self::CpBlk(Box::new((dst, src, len)))
             }
             V1Root::CallI { sig, fn_ptr, args } => {
-                let sig = FnSig::from_v1(sig, asm);
+                let sig = FnSig::from_v1(sig);
                 let sig = asm.alloc_sig(sig);
                 let ptr = CILNode::from_v1(fn_ptr, asm);
                 let ptr = asm.alloc_node(ptr);
@@ -407,9 +389,10 @@ impl CILRoot {
             },
             V1Root::Volatile(inner) => {
                 let mut tmp = Self::from_v1(inner, asm);
-                match &mut tmp {
-                    Self::StInd(inner) => inner.3 = true,
-                    _ => panic!(),
+                if let Self::StInd(inner) = &mut tmp {
+                    inner.3 = true;
+                } else {
+                    panic!()
                 }
                 tmp
             }
@@ -426,6 +409,8 @@ impl CILRoot {
         }
     }
     /// Maps this root using `root_map` and `node_map`.
+    #[allow(clippy::too_many_lines)]
+    #[must_use]
     pub fn map(
         self,
         asm: &mut Assembly,
@@ -498,6 +483,24 @@ impl CILRoot {
                         let lhs = asm.get_node(lhs).clone().map(asm, node_map);
                         let rhs = asm.get_node(rhs).clone().map(asm, node_map);
                         Some(BranchCond::Gt(
+                            asm.alloc_node(lhs),
+                            asm.alloc_node(rhs),
+                            cmp_kind,
+                        ))
+                    }
+                    Some(BranchCond::Le(lhs, rhs, cmp_kind)) => {
+                        let lhs = asm.get_node(lhs).clone().map(asm, node_map);
+                        let rhs = asm.get_node(rhs).clone().map(asm, node_map);
+                        Some(BranchCond::Le(
+                            asm.alloc_node(lhs),
+                            asm.alloc_node(rhs),
+                            cmp_kind,
+                        ))
+                    }
+                    Some(BranchCond::Ge(lhs, rhs, cmp_kind)) => {
+                        let lhs = asm.get_node(lhs).clone().map(asm, node_map);
+                        let rhs = asm.get_node(rhs).clone().map(asm, node_map);
+                        Some(BranchCond::Ge(
                             asm.alloc_node(lhs),
                             asm.alloc_node(rhs),
                             cmp_kind,
@@ -614,9 +617,9 @@ fn many_mut<T>(input: &mut [T]) -> Vec<&mut T> {
         _ => {
             let half = input.len() / 2;
             let (lhs, rhs) = input.split_at_mut(half);
-            let mut res = many_mut(lhs);
-            res.extend(many_mut(rhs));
-            res
+            let mut result = many_mut(lhs);
+            result.extend(many_mut(rhs));
+            result
         }
     };
     assert_eq!(res.len(), input_len);

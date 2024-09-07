@@ -13,7 +13,7 @@ pub fn opt_node(node: crate::v2::CILNode, asm: &mut Assembly) -> CILNode {
                 _ => node,
             },
             CILNode::IntCast {
-                input: input2,
+                input: _input2,
                 target: target2,
                 extend: extend2,
             } => {

@@ -3,12 +3,12 @@ using Mono.Cecil;
 using Mono.Cecil.Rocks;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-public class TypeDef
+public class ClassDef
 {
     [UnmanagedCallersOnly(EntryPoint = "new_type_def",CallConvs = new[] { typeof(CallConvCdecl) })]
-    public static ManagedHandle<TypeDefinition> NewTypeDef(RustString nameSpace,RustString name,TypeAttributes attributes){
-        var typeDef = new TypeDefinition(nameSpace.ToString(),name.ToString(),attributes);
-        return new ManagedHandle<TypeDefinition>(typeDef);
+    public static ManagedHandle<ClassDefinition> NewClassDef(RustString nameSpace,RustString name,TypeAttributes attributes){
+        var typeDef = new ClassDefinition(nameSpace.ToString(),name.ToString(),attributes);
+        return new ManagedHandle<ClassDefinition>(typeDef);
     }
     [UnmanagedCallersOnly(EntryPoint = "new_field_def",CallConvs = new[] { typeof(CallConvCdecl) })]
     public static ManagedHandle<FieldDefinition> NewFieldDef(RustString fieldName,FieldAttributes attributes,ManagedHandle<TypeReference> fieldType,bool hasOffset,uint offset){
@@ -19,7 +19,7 @@ public class TypeDef
         return new ManagedHandle<FieldDefinition>(fieldDef);
     }
     [UnmanagedCallersOnly(EntryPoint = "add_field_def",CallConvs = new[] { typeof(CallConvCdecl) })]
-    public static void AddFieldDef(ManagedHandle<TypeDefinition> typeDef,ManagedHandle<FieldDefinition> fieldDef){
+    public static void AddFieldDef(ManagedHandle<ClassDefinition> typeDef,ManagedHandle<FieldDefinition> fieldDef){
         typeDef.GetRef().Fields.Add(fieldDef.GetRef());
     }
     [UnmanagedCallersOnly(EntryPoint = "new_type_ref",CallConvs = new[] { typeof(CallConvCdecl) })]
@@ -29,7 +29,7 @@ public class TypeDef
         return new ManagedHandle<TypeReference>(tref);
     }
     [UnmanagedCallersOnly(EntryPoint = "add_inner_type",CallConvs = new[] { typeof(CallConvCdecl) })]
-    public static void AddInnerType(ManagedHandle<TypeDefinition> typeDef,ManagedHandle<TypeDefinition> inner){
+    public static void AddInnerType(ManagedHandle<ClassDefinition> typeDef,ManagedHandle<ClassDefinition> inner){
         typeDef.GetRef().NestedTypes.Add(inner.GetRef());
     }
     // Void
@@ -66,7 +66,7 @@ public class TypeDef
     [UnmanagedCallersOnly(EntryPoint = "type_ref_to_pointer",CallConvs = new[] { typeof(CallConvCdecl) })]
     public static ManagedHandle<TypeReference> TypeRefToPointer(ManagedHandle<TypeReference> type)=>new ManagedHandle<TypeReference>(TypeReferenceRocks.MakePointerType(type.GetRef()));
     [UnmanagedCallersOnly(EntryPoint = "set_typedef_baseclass",CallConvs = new[] { typeof(CallConvCdecl) })]
-    public static void SetTypedefBaseClass(ManagedHandle<TypeDefinition> type,ManagedHandle<TypeReference> baseClass){
+    public static void SetTypedefBaseClass(ManagedHandle<ClassDefinition> type,ManagedHandle<TypeReference> baseClass){
         type.GetRef().BaseType = baseClass.GetRef();
     }
 }

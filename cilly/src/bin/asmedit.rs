@@ -5,8 +5,8 @@ use std::{
 };
 
 use cilly::v2::{
-    access, asm::Assembly, cillyir_exporter::CillyIRExpoter, il_exporter::ILExporter, Access,
-    CILIter, MethodImpl, MethodRefIdx,
+    asm::Assembly, cillyir_exporter::CillyIRExpoter, il_exporter::ILExporter, Access, CILIter,
+    MethodImpl, MethodRefIdx,
 };
 
 fn main() {
@@ -94,7 +94,7 @@ fn main() {
             "mbyaccess" => {
                 // Print all methods with a certain visibility
                 let access = body;
-                let access = match access.as_ref() {
+                let access = match access {
                     "extern" => Access::Extern,
                     "priv" | "private" => Access::Private,
                     "pub" | "public" => Access::Public,
@@ -177,7 +177,7 @@ fn main() {
             "msetaccess" => {
                 let mut body = body.split(',');
                 let (id, access) = (parse_id(body.next().unwrap(), &asm), body.next().unwrap());
-                let access = match access.as_ref() {
+                let access = match access {
                     "extern" => Access::Extern,
                     "priv" | "private" => Access::Private,
                     "pub" | "public" => Access::Public,

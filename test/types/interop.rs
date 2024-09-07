@@ -30,9 +30,9 @@ const PRIVATE: u8 = 0;
 const PROTECTED: u8 = 1;
 const PUBLIC: u8 = 2;
 trait Func {}
-unsafe impl Sync for RustcCLRInteropManagedCustomTypeDef_CustomTypedef {}
+unsafe impl Sync for RustcCLRInteropManagedCustomClassDef_CustomTypedef {}
 #[allow(non_camel_case_types)]
-struct RustcCLRInteropManagedCustomTypeDef_CustomTypedef {
+struct RustcCLRInteropManagedCustomClassDef_CustomTypedef {
     // Mandatory
     rustc_clr_interop_extends: Object,
     rustc_clr_interop_access: RustcCLRInteropClassAccess<PUBLIC>,
@@ -48,7 +48,7 @@ struct RustcCLRInteropManagedCustomTypeDef_CustomTypedef {
 }
 /*
 #[no_mangle]
-pub extern fn tydef_custom_typedef(_:&RustcCLRInteropManagedCustomTypeDef_CustomTypedef){}*/
+pub extern fn tydef_custom_typedef(_:&RustcCLRInteropManagedCustomClassDef_CustomTypedef){}*/
 /*
 fn is_happy()->MString{
 

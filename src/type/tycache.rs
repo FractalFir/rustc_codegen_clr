@@ -7,15 +7,15 @@ use crate::{
     IString,
 };
 use cilly::{
-    access_modifier::AccessModifer, cil_node::CILNode, fn_sig::FnSig, type_def::TypeDef,
-    DotnetTypeRef, Type,
+    access_modifier::AccessModifer, cil_node::CILNode, fn_sig::FnSig, type_def::ClassDef, ClassRef,
+    Type,
 };
 use fxhash::{FxBuildHasher, FxHashMap};
 use rustc_middle::ty::{AdtDef, AdtKind, Instance, List, ParamEnv, Ty, TyCtxt, TyKind, UintTy};
 use std::num::NonZeroU32;
 // SHOULDN'T BE SERAILIZED!
 pub struct TyCache {
-    type_def_cache: FxHashMap<IString, TypeDef>,
+    type_def_cache: FxHashMap<IString, ClassDef>,
     cycle_prevention: Vec<IString>,
 }
 
@@ -28,11 +28,14 @@ impl TyCache {
         };
         new.type_def_cache.insert(
             "f128".into(),
-            TypeDef::new(
+            ClassDef::new(
                 AccessModifer::Extern,
                 "f128".into(),
                 vec![],
-                vec![("low".into(), Type::U64), ("high".into(), Type::U64)],
+                vec![
+                    ("low".into(), Type::Int(Int::U64)),
+                    ("high".into(), Type::Int(Int::U64)),
+                ],
                 vec![],
                 Some(vec![0, 8]),
                 0,
@@ -40,10 +43,10 @@ impl TyCache {
                 Some(NonZeroU32::new(std::mem::size_of::<u128>().try_into().unwrap()).unwrap()),
             ),
         );
-        new.add_arr(Type::USize, 4, 32);
+        new.add_arr(Type::Int(Int::USize), 4, 32);
         new
     }
-    pub fn defs(&self) -> impl Iterator<Item = &TypeDef> {
+    pub fn defs(&self) -> impl Iterator<Item = &ClassDef> {
         self.type_def_cache.values()
     }
 
@@ -55,16 +58,16 @@ impl TyCache {
         subst: &'tcx List<rustc_middle::ty::GenericArg<'tcx>>,
         tcx: TyCtxt<'tcx>,
         method: Instance<'tcx>,
-    ) -> DotnetTypeRef {
+    ) -> ClassRef {
         if self.type_def_cache.contains_key(name) {
-            return DotnetTypeRef::new::<&str, _>(None, name);
+            return ClassRef::new::<&str, _>(None, name);
         }
         if self
             .cycle_prevention
             .iter()
             .any(|c_name| AsRef::<str>::as_ref(&c_name) == name)
         {
-            return DotnetTypeRef::new::<&str, _>(None, name);
+            return ClassRef::new::<&str, _>(None, name);
         }
         self.cycle_prevention.push(name.into());
         if crate::r#type::is_name_magic(name) {
@@ -78,7 +81,7 @@ impl TyCache {
             self.type_def_cache.insert(name.into(), def);
         }
         self.cycle_prevention.pop();
-        DotnetTypeRef::new::<&str, _>(None, name)
+        ClassRef::new::<&str, _>(None, name)
     }
     pub fn recover_from_panic(&mut self) {
         self.cycle_prevention.clear();
@@ -91,7 +94,7 @@ impl TyCache {
         subst: &'tcx List<rustc_middle::ty::GenericArg<'tcx>>,
         tcx: TyCtxt<'tcx>,
         method: Instance<'tcx>,
-    ) -> TypeDef {
+    ) -> ClassDef {
         // Double-check is not a ZST.
         assert!(!is_zst(adt_ty, tcx));
         // Get the layout
@@ -109,7 +112,7 @@ impl TyCache {
                     layout.layout.size().bytes()
                 );
             };
-            return TypeDef::nameonly(name);
+            return ClassDef::nameonly(name);
         }
         // Go torugh fields, collectiing them and their offsets
         let mut fields = Vec::new();
@@ -135,7 +138,7 @@ impl TyCache {
         // For now, assume public access.
         let access = AccessModifer::Public;
         // Create the type definition
-        let mut def = TypeDef::new(
+        let mut def = ClassDef::new(
             access,
             name.into(),
             vec![],
@@ -153,7 +156,7 @@ impl TyCache {
         if *crate::config::VALIDTE_VALUES {
             let owner_ty = self
                 .type_from_cache(adt_ty, tcx, method)
-                .as_dotnet()
+                .as_class_ref()
                 .unwrap();
             let tpe = self.type_from_cache(adt_ty, tcx, method);
             let mut roots = vec![];
@@ -210,7 +213,7 @@ impl TyCache {
         subst: &'tcx List<rustc_middle::ty::GenericArg<'tcx>>,
         tcx: TyCtxt<'tcx>,
         method: Instance<'tcx>,
-    ) -> TypeDef {
+    ) -> ClassDef {
         let layout = tcx
             .layout_of(rustc_middle::ty::ParamEnvAnd {
                 param_env: ParamEnv::reveal_all(),
@@ -238,7 +241,7 @@ impl TyCache {
 
         let access = AccessModifer::Public;
 
-        TypeDef::new(
+        ClassDef::new(
             access,
             name.into(),
             vec![],
@@ -258,7 +261,7 @@ impl TyCache {
         subst: &'tcx List<rustc_middle::ty::GenericArg<'tcx>>,
         tcx: TyCtxt<'tcx>,
         method: Instance<'tcx>,
-    ) -> TypeDef {
+    ) -> ClassDef {
         let access = AccessModifer::Public;
         let mut explicit_offsets: Vec<u32> = vec![];
 
@@ -362,7 +365,7 @@ impl TyCache {
             .iter()
             .for_each(|(_, tpe)| assert_ne!(*tpe, Type::Void));
         assert_eq!(fields.len(), explicit_offsets.len());
-        let mut def = TypeDef::new(
+        let mut def = ClassDef::new(
             access,
             enum_name.into(),
             vec![],
@@ -417,7 +420,7 @@ impl TyCache {
             TyKind::Bool => Type::Bool,
             TyKind::Int(int) => crate::r#type::from_int(int),
             TyKind::Uint(uint) => crate::r#type::from_uint(uint),
-            TyKind::Char => Type::U32,
+            TyKind::Char => Type::Int(Int::U32),
             TyKind::Float(float) => crate::r#type::from_float(float),
             TyKind::Tuple(types) => {
                 let types: Vec<_> = types
@@ -444,9 +447,9 @@ impl TyCache {
                 let name: IString = "Dyn".into();
                 if !self.type_def_cache.contains_key(&name) {
                     self.type_def_cache
-                        .insert(name.clone(), TypeDef::nameonly(&name));
+                        .insert(name.clone(), ClassDef::nameonly(&name));
                 }
-                Type::DotnetType(Box::new(DotnetTypeRef::new::<&str, _>(None, name)))
+                Type::ClassRef(Box::new(ClassRef::new::<&str, _>(None, name)))
             }
             TyKind::Closure(def, args) => {
                 let closure = args.as_closure();
@@ -480,7 +483,7 @@ impl TyCache {
                         super::type_def::closure_typedef(*def, &fields, &sig, layout.layout),
                     );
                 }
-                DotnetTypeRef::new::<&str, _>(None, name).into()
+                ClassRef::new::<&str, _>(None, name).into()
             }
             TyKind::Never => Type::Void,
             TyKind::RawPtr(typ, _) => {
@@ -517,7 +520,7 @@ impl TyCache {
             }
             // Slice type is almost never refered to directly, and should pop up here ONLY in the case of
             // a DST.
-            TyKind::Str => Type::U8,
+            TyKind::Str => Type::Int(Int::U8),
             TyKind::Slice(inner) => {
                 let inner = crate::utilis::monomorphize(&method, *inner, tcx);
                 self.type_from_cache(inner, tcx, method)
@@ -527,7 +530,7 @@ impl TyCache {
             TyKind::FnPtr(sig, _) => {
                 let sig = tcx.normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), *sig);
                 let sig = crate::function_sig::from_poly_sig(method, tcx, self, sig);
-                Type::DelegatePtr(sig.into())
+                Type::FnPtr(sig.into())
             }
             TyKind::FnDef(_did, _subst) => {
                 /*
@@ -542,7 +545,7 @@ impl TyCache {
                 let function_name = crate::utilis::function_name(tcx.symbol_name(instance));
                 self.type_def_cache.insert(
                     format!("fn_{function_name}").into(),
-                    TypeDef::nameonly(&format!("fn_{function_name}")),
+                    ClassDef::nameonly(&format!("fn_{function_name}")),
                 );
                 //todo!("Fn def!");
                 Type::FnDef(function_name)*/
@@ -577,7 +580,7 @@ impl TyCache {
                 crate::r#type::type_def::get_array_type(length, element.clone(), arr_size),
             );
         }
-        DotnetTypeRef::array(&element, length).into()
+        ClassRef::array(&element, length).into()
     }
     pub fn slice_ref_to<'tcx>(
         &mut self,
@@ -589,13 +592,13 @@ impl TyCache {
         let inner_tpe = self.type_from_cache(inner, tcx, method);
         let name: IString = format!("FatPtr{elem}", elem = cilly::mangle(&inner_tpe)).into();
         if !self.type_def_cache.contains_key(&name) {
-            let def = TypeDef::new(
+            let def = ClassDef::new(
                 AccessModifer::Extern,
                 name.clone(),
                 vec![],
                 vec![
                     (crate::DATA_PTR.into(), Type::Ptr(Type::Void.into())),
-                    (crate::METADATA.into(), Type::USize),
+                    (crate::METADATA.into(), Type::Int(Int::USize)),
                 ],
                 vec![],
                 Some(vec![0, 8]),
@@ -605,7 +608,7 @@ impl TyCache {
             );
             self.type_def_cache.insert(name.clone(), def);
         }
-        Type::DotnetType(Box::new(DotnetTypeRef::new::<&str, _>(None, name)))
+        Type::ClassRef(Box::new(ClassRef::new::<&str, _>(None, name)))
     }
 }
 
@@ -631,7 +634,7 @@ pub fn validity_check<'tcx>(
         TyKind::Adt(def, _subst) => match def.adt_kind() {
             rustc_middle::ty::AdtKind::Union => val,
             rustc_middle::ty::AdtKind::Struct | rustc_middle::ty::AdtKind::Enum => {
-                if let Some(d_tpe) = tpe.as_dotnet() {
+                if let Some(d_tpe) = tpe.as_class_ref() {
                     cilly::call!(
                         cilly::call_site::CallSite::new(
                             Some(d_tpe),
@@ -716,13 +719,16 @@ fn enum_bound_check<'tcx>(
     let addr = CILNode::LDArgA(0);
 
     let enum_tpe = type_cache.type_from_cache(ty, tcx, method_instance);
-    let discr = get_discr(layout, addr, enum_tpe.as_dotnet().unwrap(), tcx, ty);
+    let discr = get_discr(layout, addr, enum_tpe.as_class_ref().unwrap(), tcx, ty);
     let root = cilly::cil_root::CILRoot::Pop {
         tree: cilly::call!(
             cilly::call_site::CallSite::new(
                 None,
                 "bounds_check".into(),
-                FnSig::new(&[Type::USize, Type::USize], Type::USize),
+                FnSig::new(
+                    &[Type::Int(Int::USize), Type::Int(Int::USize)],
+                    Type::Int(Int::USize)
+                ),
                 true
             ),
             [

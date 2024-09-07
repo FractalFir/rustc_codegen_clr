@@ -30,7 +30,7 @@ pub enum Value {
 impl Value {
     pub fn default_for_type(tpe: &Type, state: &mut InterpreterState) -> Value {
         match tpe {
-            Type::DotnetType(tpe) => {
+            Type::ClassRef(tpe) => {
                 let size = state.asm.sizeof_tpedef(tpe.as_ref());
                 Value::ValueType(state.alloc(size.get() as usize))
             }

@@ -15,6 +15,7 @@ pub struct CExporter {
     is_lib: bool,
 }
 impl CExporter {
+    #[must_use]
     pub fn new(is_lib: bool) -> Self {
         Self { is_lib }
     }
@@ -94,18 +95,18 @@ impl Exporter for CExporter {
         let out = cmd.output().unwrap();
         let stdout = String::from_utf8_lossy(&out.stdout);
         let stderr = String::from_utf8_lossy(&out.stderr);
-        if stderr.contains("error") || stderr.contains("fatal") {
-            panic!(
-                "stdout:{} stderr:{} cmd:{cmd:?}",
-                stdout,
-                String::from_utf8_lossy(&out.stderr)
-            );
-        }
+        assert!(
+            !(stderr.contains("error") || stderr.contains("fatal")),
+            "stdout:{} stderr:{} cmd:{cmd:?}",
+            stdout,
+            String::from_utf8_lossy(&out.stderr)
+        );
 
         Ok(())
     }
 }
 
+#[must_use]
 pub fn class_to_mangled(class: &super::ClassRef, asm: &Assembly) -> String {
     let assembly = match class.asm() {
         Some(asm_idx) => asm.get_string(asm_idx).as_ref(),
@@ -113,6 +114,7 @@ pub fn class_to_mangled(class: &super::ClassRef, asm: &Assembly) -> String {
     };
     format!("{assembly}{name}", name = asm.get_string(class.name()))
 }
+#[must_use]
 pub fn name_sig_class_to_mangled(
     name: &str,
     sig: super::SigIdx,

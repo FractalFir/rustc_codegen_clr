@@ -1,4 +1,5 @@
-use super::{Assembly, ClassRef, Exporter, FnSig, Int, Type};
+#[allow(dead_code)]
+use super::{Assembly, ClassRef, Exporter, FnSig, Type};
 use std::io::Write;
 #[derive(Default)]
 pub struct CillyIRExpoter {}
@@ -18,7 +19,7 @@ impl Exporter for CillyIRExpoter {
         };
         let mut il_out = std::io::BufWriter::new(std::fs::File::create(&il_path)?);
         writeln!(il_out, "fn add_cilly(asm:&mut Assembly){{")?;
-        for (defidx, def) in asm.class_defs() {
+        for def in asm.class_defs().values() {
             let name = asm.get_string(def.name());
             let escaped_name = escape_class_name(name);
             writeln!(il_out, "fn {escaped_name}(asm:&mut Assembly){{",)?;
@@ -71,7 +72,7 @@ impl Exporter for CillyIRExpoter {
             writeln!(il_out, "}}")?;
         }
         writeln!(il_out, "}}")?;
-        std::process::Command::new("rustfmt").arg(il_path).output();
+        let _ = std::process::Command::new("rustfmt").arg(il_path).output();
         Ok(())
     }
 }
@@ -97,7 +98,7 @@ fn tpe_to(tpe: &Type, asm: &Assembly) -> String {
         | Type::Int(_)
         | Type::Bool
         | Type::Void => format!("{tpe:?}"),
-        Type::PlatformArray { elem, dims } => todo!(),
+        Type::PlatformArray { .. } => todo!(),
         Type::FnPtr(sig) => format!(
             "Type::FnPtr({sig})",
             sig = sig_to(asm.get_sig(*sig).clone(), asm)
@@ -117,7 +118,7 @@ fn sig_to(sig: FnSig, asm: &Assembly) -> String {
     )
 }
 fn escape_class_name(name: &str) -> String {
-    name.replace(".", "dot")
+    name.replace('.', "dot")
 }
 fn class_ref(cref: &ClassRef, asm: &Assembly) -> String {
     let name = asm.get_string(cref.name());

@@ -8,10 +8,10 @@ use cilly::{
     v2::{
         asm::{MissingMethodPatcher, ILASM_FLAVOUR},
         cilnode::MethodKind,
-        Assembly, BasicBlock, CILNode, CILRoot, ClassRef, Const, IlasmFlavour, Int, MethodImpl,
-        Type,
+        Assembly, BasicBlock, CILNode, CILRoot, ClassDef, ClassRef, Const, IlasmFlavour, Int,
+        MethodImpl, Type,
     },
-    DotnetTypeRef, FnSig,
+    FnSig,
 };
 //use assembly::Assembly;
 use lazy_static::lazy_static;
@@ -22,8 +22,8 @@ mod load;
 mod native_passtrough;
 mod patch;
 use fxhash::FxHashMap;
-use patch::{builtin_call, call_alias};
-use std::{env, io::Write, path::Path};
+use patch::call_alias;
+use std::{env, io::Write, num::NonZeroU32, path::Path};
 mod aot;
 
 fn add_mandatory_statics(asm: &mut cilly::v2::Assembly) {
@@ -206,8 +206,7 @@ fn main() {
     // Override allocator
     {
         // Get the marshal class
-        let marshal = ClassRef::from_v1(&DotnetTypeRef::marshal(), &mut final_assembly);
-        let marshal = final_assembly.alloc_class_ref(marshal);
+        let marshal = ClassRef::marshal(&mut final_assembly);
         // Overrides calls to malloc
         let sig = final_assembly.sig([Type::Int(Int::ISize)], Type::Int(Int::ISize));
         let allochglobal =
@@ -230,86 +229,59 @@ fn main() {
         let mref = final_assembly.get_mref(allochglobal).clone();
         call_alias(&mut overrides, &mut final_assembly, "free", mref);
     }
-    // Override pthreads
-    {
-        // Override pthread create
-        let void_ptr = final_assembly.nptr(Type::Void);
-
-        let fn_ptr = final_assembly.fn_ptr([void_ptr], void_ptr);
-        let isize_ptr = final_assembly.nptr(Type::Int(Int::ISize));
-        let sig = final_assembly.sig([isize_ptr, void_ptr, fn_ptr, void_ptr], Type::Int(Int::I32));
-        builtin_call(&mut overrides, &mut final_assembly, "pthread_create", sig);
-        let sig = final_assembly.sig([Type::Int(Int::ISize)], Type::Int(Int::I32));
-        builtin_call(&mut overrides, &mut final_assembly, "pthread_detach", sig);
-
-        let sig = final_assembly.sig([isize_ptr], Type::Int(Int::I32));
-        builtin_call(
-            &mut overrides,
-            &mut final_assembly,
-            "pthread_attr_init",
-            sig,
-        );
-        builtin_call(
-            &mut overrides,
-            &mut final_assembly,
-            "pthread_attr_destroy",
-            sig,
-        );
-        let sig = final_assembly.sig([isize_ptr, Type::Int(Int::USize)], Type::Int(Int::I32));
-        builtin_call(
-            &mut overrides,
-            &mut final_assembly,
-            "pthread_attr_setstacksize",
-            sig,
-        );
-        let void_ptr_ptr = final_assembly.nptr(void_ptr);
-        let sig = final_assembly.sig([Type::Int(Int::ISize), void_ptr_ptr], Type::Int(Int::I32));
-        builtin_call(&mut overrides, &mut final_assembly, "pthread_join", sig);
-        let sig = final_assembly.sig([], Type::Int(Int::ISize));
-        builtin_call(&mut overrides, &mut final_assembly, "pthread_self", sig);
-    }
-    overrides.insert(
-        final_assembly.alloc_string("_Unwind_RaiseException"),
-        Box::new(|_, asm| MethodImpl::MethodBody {
-            blocks: vec![cilly::v2::BasicBlock::from_v1(
-                &cilly::basic_block::BasicBlock::new(
-                    vec![
-                        cilly::cil_root::CILRoot::Throw(cilly::cil_node::CILNode::NewObj(
-                            Box::new(cilly::cil_node::CallOpArgs {
-                                args: Box::new([conv_usize!(cilly::cil_node::CILNode::LDArg(0))]),
-                                site: Box::new(CallSite::new(
-                                    Some(
-                                        DotnetTypeRef::new::<&str, _>(None, "RustException")
-                                            .with_valuetype(false),
-                                    ),
-                                    ".ctor".into(),
-                                    FnSig::new(
-                                        &[
-                                            cilly::r#type::Type::DotnetType(Box::new(
-                                                DotnetTypeRef::new::<&str, _>(
-                                                    None,
-                                                    "RustException",
-                                                )
-                                                .with_valuetype(false),
-                                            )),
-                                            cilly::r#type::Type::USize,
-                                        ],
-                                        cilly::r#type::Type::Void,
-                                    ),
-                                    false,
+    if !*PANIC_MANAGED_BT {
+        overrides.insert(
+            final_assembly.alloc_string("_Unwind_RaiseException"),
+            Box::new(|_, asm| {
+                let rust_exception = asm.alloc_string("RustException");
+                MethodImpl::MethodBody {
+                    blocks: vec![cilly::v2::BasicBlock::from_v1(
+                        &cilly::basic_block::BasicBlock::new(
+                            vec![cilly::cil_root::CILRoot::Throw(
+                                cilly::cil_node::CILNode::NewObj(Box::new(
+                                    cilly::cil_node::CallOpArgs {
+                                        args: Box::new([conv_usize!(
+                                            cilly::cil_node::CILNode::LDArg(0)
+                                        )]),
+                                        site: Box::new(CallSite::new(
+                                            Some(asm.alloc_class_ref(ClassRef::new(
+                                                rust_exception,
+                                                None,
+                                                false,
+                                                [].into(),
+                                            ))),
+                                            ".ctor".into(),
+                                            FnSig::new(
+                                                [
+                                                    Type::ClassRef(asm.alloc_class_ref(
+                                                        ClassRef::new(
+                                                            rust_exception,
+                                                            None,
+                                                            false,
+                                                            [].into(),
+                                                        ),
+                                                    )),
+                                                    Type::Int(Int::USize),
+                                                ],
+                                                Type::Void,
+                                            ),
+                                            false,
+                                        )),
+                                    },
                                 )),
-                            }),
-                        ))
-                        .into(),
-                    ],
-                    0,
-                    None,
-                ),
-                asm,
-            )],
-            locals: vec![],
-        }),
-    );
+                            )
+                            .into()],
+                            0,
+                            None,
+                        ),
+                        asm,
+                    )],
+                    locals: vec![],
+                }
+            }),
+        );
+    }
+
     overrides.insert(
         final_assembly.alloc_string("_Unwind_Backtrace"),
         Box::new(|mref, asm| {
@@ -364,7 +336,43 @@ fn main() {
             }
         }),
     );
+    overrides.insert(
+        final_assembly.alloc_string("__cxa_thread_atexit_impl"),
+        Box::new(|_, asm| {
+            let blocks = vec![BasicBlock::new(
+                vec![asm.alloc_root(CILRoot::VoidRet)],
+                0,
+                None,
+            )];
+            MethodImpl::MethodBody {
+                blocks,
+                locals: vec![],
+            }
+        }),
+    );
     cilly::v2::builtins::atomics::generate_all_atomics(&mut final_assembly, &mut overrides);
+    cilly::v2::builtins::casts::insert_casts(&mut final_assembly, &mut overrides);
+    cilly::v2::builtins::select::generate_int_selects(&mut final_assembly, &mut overrides);
+    cilly::v2::builtins::insert_heap(&mut final_assembly, &mut overrides);
+    cilly::v2::builtins::instert_threading(&mut final_assembly, &mut overrides);
+    cilly::v2::builtins::insert_swap_at_generic(&mut final_assembly, &mut overrides);
+    cilly::v2::builtins::insert_bounds_check(&mut final_assembly, &mut overrides);
+
+    // Ensure the cctor and tcctor exist!
+    let _ = final_assembly.tcctor();
+    let _ = final_assembly.cctor();
+    let float128 = final_assembly.alloc_string("f128");
+    final_assembly.class_def(ClassDef::new(
+        float128,
+        true,
+        0,
+        None,
+        vec![],
+        vec![],
+        cilly::v2::Access::Public,
+        NonZeroU32::new(16),
+    ));
+
     final_assembly.patch_missing_methods(externs, modifies_errno, overrides);
 
     add_mandatory_statics(&mut final_assembly);
@@ -533,7 +541,7 @@ lazy_static! {
     };
 }
 lazy_static! {
-    #[doc = "Tells the codegen to emmit JS source files."]pub static ref JAVA_MODE:bool = {
+    #[doc = "Tells the codegen to emmit Java source files."]pub static ref JAVA_MODE:bool = {
         std::env::vars().find_map(|(key,value)|if key == stringify!(JAVA_MODE){
             Some(value)
         }else {
@@ -543,6 +551,18 @@ lazy_static! {
         }).unwrap_or(false)
     };
 }
+lazy_static! {
+    #[doc = "Tells the codegen to throw exceptions on panics"]pub static ref PANIC_MANAGED_BT:bool = {
+        std::env::vars().find_map(|(key,value)|if key == stringify!(PANIC_MANAGED_BT){
+            Some(value)
+        }else {
+            None
+        }).map(|value|match value.as_ref(){
+            "0"|"false"|"False"|"FALSE" => false,"1"|"true"|"True"|"TRUE" => true,_ => panic!("Boolean enviroment variable {} has invalid value {}",stringify!(PANIC_MANAGED_BT),value),
+        }).unwrap_or(false)
+    };
+}
+
 /*
 fn override_errno(asm: &mut Assembly) {
     for method in asm.methods_mut() {
@@ -563,9 +583,9 @@ fn override_errno(asm: &mut Assembly) {
                     vec![CILRoot::Ret {
                         tree: cilly::call!(
                             CallSite::new(
-                                Some(DotnetTypeRef::marshal()),
+                                Some(ClassRef::marshal()),
                                 "GetLastWin32Error".into(),
-                                FnSig::new(&[], Type::I32),
+                                FnSig::new(&[], Type::Int(Int::I32)),
                                 true
                             ),
                             []

@@ -1,12 +1,18 @@
+use crate::{
+    fn_ctx::MethodCompileCtx,
+    r#type::get_type,
+    utilis::{garg_to_string, monomorphize},
+};
 use cilly::{
-    call, call_site::CallSite, cil_node::CILNode, fn_sig::FnSig, ldc_u32, ldc_u64,
-    utilis::escape_class_name, DotnetTypeRef, Type,
+    call,
+    call_site::CallSite,
+    cil_node::CILNode,
+    fn_sig::FnSig,
+    ldc_u32, ldc_u64,
+    v2::{Assembly, ClassRef, ClassRefIdx, Int},
+    Type,
 };
-
-use rustc_middle::{
-    middle::exported_symbols::ExportedSymbol,
-    ty::{AdtDef, ConstKind, GenericArg, Instance, ParamEnv, Ty, TyCtxt, TyKind},
-};
+use rustc_middle::ty::{AdtDef, ConstKind, GenericArg, ParamEnv, Ty, TyCtxt, TyKind};
 /// This struct represetnts either a primitive .NET type (F32,F64), or stores information on how to lookup a more complex type (struct,class,array)
 use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, PartialEq, Clone, Eq, Hash, Debug)]
@@ -14,38 +20,21 @@ pub struct DotnetArray {
     pub element: Type,
     pub dimensions: u64,
 }
+
 #[must_use]
-/// Finds the `c_void` type.
-/// # Panics
-/// Will panic if `c_void` is not defined.
-pub fn c_void(tcx: TyCtxt) -> Type {
-    let lang_items = tcx.lang_items();
-    let c_void = lang_items.c_void().expect("c_void not defined.");
-    let name = rustc_codegen_ssa::back::symbol_export::symbol_name_for_instance_in_crate(
-        tcx,
-        ExportedSymbol::NonGeneric(c_void),
-        c_void.krate,
-    );
-    let demangled = rustc_demangle::demangle(&name);
-    // Using formating preserves the generic hash.
-    let name = format!("{demangled}");
-    let name = escape_class_name(&name);
-    DotnetTypeRef::new::<&str, _>(None, name).into()
-}
-#[must_use]
-pub fn max_value(tpe: &Type) -> CILNode {
+pub fn max_value(tpe: &Type, asm: &mut Assembly) -> CILNode {
     match tpe {
-        Type::USize => call!(
+        Type::Int(Int::USize) => call!(
             CallSite::new_extern(
-                DotnetTypeRef::usize_type(),
+                ClassRef::usize_type(asm),
                 "get_MaxValue".into(),
-                FnSig::new(&[], Type::USize),
+                FnSig::new([], Type::Int(Int::USize)),
                 true
             ),
             []
         ),
-        Type::U64 => ldc_u64!(u64::MAX),
-        Type::U32 => ldc_u32!(u32::MAX),
+        Type::Int(Int::U64) => ldc_u64!(u64::MAX),
+        Type::Int(Int::U32) => ldc_u32!(u32::MAX),
         _ => todo!("Can't get the max value of {tpe:?}"),
     }
 }
@@ -77,47 +66,56 @@ pub fn magic_type<'tcx>(
     name: &str,
     _adt: &AdtDef<'tcx>,
     subst: &[GenericArg<'tcx>],
-    ctx: TyCtxt<'tcx>,
-    method: &Instance<'tcx>,
-    cache: &mut TyCache,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> Type {
     if name.contains(INTEROP_CLASS_TPE_NAME) {
         assert!(
             subst.len() == 2,
             "Managed object reference must have exactly 2 generic arguments!"
         );
-        let assembly = garg_to_string(subst[0], ctx);
-        let assembly = Some(assembly).filter(|assembly| !assembly.is_empty());
-        let name = garg_to_string(subst[1], ctx);
-        let dotnet_tpe = DotnetTypeRef::new(assembly, name).with_valuetype(false);
-        Type::DotnetType(dotnet_tpe.into())
+        let assembly = garg_to_string(subst[0], ctx.tcx());
+        let assembly = Some(assembly)
+            .filter(|assembly| !assembly.is_empty())
+            .map(|a| ctx.asm_mut().alloc_string(a));
+        let name = garg_to_string(subst[1], ctx.tcx());
+        let name = ctx.asm_mut().alloc_string(name);
+        let dotnet_tpe =
+            ctx.asm_mut()
+                .alloc_class_ref(ClassRef::new(name, assembly, false, [].into()));
+        Type::ClassRef(dotnet_tpe)
     } else if name.contains(INTEROP_STRUCT_TPE_NAME) {
         assert!(
             subst.len() == 2,
             "Managed struct reference must have exactly 2 generic arguments!"
         );
-        let assembly = garg_to_string(subst[0], ctx);
-        let assembly = Some(assembly).filter(|assembly| !assembly.is_empty());
-        let name = garg_to_string(subst[1], ctx);
-        let dotnet_tpe = DotnetTypeRef::new(assembly, name);
-        Type::DotnetType(dotnet_tpe.into())
+        let assembly = garg_to_string(subst[0], ctx.tcx());
+        let assembly = Some(assembly)
+            .filter(|assembly| !assembly.is_empty())
+            .map(|a| ctx.asm_mut().alloc_string(a));
+        let name = garg_to_string(subst[1], ctx.tcx());
+        let name = ctx.asm_mut().alloc_string(name);
+        let dotnet_tpe =
+            ctx.asm_mut()
+                .alloc_class_ref(ClassRef::new(name, assembly, true, [].into()));
+        Type::ClassRef(dotnet_tpe)
     } else if name.contains(INTEROP_ARR_TPE_NAME) {
         assert!(subst.len() == 2, "Managed array reference must have exactly 2 generic arguments: type and dimension count!");
         let element = &subst[0].as_type().expect("Array type must be specified!");
-        let element = crate::utilis::monomorphize(method, *element, ctx);
-        let dimensions = garag_to_usize(subst[1], ctx);
-        let element = cache.type_from_cache(element, ctx, *method);
+        let element = ctx.monomorphize(*element);
+        let dimensions = garag_to_usize(subst[1], ctx.tcx());
+        let element = get_type(element, ctx);
 
-        Type::ManagedArray {
-            element: Box::new(element),
+        Type::PlatformArray {
+            elem: ctx.asm_mut().alloc_type(element),
             dims: std::num::NonZeroU8::new(dimensions.try_into().unwrap()).unwrap(),
         }
     } else if name.contains(INTEROP_CHR_TPE_NAME) {
-        Type::DotnetChar
+        Type::PlatformChar
     } else {
         todo!("Interop type {name:?} is not yet supported!")
     }
 }
+#[must_use]
 pub fn garag_to_usize<'tcx>(garg: GenericArg<'tcx>, _ctx: TyCtxt<'tcx>) -> u64 {
     let usize_const = garg
         .as_const()
@@ -138,17 +136,23 @@ pub fn garag_to_usize<'tcx>(garg: GenericArg<'tcx>, _ctx: TyCtxt<'tcx>) -> u64 {
         _ => todo!("Can't convert generic arg of const kind {kind:?} to string!"),
     }
 }
+#[must_use]
+pub fn tuple_name(elements: &[Type], asm: &Assembly) -> String {
+    let generics: String = elements.iter().map(|t| t.mangle(asm)).collect();
+    format!(
+        "Tuple{generic_count}{generics}",
+        generic_count = generics.len()
+    )
+}
 /// Creates a tuple with no more than 8 elements.
 #[must_use]
-pub fn simple_tuple(elements: &[Type]) -> DotnetTypeRef {
+pub fn simple_tuple(elements: &[cilly::v2::Type], asm: &mut Assembly) -> ClassRefIdx {
     // Since no intering can happen at this stage, we can pass an empty AsmStringContainer safely.
-    let name = tuple_name(elements);
-
-    DotnetTypeRef::new::<&str, _>(None, name)
+    let name = tuple_name(elements, asm);
+    let name = asm.alloc_string(name);
+    asm.alloc_class_ref(ClassRef::new(name, None, true, [].into()))
 }
-use crate::utilis::{garg_to_string, monomorphize};
 
-use super::{tuple_name, TyCache};
 #[must_use]
 pub fn pointer_to_is_fat<'tcx>(
     pointed_type: Ty<'tcx>,

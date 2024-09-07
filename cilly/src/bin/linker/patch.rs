@@ -1,8 +1,5 @@
 use cilly::{
-    v2::{
-        asm::MissingMethodPatcher, cilnode::MethodKind, Assembly, CILNode, CILRoot, Int, MethodRef,
-        SigIdx, Type,
-    },
+    v2::{asm::MissingMethodPatcher, Assembly, CILNode, CILRoot, Int, MethodRef, Type},
     IString,
 };
 
@@ -29,15 +26,15 @@ pub fn override_pthread_create(patched: &mut FxHashMap<CallSite, Method>, call: 
                             "pthread_create".into(),
                             FnSig::new(
                                 &[
-                                    ptr!(Type::ISize),
+                                    ptr!(Type::Int(Int::ISize)),
                                     ptr!(Type::Void),
-                                    Type::DelegatePtr(Box::new(FnSig::new(
+                                    Type::FnPtr(Box::new(FnSig::new(
                                         &[ptr!(Type::Void)],
                                         ptr!(Type::Void),
                                     ))),
                                     ptr!(Type::Void),
                                 ],
-                                Type::I32,
+                                Type::Int(Int::I32),
                             ),
                             true,
                         )),
@@ -79,7 +76,7 @@ pub fn override_pthread_attr_init(patched: &mut FxHashMap<CallSite, Method>, cal
                     tree: call!(
                         Box::new(CallSite::builtin(
                             "pthread_attr_init".into(),
-                            FnSig::new(&[ptr!(Type::ISize)], Type::I32),
+                            FnSig::new(&[ptr!(Type::Int(Int::ISize))], Type::Int(Int::I32)),
                             true,
                         )),
                         [CILNode::LDArg(0)]
@@ -108,7 +105,7 @@ pub fn override_pthread_join(patched: &mut FxHashMap<CallSite, Method>, call: &C
                     tree: call!(
                         Box::new(CallSite::builtin(
                             "pthread_join".into(),
-                            FnSig::new(&[Type::ISize, ptr!(ptr!(Type::Void))], Type::I32),
+                            FnSig::new(&[Type::Int(Int::ISize), ptr!(ptr!(Type::Void))], Type::Int(Int::I32)),
                             true,
                         )),
                         [CILNode::LDArg(0), CILNode::LDArg(1)]
@@ -140,7 +137,7 @@ pub fn override_pthread_attr_setstacksize(
                     tree: call!(
                         Box::new(CallSite::builtin(
                             "pthread_attr_setstacksize".into(),
-                            FnSig::new(&[ptr!(Type::ISize.into()), Type::USize], Type::I32),
+                            FnSig::new(&[ptr!(Type::Int(Int::ISize).into()), Type::Int(Int::USize)], Type::Int(Int::I32)),
                             true,
                         )),
                         [CILNode::LDArg(0), CILNode::LDArg(1)]
@@ -169,7 +166,7 @@ pub fn override_pthread_detach(patched: &mut FxHashMap<CallSite, Method>, call: 
                     tree: call!(
                         Box::new(CallSite::builtin(
                             "pthread_detach".into(),
-                            FnSig::new(&[Type::ISize], Type::I32),
+                            FnSig::new(&[Type::Int(Int::ISize)], Type::Int(Int::I32)),
                             true,
                         )),
                         [CILNode::LDArg(0)]
@@ -312,6 +309,7 @@ pub fn call_alias(
         }),
     );
 }
+/*
 pub fn builtin_call(
     overrides: &mut MissingMethodPatcher,
     asm: &mut Assembly,
@@ -323,3 +321,4 @@ pub fn builtin_call(
     let call = asm.get_mref(call).clone();
     call_alias(overrides, asm, name, call)
 }
+ */

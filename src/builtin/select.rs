@@ -1,4 +1,5 @@
 use crate::add_method_from_trees;
+use cilly::v2::Int;
 use cilly::{
     access_modifier::AccessModifer, asm::Assembly, basic_block::BasicBlock, cil_node::CILNode,
     cil_root::CILRoot, Type,
@@ -7,8 +8,8 @@ macro_rules! select {
     ($tpe:ident, $name:ident) => {
         add_method_from_trees!(
             $name,
-            &[Type::$tpe, Type::$tpe, Type::Bool],
-            Type::$tpe,
+            &[Type::Int(Int::$tpe), Type::Int(Int::$tpe), Type::Bool],
+            Type::Int(Int::$tpe),
             vec![
                 BasicBlock::new(
                     vec![

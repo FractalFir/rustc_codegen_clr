@@ -1,89 +1,104 @@
-use cilly::{call, call_site::CallSite, cil_node::CILNode, ptr, sub, DotnetTypeRef, FnSig, Type};
+use cilly::{
+    call,
+    call_site::CallSite,
+    cil_node::CILNode,
+    sub,
+    v2::{Assembly, ClassRef, Int},
+    FnSig, Type,
+};
 
-pub fn interlocked_add(addr: CILNode, addend: CILNode, tpe: Type) -> CILNode {
-    sub!(
-        match tpe {
-            Type::U64 | Type::I64 => {
-                call!(
-                    CallSite::new(
-                        Some(DotnetTypeRef::interlocked()),
-                        "Add".into(),
-                        FnSig::new(
-                            &[Type::ManagedReference(Box::new(Type::U64)), Type::U64],
-                            Type::U64
-                        ),
-                        true
-                    ),
-                    [addr, addend.clone()]
-                )
-            }
-            Type::U32 | Type::I32 => {
-                call!(
-                    CallSite::new(
-                        Some(DotnetTypeRef::interlocked()),
-                        "Add".into(),
-                        FnSig::new(
-                            &[Type::ManagedReference(Box::new(Type::U32)), Type::U32],
-                            Type::U32
-                        ),
-                        true
-                    ),
-                    [addr, addend.clone()]
-                )
-            }
-            Type::USize | Type::ISize | Type::Ptr(_) => call!(
-                CallSite::builtin(
-                    "interlocked_add_usize".into(),
+pub fn atomic_add(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly) -> CILNode {
+    match tpe {
+        Type::Int(Int::U64 | Int::I64) => {
+            call!(
+                CallSite::new(
+                    Some(ClassRef::interlocked(asm)),
+                    "Add".into(),
                     FnSig::new(
-                        &[Type::ManagedReference(Box::new(Type::USize)), Type::USize],
-                        Type::USize
+                        [asm.nref(Type::Int(Int::U64)), Type::Int(Int::U64)],
+                        Type::Int(Int::U64)
                     ),
                     true
                 ),
                 [addr, addend.clone()]
-            ),
-
-            _ => todo!(),
-        },
-        addend
-    )
-}
-pub fn interlocked_or(addr: CILNode, addend: CILNode, tpe: Type) -> CILNode {
-    match tpe {
-        Type::U64 | Type::I64 => {
+            )
+        }
+        Type::Int(Int::U32 | Int::I32) => {
             call!(
                 CallSite::new(
-                    Some(DotnetTypeRef::interlocked()),
-                    "Or".into(),
+                    Some(ClassRef::interlocked(asm)),
+                    "Add".into(),
                     FnSig::new(
-                        &[Type::ManagedReference(Box::new(Type::U64)), Type::U64],
-                        Type::U64
+                        [asm.nref(Type::Int(Int::U32)), Type::Int(Int::U32)],
+                        Type::Int(Int::U32)
                     ),
                     true
                 ),
-                [addr, addend]
+                [addr, addend.clone()]
             )
         }
-        Type::U32 | Type::I32 => {
-            call!(
-                CallSite::new(
-                    Some(DotnetTypeRef::interlocked()),
-                    "Or".into(),
-                    FnSig::new(
-                        &[Type::ManagedReference(Box::new(Type::U32)), Type::U32],
-                        Type::U32
-                    ),
-                    true
-                ),
-                [addr, addend]
-            )
-        }
-        Type::USize | Type::ISize => call!(
+        Type::Int(Int::USize | Int::ISize) | Type::Ptr(_) => call!(
             CallSite::builtin(
-                "interlocked_or_usize".into(),
+                "atomic_add_usize".into(),
                 FnSig::new(
-                    &[Type::ManagedReference(Box::new(Type::USize)), Type::USize],
-                    Type::USize
+                    [asm.nref(Type::Int(Int::USize)), Type::Int(Int::USize)],
+                    Type::Int(Int::USize)
+                ),
+                true
+            ),
+            [addr, addend.clone()]
+        ),
+
+        _ => todo!(),
+    }
+}
+pub fn atomic_or(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly) -> CILNode {
+    match tpe {
+        Type::Int(Int::U64 | Int::I64) => {
+            call!(
+                CallSite::new(
+                    Some(ClassRef::interlocked(asm)),
+                    "Or".into(),
+                    FnSig::new(
+                        [asm.nref(Type::Int(Int::U64)), Type::Int(Int::U64)],
+                        Type::Int(Int::U64)
+                    ),
+                    true
+                ),
+                [addr, addend]
+            )
+        }
+        Type::Int(Int::U32 | Int::I32) => {
+            call!(
+                CallSite::new(
+                    Some(ClassRef::interlocked(asm)),
+                    "Or".into(),
+                    FnSig::new(
+                        [asm.nref(Type::Int(Int::U32)), Type::Int(Int::U32)],
+                        Type::Int(Int::U32)
+                    ),
+                    true
+                ),
+                [addr, addend]
+            )
+        }
+        Type::Int(Int::USize) => call!(
+            CallSite::builtin(
+                "atomic_or_usize".into(),
+                FnSig::new(
+                    [asm.nref(Type::Int(Int::USize)), Type::Int(Int::USize)],
+                    Type::Int(Int::USize)
+                ),
+                true
+            ),
+            [addr, addend]
+        ),
+        Type::Int(Int::ISize) => call!(
+            CallSite::builtin(
+                "atomic_or_isize".into(),
+                FnSig::new(
+                    [asm.nref(Type::Int(Int::ISize)), Type::Int(Int::ISize)],
+                    Type::Int(Int::ISize)
                 ),
                 true
             ),
@@ -91,93 +106,93 @@ pub fn interlocked_or(addr: CILNode, addend: CILNode, tpe: Type) -> CILNode {
         ),
         Type::Ptr(inner) => call!(
             CallSite::builtin(
-                "interlocked_or_usize".into(),
+                "atomic_or_usize".into(),
                 FnSig::new(
-                    &[Type::ManagedReference(Box::new(Type::USize)), Type::USize],
-                    Type::USize
+                    [asm.nref(Type::Int(Int::USize)), Type::Int(Int::USize)],
+                    Type::Int(Int::USize)
                 ),
                 true
             ),
             [
-                addr.cast_ptr(Type::ManagedReference(Box::new(Type::USize))),
-                addend.cast_ptr(Type::USize)
+                addr.cast_ptr(asm.nref(Type::Int(Int::USize))),
+                addend.cast_ptr(Type::Int(Int::USize))
             ]
         )
-        .cast_ptr(ptr!(*inner)),
+        .cast_ptr(Type::Ptr(inner)),
         _ => todo!(),
     }
 }
-pub fn interlocked_xor(addr: CILNode, addend: CILNode, tpe: Type) -> CILNode {
+pub fn atomic_xor(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly) -> CILNode {
     match tpe {
-        Type::I32 => {
+        Type::Int(Int::I32) => {
             call!(
                 CallSite::builtin(
                     "atomic_xor_i32".into(),
                     FnSig::new(
-                        &[Type::ManagedReference(Box::new(Type::I32)), Type::I32],
-                        Type::I32
+                        [asm.nref(Type::Int(Int::I32)), Type::Int(Int::I32)],
+                        Type::Int(Int::I32)
                     ),
                     true
                 ),
                 [addr, addend]
             )
         }
-        Type::I64 => {
+        Type::Int(Int::I64) => {
             call!(
                 CallSite::builtin(
                     "atomic_xor_i64".into(),
                     FnSig::new(
-                        &[Type::ManagedReference(Box::new(Type::I64)), Type::I64],
-                        Type::I64
+                        [asm.nref(Type::Int(Int::I64)), Type::Int(Int::I64)],
+                        Type::Int(Int::I64)
                     ),
                     true
                 ),
                 [addr, addend]
             )
         }
-        Type::U32 => {
+        Type::Int(Int::U32) => {
             call!(
                 CallSite::builtin(
                     "atomic_xor_u32".into(),
                     FnSig::new(
-                        &[Type::ManagedReference(Box::new(Type::U32)), Type::U32],
-                        Type::U32
+                        [asm.nref(Type::Int(Int::U32)), Type::Int(Int::U32)],
+                        Type::Int(Int::U32)
                     ),
                     true
                 ),
                 [addr, addend]
             )
         }
-        Type::U64 => {
+        Type::Int(Int::U64) => {
             call!(
                 CallSite::builtin(
                     "atomic_xor_u64".into(),
                     FnSig::new(
-                        &[Type::ManagedReference(Box::new(Type::U64)), Type::U64],
-                        Type::U64
+                        [asm.nref(Type::Int(Int::U64)), Type::Int(Int::U64)],
+                        Type::Int(Int::U64)
                     ),
                     true
                 ),
                 [addr, addend]
             )
         }
-        Type::USize => call!(
+        Type::Int(Int::USize) => call!(
             CallSite::builtin(
                 "atomic_xor_usize".into(),
                 FnSig::new(
-                    &[Type::ManagedReference(Box::new(Type::USize)), Type::USize],
-                    Type::USize
+                    [asm.nref(Type::Int(Int::USize)), Type::Int(Int::USize)],
+                    Type::Int(Int::USize)
                 ),
                 true
             ),
             [addr, addend]
         ),
-        Type::ISize => call!(
+        Type::Int(Int::ISize) => call!(
             CallSite::builtin(
                 "atomic_xor_isize".into(),
                 FnSig::new(
-                    &[Type::ManagedReference(Box::new(Type::ISize)), Type::ISize],
-                    Type::ISize
+                    [asm.nref(Type::Int(Int::ISize)), Type::Int(Int::ISize)],
+                    Type::Int(Int::ISize)
                 ),
                 true
             ),
@@ -187,56 +202,56 @@ pub fn interlocked_xor(addr: CILNode, addend: CILNode, tpe: Type) -> CILNode {
             CallSite::builtin(
                 "atomic_xor_usize".into(),
                 FnSig::new(
-                    &[Type::ManagedReference(Box::new(Type::USize)), Type::USize],
-                    Type::USize
+                    [asm.nref(Type::Int(Int::USize)), Type::Int(Int::USize)],
+                    Type::Int(Int::USize)
                 ),
                 true
             ),
             [
-                addr.cast_ptr(Type::ManagedReference(Box::new(Type::USize))),
-                addend.cast_ptr(Type::USize)
+                addr.cast_ptr(asm.nref(Type::Int(Int::USize))),
+                addend.cast_ptr(Type::Int(Int::USize))
             ]
         )
-        .cast_ptr(ptr!(*inner)),
+        .cast_ptr(Type::Ptr(inner)),
         _ => todo!(),
     }
 }
-pub fn interlocked_and(addr: CILNode, addend: CILNode, tpe: Type) -> CILNode {
+pub fn atomic_and(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly) -> CILNode {
     match tpe {
-        Type::U64 | Type::I64 => {
+        Type::Int(Int::U64 | Int::I64) => {
             call!(
                 CallSite::new(
-                    Some(DotnetTypeRef::interlocked()),
+                    Some(ClassRef::interlocked(asm)),
                     "And".into(),
                     FnSig::new(
-                        &[Type::ManagedReference(Box::new(Type::U64)), Type::U64],
-                        Type::U64
+                        [asm.nref(Type::Int(Int::U64)), Type::Int(Int::U64)],
+                        Type::Int(Int::U64)
                     ),
                     true
                 ),
                 [addr, addend]
             )
         }
-        Type::U32 | Type::I32 => {
+        Type::Int(Int::U32 | Int::I32) => {
             call!(
                 CallSite::new(
-                    Some(DotnetTypeRef::interlocked()),
+                    Some(ClassRef::interlocked(asm)),
                     "And".into(),
                     FnSig::new(
-                        &[Type::ManagedReference(Box::new(Type::U32)), Type::U32],
-                        Type::U32
+                        [asm.nref(Type::Int(Int::U32)), Type::Int(Int::U32)],
+                        Type::Int(Int::U32)
                     ),
                     true
                 ),
                 [addr, addend]
             )
         }
-        Type::USize | Type::ISize => call!(
+        Type::Int(Int::USize | Int::ISize) => call!(
             CallSite::builtin(
-                "interlocked_and_usize".into(),
+                "atomic_and_usize".into(),
                 FnSig::new(
-                    &[Type::ManagedReference(Box::new(Type::USize)), Type::USize],
-                    Type::USize
+                    [asm.nref(Type::Int(Int::USize)), Type::Int(Int::USize)],
+                    Type::Int(Int::USize)
                 ),
                 true
             ),
@@ -244,110 +259,110 @@ pub fn interlocked_and(addr: CILNode, addend: CILNode, tpe: Type) -> CILNode {
         ),
         Type::Ptr(inner) => call!(
             CallSite::builtin(
-                "interlocked_and_usize".into(),
+                "atomic_and_usize".into(),
                 FnSig::new(
-                    &[Type::ManagedReference(Box::new(Type::USize)), Type::USize],
-                    Type::USize
+                    [asm.nref(Type::Int(Int::USize)), Type::Int(Int::USize)],
+                    Type::Int(Int::USize)
                 ),
                 true
             ),
             [
-                addr.cast_ptr(Type::ManagedReference(Box::new(Type::USize))),
-                addend.cast_ptr(Type::USize)
+                addr.cast_ptr(asm.nref(Type::Int(Int::USize))),
+                addend.cast_ptr(Type::Int(Int::USize))
             ]
         )
-        .cast_ptr(ptr!(*inner)),
+        .cast_ptr(Type::Ptr(inner)),
         _ => todo!(),
     }
 }
-pub fn compare_bytes(a: CILNode, b: CILNode, len: CILNode) -> CILNode {
+pub fn compare_bytes(a: CILNode, b: CILNode, len: CILNode, asm: &mut Assembly) -> CILNode {
     call!(
         CallSite::builtin(
             "memcmp".into(),
             FnSig::new(
-                &[
-                    Type::Ptr(Type::U8.into()),
-                    Type::Ptr(Type::U8.into()),
-                    Type::USize
+                [
+                    asm.nptr(Type::Int(Int::U8)),
+                    asm.nptr(Type::Int(Int::U8)),
+                    Type::Int(Int::USize)
                 ],
-                Type::I32
+                Type::Int(Int::I32)
             ),
             true
         ),
         [a, b, len]
     )
 }
-pub fn interlocked_nand(addr: CILNode, addend: CILNode, tpe: Type) -> CILNode {
+pub fn atomic_nand(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly) -> CILNode {
     match tpe {
-        Type::I32 => {
+        Type::Int(Int::I32) => {
             call!(
                 CallSite::builtin(
                     "atomic_nand_i32".into(),
                     FnSig::new(
-                        &[Type::ManagedReference(Box::new(Type::I32)), Type::I32],
-                        Type::I32
+                        [asm.nref(Type::Int(Int::I32)), Type::Int(Int::I32)],
+                        Type::Int(Int::I32)
                     ),
                     true
                 ),
                 [addr, addend]
             )
         }
-        Type::I64 => {
+        Type::Int(Int::I64) => {
             call!(
                 CallSite::builtin(
                     "atomic_nand_i64".into(),
                     FnSig::new(
-                        &[Type::ManagedReference(Box::new(Type::I64)), Type::I64],
-                        Type::I64
+                        [asm.nref(Type::Int(Int::I64)), Type::Int(Int::I64)],
+                        Type::Int(Int::I64)
                     ),
                     true
                 ),
                 [addr, addend]
             )
         }
-        Type::U32 => {
+        Type::Int(Int::U32) => {
             call!(
                 CallSite::builtin(
                     "atomic_nand_u32".into(),
                     FnSig::new(
-                        &[Type::ManagedReference(Box::new(Type::U32)), Type::U32],
-                        Type::U32
+                        [asm.nref(Type::Int(Int::U32)), Type::Int(Int::U32)],
+                        Type::Int(Int::U32)
                     ),
                     true
                 ),
                 [addr, addend]
             )
         }
-        Type::U64 => {
+        Type::Int(Int::U64) => {
             call!(
                 CallSite::builtin(
                     "atomic_nand_u64".into(),
                     FnSig::new(
-                        &[Type::ManagedReference(Box::new(Type::U64)), Type::U64],
-                        Type::U64
+                        [asm.nref(Type::Int(Int::U64)), Type::Int(Int::U64)],
+                        Type::Int(Int::U64)
                     ),
                     true
                 ),
                 [addr, addend]
             )
         }
-        Type::USize => call!(
+        Type::Int(Int::USize) => call!(
             CallSite::builtin(
                 "atomic_nand_usize".into(),
                 FnSig::new(
-                    &[Type::ManagedReference(Box::new(Type::USize)), Type::USize],
-                    Type::USize
+                    [asm.nref(Type::Int(Int::USize)), Type::Int(Int::USize)],
+                    Type::Int(Int::USize)
                 ),
                 true
             ),
             [addr, addend]
         ),
-        Type::ISize => call!(
+        Type::Int(Int::ISize) => call!(
             CallSite::builtin(
                 "atomic_nand_isize".into(),
                 FnSig::new(
-                    &[Type::ManagedReference(Box::new(Type::ISize)), Type::ISize],
-                    Type::ISize
+                    [asm.nref(Type::Int(Int::ISize)), Type::Int(Int::ISize)],
+                    Type::Int(Int::ISize)
                 ),
                 true
             ),
@@ -357,91 +372,91 @@ pub fn interlocked_nand(addr: CILNode, addend: CILNode, tpe: Type) -> CILNode {
             CallSite::builtin(
                 "atomic_nand_usize".into(),
                 FnSig::new(
-                    &[Type::ManagedReference(Box::new(Type::USize)), Type::USize],
-                    Type::USize
+                    [asm.nref(Type::Int(Int::USize)), Type::Int(Int::USize)],
+                    Type::Int(Int::USize)
                 ),
                 true
             ),
             [
-                addr.cast_ptr(Type::ManagedReference(Box::new(Type::USize))),
-                addend.cast_ptr(Type::USize)
+                addr.cast_ptr(asm.nref(Type::Int(Int::USize))),
+                addend.cast_ptr(Type::Int(Int::USize))
             ]
         )
-        .cast_ptr(ptr!(*inner)),
+        .cast_ptr(Type::Ptr(inner)),
         _ => todo!(),
     }
 }
-pub fn interlocked_min(addr: CILNode, addend: CILNode, tpe: Type) -> CILNode {
+pub fn atomic_min(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly) -> CILNode {
     match tpe {
-        Type::I32 => {
+        Type::Int(Int::I32) => {
             call!(
                 CallSite::builtin(
                     "atomic_min_i32".into(),
                     FnSig::new(
-                        &[Type::ManagedReference(Box::new(Type::I32)), Type::I32],
-                        Type::I32
+                        [asm.nref(Type::Int(Int::I32)), Type::Int(Int::I32)],
+                        Type::Int(Int::I32)
                     ),
                     true
                 ),
                 [addr, addend]
             )
         }
-        Type::I64 => {
+        Type::Int(Int::I64) => {
             call!(
                 CallSite::builtin(
                     "atomic_min_i64".into(),
                     FnSig::new(
-                        &[Type::ManagedReference(Box::new(Type::I64)), Type::I64],
-                        Type::I64
+                        [asm.nref(Type::Int(Int::I64)), Type::Int(Int::I64)],
+                        Type::Int(Int::I64)
                     ),
                     true
                 ),
                 [addr, addend]
             )
         }
-        Type::U32 => {
+        Type::Int(Int::U32) => {
             call!(
                 CallSite::builtin(
                     "atomic_min_u32".into(),
                     FnSig::new(
-                        &[Type::ManagedReference(Box::new(Type::U32)), Type::U32],
-                        Type::U32
+                        [asm.nref(Type::Int(Int::U32)), Type::Int(Int::U32)],
+                        Type::Int(Int::U32)
                     ),
                     true
                 ),
                 [addr, addend]
             )
         }
-        Type::U64 => {
+        Type::Int(Int::U64) => {
             call!(
                 CallSite::builtin(
                     "atomic_min_u64".into(),
                     FnSig::new(
-                        &[Type::ManagedReference(Box::new(Type::U64)), Type::U64],
-                        Type::U64
+                        [asm.nref(Type::Int(Int::U64)), Type::Int(Int::U64)],
+                        Type::Int(Int::U64)
                     ),
                     true
                 ),
                 [addr, addend]
             )
         }
-        Type::USize => call!(
+        Type::Int(Int::USize) => call!(
             CallSite::builtin(
                 "atomic_min_usize".into(),
                 FnSig::new(
-                    &[Type::ManagedReference(Box::new(Type::USize)), Type::USize],
-                    Type::USize
+                    [asm.nref(Type::Int(Int::USize)), Type::Int(Int::USize)],
+                    Type::Int(Int::USize)
                 ),
                 true
             ),
             [addr, addend]
         ),
-        Type::ISize => call!(
+        Type::Int(Int::ISize) => call!(
             CallSite::builtin(
                 "atomic_min_isize".into(),
                 FnSig::new(
-                    &[Type::ManagedReference(Box::new(Type::ISize)), Type::ISize],
-                    Type::ISize
+                    [asm.nref(Type::Int(Int::ISize)), Type::Int(Int::ISize)],
+                    Type::Int(Int::ISize)
                 ),
                 true
             ),
@@ -451,91 +466,91 @@ pub fn interlocked_min(addr: CILNode, addend: CILNode, tpe: Type) -> CILNode {
             CallSite::builtin(
                 "atomic_min_usize".into(),
                 FnSig::new(
-                    &[Type::ManagedReference(Box::new(Type::USize)), Type::USize],
-                    Type::USize
+                    [asm.nref(Type::Int(Int::USize)), Type::Int(Int::USize)],
+                    Type::Int(Int::USize)
                 ),
                 true
             ),
             [
-                addr.cast_ptr(Type::ManagedReference(Box::new(Type::USize))),
-                addend.cast_ptr(Type::USize)
+                addr.cast_ptr(asm.nref(Type::Int(Int::USize))),
+                addend.cast_ptr(Type::Int(Int::USize))
             ]
         )
-        .cast_ptr(ptr!(*inner)),
+        .cast_ptr(Type::Ptr(inner)),
         _ => todo!(),
     }
 }
-pub fn interlocked_max(addr: CILNode, addend: CILNode, tpe: Type) -> CILNode {
+pub fn atomic_max(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly) -> CILNode {
     match tpe {
-        Type::I32 => {
+        Type::Int(Int::I32) => {
             call!(
                 CallSite::builtin(
                     "atomic_max_i32".into(),
                     FnSig::new(
-                        &[Type::ManagedReference(Box::new(Type::I32)), Type::I32],
-                        Type::I32
+                        [asm.nref(Type::Int(Int::I32)), Type::Int(Int::I32)],
+                        Type::Int(Int::I32)
                     ),
                     true
                 ),
                 [addr, addend]
             )
         }
-        Type::I64 => {
+        Type::Int(Int::I64) => {
             call!(
                 CallSite::builtin(
                     "atomic_max_i64".into(),
                     FnSig::new(
-                        &[Type::ManagedReference(Box::new(Type::I64)), Type::I64],
-                        Type::I64
+                        [asm.nref(Type::Int(Int::I64)), Type::Int(Int::I64)],
+                        Type::Int(Int::I64)
                     ),
                     true
                 ),
                 [addr, addend]
             )
         }
-        Type::U32 => {
+        Type::Int(Int::U32) => {
             call!(
                 CallSite::builtin(
                     "atomic_max_u32".into(),
                     FnSig::new(
-                        &[Type::ManagedReference(Box::new(Type::U32)), Type::U32],
-                        Type::U32
+                        [asm.nref(Type::Int(Int::U32)), Type::Int(Int::U32)],
+                        Type::Int(Int::U32)
                     ),
                     true
                 ),
                 [addr, addend]
             )
         }
-        Type::U64 => {
+        Type::Int(Int::U64) => {
             call!(
                 CallSite::builtin(
                     "atomic_max_u64".into(),
                     FnSig::new(
-                        &[Type::ManagedReference(Box::new(Type::U64)), Type::U64],
-                        Type::U64
+                        [asm.nref(Type::Int(Int::U64)), Type::Int(Int::U64)],
+                        Type::Int(Int::U64)
                     ),
                     true
                 ),
                 [addr, addend]
             )
         }
-        Type::USize => call!(
+        Type::Int(Int::USize) => call!(
             CallSite::builtin(
                 "atomic_max_usize".into(),
                 FnSig::new(
-                    &[Type::ManagedReference(Box::new(Type::USize)), Type::USize],
-                    Type::USize
+                    [asm.nref(Type::Int(Int::USize)), Type::Int(Int::USize)],
+                    Type::Int(Int::USize)
                 ),
                 true
             ),
             [addr, addend]
         ),
-        Type::ISize => call!(
+        Type::Int(Int::ISize) => call!(
             CallSite::builtin(
                 "atomic_max_isize".into(),
                 FnSig::new(
-                    &[Type::ManagedReference(Box::new(Type::ISize)), Type::ISize],
-                    Type::ISize
+                    [asm.nref(Type::Int(Int::ISize)), Type::Int(Int::ISize)],
+                    Type::Int(Int::ISize)
                 ),
                 true
             ),
@@ -545,17 +560,17 @@ pub fn interlocked_max(addr: CILNode, addend: CILNode, tpe: Type) -> CILNode {
             CallSite::builtin(
                 "atomic_max_usize".into(),
                 FnSig::new(
-                    &[Type::ManagedReference(Box::new(Type::USize)), Type::USize],
-                    Type::USize
+                    [asm.nref(Type::Int(Int::USize)), Type::Int(Int::USize)],
+                    Type::Int(Int::USize)
                 ),
                 true
             ),
             [
-                addr.cast_ptr(Type::ManagedReference(Box::new(Type::USize))),
-                addend.cast_ptr(Type::USize)
+                addr.cast_ptr(asm.nref(Type::Int(Int::USize))),
+                addend.cast_ptr(Type::Int(Int::USize))
             ]
         )
-        .cast_ptr(ptr!(*inner)),
+        .cast_ptr(Type::Ptr(inner)),
         _ => todo!(),
     }
 }

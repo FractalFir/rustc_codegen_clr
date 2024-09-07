@@ -3,7 +3,7 @@ use crate::{
     basic_block::handler_for_block,
     cil::span_source_info,
     codegen_error::{CodegenError, MethodCodegenError},
-    r#type::TyCache,
+    r#type::get_type,
     rustc_middle::dep_graph::DepContext,
     utilis::field_descrptor,
     IString,
@@ -14,14 +14,14 @@ use cilly::{
     basic_block::BasicBlock,
     call,
     call_site::CallSite,
-    cil_node::{CILNode, ValidationContext},
+    cil_node::CILNode,
     cil_root::CILRoot,
     cil_tree::CILTree,
     conv_usize, ldc_i32, ldc_u32, ldc_u64,
     method::{Method, MethodType},
-    ptr,
     static_field_desc::StaticFieldDescriptor,
     utilis::{self, encode},
+    v2::{Int, MethodDef, StaticFieldDesc},
     FnSig, Type,
 };
 use rustc_middle::{
@@ -53,17 +53,15 @@ fn check_align_adjust<'tcx>(
 /// Returns the list of all local variables within MIR of a function, and converts them to the internal type represenation `Type`
 fn locals_from_mir<'tcx>(
     locals: &rustc_index::IndexVec<Local, LocalDecl<'tcx>>,
-    tcx: TyCtxt<'tcx>,
     argc: usize,
-    method_instance: &Instance<'tcx>,
-    tycache: &mut TyCache,
     var_debuginfo: &[rustc_middle::mir::VarDebugInfo<'tcx>],
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> (ArgsDebugInfo, LocalDefList) {
     use rustc_middle::mir::VarDebugInfoContents;
     let mut local_types: Vec<(Option<IString>, _)> = Vec::with_capacity(locals.len());
     for (local_id, local) in locals.iter().enumerate() {
         if local_id == 0 || local_id > argc {
-            let ty = crate::utilis::monomorphize(method_instance, local.ty, tcx);
+            let ty = ctx.monomorphize(local.ty);
             if *crate::config::PRINT_LOCAL_TYPES {
                 println!(
                     "Local type {ty:?},non-morphic: {non_morph}",
@@ -71,7 +69,7 @@ fn locals_from_mir<'tcx>(
                 );
             }
             let name = None;
-            let tpe = tycache.type_from_cache(ty, tcx, *method_instance);
+            let tpe = get_type(ty, ctx);
             local_types.push((name, tpe));
         }
     }
@@ -101,9 +99,8 @@ fn locals_from_mir<'tcx>(
 fn allocation_initializer_method(
     const_allocation: &Allocation,
     name: &str,
-    tcx: TyCtxt,
-    asm: &mut Assembly,
-    tycache: &mut TyCache,
+    asm: &mut cilly::v2::Assembly,
+    tcx: TyCtxt<'_>,
 ) -> Method {
     let bytes: &[u8] =
         const_allocation.inspect_with_uninit_and_ptr_outside_interpreter(0..const_allocation.len());
@@ -116,13 +113,13 @@ fn allocation_initializer_method(
             CILRoot::STLoc {
                 local: 0,
                 tree: Box::new(call!(
-                    CallSite::aligned_alloc(),
+                    CallSite::aligned_alloc(asm),
                     [
                         conv_usize!(ldc_u64!(bytes.len() as u64)),
                         conv_usize!(ldc_u64!(align))
                     ]
                 ))
-                .cast_ptr(ptr!(Type::U8)),
+                .cast_ptr(asm.nptr(Type::Int(Int::U8))),
             }
             .into(),
         );
@@ -131,12 +128,12 @@ fn allocation_initializer_method(
             CILRoot::STLoc {
                 local: 0,
                 tree: Box::new(call!(
-                    CallSite::alloc(),
+                    CallSite::alloc(asm),
                     [ldc_i32!(
                         i32::try_from(bytes.len()).expect("Static alloc too big")
                     )]
                 ))
-                .cast_ptr(ptr!(Type::U8)),
+                .cast_ptr(asm.nptr(Type::Int(Int::U8))),
             }
             .into(),
         );
@@ -162,7 +159,7 @@ fn allocation_initializer_method(
                     trees.push(
                         CILRoot::STIndI64(
                             (CILNode::LDLoc(0) + conv_usize!(ldc_u32!(offset.try_into().unwrap())))
-                                .cast_ptr(ptr!(Type::U64)),
+                                .cast_ptr(asm.nptr(Type::Int(Int::U64))),
                             CILNode::LdcU64(long),
                         )
                         .into(),
@@ -176,7 +173,7 @@ fn allocation_initializer_method(
                     trees.push(
                         CILRoot::STIndI32(
                             (CILNode::LDLoc(0) + conv_usize!(ldc_u32!(offset.try_into().unwrap())))
-                                .cast_ptr(ptr!(Type::U32)),
+                                .cast_ptr(asm.nptr(Type::Int(Int::U32))),
                             CILNode::LdcU32(long),
                         )
                         .into(),
@@ -209,30 +206,30 @@ fn allocation_initializer_method(
             } = reloc_target_alloc
             {
                 // If it is a function, patch its pointer up.
-                let call_info =
-                    crate::call_info::CallInfo::sig_from_instance_(finstance, tcx, tycache);
+                let mut ctx = MethodCompileCtx::new(tcx, None, finstance, asm);
+                let call_info = crate::call_info::CallInfo::sig_from_instance_(finstance, &mut ctx);
                 let function_name = crate::utilis::function_name(tcx.symbol_name(finstance));
 
                 trees.push(
                     CILRoot::STIndISize(
                         (CILNode::LDLoc(0) + conv_usize!(ldc_u32!(offset)))
-                            .cast_ptr(ptr!(Type::USize)),
+                            .cast_ptr(asm.nptr(Type::Int(Int::USize))),
                         CILNode::LDFtn(
                             CallSite::new(None, function_name, call_info.sig().clone(), true)
                                 .into(),
                         )
-                        .cast_ptr(Type::USize),
+                        .cast_ptr(Type::Int(Int::USize)),
                     )
                     .into(),
                 );
             } else {
-                let ptr_alloc = add_allocation(asm, prov.alloc_id().0.into(), tcx, tycache);
+                let ptr_alloc = add_allocation(prov.alloc_id().0.into(), asm, tcx);
 
                 trees.push(
                     CILRoot::STIndISize(
                         (CILNode::LDLoc(0) + conv_usize!(ldc_u32!(offset)))
-                            .cast_ptr(ptr!(Type::USize)),
-                        ptr_alloc.cast_ptr(Type::USize),
+                            .cast_ptr(asm.nptr(Type::Int(Int::USize))),
+                        ptr_alloc.cast_ptr(Type::Int(Int::USize)),
                     )
                     .into(),
                 );
@@ -250,9 +247,9 @@ fn allocation_initializer_method(
     Method::new(
         AccessModifer::Private,
         MethodType::Static,
-        FnSig::new(&[], ptr!(Type::U8)),
+        FnSig::new([], asm.nptr(Type::Int(Int::U8))),
         &format!("init_{name}"),
-        vec![(Some("alloc_ptr".into()), ptr!(Type::U8))],
+        vec![(Some("alloc_ptr".into()), asm.nptr(Type::Int(Int::U8)))],
         vec![BasicBlock::new(trees, 0, None)],
         vec![],
     )
@@ -266,7 +263,7 @@ fn calculate_hash<T: std::hash::Hash>(t: &T) -> u64 {
 /// Turns a terminator into ops, if `ABORT_ON_ERROR` set to false, will handle and recover from errors.
 pub fn terminator_to_ops<'tcx>(
     term: &Terminator<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> Result<Vec<CILTree>, CodegenError> {
     let terminator = if *crate::config::ABORT_ON_ERROR {
         crate::terminator::handle_terminator(term, ctx)
@@ -274,20 +271,8 @@ pub fn terminator_to_ops<'tcx>(
         match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
             crate::terminator::handle_terminator(term, ctx)
         })) {
-            Ok(ok) => {
-                if *crate::config::TYPECHECK_CIL {
-                    for op in &ok {
-                        if let Err(msg) = op.validate(ctx.validator()) {
-                            Err(crate::codegen_error::CodegenError::from_panic_message(
-                                &format!("VERIFICATION FALIURE:\"{msg}\" op:{op:?}"),
-                            ))?;
-                        }
-                    }
-                }
-                ok
-            }
+            Ok(ok) => ok,
             Err(payload) => {
-                ctx.type_cache().recover_from_panic();
                 let msg = if let Some(msg) = payload.downcast_ref::<&str>() {
                     rustc_middle::ty::print::with_no_trimmed_paths! {
                     format!("Tried to execute terminator {term:?} whose compialtion message {msg:?}!")}
@@ -297,7 +282,7 @@ pub fn terminator_to_ops<'tcx>(
                     format!("Tried to execute terminator {term:?} whose compialtion failed with a no-string message!")
                     }
                 };
-                vec![CILRoot::throw(&msg).into()]
+                vec![CILRoot::throw(&msg, ctx.asm_mut()).into()]
             }
         }
     };
@@ -307,7 +292,7 @@ pub fn terminator_to_ops<'tcx>(
 /// Turns a statement into ops, if `ABORT_ON_ERROR` set to false, will handle and recover from errors.
 pub fn statement_to_ops<'tcx>(
     statement: &Statement<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> Result<Option<CILTree>, CodegenError> {
     if *crate::config::ABORT_ON_ERROR {
         Ok(crate::statement::handle_statement(statement, ctx))
@@ -315,21 +300,7 @@ pub fn statement_to_ops<'tcx>(
         match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
             crate::statement::handle_statement(statement, ctx)
         })) {
-            Ok(success) => {
-                match &success {
-                    Some(ops) => {
-                        if *crate::config::TYPECHECK_CIL {
-                            if let Err(msg) = ops.validate(ctx.validator()) {
-                                Err(crate::codegen_error::CodegenError::from_panic_message(
-                                    &format!("VERIFICATION FALIURE:\"{msg}\" ops:{ops:?}"),
-                                ))?;
-                            }
-                        }
-                    }
-                    None => (),
-                }
-                Ok(success)
-            }
+            Ok(success) => Ok(success),
             Err(payload) => {
                 if let Some(msg) = payload.downcast_ref::<&str>() {
                     Err(crate::codegen_error::CodegenError::from_panic_message(msg))
@@ -343,52 +314,53 @@ pub fn statement_to_ops<'tcx>(
     }
 }
 /// Adds a rust MIR function to the assembly.
-pub fn add_fn<'tcx>(
-    asm: &mut Assembly,
-    instance: Instance<'tcx>,
-    tcx: TyCtxt<'tcx>,
+pub fn add_fn<'tcx, 'asm, 'a: 'asm>(
     name: &str,
-    cache: &mut TyCache,
+    ctx: &'a mut MethodCompileCtx<'tcx, 'asm>,
 ) -> Result<(), MethodCodegenError> {
-    if let TyKind::FnDef(_, _) = instance.ty(tcx, ParamEnv::reveal_all()).kind() {
+    if let TyKind::FnDef(_, _) = ctx.instance().ty(ctx.tcx(), ParamEnv::reveal_all()).kind() {
         //ALL OK.
-    } else if let TyKind::Closure(_, _) = instance.ty(tcx, ParamEnv::reveal_all()).kind() {
+    } else if let TyKind::Closure(_, _) =
+        ctx.instance().ty(ctx.tcx(), ParamEnv::reveal_all()).kind()
+    {
         //println!("CLOSURE")
     } else {
-        println!("fn item {instance:?} is not a function definition type or a closure. Skippping.");
+        println!(
+            "fn item {instance:?} is not a function definition type or a closure. Skippping.",
+            instance = ctx.instance()
+        );
         return Ok(());
     }
-    let mir = tcx.instance_mir(instance.def);
+    let mir = ctx.tcx().instance_mir(ctx.instance().def);
+    let mut ctx = ctx.with_body(mir);
+    let ctx = &mut ctx;
     if name.contains("rustc_codegen_clr_comptime_entrypoint") {
         if name.contains("rustc_codegen_clr_not_magic") {
             return Ok(());
         }
-        crate::comptime::interpret(asm, instance, tcx, mir, cache);
+        crate::comptime::interpret(ctx, mir);
         return Ok(());
     }
     if crate::utilis::is_function_magic(name) {
-        println!("fn item {instance:?} is magic and is being skiped.");
+        println!(
+            "fn item {instance:?} is magic and is being skiped.",
+            instance = ctx.instance()
+        );
         return Ok(());
     }
 
-    let timer = tcx.prof.generic_activity_with_arg("codegen fn", name);
+    let timer = ctx.tcx().prof.generic_activity_with_arg("codegen fn", name);
     // Check if function is public or not.
     // FIXME: figure out the source of the bug causing visibility to not be read propely.
     // let access_modifier = AccessModifer::from_visibility(tcx.visibility(instance.def_id()));
     let access_modifier = AccessModifer::Public;
     // Handle the function signature
-    let call_site = crate::call_info::CallInfo::sig_from_instance_(instance, tcx, cache);
+    let call_site = crate::call_info::CallInfo::sig_from_instance_(ctx.instance(), ctx);
     let sig = call_site.sig().clone();
 
     // Get locals
-    let (mut arg_names, mut locals) = locals_from_mir(
-        &mir.local_decls,
-        tcx,
-        mir.arg_count,
-        &instance,
-        cache,
-        &mir.var_debug_info,
-    );
+    let (mut arg_names, mut locals) =
+        locals_from_mir(&mir.local_decls, mir.arg_count, &mir.var_debug_info, ctx);
     if sig.inputs().len() > arg_names.len() {
         arg_names.push(Some("panic_location".into()));
     }
@@ -400,9 +372,8 @@ pub fn add_fn<'tcx>(
     let mut repack_cil = if let Some(spread_arg) = mir.spread_arg {
         // Prepare for repacking the argument tuple, by allocating a local
         let repacked = u32::try_from(locals.len()).expect("More than 2^32 arguments of a function");
-        let repacked_ty: rustc_middle::ty::Ty =
-            crate::utilis::monomorphize(&instance, mir.local_decls[spread_arg].ty, tcx);
-        let repacked_type = cache.type_from_cache(repacked_ty, tcx, instance);
+        let repacked_ty: rustc_middle::ty::Ty = ctx.monomorphize(mir.local_decls[spread_arg].ty);
+        let repacked_type = get_type(repacked_ty, ctx);
         locals.push((Some("repacked_arg".into()), repacked_type));
         let mut repack_cil: Vec<CILTree> = Vec::new();
         // For each element of the tuple, get the argument spread_arg + n
@@ -410,24 +381,17 @@ pub fn add_fn<'tcx>(
             panic!("Arg to spread not a tuple???")
         };
         for (arg_id, ty) in packed.iter().enumerate() {
-            let validation_context = ValidationContext::new(&sig, &locals);
-            let mut method_context = MethodCompileCtx::new(
-                tcx,
-                mir,
-                instance,
-                validation_context,
-                cache,
-                asm.inner_mut(),
-            );
-            if crate::utilis::is_zst(ty, tcx) {
+            if crate::utilis::is_zst(ty, ctx.tcx()) {
                 continue;
             }
-            let arg_field = field_descrptor(repacked_ty, arg_id as u32, &mut method_context);
+            let arg_field = field_descrptor(repacked_ty, arg_id.try_into().unwrap(), ctx);
 
             repack_cil.push(
                 CILRoot::SetField {
                     addr: Box::new(CILNode::LDLocA(repacked)),
-                    value: Box::new(CILNode::LDArg((spread_arg.as_u32() - 1) + (arg_id as u32))),
+                    value: Box::new(CILNode::LDArg(
+                        spread_arg.as_u32() - 1 + u32::try_from(arg_id).unwrap(),
+                    )),
                     desc: Box::new(arg_field),
                 }
                 .into(),
@@ -438,35 +402,26 @@ pub fn add_fn<'tcx>(
         vec![]
     };
     // Used for type-checking the CIL to ensure its validity.
-    let validation_context = ValidationContext::new(&sig, &locals);
-    let mut method_context = MethodCompileCtx::new(
-        tcx,
-        mir,
-        instance,
-        validation_context,
-        cache,
-        asm.inner_mut(),
-    );
     for (last_bb_id, block_data) in blocks.into_iter().enumerate() {
         let mut trees = Vec::new();
         for statement in &block_data.statements {
             if *crate::config::INSERT_MIR_DEBUG_COMMENTS {
-                rustc_middle::ty::print::with_no_trimmed_paths! {trees.push(CILRoot::debug(&format!("{statement:?}")).into())};
+                rustc_middle::ty::print::with_no_trimmed_paths! {trees.push(CILRoot::debug(&format!("{statement:?}"),ctx.asm_mut()).into())};
+                rustc_middle::ty::print::with_no_trimmed_paths! {trees.push(CILRoot::debug(&format!("{:?}",statement.source_info.span),ctx.asm_mut()).into())};
             }
 
-            let statement_tree = match statement_to_ops(statement, &mut method_context) {
+            let statement_tree = match statement_to_ops(statement, ctx) {
                 Ok(ops) => ops,
                 Err(err) => {
-                    method_context.type_cache().recover_from_panic();
                     rustc_middle::ty::print::with_no_trimmed_paths! {eprintln!(
                         "Method \"{name}\" failed to compile statement {statement:?} with message {err:?}\n"
                     )};
-                    rustc_middle::ty::print::with_no_trimmed_paths! {Some(CILRoot::throw(&format!("Tired to run a statement {statement:?} which failed to compile with error message {err:?}.")).into())}
+                    rustc_middle::ty::print::with_no_trimmed_paths! {Some(CILRoot::throw(&format!("Tired to run a statement {statement:?} which failed to compile with error message {err:?}."),ctx.asm_mut()).into())}
                 }
             };
             // Only save debuginfo for statements which result in ops.
             if statement_tree.is_some() {
-                trees.push(span_source_info(tcx, statement.source_info.span).into());
+                trees.push(span_source_info(ctx.tcx(), statement.source_info.span).into());
             }
             trees.extend(statement_tree);
 
@@ -476,13 +431,13 @@ pub fn add_fn<'tcx>(
         }
         if let Some(term) = &block_data.terminator {
             if *crate::config::INSERT_MIR_DEBUG_COMMENTS {
-                rustc_middle::ty::print::with_no_trimmed_paths! {trees.push(CILRoot::debug(&format!("{term:?}")).into())};
+                rustc_middle::ty::print::with_no_trimmed_paths! {trees.push(CILRoot::debug(&format!("{term:?}"),ctx.asm_mut()).into())};
             }
-            let term_trees = terminator_to_ops(term, &mut method_context).unwrap_or_else(|err| {
+            let term_trees = terminator_to_ops(term, ctx).unwrap_or_else(|err| {
                 panic!("Could not compile terminator {term:?} because {err:?}")
             });
             if !term_trees.is_empty() {
-                trees.push(span_source_info(tcx, term.source_info.span).into());
+                trees.push(span_source_info(ctx.tcx(), term.source_info.span).into());
             }
             trees.extend(term_trees);
         }
@@ -490,13 +445,25 @@ pub fn add_fn<'tcx>(
             cleanup_bbs.push(BasicBlock::new(
                 trees,
                 u32::try_from(last_bb_id).unwrap(),
-                handler_for_block(block_data, &mir.basic_blocks, tcx, &instance, mir),
+                handler_for_block(
+                    block_data,
+                    &mir.basic_blocks,
+                    ctx.tcx(),
+                    &ctx.instance(),
+                    mir,
+                ),
             ));
         } else {
             normal_bbs.push(BasicBlock::new(
                 trees,
                 u32::try_from(last_bb_id).unwrap(),
-                handler_for_block(block_data, &mir.basic_blocks, tcx, &instance, mir),
+                handler_for_block(
+                    block_data,
+                    &mir.basic_blocks,
+                    ctx.tcx(),
+                    &ctx.instance(),
+                    mir,
+                ),
             ));
         }
         //ops.extend(trees.iter().flat_map(|tree| tree.flatten()))
@@ -523,47 +490,33 @@ pub fn add_fn<'tcx>(
         arg_names,
     );
 
-    crate::method::resolve_global_allocations(&mut method, asm, tcx, cache);
+    crate::method::resolve_global_allocations(&mut method, ctx);
 
     method.allocate_temporaries();
 
-    if *crate::config::TYPECHECK_CIL {
-        match method.validate() {
-            Ok(()) => (),
-            Err(msg) => eprintln!(
-                "\n\nMethod {} failed compilation with message:\ns {msg}",
-                method.name()
-            ),
-        }
-    }
-
-    let adjust = check_align_adjust(&mir.local_decls, tcx, &instance, mir.arg_count);
+    let adjust = check_align_adjust(&mir.local_decls, ctx.tcx(), &ctx.instance(), mir.arg_count);
     // TODO: find a better way of checking if we are in release
-    method.adjust_aligement(adjust);
-    if tcx.sess.opts.optimize != rustc_session::config::OptLevel::No {
+    method.adjust_aligement(adjust, ctx.asm_mut());
+    if ctx.tcx().sess.opts.optimize != rustc_session::config::OptLevel::No {
         method.opt();
         method.realloc_locals();
     }
-
-    asm.add_method(method);
+    let main_module = ctx.asm_mut().main_module();
+    let method = MethodDef::from_v1(&method, ctx.asm_mut(), main_module);
+    ctx.asm_mut().new_method(method);
     drop(timer);
     Ok(())
     //todo!("Can't add function")
 }
 /// This is used *ONLY* to catch uncaught errors.
-pub fn checked_add_fn<'tcx>(
-    asm: &mut Assembly,
-    instance: Instance<'tcx>,
-    tcx: TyCtxt<'tcx>,
+pub fn checked_add_fn<'a: 'c, 'b: 'c, 'c>(
+    ctx: &'a mut MethodCompileCtx<'b, 'c>,
     name: &str,
-    cache: &mut TyCache,
 ) -> Result<(), MethodCodegenError> {
-    match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        add_fn(asm, instance, tcx, name, cache)
-    })) {
+    add_fn(name, ctx)
+    /*match std::panic::catch_unwind(add_fn) {
         Ok(success) => success,
         Err(payload) => {
-            cache.recover_from_panic();
             if let Some(msg) = payload.downcast_ref::<&str>() {
                 eprintln!("could not compile method {name}. fn_add panicked with unhandled message: {msg:?}");
                 //self.add_method(Method::missing_because(format!("could not compile method {name}. fn_add panicked with unhandled message: {msg:?}")));
@@ -573,24 +526,23 @@ pub fn checked_add_fn<'tcx>(
                 Ok(())
             }
         }
-    }
+    }*/
 }
 /// Adds a MIR item (method,inline assembly code, etc.) to the assembly.
 pub fn add_item<'tcx>(
     asm: &mut Assembly,
     item: MonoItem<'tcx>,
     tcx: TyCtxt<'tcx>,
-    cache: &mut TyCache,
 ) -> Result<(), CodegenError> {
     match item {
         MonoItem::Fn(instance) => {
             //let instance = crate::utilis::monomorphize(&instance,tcx);
             let symbol_name: IString = crate::utilis::function_name(item.symbol_name(tcx));
-
+            let mut ctx = MethodCompileCtx::new(tcx, None, instance, asm.inner_mut());
             let function_compile_timer = tcx
                 .profiler()
                 .generic_activity_with_arg("compile function", item.symbol_name(tcx).to_string());
-            rustc_middle::ty::print::with_no_trimmed_paths! {checked_add_fn(asm,instance, tcx, &symbol_name, cache)
+            rustc_middle::ty::print::with_no_trimmed_paths! {checked_add_fn(  &mut ctx,&symbol_name,)
             .expect("Could not add function!")};
             drop(function_compile_timer);
             Ok(())
@@ -604,9 +556,12 @@ pub fn add_item<'tcx>(
                 "compile static initializer",
                 item.symbol_name(tcx).to_string(),
             );
+
             let alloc = tcx.eval_static_initializer(stotic).unwrap();
             let alloc_id = tcx.reserve_and_set_memory_alloc(alloc);
             let attrs = tcx.codegen_fn_attrs(stotic);
+            let uint8_ptr = asm.nptr(Type::Int(Int::U8));
+            let uint8_ptr_ptr = asm.nptr(uint8_ptr);
             if let Some(section) = attrs.link_section {
                 if section.to_string().contains(".init_array") {
                     let argc = utilis::argc_argv_init_method(asm);
@@ -621,9 +576,10 @@ pub fn add_item<'tcx>(
                         instance: finstance,
                     } = fn_ptr
                     {
+                        let mut ctx = MethodCompileCtx::new(tcx, None, finstance, asm.inner_mut());
                         // If it is a function, patch its pointer up.
                         let call_info =
-                            crate::call_info::CallInfo::sig_from_instance_(finstance, tcx, cache);
+                            crate::call_info::CallInfo::sig_from_instance_(finstance, &mut ctx);
                         let function_name =
                             crate::utilis::function_name(tcx.symbol_name(finstance));
                         CallSite::new(None, function_name, call_info.sig().clone(), true)
@@ -636,12 +592,12 @@ pub fn add_item<'tcx>(
                         args: [
                             CILNode::LDStaticField(Box::new(StaticFieldDescriptor::new(
                                 None,
-                                Type::I32,
+                                Type::Int(Int::I32),
                                 "argc".into(),
                             ))),
                             CILNode::LDStaticField(Box::new(StaticFieldDescriptor::new(
                                 None,
-                                ptr!(ptr!(Type::U8)),
+                                uint8_ptr_ptr,
                                 "argv".into(),
                             ))),
                             call!(get_environ, []),
@@ -652,7 +608,7 @@ pub fn add_item<'tcx>(
                     panic!("Unsuported link section {section}.")
                 }
             }
-            add_allocation(asm, crate::utilis::alloc_id_to_u64(alloc_id), tcx, cache);
+            add_allocation(crate::utilis::alloc_id_to_u64(alloc_id), asm, tcx);
 
             drop(static_compile_timer);
 
@@ -661,45 +617,41 @@ pub fn add_item<'tcx>(
     }
 }
 /// Adds a static field and initialized for allocation represented by `alloc_id`.
-pub fn add_allocation(
-    asm: &mut Assembly,
-    alloc_id: u64,
-    tcx: TyCtxt<'_>,
-    tycache: &mut TyCache,
-) -> CILNode {
-    let (thread_local, const_allocation, krate) = match tcx
-        .global_alloc(AllocId(alloc_id.try_into().expect("0 alloc id?")))
-    {
-        GlobalAlloc::Memory(alloc) => (false, alloc, None),
-        GlobalAlloc::Static(def_id) => {
-            let alloc = tcx.eval_static_initializer(def_id).unwrap();
-            let attrs = tcx.codegen_fn_attrs(def_id);
+pub fn add_allocation(alloc_id: u64, asm: &mut cilly::v2::Assembly, tcx: TyCtxt<'_>) -> CILNode {
+    let uint8_ptr = asm.nptr(Type::Int(Int::U8));
+    let main_module_id = asm.main_module();
+    let (thread_local, const_allocation, krate) =
+        match tcx.global_alloc(AllocId(alloc_id.try_into().expect("0 alloc id?"))) {
+            GlobalAlloc::Memory(alloc) => (false, alloc, None),
+            GlobalAlloc::Static(def_id) => {
+                let alloc = tcx.eval_static_initializer(def_id).unwrap();
+                let attrs = tcx.codegen_fn_attrs(def_id);
 
-            (
-                attrs.flags.contains(
-                    rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags::THREAD_LOCAL,
-                ),
-                alloc,
-                Some(def_id.krate),
-            )
-        }
-        GlobalAlloc::VTable(..) => {
-            //TODO: handle VTables
-            let alloc_fld: IString = format!("al_{alloc_id:x}").into();
-            let field_desc = StaticFieldDescriptor::new(None, ptr!(Type::U8), alloc_fld.clone());
-            asm.add_static(ptr!(Type::U8), &alloc_fld, false);
-            return CILNode::LDStaticField(Box::new(field_desc));
-        }
-        GlobalAlloc::Function { .. } => {
-            //TODO: handle constant functions
-            let alloc_fld: IString = format!("al_{alloc_id:x}").into();
-            let field_desc = StaticFieldDescriptor::new(None, ptr!(Type::U8), alloc_fld.clone());
-            asm.add_static(ptr!(Type::U8), &alloc_fld, false);
+                (
+                    attrs.flags.contains(
+                        rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags::THREAD_LOCAL,
+                    ),
+                    alloc,
+                    Some(def_id.krate),
+                )
+            }
+            GlobalAlloc::VTable(..) => {
+                //TODO: handle VTables
+                let alloc_fld: IString = format!("al_{alloc_id:x}").into();
+                let field_desc = StaticFieldDescriptor::new(None, uint8_ptr, alloc_fld.clone());
+                asm.add_static(uint8_ptr, alloc_fld, false, main_module_id);
+                return CILNode::LDStaticField(Box::new(field_desc));
+            }
+            GlobalAlloc::Function { .. } => {
+                //TODO: handle constant functions
+                let alloc_fld: IString = format!("al_{alloc_id:x}").into();
+                let field_desc = StaticFieldDescriptor::new(None, uint8_ptr, alloc_fld.clone());
+                asm.add_static(uint8_ptr, alloc_fld, false, main_module_id);
 
-            return CILNode::LDStaticField(Box::new(field_desc));
-            //todo!("Function/Vtable allocation.");
-        }
-    };
+                return CILNode::LDStaticField(Box::new(field_desc));
+                //todo!("Function/Vtable allocation.");
+            }
+        };
 
     let const_allocation = const_allocation.inner();
 
@@ -713,159 +665,109 @@ pub fn add_allocation(
             "al_{}_{}_{}",
             encode(alloc_id),
             encode(byte_hash),
-            encode(krate.as_u32() as u64),
+            encode(u64::from(krate.as_u32())),
         )
         .into()
     } else {
         format!("al_{}_{}", encode(alloc_id), encode(byte_hash)).into()
     };
-    let field_desc = StaticFieldDescriptor::new(None, ptr!(Type::U8), alloc_fld.clone());
-    if !asm.static_fields().contains_key(&alloc_fld) {
-        let init_method =
-            allocation_initializer_method(const_allocation, &alloc_fld, tcx, asm, tycache);
-        let mut blocks = if thread_local {
-            let tcctor = asm.add_tcctor();
-            let mut blocks = tcctor.blocks_mut();
-            if blocks.is_empty() {
-                blocks.push(BasicBlock::new(vec![CILRoot::VoidRet.into()], 0, None));
-            }
-            assert_eq!(
-                blocks.len(),
-                1,
-                "Unexpected number of basic blocks in a static data initializer."
-            );
-            blocks
-        } else {
-            let cctor = asm.add_cctor();
-            let mut blocks = cctor.blocks_mut();
-            if blocks.is_empty() {
-                blocks.push(BasicBlock::new(vec![CILRoot::VoidRet.into()], 0, None));
-            }
-            assert_eq!(
-                blocks.len(),
-                1,
-                "Unexpected number of basic blocks in a static data initializer."
-            );
-            blocks
-        };
-        let trees = blocks[0].trees_mut();
-        {
-            // Remove return
-            let ret = trees.pop().unwrap();
-            // Append initailzer
-            trees.push(
-                CILRoot::SetStaticField {
-                    descr: Box::new(field_desc.clone()),
-                    value: call!(
-                        CallSite::new(
-                            None,
-                            init_method.name().into(),
-                            init_method.sig().clone(),
-                            true,
-                        ),
-                        []
-                    ),
-                }
-                .into(),
-            );
-            //trees.push(CILRoot::debug(&format!("Finished initializing allocation {alloc_fld:?}")).into());
-            // Add return again
-            trees.push(ret);
-        }
-        drop(blocks);
-        asm.add_method(init_method);
-        asm.add_static(ptr!(Type::U8), &alloc_fld, thread_local);
+    let field_desc =
+        StaticFieldDescriptor::new(None, asm.nptr(Type::Int(Int::U8)), alloc_fld.clone());
+    let name = asm.alloc_string(alloc_fld.clone());
+
+    // Currently, all static fields are in one module. Consider spliting them up.
+    let main_module = asm.class_mut(main_module_id);
+
+    if main_module.has_static_field(name, *field_desc.tpe()) {
+        return CILNode::LDStaticField(Box::new(field_desc));
     }
+    let init_method = allocation_initializer_method(const_allocation, &alloc_fld, asm, tcx);
+    let init_method = MethodDef::from_v1(&init_method, asm, main_module_id);
+    let initialzer = asm.new_method(init_method);
+    // Calls the static initialzer, and sets the static field to the returned pointer.
+    let val = asm.alloc_node(cilly::v2::CILNode::Call(Box::new((*initialzer, [].into()))));
+    let field = StaticFieldDesc::from_v1(&field_desc, asm);
+    let field = asm.alloc_sfld(field);
+    let root = asm.alloc_root(cilly::v2::CILRoot::SetStaticField { field, val });
+    if thread_local {
+        asm.add_tcctor(&[root]);
+    } else {
+        asm.add_cctor(&[root]);
+    };
+
+    asm.add_static(uint8_ptr, alloc_fld, thread_local, main_module_id);
+
     CILNode::LDStaticField(Box::new(field_desc))
 }
-pub fn add_const_value(asm: &mut Assembly, bytes: u128, tcx: TyCtxt) -> StaticFieldDescriptor {
+pub fn add_const_value(asm: &mut cilly::v2::Assembly, bytes: u128) -> StaticFieldDescriptor {
+    let uint8_ptr = asm.nptr(Type::Int(Int::U8));
+    let main_module_id = asm.main_module();
     let alloc_fld: IString = format!("a_{bytes:x}").into();
     let raw_bytes = bytes.to_le_bytes();
-    let field_desc = StaticFieldDescriptor::new(None, ptr!(Type::U8), alloc_fld.clone());
-    if !asm.static_fields().contains_key(&alloc_fld) {
-        let mut trees = vec![CILRoot::STLoc {
-            local: 0,
-            tree: call!(crate::cil::malloc(tcx), [conv_usize!(ldc_u32!(16))])
-                .cast_ptr(ptr!(Type::U8)),
-        }
-        .into()];
-        // This is an optimization if and only if there are enough zero-bytes to justify this.
-        if !raw_bytes.iter().all(|byte| *byte != 0) {
-            trees.push(
-                CILRoot::InitBlk {
-                    dst: Box::new(CILNode::LDLoc(0)),
-                    val: Box::new(CILNode::LdcU8(0)),
-                    count: Box::new(conv_usize!(ldc_u32!(16))),
-                }
-                .into(),
-            );
-        }
-        for index in 0..16 {
-            if raw_bytes[index as usize] != 0 {
-                trees.push(
-                    CILRoot::STIndI8(
-                        CILNode::LDLoc(0) + conv_usize!(ldc_u32!(index)),
-                        CILNode::LdcU8(raw_bytes[index as usize]),
-                    )
-                    .into(),
-                );
-            }
-        }
+    let field_desc =
+        StaticFieldDescriptor::new(None, asm.nptr(Type::Int(Int::U8)), alloc_fld.clone());
+    let name = asm.alloc_string(alloc_fld.clone());
+    let main_module = asm.class_mut(main_module_id);
+    if main_module.has_static_field(name, *field_desc.tpe()) {
+        return field_desc;
+    }
+    asm.add_static(uint8_ptr, alloc_fld, false, main_module_id);
+    let mut trees = vec![CILRoot::STLoc {
+        local: 0,
+        tree: call!(
+            cilly::call_site::CallSite::alloc(asm),
+            [conv_usize!(ldc_u32!(16))]
+        )
+        .cast_ptr(asm.nptr(Type::Int(Int::U8))),
+    }
+    .into()];
+    // This is an optimization if and only if there are enough zero-bytes to justify this.
+    if !raw_bytes.iter().all(|byte| *byte != 0) {
         trees.push(
-            CILRoot::Ret {
-                tree: CILNode::LDLoc(0),
+            CILRoot::InitBlk {
+                dst: Box::new(CILNode::LDLoc(0)),
+                val: Box::new(CILNode::LdcU8(0)),
+                count: Box::new(conv_usize!(ldc_u32!(16))),
             }
             .into(),
         );
-        let block = BasicBlock::new(trees, 0, None);
-        let init_method = Method::new(
-            AccessModifer::Public,
-            MethodType::Static,
-            FnSig::new(&[], ptr!(Type::U8)),
-            &format!("init_a{bytes:x}"),
-            vec![(Some("alloc_ptr".into()), ptr!(Type::U8))],
-            vec![block],
-            vec![],
-        );
-
-        let cctor = asm.add_cctor();
-        let mut blocks = cctor.blocks_mut();
-        if blocks.is_empty() {
-            blocks.push(BasicBlock::new(vec![CILRoot::VoidRet.into()], 0, None));
-        }
-        assert_eq!(
-            blocks.len(),
-            1,
-            "Unexpected number of basic blocks in a static data initializer."
-        );
-        let trees = blocks[0].trees_mut();
-        {
-            // Remove return
-            let ret = trees.pop().unwrap();
-            // Append initailzer
+    }
+    for index in 0..16 {
+        if raw_bytes[index as usize] != 0 {
             trees.push(
-                CILRoot::SetStaticField {
-                    descr: Box::new(
-                        StaticFieldDescriptor::new(None, ptr!(Type::U8), alloc_fld.clone()).clone(),
-                    ),
-                    value: call!(
-                        CallSite::new(
-                            None,
-                            init_method.name().into(),
-                            init_method.sig().clone(),
-                            true,
-                        ),
-                        []
-                    ),
-                }
+                CILRoot::STIndI8(
+                    CILNode::LDLoc(0) + conv_usize!(ldc_u32!(index)),
+                    CILNode::LdcU8(raw_bytes[index as usize]),
+                )
                 .into(),
             );
-            // Add return again
-            trees.push(ret);
         }
-        drop(blocks);
-        asm.add_method(init_method);
-        asm.add_static(ptr!(Type::U8), &alloc_fld, false);
     }
+    trees.push(
+        CILRoot::Ret {
+            tree: CILNode::LDLoc(0),
+        }
+        .into(),
+    );
+    let block = BasicBlock::new(trees, 0, None);
+    let init_method = Method::new(
+        AccessModifer::Public,
+        MethodType::Static,
+        FnSig::new([], asm.nptr(Type::Int(Int::U8))),
+        &format!("init_a{bytes:x}"),
+        vec![(Some("alloc_ptr".into()), asm.nptr(Type::Int(Int::U8)))],
+        vec![block],
+        vec![],
+    );
+    let init_method = MethodDef::from_v1(&init_method, asm, main_module_id);
+    let initialzer = asm.new_method(init_method);
+    let val = asm.alloc_node(cilly::v2::CILNode::Call(Box::new((*initialzer, [].into()))));
+
+    let field = StaticFieldDesc::from_v1(&field_desc, asm);
+    let field = asm.alloc_sfld(field);
+    let root = asm.alloc_root(cilly::v2::CILRoot::SetStaticField { field, val });
+
+    asm.add_cctor(&[root]);
+
     field_desc
 }

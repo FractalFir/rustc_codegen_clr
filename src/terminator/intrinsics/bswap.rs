@@ -1,6 +1,6 @@
 use crate::{assembly::MethodCompileCtx, operand::handle_operand, place::place_set};
 use cilly::{
-    call, call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, fn_sig::FnSig, DotnetTypeRef,
+    call, call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, fn_sig::FnSig, v2::ClassRef,
 };
 use rustc_middle::{
     mir::{Operand, Place},
@@ -11,7 +11,7 @@ use rustc_span::source_map::Spanned;
 pub fn bswap<'tcx>(
     args: &[Spanned<Operand<'tcx>>],
     destination: &Place<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> CILRoot {
     debug_assert_eq!(
         args.len(),
@@ -29,9 +29,9 @@ pub fn bswap<'tcx>(
             TyKind::Uint(_) | TyKind::Int(_) => {
                 call!(
                     CallSite::boxed(
-                        Some(DotnetTypeRef::binary_primitives()),
+                        Some(ClassRef::binary_primitives(ctx.asm_mut())),
                         "ReverseEndianness".into(),
-                        FnSig::new(&[tpe.clone()], tpe),
+                        FnSig::new([tpe], tpe),
                         true,
                     ),
                     [operand]

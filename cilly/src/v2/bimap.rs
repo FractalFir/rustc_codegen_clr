@@ -7,7 +7,7 @@ impl<Key: IntoBiMapIndex + Eq + Hash + Clone, Value: Eq + Hash + Clone> Default
     for BiMap<Key, Value>
 {
     fn default() -> Self {
-        Self(Default::default(), Default::default())
+        Self(Vec::default(), FxHashMap::default())
     }
 }
 impl<Key: IntoBiMapIndex + Eq + Hash + Clone + Debug, Value: Eq + Hash + Clone + Debug>
@@ -18,7 +18,12 @@ impl<Key: IntoBiMapIndex + Eq + Hash + Clone + Debug, Value: Eq + Hash + Clone +
         match self.1.entry(val.clone()) {
             Entry::Occupied(key) => key.get().clone(),
             Entry::Vacant(empty) => {
-                let key = Key::from_index(NonZeroU32::new(self.0.len() as u32 + 1).unwrap());
+                let key = Key::from_index(
+                    NonZeroU32::new(u32::try_from(self.0.len()).expect("Key ID out of range") + 1)
+                        .expect(
+                            "Key ID 0 when a non-zero value expected, this could be an overflow",
+                        ),
+                );
 
                 empty.insert(key.clone());
                 self.0.push(val);
@@ -27,14 +32,18 @@ impl<Key: IntoBiMapIndex + Eq + Hash + Clone + Debug, Value: Eq + Hash + Clone +
         }
     }
     /// Gets an allocated value with id `key`
+    // Key is tiny(32 or 64 bit), so passing it by value makes sense
+    #[allow(clippy::needless_pass_by_value)]
     pub fn get(&self, key: Key) -> &Value {
         self.0.get(key.as_bimap_index().get() as usize - 1).unwrap()
     }
 
+    #[must_use]
     pub fn len(&self) -> usize {
         self.0.len()
     }
 
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }

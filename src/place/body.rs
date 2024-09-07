@@ -4,17 +4,15 @@ use crate::{
     assembly::MethodCompileCtx,
     assert_morphic,
     place::{body_ty_is_by_adress, deref_op},
+    r#type::fat_ptr_to,
 };
 use cilly::{
     call, call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, conv_usize,
-    field_desc::FieldDescriptor, fn_sig::FnSig, ld_field, ptr, size_of, Type,
+    field_desc::FieldDescriptor, fn_sig::FnSig, ld_field, size_of, v2::Int, Type,
 };
 use rustc_middle::mir::PlaceElem;
 use rustc_middle::ty::{Ty, TyKind};
-pub fn local_body<'tcx>(
-    local: usize,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
-) -> (CILNode, Ty<'tcx>) {
+pub fn local_body<'tcx>(local: usize, ctx: &mut MethodCompileCtx<'tcx, '_>) -> (CILNode, Ty<'tcx>) {
     let ty = ctx.body().local_decls[local.into()].ty;
     let ty = ctx.monomorphize(ty);
     if body_ty_is_by_adress(ty, ctx) {
@@ -25,7 +23,7 @@ pub fn local_body<'tcx>(
 }
 fn body_field<'a>(
     curr_type: super::PlaceTy<'a>,
-    ctx: &mut MethodCompileCtx<'a, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'a, '_>,
     field_index: u32,
     field_ty: Ty<'a>,
     parrent_node: CILNode,
@@ -79,7 +77,7 @@ fn body_field<'a>(
                    (
                     field_ty.into(),
                         CILNode::TemporaryLocal(Box::new((
-                            curr_type.clone(),
+                            curr_type,
                             [CILRoot::SetTMPLocal {
                                 value: CILNode::LdObj {
                                     ptr: Box::new(parrent_node),
@@ -88,10 +86,8 @@ fn body_field<'a>(
                             }]
                             .into(),
                             CILNode::LoadAddresOfTMPLocal
-                                .cast_ptr(Type::Ptr(Box::new(field_type.clone()))),
+                                .cast_ptr(ctx.asm_mut().nptr(field_type)),
                         )))
-                        .is_valid_dbg(ctx.validator(), None)
-                        .unwrap(),
                     )
                 }
             }
@@ -113,7 +109,7 @@ fn body_field<'a>(
 pub fn place_elem_body<'tcx>(
     place_elem: &PlaceElem<'tcx>,
     curr_type: PlaceTy<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
     parrent_node: CILNode,
 ) -> (PlaceTy<'tcx>, CILNode) {
     let curr_ty = match curr_type {
@@ -156,13 +152,14 @@ pub fn place_elem_body<'tcx>(
                 TyKind::Slice(inner) => {
                     let inner = ctx.monomorphize(*inner);
                     let inner_type = ctx.type_from_cache(inner);
-                    let slice = ctx.slice_ty(inner).as_dotnet().unwrap();
+                    let slice = fat_ptr_to(Ty::new_slice(ctx.tcx(), inner), ctx);
                     let desc = FieldDescriptor::new(
                         slice,
-                        Type::Ptr(Type::Void.into()),
+                        ctx.asm_mut().nptr(Type::Void),
                         crate::DATA_PTR.into(),
                     );
-                    let addr = ld_field!(parrent_node, desc).cast_ptr(ptr!(inner_type.clone()))
+                    let addr = ld_field!(parrent_node, desc)
+                        .cast_ptr(ctx.asm_mut().nptr(inner_type))
                         + (index * CILNode::ZeroExtendToUSize(size_of!(inner_type).into()));
 
                     if body_ty_is_by_adress(inner, ctx) {
@@ -178,15 +175,15 @@ pub fn place_elem_body<'tcx>(
                     let element = ctx.monomorphize(*element);
                     let element_type = ctx.type_from_cache(element);
                     let array_type = ctx.type_from_cache(curr_ty);
-                    let array_dotnet = array_type.as_dotnet().expect("Non array type");
+                    let array_dotnet = array_type.as_class_ref().expect("Non array type");
                     if body_ty_is_by_adress(element, ctx) {
                         let ops = call!(
                             CallSite::new(
                                 Some(array_dotnet),
                                 "get_Address".into(),
                                 FnSig::new(
-                                    &[Type::Ptr(array_type.into()), Type::USize],
-                                    Type::Ptr(element_type.into()),
+                                    [ctx.asm_mut().nref(array_type), Type::Int(Int::USize)],
+                                    ctx.asm_mut().nptr(element_type),
                                 ),
                                 false,
                             ),
@@ -199,7 +196,7 @@ pub fn place_elem_body<'tcx>(
                                 Some(array_dotnet),
                                 "get_Item".into(),
                                 FnSig::new(
-                                    &[Type::Ptr(array_type.into()), Type::USize],
+                                    [ctx.asm_mut().nref(array_type), Type::Int(Int::USize)],
                                     element_type,
                                 ),
                                 false,
@@ -228,23 +225,16 @@ pub fn place_elem_body<'tcx>(
                 TyKind::Slice(inner) => {
                     let inner = ctx.monomorphize(*inner);
                     let inner_type = ctx.type_from_cache(inner);
-                    let slice = ctx.slice_ty(inner).as_dotnet().unwrap();
+                    let slice = fat_ptr_to(Ty::new_slice(ctx.tcx(), inner), ctx);
                     let desc = FieldDescriptor::new(
-                        slice.clone(),
-                        Type::Ptr(Type::Void.into()),
+                        slice,
+                        ctx.asm_mut().nptr(Type::Void),
                         crate::DATA_PTR.into(),
                     );
-                    let metadata = FieldDescriptor::new(slice, Type::USize, "metadata".into());
+
                     let addr = Box::new(ld_field!(parrent_node.clone(), desc))
-                        .cast_ptr(ptr!(inner_type.clone()))
-                        + call!(
-                            CallSite::builtin(
-                                "bounds_check".into(),
-                                FnSig::new(&[Type::USize, Type::USize], Type::USize),
-                                true
-                            ),
-                            [index, ld_field!(parrent_node.clone(), metadata)]
-                        ) * conv_usize!(CILNode::SizeOf(inner_type.into()));
+                        .cast_ptr(ctx.asm_mut().nptr(inner_type))
+                        + (index) * conv_usize!(CILNode::SizeOf(inner_type.into()));
                     if body_ty_is_by_adress(inner, ctx) {
                         (inner.into(), addr)
                     } else {
@@ -258,15 +248,15 @@ pub fn place_elem_body<'tcx>(
                     let element_ty = ctx.monomorphize(*element);
                     let element = ctx.type_from_cache(element_ty);
                     let array_type = ctx.type_from_cache(curr_ty);
-                    let array_dotnet = array_type.as_dotnet().expect("Non array type");
+                    let array_dotnet = array_type.as_class_ref().expect("Non array type");
                     if body_ty_is_by_adress(element_ty, ctx) {
                         let ops = call!(
                             CallSite::new(
                                 Some(array_dotnet),
                                 "get_Address".into(),
                                 FnSig::new(
-                                    &[Type::Ptr(array_type.into()), Type::USize],
-                                    Type::Ptr(element.into()),
+                                    [ctx.asm_mut().nref(array_type), Type::Int(Int::USize)],
+                                    ctx.asm_mut().nptr(element),
                                 ),
                                 false,
                             ),
@@ -278,7 +268,10 @@ pub fn place_elem_body<'tcx>(
                             CallSite::new(
                                 Some(array_dotnet),
                                 "get_Item".into(),
-                                FnSig::new(&[Type::Ptr(array_type.into()), Type::USize], element),
+                                FnSig::new(
+                                    [ctx.asm_mut().nref(array_type), Type::Int(Int::USize)],
+                                    element
+                                ),
                                 false,
                             ),
                             [parrent_node, CILNode::ZeroExtendToUSize(index.into())]

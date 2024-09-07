@@ -63,7 +63,7 @@ pub fn field_name(ty: Ty, idx: u32) -> crate::IString {
                 .all_fields()
                 .nth(idx as usize)
                 .expect("Field index out of range.");
-            crate::r#type::escape_field_name(&field_def.name.to_string())
+            crate::r#type::escape_field_name(&field_def.name.to_string()).into()
         }
         TyKind::Tuple(_) => format!("Item{}", idx + 1).into(),
         _ => todo!("Can't yet get fields of typr {ty:?}"),
@@ -117,7 +117,7 @@ pub fn enum_field_descriptor<'tcx>(
     owner_ty: Ty<'tcx>,
     field_idx: u32,
     variant_idx: u32,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> FieldDescriptor {
     let (adt, subst) = as_adt(owner_ty).expect("Tried to get a field of a non ADT or tuple type!");
     let variant = adt
@@ -141,7 +141,7 @@ pub fn enum_field_descriptor<'tcx>(
     let field_ty = ctx.type_from_cache(field_ty);
     let owner_ty = ctx
         .type_from_cache(owner_ty)
-        .as_dotnet()
+        .as_class_ref()
         .expect("Error: tried to set a field of a non-object type!");
 
     FieldDescriptor::new(owner_ty, field_ty, field_name)
@@ -149,7 +149,7 @@ pub fn enum_field_descriptor<'tcx>(
 pub fn field_descrptor<'tcx>(
     owner_ty: Ty<'tcx>,
     field_idx: u32,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> FieldDescriptor {
     if let TyKind::Tuple(elements) = owner_ty.kind() {
         let element = elements[field_idx as usize];
@@ -164,6 +164,7 @@ pub fn field_descrptor<'tcx>(
                         ctx.type_from_cache(tpe)
                     })
                     .collect::<Vec<_>>(),
+                ctx.asm_mut(),
             ),
             element,
             format!("Item{}", field_idx + 1).into(),
@@ -181,7 +182,7 @@ pub fn field_descrptor<'tcx>(
         let owner_type = ctx.type_from_cache(owner_ty);
         let field_name = format!("f_{field_idx}").into();
         return FieldDescriptor::new(
-            owner_type.as_dotnet().expect("Closure type invalid!"),
+            owner_type.as_class_ref().expect("Closure type invalid!"),
             field_type,
             field_name,
         );
@@ -197,9 +198,9 @@ pub fn field_descrptor<'tcx>(
     let field_ty = ctx.type_from_cache(field_ty);
     let owner_ty = ctx
         .type_from_cache(owner_ty)
-        .as_dotnet()
+        .as_class_ref()
         .expect("Error: tried to set a field of a non-object type!");
-    FieldDescriptor::new(owner_ty, field_ty, field_name)
+    FieldDescriptor::new(owner_ty, field_ty, field_name.into())
 }
 
 /// Tires to get the value of Const `size` as usize.

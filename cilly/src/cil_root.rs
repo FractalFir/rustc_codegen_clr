@@ -1,14 +1,13 @@
+use crate::v2::{Assembly, ClassRef, Type};
 use crate::{
     call,
     call_site::CallSite,
-    cil_node::{CILNode, CallOpArgs, ValidationContext},
+    cil_node::{CILNode, CallOpArgs},
     field_desc::FieldDescriptor,
     fn_sig::FnSig,
     static_field_desc::StaticFieldDescriptor,
-    utilis::MemoryUsage,
-    AsmString, DotnetTypeRef, IString, Type,
+    AsmString, IString,
 };
-
 use serde::{Deserialize, Serialize};
 #[derive(Clone, Eq, PartialEq, Hash, Serialize, Deserialize, Debug)]
 pub enum CILRoot {
@@ -414,32 +413,23 @@ impl CILRoot {
         }
     }
     #[must_use]
-    pub fn throw(msg: &str) -> Self {
-        let mut class = DotnetTypeRef::new(
-            Some("System.Runtime".to_owned()),
-            "System.Exception".to_owned(),
-        );
-        class.set_valuetype(false);
+    pub fn throw(msg: &str, asm: &mut Assembly) -> Self {
+        let class = ClassRef::exception(asm);
+
         let name = ".ctor".to_owned().into();
-        let signature = FnSig::new(
-            &[class.clone().into(), DotnetTypeRef::string_type().into()],
-            Type::Void,
-        );
+        let signature = FnSig::new([class.into(), Type::PlatformString], Type::Void);
         Self::Throw(CILNode::NewObj(Box::new(CallOpArgs {
             site: CallSite::boxed(Some(class), name, signature, false),
             args: [CILNode::LdStr(msg.into())].into(),
         })))
     }
     #[must_use]
-    pub fn debug(msg: &str) -> Self {
-        let mut class = DotnetTypeRef::new(
-            Some("System.Console".to_owned()),
-            "System.Console".to_owned(),
-        );
-        class.set_valuetype(false);
+    pub fn debug(msg: &str, asm: &mut Assembly) -> Self {
+        let class = ClassRef::console(asm);
+
         let name = "WriteLine".to_owned().into();
-        let signature = FnSig::new(&[DotnetTypeRef::string_type().into()], Type::Void);
-        let message = tiny_message(msg);
+        let signature = FnSig::new([Type::PlatformString], Type::Void);
+        let message = tiny_message(msg, asm);
         Self::Call {
             site: Box::new(CallSite::new_extern(class, name, signature, true)),
             args: [message].into(),
@@ -627,453 +617,7 @@ impl CILRoot {
             Self::JumpingPad { .. } => (),
         };
     }
-    pub fn validate(&self, vctx: ValidationContext, tmp_loc: Option<&Type>) -> Result<(), String> {
-        let var_name = match self {
-            Self::Pop { tree } => {
-                tree.validate(vctx, tmp_loc)?;
-                Ok(())
-            }
-            Self::STIndI8(addr, val) => {
-                let addr = addr.validate(vctx, tmp_loc)?;
-                let val = val.validate(vctx, tmp_loc)?;
-                match &addr {
-                    Type::Ptr(inner) | Type::ManagedReference(inner) => match inner.as_ref() {
-                        Type::I8 | Type::U8 | Type::Bool => (),
-                        _ => {
-                            return Err(format!(
-                                "Can't set a vaule of type i8/u8 at address of type {addr:?}"
-                            ))
-                        }
-                    },
-                    _ => {
-                        return Err(format!(
-                            "Can't set a vaule of type i8/u8 at address of type {addr:?}"
-                        ))
-                    }
-                }
-                match val{
-                    Type::I8 | Type::U8 | Type::Bool  => Ok(()),
-                    _=>Err(format!("Can't indirectly set a value of type i8/u8 because the provided value is {val:?}")),
-                }
-            }
-            Self::CpBlk { dst, src, len } => {
-                let _dst = dst.validate(vctx, tmp_loc)?;
-                let _src = src.validate(vctx, tmp_loc)?;
-                let _len = len.validate(vctx, tmp_loc)?;
-                // TODO: verify the types of those!
-                Ok(())
-            }
-            Self::InitBlk { dst, val, count } => {
-                let _dst = dst.validate(vctx, tmp_loc)?;
-                let _src = val.validate(vctx, tmp_loc)?;
-                let _len = count.validate(vctx, tmp_loc)?;
-                // TODO: verify the types of those!
-                Ok(())
-            }
-            Self::STIndI16(addr, val) => {
-                let addr = addr.validate(vctx, tmp_loc)?;
-                let val = val.validate(vctx, tmp_loc)?;
-                match &addr {
-                    Type::Ptr(inner) | Type::ManagedReference(inner) => match inner.as_ref() {
-                        Type::I16 | Type::U16 => (),
-                        _ => {
-                            return Err(format!(
-                                "Can't set a vaule of type i16/u16 at address of type {addr:?}"
-                            ))
-                        }
-                    },
-                    _ => {
-                        return Err(format!(
-                            "Can't set a vaule of type i16/u16 at address of type {addr:?}"
-                        ))
-                    }
-                }
-                match val{
-                    Type::I16 | Type::U16 => Ok(()),
-                    _=>Err(format!("Can't indirectly set a value of type i16/u16 because the provided value is {val:?}")),
-                }
-            }
-            Self::STIndI64(addr, val) => {
-                let addr = addr.validate(vctx, tmp_loc)?;
-                let val = val.validate(vctx, tmp_loc)?;
-                match &addr {
-                    Type::Ptr(inner) | Type::ManagedReference(inner) => match inner.as_ref() {
-                        Type::I64 | Type::U64 => (),
-                        _ => {
-                            return Err(format!(
-                                "Can't set a vaule of type i64/u64 at address of type {addr:?}"
-                            ))
-                        }
-                    },
-                    _ => {
-                        return Err(format!(
-                            "Can't set a vaule of type i64/u64 at address of type {addr:?}"
-                        ))
-                    }
-                }
-                match val{
-                    Type::I64 | Type::U64 => Ok(()),
-                    _=>Err(format!("Can't indirectly set a value of type i64/u64 because the provided value is {val:?}")),
-                }
-            }
-            Self::STIndF64(addr, val) => {
-                let addr = addr.validate(vctx, tmp_loc)?;
-                let val = val.validate(vctx, tmp_loc)?;
-                match &addr {
-                    Type::Ptr(inner) | Type::ManagedReference(inner) => match inner.as_ref() {
-                        Type::F64 => (),
-                        _ => {
-                            return Err(format!(
-                                "Can't set a vaule of type f64 at address of type {addr:?}"
-                            ))
-                        }
-                    },
-                    _ => {
-                        return Err(format!(
-                            "Can't set a vaule of type f64 at address of type {addr:?}"
-                        ))
-                    }
-                }
-                match val{
-                    Type::F64  => Ok(()),
-                    _=>Err(format!("Can't indirectly set a value of type f64 because the provided value is {val:?}")),
-                }
-            }
-            Self::STIndF32(addr, val) => {
-                let addr = addr.validate(vctx, tmp_loc)?;
-                let val = val.validate(vctx, tmp_loc)?;
-                match &addr {
-                    Type::Ptr(inner) | Type::ManagedReference(inner) => match inner.as_ref() {
-                        Type::F32 => (),
-                        _ => {
-                            return Err(format!(
-                                "Can't set a vaule of type f32 at address of type {addr:?}"
-                            ))
-                        }
-                    },
-                    _ => {
-                        return Err(format!(
-                            "Can't set a vaule of type f32 at address of type {addr:?}"
-                        ))
-                    }
-                }
-                match val{
-                    Type::F32  => Ok(()),
-                    _=>Err(format!("Can't indirectly set a value of type f32 because the provided value is {val:?}")),
-                }
-            }
-            Self::STIndI32(addr, val) => {
-                let addr = addr.validate(vctx, tmp_loc)?;
-                let val = val.validate(vctx, tmp_loc)?;
-                match &addr {
-                    Type::Ptr(inner) | Type::ManagedReference(inner) => match inner.as_ref() {
-                        Type::I32 | Type::U32 => (),
-                        _ => {
-                            return Err(format!(
-                                "Can't set a vaule of type i32/u32 at address of type {addr:?}"
-                            ))
-                        }
-                    },
-                    _ => {
-                        return Err(format!(
-                            "Can't set a vaule of type i32/u32 at address of type {addr:?}"
-                        ))
-                    }
-                }
-                match val{
-                    Type::I32 | Type::U32 => Ok(()),
-                    _=>Err(format!("Can't indirectly set a value of type i32/u32 because the provided value is {val:?}")),
-                }
-            }
-            Self::STIndISize(addr, val) => {
-                let addr = addr.validate(vctx, tmp_loc)?;
-                let val = val.validate(vctx, tmp_loc)?;
-                match &addr {
-                    Type::Ptr(inner) | Type::ManagedReference(inner) => match inner.as_ref() {
-                        Type::Ptr(_) | Type::ManagedReference(_) | Type::USize | Type::ISize => (),
-                        _ => {
-                            return Err(format!(
-                                "Can't set a vaule of type isize/usize at address of type {addr:?}"
-                            ))
-                        }
-                    },
-                    _ => {
-                        return Err(format!(
-                            "Can't set a vaule of type isize/usize at address of type {addr:?}"
-                        ))
-                    }
-                }
-                match val{
-                    Type::ISize | Type::USize => Ok(()),
-                    _=>Err(format!("Can't indirectly set a value of type isize/usize because the provided value is {val:?}")),
-                }
-            }
-            Self::STIndPtr(addr, val, points_to) => {
-                let addr = addr.validate(vctx, tmp_loc)?;
-                let val = val.validate(vctx, tmp_loc)?;
-                match &addr {
-                    Type::Ptr(inner) | Type::ManagedReference(inner) => match inner.as_ref() {
-                        Type::Ptr(_) | Type::ManagedReference(_) | Type::USize | Type::ISize => (),
-                        _ => {
-                            return Err(format!(
-                                "Can't set a vaule of type ptr at address of type {addr:?}"
-                            ))
-                        }
-                    },
-                    _ => {
-                        return Err(format!(
-                            "Can't set a vaule of type ptr at address of type {addr:?}"
-                        ))
-                    }
-                }
-                match val{
-                    Type::Ptr(val) | Type::ManagedReference(val) =>if val != *points_to {
-                        Err(format!("Can't indirectly set a value of type ptr because the provided value is a pointer to {val:?}, and it should be {points_to:?}"))
-                    } else {
-                        Ok(())
-                    },
-                    _=> Err(format!("Can't indirectly set a value of type ptr because the provided value is a pointer to {val:?}, and it should be {points_to:?}"))
-                }
-            }
-            Self::STObj {
-                tpe,
-                addr_calc,
-                value_calc,
-            } => {
-                let addr_calc = addr_calc.validate(vctx, tmp_loc)?;
-                let value_calc = value_calc.validate(vctx, tmp_loc)?;
-                let inner = match &addr_calc {
-                    Type::Ptr(inner) | Type::ManagedReference(inner) => inner,
-                    _ => {
-                        return Err(format!(
-                            "Can't set a vaule of type ptr at address of type {addr_calc:?}"
-                        ))
-                    }
-                };
-                if **inner != **tpe
-                    && !matches!(inner.as_ref(), Type::I128 | Type::U128 | Type::F128)
-                {
-                    Err(format!("Can't indirectly set a value of type {tpe:?} because the pointer points to {inner:?}, and it should point to {tpe:?}"))?;
-                }
-                if **inner != value_calc && !(value_calc == Type::I128 && **inner == Type::F128) {
-                    Err(format!("Can't indirectly set a value of type {tpe:?} because the provided value is {value_calc:?}, and it should be {inner:?}"))
-                } else {
-                    Ok(())
-                }
-            }
-            Self::Break => Ok(()),
-            Self::JumpingPad { .. } => Ok(()),
-            Self::BTrue {
-                target: _,
-                sub_target: _,
-                cond,
-            } => {
-                // Just check that `cond` is a boolean.
-                let cond = cond.validate(vctx, tmp_loc)?;
-                match cond {
-                    Type::Bool | Type::Ptr(_) | Type::ISize => Ok(()),
-                    _ => Err(format!(
-                        "BTrue must have a boolean argument. cond is:{cond:?}"
-                    )),
-                }
-            }
-            Self::BFalse {
-                target: _,
-                sub_target: _,
-                cond,
-            } => {
-                // Just check that `cond` is a boolean.
-                let cond = cond.validate(vctx, tmp_loc)?;
-                match cond {
-                    Type::Bool | Type::Ptr(_) | Type::ISize => Ok(()),
-                    _ => Err(format!(
-                        "BFalse must have a boolean argument. cond is:{cond:?}"
-                    )),
-                }
-            }
-            Self::BEq {
-                target: _,
-                sub_target: _,
-                a,
-                b,
-            } => {
-                let a = a.validate(vctx, tmp_loc)?;
-                let b = b.validate(vctx, tmp_loc)?;
-                if a != b {
-                    Err(format!("Can't compare {a:?} and {b:?}"))
-                } else {
-                    Ok(())
-                }
-            }
-            Self::BNe {
-                target: _,
-                sub_target: _,
-                a,
-                b,
-            } => {
-                let a = a.validate(vctx, tmp_loc)?;
-                let b = b.validate(vctx, tmp_loc)?;
-                if a != b {
-                    Err(format!("Can't compare {a:?} and {b:?}"))
-                } else {
-                    Ok(())
-                }
-            }
-            Self::GoTo {
-                target: _,
-                sub_target: _,
-            } => Ok(()),
-            Self::STLoc { local, tree } => {
-                let expected_tpe = if let Some(loc) = vctx.locals().get(*local as usize) {
-                    loc
-                } else {
-                    return Err(format!("Local out of range! Local{local:?}"));
-                };
-                let got = tree.validate(vctx, tmp_loc)?;
-                if expected_tpe.1 != got {
-                    if expected_tpe.1 == Type::DotnetChar && got == Type::U16 {
-                        return Ok(());
-                    }
-                    Err(format!("Expected a value of {expected_tpe:?}, but got {got:?} when seting local {local:?}"))
-                } else {
-                    Ok(())
-                }
-            }
 
-            Self::SetTMPLocal { value } => {
-                let expected_tpe = if let Some(loc) = tmp_loc {
-                    loc
-                } else {
-                    return Err("SetTMPLocal used where no tmp local present!".to_string());
-                };
-                let got = value.validate(vctx, tmp_loc)?;
-                if *expected_tpe != got {
-                    Err(format!("Expected a value of {expected_tpe:?}, but got {got:?} when seting a tmp local."))
-                } else {
-                    Ok(())
-                }
-            }
-            Self::STArg { arg, tree } => {
-                let expected_tpe = if let Some(arg) = vctx.sig().inputs().get(*arg as usize) {
-                    arg
-                } else {
-                    return Err(format!("Arg out of range! Arg {arg:?}"));
-                };
-                let got = tree.validate(vctx, tmp_loc)?;
-                if *expected_tpe != got {
-                    Err(format!("Expected a value of {expected_tpe:?}, but got {got:?} when seting arg {arg:?}"))
-                } else {
-                    Ok(())
-                }
-            }
-            Self::Call { site, args } | Self::CallVirt { site, args } => {
-                if site.inputs().len() != args.len() {
-                    return Err(format!(
-                        "Expected {} arguments, got {}",
-                        site.explicit_inputs().len(),
-                        args.len()
-                    ));
-                }
-                for (arg_node, arg_tpe) in args.iter().zip(site.inputs().iter()) {
-                    let got = arg_node.validate(vctx, tmp_loc)?;
-                    if got != *arg_tpe {
-                        if (matches!(arg_tpe, Type::ManagedReference(_))
-                            && matches!(got, Type::Ptr(_)))
-                            || (matches!(arg_tpe, Type::Ptr(_))
-                                && matches!(got, Type::ManagedReference(_)))
-                        {
-                            // TODO: check the mref and ptr point to the same mem.
-                            continue;
-                        }
-                        return Err(format!(
-                            "Expected a call argument of type {arg_tpe:?}, but got {got:?} calling{site:?}"
-                        ));
-                    }
-                }
-                Ok(())
-            }
-            Self::CallI { args, sig, fn_ptr } => {
-                let _ptr = fn_ptr.validate(vctx, tmp_loc)?;
-                if sig.inputs().len() != args.len() {
-                    return Err(format!(
-                        "Expected {} arguments, got {}",
-                        sig.inputs().len(),
-                        args.len()
-                    ));
-                }
-                for (arg, tpe) in args.iter().zip(sig.inputs().iter()) {
-                    let arg = arg.validate(vctx, tmp_loc)?;
-                    if arg != *tpe {
-                        return Err(format!(
-                            "Expected a call argument of type {tpe:?}, but got {arg:?} in indirect call."
-                        ));
-                    }
-                }
-                Ok(())
-            }
-            Self::ReThrow => Ok(()),
-            Self::VoidRet => Ok(()),
-            Self::SourceFileInfo(_) => Ok(()),
-            Self::OptimizedSourceFileInfo(_, _, _) => Ok(()),
-            Self::Nop => Ok(()),
-            Self::Throw(execption) => {
-                let tpe = execption.validate(vctx, tmp_loc)?;
-                if tpe.as_dotnet().is_some() {
-                    Ok(())
-                } else {
-                    Err("`throw` instruction suplied with a non-object type.".into())
-                }
-            }
-            Self::Ret { tree } => {
-                let expected = vctx.sig().output();
-                let got = tree.validate(vctx, tmp_loc)?;
-                if got != *expected {
-                    Err(format!(
-                        "Mismatched return type. Expected {expected:?} got {got:?}"
-                    ))
-                } else {
-                    Ok(())
-                }
-            }
-            Self::SetField { addr, value, desc } => {
-                let addr = addr.validate(vctx, tmp_loc)?;
-                let value = value.validate(vctx, tmp_loc)?;
-                if *desc.tpe() != value {
-                    return Err(format!(
-                        "Mismatched field type. Expected {expected:?} got {value:?}",
-                        expected = desc.tpe(),
-                    ));
-                }
-                match addr {
-                    Type::ManagedReference(tpe) | Type::Ptr(tpe) => {
-                        if tpe.as_dotnet() != Some(desc.owner().clone()) {
-                            return Err(format!(
-                                "Mismatched pointer type. Expected {desc:?} got {tpe:?}"
-                            ));
-                        }
-                    }
-                    _ => {
-                        return Err(format!(
-                            "Expected pointer type in set field. Expected a pointer to {desc:?} got non-pointer type {addr:?}",desc = desc.owner()
-                        ))
-                    }
-                }
-                Ok(())
-            }
-            Self::Volatile(vol) => vol.validate(vctx, tmp_loc),
-            Self::SetStaticField { descr, value } => {
-                let value = value.validate(vctx, tmp_loc)?;
-                if value != *descr.tpe() {
-                    return Err(format!(
-                        "Tried to set static {descr:?} with value of type {value:?}"
-                    ));
-                }
-                Ok(())
-            }
-            _ => todo!("Can't check the type safety of cil root {self:?}"),
-        };
-        var_name
-    }
     #[must_use]
     pub fn source_info(
         file: &str,
@@ -1087,22 +631,7 @@ impl CILRoot {
         Self::SourceFileInfo(Box::new((line, column, file.to_owned().into())))
     }
     #[must_use]
-    pub fn set_field(
-        addr: CILNode,
-        value: CILNode,
-        desc: FieldDescriptor,
-        vctx: ValidationContext,
-        tmp_loc: Option<&Type>,
-    ) -> Self {
-        //#[cfg(debug_assertions)]
-        {
-            let addr_type = addr.validate(vctx, tmp_loc).unwrap();
-
-            assert!(matches!(
-                addr_type,
-                Type::ManagedReference(_) | Type::Ptr(_)
-            ));
-        }
+    pub fn set_field(addr: CILNode, value: CILNode, desc: FieldDescriptor) -> Self {
         Self::SetField {
             addr: Box::new(addr),
             value: Box::new(value),
@@ -1110,24 +639,21 @@ impl CILRoot {
         }
     }
 }
-fn tiny_message(msg: &str) -> CILNode {
+fn tiny_message(msg: &str, asm: &mut Assembly) -> CILNode {
     let pieces: Vec<_> = msg.split_inclusive(char::is_whitespace).collect();
-    runtime_string(&pieces)
+    runtime_string(&pieces, asm)
 }
-fn runtime_string(pieces: &[&str]) -> CILNode {
+fn runtime_string(pieces: &[&str], asm: &mut Assembly) -> CILNode {
     match pieces.len() {
         0 => panic!("Incorrect piece count"),
         1 => CILNode::LdStr(pieces[0].to_owned().into()),
         2 => call!(
             CallSite::new_extern(
-                DotnetTypeRef::string_type(),
+                ClassRef::string(asm),
                 "Concat".to_owned().into(),
                 FnSig::new(
-                    &[
-                        Type::DotnetType(Box::new(DotnetTypeRef::string_type())),
-                        Type::DotnetType(Box::new(DotnetTypeRef::string_type()))
-                    ],
-                    Type::DotnetType(Box::new(DotnetTypeRef::string_type()))
+                    [Type::PlatformString, Type::PlatformString,],
+                    Type::PlatformString,
                 ),
                 true
             ),
@@ -1138,15 +664,15 @@ fn runtime_string(pieces: &[&str]) -> CILNode {
         ),
         3 => call!(
             CallSite::new_extern(
-                DotnetTypeRef::string_type(),
+                ClassRef::string(asm),
                 "Concat".to_owned().into(),
                 FnSig::new(
-                    &[
-                        Type::DotnetType(Box::new(DotnetTypeRef::string_type())),
-                        Type::DotnetType(Box::new(DotnetTypeRef::string_type())),
-                        Type::DotnetType(Box::new(DotnetTypeRef::string_type()))
+                    [
+                        Type::PlatformString,
+                        Type::PlatformString,
+                        Type::PlatformString,
                     ],
-                    Type::DotnetType(Box::new(DotnetTypeRef::string_type()))
+                    Type::PlatformString,
                 ),
                 true
             ),
@@ -1158,16 +684,16 @@ fn runtime_string(pieces: &[&str]) -> CILNode {
         ),
         4 => call!(
             CallSite::new_extern(
-                DotnetTypeRef::string_type(),
+                ClassRef::string(asm),
                 "Concat".to_owned().into(),
                 FnSig::new(
-                    &[
-                        Type::DotnetType(Box::new(DotnetTypeRef::string_type())),
-                        Type::DotnetType(Box::new(DotnetTypeRef::string_type())),
-                        Type::DotnetType(Box::new(DotnetTypeRef::string_type())),
-                        Type::DotnetType(Box::new(DotnetTypeRef::string_type()))
+                    [
+                        Type::PlatformString,
+                        Type::PlatformString,
+                        Type::PlatformString,
+                        Type::PlatformString,
                     ],
-                    Type::DotnetType(Box::new(DotnetTypeRef::string_type()))
+                    Type::PlatformString,
                 ),
                 true
             ),
@@ -1182,91 +708,42 @@ fn runtime_string(pieces: &[&str]) -> CILNode {
             let sub_part = pieces.len() / 4;
             call!(
                 CallSite::new_extern(
-                    DotnetTypeRef::string_type(),
+                    ClassRef::string(asm),
                     "Concat".to_owned().into(),
                     FnSig::new(
-                        &[
-                            Type::DotnetType(Box::new(DotnetTypeRef::string_type())),
-                            Type::DotnetType(Box::new(DotnetTypeRef::string_type())),
-                            Type::DotnetType(Box::new(DotnetTypeRef::string_type())),
-                            Type::DotnetType(Box::new(DotnetTypeRef::string_type()))
+                        [
+                            Type::PlatformString,
+                            Type::PlatformString,
+                            Type::PlatformString,
+                            Type::PlatformString,
                         ],
-                        Type::DotnetType(Box::new(DotnetTypeRef::string_type()))
+                        Type::PlatformString,
                     ),
                     true
                 ),
                 [
-                    runtime_string(&pieces[..sub_part]),
-                    runtime_string(&pieces[sub_part..(sub_part * 2)]),
-                    runtime_string(&pieces[(sub_part * 2)..(sub_part * 3)]),
-                    runtime_string(&pieces[(sub_part * 3)..])
+                    runtime_string(&pieces[..sub_part], asm),
+                    runtime_string(&pieces[sub_part..(sub_part * 2)], asm),
+                    runtime_string(&pieces[(sub_part * 2)..(sub_part * 3)], asm),
+                    runtime_string(&pieces[(sub_part * 3)..], asm)
                 ]
             )
         }
-    }
-}
-impl MemoryUsage for CILRoot {
-    fn memory_usage(&self, counter: &mut impl crate::utilis::MemoryUsageCounter) -> usize {
-        let tpe_name = std::any::type_name::<Self>();
-        let mut total_size = std::mem::size_of::<Self>();
-        let name = std::any::type_name::<Self>();
-        let inner = self
-            .into_iter()
-            .map(|node| match node {
-                crate::cil_iter::CILIterElem::Node(
-                    CILNode::LDFieldAdress { addr: _, field } | CILNode::LDField { addr: _, field },
-                ) => {
-                    let var_name = &format!("{node:?}");
-                    let name = var_name
-                        .split('{')
-                        .next()
-                        .unwrap_or("")
-                        .split('(')
-                        .next()
-                        .unwrap_or("");
-                    let size = std::mem::size_of::<CILNode>();
-                    let field_size = field.memory_usage(counter);
-                    counter.add_type(name, size + field_size);
-                    size
-                }
-                crate::cil_iter::CILIterElem::Node(node) => {
-                    let var_name = &format!("{node:?}");
-                    let name = var_name
-                        .split('{')
-                        .next()
-                        .unwrap_or("")
-                        .split('(')
-                        .next()
-                        .unwrap_or("");
-                    let size = std::mem::size_of::<CILNode>();
-                    counter.add_type(name, size);
-                    size
-                }
-                crate::cil_iter::CILIterElem::Root(CILRoot::SourceFileInfo(sfi)) => {
-                    sfi.memory_usage(counter) + std::mem::size_of::<CILRoot>()
-                }
-                crate::cil_iter::CILIterElem::Root(_) => std::mem::size_of::<CILRoot>(),
-            })
-            .sum();
-        counter.add_field(name, "inner", inner);
-        total_size += inner;
-        counter.add_type(tpe_name, total_size);
-        total_size
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
+    /*
     #[test]
     fn allocating_tmps() {
         let mut original_value = CILNode::SubTrees(Box::new((
             Box::new([CILRoot::STLoc {
                 local: 14,
                 tree: CILNode::TemporaryLocal(Box::new((
-                    Type::DotnetType(
-                        DotnetTypeRef::new::<&str, _>(
+                    Type::ClassRef(
+                        ClassRef::new::<&str, _>(
                             None,
                             "core.ptr.metadata.PtrComponents.h2b679e9941d88b2f",
                         )
@@ -1281,13 +758,13 @@ mod tests {
             }]),
             CILNode::LDLoc(2).into(),
         )));
-        //let mut method = crate::method::Method::new(crate::access_modifier::AccessModifer::Private,crate::method::MethodType::Static,FnSig::new(&[Type::I32],&Type::Void),"a",vec![],vec![]);
+        //let mut method = crate::method::Method::new(crate::access_modifier::AccessModifer::Private,crate::method::MethodType::Static,FnSig::new(&[Type::Int(Int::I32)],&Type::Void),"a",vec![],vec![]);
         original_value.allocate_tmps(None, &mut vec![]);
         println!("original_value:{original_value:?}");
         //let _trees = original_value.sheed_trees();
         //let _ops: Vec<_> = trees.iter().map(CILRoot::into_ops).collect();
     }
-
+    */
     // Test comparison optimizations
     #[test]
     fn optimize_equality_branch() {

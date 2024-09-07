@@ -1,9 +1,9 @@
-use crate::{utilis::MemoryUsage, DotnetTypeRef, IString, Type};
+use crate::{v2::ClassRefIdx, v2::Type, IString};
 use serde::{Deserialize, Serialize};
 /// This struct descibes a .NET field. It contains information about the type this field belongs to, the name of the field, and the fields type.
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize, Debug, Hash)]
 pub struct FieldDescriptor {
-    owner: DotnetTypeRef,
+    owner: ClassRefIdx,
     tpe: Type,
     name: IString,
 }
@@ -20,30 +20,18 @@ impl FieldDescriptor {
     }
     /// Returns the the type this field belongs to. For getting the type of this field, see [self.tpe]
     #[must_use]
-    pub const fn owner(&self) -> &DotnetTypeRef {
+    pub const fn owner(&self) -> &ClassRefIdx {
         &self.owner
     }
     /// Constructs a new fieldref, reffering to field of type `tpe`, belonging to `owner`, and named `name`
     #[must_use]
-    pub fn new(owner: DotnetTypeRef, tpe: Type, name: IString) -> Self {
+    pub fn new(owner: ClassRefIdx, tpe: Type, name: IString) -> Self {
         assert_ne!(tpe, Type::Void);
         Self { owner, tpe, name }
     }
     /// The same as [`Self::new`], but also boxes the field descriptor.
     #[must_use]
-    pub fn boxed(owner: DotnetTypeRef, tpe: Type, name: IString) -> Box<Self> {
+    pub fn boxed(owner: ClassRefIdx, tpe: Type, name: IString) -> Box<Self> {
         Box::new(Self { owner, tpe, name })
-    }
-}
-impl MemoryUsage for FieldDescriptor {
-    fn memory_usage(&self, counter: &mut impl crate::utilis::MemoryUsageCounter) -> usize {
-        let tpe_name = std::any::type_name::<Self>();
-        let self_size = std::mem::size_of::<Self>();
-
-        let tpe_size = self.tpe.memory_usage(counter);
-        let name_size = self.name.memory_usage(counter);
-        let size = self_size + tpe_size + name_size;
-        counter.add_type(tpe_name, size);
-        size
     }
 }

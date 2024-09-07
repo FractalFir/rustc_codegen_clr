@@ -92,4 +92,6 @@ fn main() {
         core::intrinsics::saturating_sub(black_box(2_usize), black_box(2)),
         0
     );
+    unsafe { printf(c"%u\n".as_ptr(), black_box(black_box(!0_u32) as f32) as u32) };
+    unsafe { printf(c"%f\n".as_ptr(), black_box(black_box(!0_u32) as f32) as f64) };
 }

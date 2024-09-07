@@ -9,7 +9,7 @@ use rustc_middle::mir::{CopyNonOverlapping, NonDivergingIntrinsic, Statement, St
 #[allow(clippy::match_same_arms)]
 pub fn handle_statement<'tcx>(
     statement: &Statement<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> Option<CILTree> {
     let kind = &statement.kind;
     match kind {
@@ -25,10 +25,8 @@ pub fn handle_statement<'tcx>(
 
             let layout = ctx.layout_of(owner_ty);
             //let (disrc_type, _) = crate::utilis::adt::enum_tag_info(&layout.layout, tcx);
-            let owner = if let cilly::Type::DotnetType(dotnet_type) = owner {
-                dotnet_type.as_ref().clone()
-            } else {
-                panic!();
+            let cilly::Type::ClassRef(owner) = owner else {
+                panic!("Nonsense operation: attempted to set the discriminant of type {owner_ty:?}, which is not valid.");
             };
             //ops.push();
 
@@ -37,9 +35,9 @@ pub fn handle_statement<'tcx>(
                     layout.layout,
                     *variant_index,
                     crate::place::place_adress(place, ctx),
-                    &owner,
-                    ctx.tcx(),
+                    owner,
                     owner_ty,
+                    ctx,
                 )
                 .into(),
             )
@@ -84,7 +82,9 @@ pub fn handle_statement<'tcx>(
                         CILRoot::CpBlk {
                             src: Box::new(src_op),
                             dst: Box::new(dst_op),
-                            len: Box::new(count_op * conv_usize!(size_of!(pointed))),
+                            len: Box::new(
+                                count_op * conv_usize!(size_of!((*ctx.asm().get_type(pointed)))),
+                            ),
                         }
                         .into(),
                     )

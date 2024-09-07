@@ -1,10 +1,7 @@
 use fxhash::{FxBuildHasher, FxHashSet};
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    cil_iter::CILIterElem, cil_node::ValidationContext, cil_root::CILRoot, cil_tree::CILTree,
-    utilis::MemoryUsage,
-};
+use crate::{cil_iter::CILIterElem, cil_root::CILRoot, cil_tree::CILTree};
 
 #[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
 /// A block of ops that is a valid jump target, and is protected by an exception handler.
@@ -215,25 +212,6 @@ impl BasicBlock {
     #[must_use]
     pub fn handler(&self) -> Option<&Handler> {
         self.handler.as_ref()
-    }
-    pub fn validate(&self, method: ValidationContext) -> Result<(), String> {
-        let errs: Vec<String> = self
-            .trees()
-            .iter()
-            .filter_map(|tree| {
-                match tree
-                    .validate(method)
-                    .map_err(|err| format!("{tree:?}:\n\n{err}"))
-                {
-                    Ok(()) => None,
-                    Err(err) => Some(err),
-                }
-            })
-            .collect::<Vec<_>>();
-        if !errs.is_empty() {
-            return Err(errs[0].clone());
-        }
-        Ok(())
     }
 
     pub(crate) fn iter_tree_roots(&self) -> impl Iterator<Item = &CILRoot> {

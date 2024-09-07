@@ -1,33 +1,33 @@
-/// Cached type handler
-pub(crate) mod tycache;
 /// A representation of a primitve type or a reference.
 pub mod r#type;
-/// Contains a reperesentation of a non-primitve .NET type(class,struct)
-pub(crate) mod type_def;
-use std::num::NonZeroU32;
+
+use std::num::{NonZero, NonZeroU32};
 
 use crate::{
     fn_ctx::MethodCompileCtx,
     utilis::{adt::FieldOffsetIterator, garg_to_string},
 };
-use cilly::v2::{Access, ClassDef, ClassRef, ClassRefIdx, Float, Int, StringIdx, Type};
+use cilly::v2::{
+    cilnode::MethodKind, Access, BasicBlock, BinOp, CILNode, CILRoot, ClassDef, ClassDefIdx,
+    ClassRef, ClassRefIdx, Float, Int, MethodDef, MethodImpl, StringIdx, Type,
+};
 pub use r#type::*;
 use rustc_middle::ty::{AdtDef, AdtKind, FloatTy, IntTy, List, ParamEnv, Ty, TyKind, UintTy};
 use rustc_span::def_id::DefId;
 use rustc_target::abi::Layout;
-pub use tycache::*;
-pub use type_def::*;
+//pub use tycache::*;
+//pub use type_def::*;
 
 #[must_use]
 pub fn from_int(int_tpe: &IntTy) -> cilly::Type {
     use cilly::Type;
     match int_tpe {
-        IntTy::I8 => Type::I8,
-        IntTy::I16 => Type::I16,
-        IntTy::I32 => Type::I32,
-        IntTy::I64 => Type::I64,
-        IntTy::I128 => Type::I128,
-        IntTy::Isize => Type::ISize,
+        IntTy::I8 => Type::Int(Int::I8),
+        IntTy::I16 => Type::Int(Int::I16),
+        IntTy::I32 => Type::Int(Int::I32),
+        IntTy::I64 => Type::Int(Int::I64),
+        IntTy::I128 => Type::Int(Int::I128),
+        IntTy::Isize => Type::Int(Int::ISize),
     }
 }
 
@@ -35,12 +35,12 @@ pub fn from_int(int_tpe: &IntTy) -> cilly::Type {
 pub fn from_uint(uint_tpe: &UintTy) -> cilly::Type {
     use cilly::Type;
     match uint_tpe {
-        UintTy::U8 => Type::U8,
-        UintTy::U16 => Type::U16,
-        UintTy::U32 => Type::U32,
-        UintTy::U64 => Type::U64,
-        UintTy::U128 => Type::U128,
-        UintTy::Usize => Type::USize,
+        UintTy::U8 => Type::Int(Int::U8),
+        UintTy::U16 => Type::Int(Int::U16),
+        UintTy::U32 => Type::Int(Int::U32),
+        UintTy::U64 => Type::Int(Int::U64),
+        UintTy::U128 => Type::Int(Int::U128),
+        UintTy::Usize => Type::Int(Int::USize),
     }
 }
 
@@ -48,10 +48,10 @@ pub fn from_uint(uint_tpe: &UintTy) -> cilly::Type {
 pub fn from_float(float: &FloatTy) -> cilly::Type {
     use cilly::Type;
     match float {
-        FloatTy::F16 => Type::F16,
-        FloatTy::F32 => Type::F32,
-        FloatTy::F64 => Type::F64,
-        FloatTy::F128 => Type::F128,
+        FloatTy::F16 => Type::Float(Float::F16),
+        FloatTy::F32 => Type::Float(Float::F32),
+        FloatTy::F64 => Type::Float(Float::F64),
+        FloatTy::F128 => Type::Float(Float::F128),
     }
 }
 fn get_adt<'tcx>(
@@ -60,7 +60,7 @@ fn get_adt<'tcx>(
 
     subst: &'tcx List<rustc_middle::ty::GenericArg<'tcx>>,
     name: StringIdx,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> ClassRefIdx {
     let cref = ClassRef::new(name, None, true, [].into());
     if ctx.asm_mut().contains_ref(&cref) {
@@ -77,7 +77,7 @@ fn get_adt<'tcx>(
     }
 }
 /// Converts a Rust MIR type to an optimized .NET type representation.
-pub fn get_type<'tcx>(ty: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>) -> Type {
+pub fn get_type<'tcx>(ty: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_>) -> Type {
     let ty = ctx.monomorphize(ty);
     // If this is a ZST, return a void type.
     if crate::utilis::is_zst(ty, ctx.tcx()) {
@@ -135,19 +135,13 @@ pub fn get_type<'tcx>(ty: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>
                     None,
                     vec![],
                     vec![],
-                    vec![],
                     cilly::v2::Access::Public,
                     None,
                 ));
             }
             Type::ClassRef(cref)
         }
-        TyKind::Float(float) => match float {
-            FloatTy::F16 => Type::Float(Float::F16),
-            FloatTy::F32 => Type::Float(Float::F32),
-            FloatTy::F64 => Type::Float(Float::F64),
-            FloatTy::F128 => Type::Float(Float::F128),
-        },
+        TyKind::Float(float) => from_float(float),
         TyKind::Foreign(_foregin) => Type::Void,
         TyKind::FnDef(_did, _subst) => Type::Void,
         TyKind::FnPtr(sig, _) => {
@@ -164,6 +158,8 @@ pub fn get_type<'tcx>(ty: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>
             let sig = ctx.asm_mut().sig(inputs, output);
             Type::FnPtr(sig)
         }
+        TyKind::Int(int) => from_int(int),
+        TyKind::Uint(int) => from_uint(int),
         TyKind::Never => Type::Void,
         TyKind::RawPtr(inner, _) | TyKind::Ref(_, inner, _) => {
             if pointer_to_is_fat(*inner, ctx.tcx(), ctx.instance()) {
@@ -184,6 +180,22 @@ pub fn get_type<'tcx>(ty: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>
         TyKind::Slice(inner) => {
             let inner = ctx.monomorphize(*inner);
             get_type(inner, ctx)
+        }
+        TyKind::Tuple(types) => {
+            let types: Vec<_> = types.iter().map(|ty| get_type(ty, ctx)).collect();
+            if types.is_empty() {
+                Type::Void
+            } else {
+                let name = tuple_name(&types, ctx.asm_mut());
+                let name = ctx.asm_mut().alloc_string(name);
+                let cref = ClassRef::new(name, None, true, [].into());
+                // This only checks if a refernce to this class has already been allocated. In theory, allocating a class reference beforhand could break this, and make it not add the type definition
+                if !ctx.asm().contains_ref(&cref) {
+                    let layout = ctx.layout_of(ty);
+                    let _ = tuple_typedef(&types, layout.layout, ctx, name);
+                }
+                Type::ClassRef(ctx.asm_mut().alloc_class_ref(cref))
+            }
         }
         TyKind::Adt(def, subst) => {
             let name = crate::utilis::adt_name(*def, ctx.tcx(), subst);
@@ -250,49 +262,141 @@ pub fn get_type<'tcx>(ty: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>
             let element = get_type(element, ctx);
             // Get the layout and size of this array
             let layout = ctx.layout_of(ty);
-            let arr_size = layout.layout.size();
-            let element_name = element.mangle(ctx.asm());
-            let arr_name = format!("A{length}_{element_name}");
-            let arr_name = ctx.asm_mut().alloc_string(arr_name);
+            let arr_size = layout.layout.size().bytes();
+
             // Get the reference to the array class
-            let cref =
-                ctx.asm_mut()
-                    .alloc_class_ref(ClassRef::new(arr_name, None, true, [].into()));
+            let cref = ClassRef::fixed_array(element, length, ctx.asm_mut());
+
             // If the array definition not already present, add it.
             if ctx.asm().class_ref_to_def(cref).is_none() {
                 let fields = vec![(element, ctx.asm_mut().alloc_string("f0"), Some(0))];
-                ctx.asm_mut().class_def(ClassDef::new(
-                    arr_name,
+                let class_ref = ctx.asm().class_ref(cref).clone();
+                let size = if let Ok(size) = std::convert::TryInto::<u32>::try_into(arr_size) {
+                    size
+                } else if *crate::config::ABORT_ON_ERROR {
+                    panic!("Array {ty:?} size {arr_size} >= 2^32. Unsuported.")
+                } else {
+                    eprintln!("WARNING: Array {ty:?} excceeds max size of 2^32. Clamping the size, this can cause UB.");
+                    u32::MAX
+                };
+                let arr = ctx.asm_mut().class_def(ClassDef::new(
+                    class_ref.name(),
                     true,
                     0,
                     None,
                     fields,
                     vec![],
-                    vec![],
                     Access::Public,
-                    Some(
-                        NonZeroU32::new(
-                            arr_size
-                                .bytes()
-                                .try_into()
-                                .expect("Array size >= 2^32. Unsuported."),
-                        )
-                        .unwrap(),
-                    ),
+                    Some(NonZeroU32::new(size).unwrap()),
+                ));
+                // Common nodes
+                let ldarg_0 = ctx.asm_mut().alloc_node(CILNode::LdArg(0));
+                let ldarg_1 = ctx.asm_mut().alloc_node(CILNode::LdArg(1));
+                let ldarg_2 = ctx.asm_mut().alloc_node(CILNode::LdArg(2));
+                let elem_tpe_idx = ctx.asm_mut().alloc_type(element);
+                let elem_size = ctx.asm_mut().alloc_node(CILNode::SizeOf(elem_tpe_idx));
+                let offset =
+                    ctx.asm_mut()
+                        .alloc_node(CILNode::BinOp(ldarg_1, elem_size, BinOp::Mul));
+                let elem_addr =
+                    ctx.asm_mut()
+                        .alloc_node(CILNode::BinOp(ldarg_0, offset, BinOp::Add));
+                // Defintion of the set_Item method.
+                let set_item = ctx.asm_mut().alloc_string("set_Item");
+                let this_ref = ctx.asm_mut().nref(Type::ClassRef(cref));
+                let set_sig = ctx
+                    .asm_mut()
+                    .sig([this_ref, Type::Int(Int::USize), element], Type::Void);
+                let arg_names = vec![
+                    Some(ctx.asm_mut().alloc_string("this")),
+                    Some(ctx.asm_mut().alloc_string("idx")),
+                    Some(ctx.asm_mut().alloc_string("elem")),
+                ];
+                let set_root = ctx.asm_mut().alloc_root(CILRoot::StInd(Box::new((
+                    elem_addr, ldarg_2, element, false,
+                ))));
+                let void_ret = ctx.asm_mut().alloc_root(CILRoot::VoidRet);
+                ctx.asm_mut().new_method(MethodDef::new(
+                    Access::Public,
+                    arr,
+                    set_item,
+                    set_sig,
+                    MethodKind::Instance,
+                    MethodImpl::MethodBody {
+                        blocks: vec![BasicBlock::new(vec![set_root, void_ret], 0, None)],
+                        locals: vec![],
+                    },
+                    arg_names,
+                ));
+                // Implementation of the get_Item method
+                let get_item = ctx.asm_mut().alloc_string("get_Item");
+                let get_sig = ctx
+                    .asm_mut()
+                    .sig([this_ref, Type::Int(Int::USize)], element);
+                let arg_names = vec![
+                    Some(ctx.asm_mut().alloc_string("this")),
+                    Some(ctx.asm_mut().alloc_string("idx")),
+                ];
+                let elem_val = ctx.asm_mut().alloc_node(CILNode::LdInd {
+                    addr: elem_addr,
+                    tpe: elem_tpe_idx,
+                    volitale: false,
+                });
+                let elem_ret = ctx.asm_mut().alloc_root(CILRoot::Ret(elem_val));
+                ctx.asm_mut().new_method(MethodDef::new(
+                    Access::Public,
+                    arr,
+                    get_item,
+                    get_sig,
+                    MethodKind::Instance,
+                    MethodImpl::MethodBody {
+                        blocks: vec![BasicBlock::new(vec![elem_ret], 0, None)],
+                        locals: vec![],
+                    },
+                    arg_names,
+                ));
+                // Implementation of the get_Address method
+                let get_address = ctx.asm_mut().alloc_string("get_Address");
+                let elem_ref_tpe = ctx.asm_mut().nptr(element);
+                let addr_sig = ctx
+                    .asm_mut()
+                    .sig([this_ref, Type::Int(Int::USize)], elem_ref_tpe);
+                let arg_names = vec![
+                    Some(ctx.asm_mut().alloc_string("this")),
+                    Some(ctx.asm_mut().alloc_string("idx")),
+                ];
+
+                let elem_ret = ctx.asm_mut().alloc_root(CILRoot::Ret(elem_addr));
+                ctx.asm_mut().new_method(MethodDef::new(
+                    Access::Public,
+                    arr,
+                    get_address,
+                    addr_sig,
+                    MethodKind::Instance,
+                    MethodImpl::MethodBody {
+                        blocks: vec![BasicBlock::new(vec![elem_ret], 0, None)],
+                        locals: vec![],
+                    },
+                    arg_names,
                 ));
             }
             Type::ClassRef(cref)
         }
         TyKind::Alias(_, _) => panic!("Attempted to get the .NET type of an unmorphized type"),
+        TyKind::Coroutine(_, _) => {
+            if *crate::config::ABORT_ON_ERROR {
+                panic!("Corutine {ty:?} is not yet supported")
+            } else {
+                eprintln!("WARNING: Corutine {ty:?} is not yet supported. Replacing it with Void to continue anyway, this can cause UB.");
+                Type::Void
+            }
+        }
         _ => todo!("Can't yet get type {ty:?} from type cache."),
     }
 }
 
 /// Returns a fat pointer to an inner type.
-pub fn fat_ptr_to<'tcx>(
-    mut inner: Ty<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
-) -> ClassRefIdx {
+pub fn fat_ptr_to<'tcx>(mut inner: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_>) -> ClassRefIdx {
     inner = ctx.monomorphize(inner);
     let inner_tpe = get_type(inner, ctx);
     let name = format!("FatPtr{elem}", elem = inner_tpe.mangle(ctx.asm()));
@@ -319,7 +423,6 @@ pub fn fat_ptr_to<'tcx>(
                 ),
             ],
             vec![],
-            vec![],
             Access::Public,
             Some(NonZeroU32::new(16).unwrap()),
         );
@@ -332,7 +435,7 @@ pub fn closure_name(
     _def_id: DefId,
     fields: &[Type],
     _sig: cilly::v2::SigIdx,
-    ctx: &mut MethodCompileCtx<'_, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'_, '_>,
 ) -> String {
     let mangled_fields: String = fields.iter().map(|tpe| tpe.mangle(ctx.asm())).collect();
     format!(
@@ -345,7 +448,7 @@ pub fn closure_name(
 pub fn closure_typedef(
     fields: &[Type],
     layout: Layout,
-    ctx: &mut MethodCompileCtx<'_, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'_, '_>,
     closure_name: StringIdx,
 ) -> ClassDef {
     // Collects all field types, offsets, and names
@@ -369,7 +472,6 @@ pub fn closure_typedef(
         None,
         fields,
         vec![],
-        vec![],
         Access::Public,
         Some(
             NonZeroU32::new(
@@ -389,7 +491,7 @@ fn struct_<'tcx>(
     adt: AdtDef<'tcx>,
     adt_ty: Ty<'tcx>,
     subst: &'tcx List<rustc_middle::ty::GenericArg<'tcx>>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> ClassDef {
     // Double-check is not a ZST.
 
@@ -415,6 +517,15 @@ fn struct_<'tcx>(
         }
         fields.push((field_type, ctx.asm_mut().alloc_string(name), Some(offset)));
     }
+    let size = layout.layout.size().bytes();
+    let size = if let Ok(size) = std::convert::TryInto::<u32>::try_into(size) {
+        size
+    } else if *crate::config::ABORT_ON_ERROR {
+        panic!("Struct {adt_ty:?} size {size} >= 2^32. Unsuported.")
+    } else {
+        eprintln!("WARNING: Struct {adt_ty:?} excceeds max size of 2^32. Clamping the size, this can cause UB.");
+        u32::MAX
+    };
     ClassDef::new(
         name,
         true,
@@ -422,12 +533,8 @@ fn struct_<'tcx>(
         None,
         fields,
         vec![],
-        vec![],
         Access::Public,
-        Some(
-            NonZeroU32::new(layout.layout.size().bytes().try_into().unwrap())
-                .expect("Type size can't be 0!"),
-        ),
+        NonZeroU32::new(size),
     )
 }
 /// Turns an adt enum defintion into a [`ClassDef`]
@@ -436,15 +543,16 @@ fn enum_<'tcx>(
     adt: AdtDef<'tcx>,
     adt_ty: Ty<'tcx>,
     subst: &'tcx List<rustc_middle::ty::GenericArg<'tcx>>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> ClassDef {
     let layout = ctx.layout_of(adt_ty);
     let mut fields: Vec<(Type, StringIdx, Option<u32>)> = vec![];
     // Handle the enum tag.
     match &layout.variants {
         rustc_target::abi::Variants::Single { index: _ } => {
-            let (tag_type, offset) = crate::utilis::adt::enum_tag_info(layout.layout, ctx.tcx());
-            let tag_type = Type::from_v1(&tag_type, ctx.asm_mut());
+            let (tag_type, offset) =
+                crate::utilis::adt::enum_tag_info(layout.layout, ctx.asm_mut());
+
             if tag_type != Type::Void {
                 fields.push((
                     tag_type,
@@ -464,8 +572,8 @@ fn enum_<'tcx>(
             match tag_encoding {
                 rustc_target::abi::TagEncoding::Direct => {
                     let (tag_type, offset) =
-                        crate::utilis::adt::enum_tag_info(layout.layout, ctx.tcx());
-                    let tag_type = Type::from_v1(&tag_type, ctx.asm_mut());
+                        crate::utilis::adt::enum_tag_info(layout.layout, ctx.asm_mut());
+
                     if tag_type != Type::Void {
                         fields.push((
                             tag_type,
@@ -480,9 +588,9 @@ fn enum_<'tcx>(
                     ..
                 } => {
                     let (tag_type, offset) =
-                        crate::utilis::adt::enum_tag_info(layout.layout, ctx.tcx());
+                        crate::utilis::adt::enum_tag_info(layout.layout, ctx.asm_mut());
                     let offsets = FieldOffsetIterator::fields((*layout.layout.0).clone());
-                    let tag_type = Type::from_v1(&tag_type, ctx.asm_mut());
+
                     assert!(offsets.count() > 0, "layout.fields:{:?}", layout.fields);
                     if tag_type != Type::Void {
                         fields.push((
@@ -527,7 +635,6 @@ fn enum_<'tcx>(
         None,
         fields,
         vec![],
-        vec![],
         Access::Public,
         Some(NonZeroU32::new(layout.layout.size().bytes().try_into().unwrap()).unwrap()),
     )
@@ -538,7 +645,7 @@ fn union_<'tcx>(
     adt: AdtDef<'tcx>,
     adt_ty: Ty<'tcx>,
     subst: &'tcx List<rustc_middle::ty::GenericArg<'tcx>>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> ClassDef {
     // Get union layout
     let layout = ctx.layout_of(adt_ty);
@@ -570,8 +677,211 @@ fn union_<'tcx>(
         None,
         fields,
         vec![],
-        vec![],
         Access::Public,
         Some(NonZeroU32::new(layout.layout.size().bytes().try_into().unwrap()).unwrap()),
     )
+}
+/*
+fn array_methods(element_count: usize, arr_class: ClassDefIdx, element: Type, asm: &mut Assembly) {
+    if element_count > 0 {
+        let mimpl = cilly::v2::MethodImpl::MethodBody {
+            blocks: vec![cilly::v2::BasicBlock::new(
+                vec![
+                    CILRoot::STObj {
+                        tpe: element.clone().into(),
+                        addr_calc: Box::new(
+                            (conv_usize!(ld_field_address!(
+                                CILNode::LDArg(0),
+                                FieldDescriptor::boxed(
+                                    (&def).into(),
+                                    element.clone(),
+                                    "f0".to_string().into(),
+                                )
+                            )) + CILNode::LDArg(1) * conv_usize!(size_of!(element.clone())))
+                            .cast_ptr(Type::Ptr(Box::new(element.clone()))),
+                        ),
+                        value_calc: Box::new(CILNode::LDArg(2)),
+                    }
+                    .into(),
+                    CILRoot::VoidRet.into(),
+                ],
+                0,
+                None,
+            )],
+            locals: [].into(),
+        };
+        let set_usize = MethodDef::new(
+            Access::Public,
+            arr_class,
+            asm.alloc_string("set_Item"),
+            asm.sig(
+                [
+                    asm.nptr(Type::ClassRef(*arr_class)),
+                    Type::Int(Int::USize),
+                    element,
+                ],
+                cilly::v2::Type::Void,
+            ),
+            MethodKind::Instance,
+            mimpl,
+            vec![
+                Some(asm.alloc_string("this")),
+                Some(asm.alloc_string("idx")),
+                Some(asm.alloc_string("val")),
+            ],
+        );
+
+        def.add_method(set_usize);
+
+        // get_Address(usize offset)
+        let get_adress_usize = Method::new(
+            AccessModifer::Public,
+            MethodType::Instance,
+            cilly::fn_sig::FnSig::new(
+                &[
+                    Type::Ptr(Box::new(def.clone().into())),
+                    Type::Int(Int::USize),
+                ],
+                Type::Ptr(element.clone().into()),
+            ),
+            "get_Address",
+            vec![],
+            vec![BasicBlock::new(
+                vec![CILRoot::Ret {
+                    tree: (conv_usize!(ld_field_address!(
+                        CILNode::LDArg(0),
+                        FieldDescriptor::boxed(
+                            (&def).into(),
+                            element.clone(),
+                            "f0".to_string().into(),
+                        )
+                    )) + CILNode::LDArg(1) * conv_usize!(size_of!(element.clone())))
+                    .cast_ptr(Type::Ptr(Box::new(element.clone()))),
+                }
+                .into()],
+                0,
+                None,
+            )],
+            vec![Some("this".into()), Some("idx".into())],
+        );
+        get_adress_usize.validate().unwrap();
+        def.add_method(get_adress_usize);
+
+        // get_Item
+        let get_item_usize = Method::new(
+            AccessModifer::Public,
+            MethodType::Instance,
+            cilly::fn_sig::FnSig::new(
+                &[
+                    Type::Ptr(Box::new(def.clone().into())),
+                    Type::Int(Int::USize),
+                ],
+                element.clone(),
+            ),
+            "get_Item",
+            vec![],
+            vec![BasicBlock::new(
+                vec![CILRoot::Ret {
+                    tree: CILNode::LdObj {
+                        ptr: Box::new(
+                            (conv_usize!(ld_field_address!(
+                                CILNode::LDArg(0),
+                                FieldDescriptor::boxed(
+                                    (&def).into(),
+                                    element.clone(),
+                                    "f0".to_string().into(),
+                                )
+                            )) + CILNode::LDArg(1) * conv_usize!(size_of!(element.clone())))
+                            .cast_ptr(Type::Ptr(Box::new(element.clone()))),
+                        ),
+                        obj: Box::new(element),
+                    },
+                }
+                .into()],
+                0,
+                None,
+            )],
+            vec![Some("this".into()), Some("idx".into())],
+        );
+        get_item_usize.validate().unwrap();
+        def.add_method(get_item_usize);
+
+        //to_string.set_ops(ops);
+        //def.add_method(to_string);
+    }
+    def
+}
+*/
+#[must_use]
+pub fn escape_field_name(name: &str) -> String {
+    match name.chars().next() {
+        None => "fld".into(),
+        Some(first) => {
+            if !(first.is_alphabetic() || first == '_')
+        || name == "value"
+        || name == "flags"
+        || name == "alignment"
+        || name == "init"
+        || name == "string"
+        || name == "nint"
+        || name == "nuint"
+        || name == "out"
+        || name == "rem"
+        || name == "add"
+        || name == "div"
+        || name == "error"
+        || name == "opt"
+        || name == "private"
+        || name == "public"
+        || name == "object"
+        || name == "class"
+        //FIXME: this is a sign of a bug. ALL fields not starting with a letter should have been caught by the statement above.
+        || name == "0"
+            {
+                format!("m_{name}")
+            } else {
+                name.into()
+            }
+        }
+    }
+}
+#[must_use]
+pub fn tuple_typedef(
+    elements: &[Type],
+    layout: Layout,
+    ctx: &mut MethodCompileCtx<'_, '_>,
+    name: StringIdx,
+) -> ClassDefIdx {
+    let field_iter = elements
+        .iter()
+        .enumerate()
+        .map(|(idx, ele)| (format!("Item{}", idx + 1), *ele));
+    let explicit_offset_iter = FieldOffsetIterator::fields((*layout.0).clone());
+
+    let mut fields = Vec::new();
+    for ((name, field), offset) in (field_iter).zip(explicit_offset_iter) {
+        if field == Type::Void {
+            continue;
+        }
+        fields.push((field, ctx.asm_mut().alloc_string(name), Some(offset)));
+    }
+    ctx.asm_mut().class_def(ClassDef::new(
+        name,
+        true,
+        0,
+        None,
+        fields,
+        vec![],
+        Access::Public,
+        Some(
+            NonZero::new(
+                layout
+                    .size()
+                    .bytes()
+                    .try_into()
+                    .expect("Tuple size >= 2^32. Unsuported"),
+            )
+            .expect("Zero-sized tuple!"),
+        ),
+    ))
 }

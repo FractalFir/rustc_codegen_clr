@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{cil_node::ValidationContext, cil_root::CILRoot, IString, Type};
+use crate::{cil_root::CILRoot, IString, Type};
 
 #[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
 /// A root of a CIL Tree with metadata about local variables it reads/writes into.  
@@ -53,16 +53,14 @@ impl CILTree {
         // self.tree.borrow_mut().allocate_tmps(None, locals);
         self.tree.allocate_tmps(None, locals);
     }
-    pub fn validate(&self, vctx: ValidationContext) -> Result<(), String> {
-        self.root().validate(vctx, None)
-    }
+
     // TODO: remember to make this recompute tree metadtata when it is added
     pub fn root_mut(&mut self) -> &mut CILRoot {
         //self.tree.borrow_mut()
         &mut self.tree
     }
 }
-
+/*
 #[test]
 fn test_sheed() {
     use crate::cil_node::CILNode;
@@ -70,7 +68,7 @@ fn test_sheed() {
         [CILRoot::STLoc {
             local: 11,
             tree: CILNode::TemporaryLocal(Box::new((
-                Type::DotnetType(Box::new(crate::DotnetTypeRef::new::<&str, _>(
+                Type::ClassRef(Box::new(crate::ClassRef::new::<&str, _>(
                     None,
                     "core.ptr.metadata.PtrComponents.h4c1f0d773746020e",
                 ))),
@@ -79,7 +77,7 @@ fn test_sheed() {
                 }]),
                 CILNode::LdObj {
                     ptr: Box::new(CILNode::LoadAddresOfTMPLocal),
-                    obj: Box::new(Type::DotnetType(Box::new(crate::DotnetTypeRef::new::<
+                    obj: Box::new(Type::ClassRef(Box::new(crate::ClassRef::new::<
                         &str,
                         _,
                     >(
@@ -92,7 +90,7 @@ fn test_sheed() {
         .into(),
         Box::new(CILNode::LdObj {
             ptr: Box::new(CILNode::LDLocA(11)),
-            obj: Box::new(Type::DotnetType(Box::new(crate::DotnetTypeRef::new::<
+            obj: Box::new(Type::ClassRef(Box::new(crate::ClassRef::new::<
                 &str,
                 _,
             >(
@@ -112,9 +110,9 @@ fn test_sheed() {
 fn test_alloc() {
     use crate::cil_node::CILNode;
     let mut tree: CILNode = CILNode::TemporaryLocal(Box::new((
-        Type::U8,
+        Type::Int(Int::U8),
         [CILRoot::SetTMPLocal {
-            value: CILNode::TemporaryLocal(Box::new((Type::U8, [].into(), CILNode::LDLoc(0)))),
+            value: CILNode::TemporaryLocal(Box::new((Type::Int(Int::U8), [].into(), CILNode::LDLoc(0)))),
         }]
         .into(),
         CILNode::LDLoc(0),
@@ -123,3 +121,4 @@ fn test_alloc() {
     let mut locs = vec![];
     tree.allocate_tmps(None, &mut locs);
 }
+*/

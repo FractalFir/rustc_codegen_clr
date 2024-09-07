@@ -1,19 +1,14 @@
 use std::ops::DerefMut;
 
-use crate::r#type::tycache::TyCache;
-use cilly::{asm::Assembly, cil_iter_mut::CILIterElemMut, cil_node::CILNode, method::Method};
-use rustc_middle::ty::TyCtxt;
+use cilly::{cil_iter_mut::CILIterElemMut, cil_node::CILNode, method::Method};
 
-pub(crate) fn resolve_global_allocations(
-    method: &mut Method,
-    asm: &mut Assembly,
-    tcx: TyCtxt,
-    tycache: &mut TyCache,
-) {
+use crate::fn_ctx::MethodCompileCtx;
+
+pub(crate) fn resolve_global_allocations(method: &mut Method, ctx: &mut MethodCompileCtx<'_, '_>) {
     let mut blocks = method.blocks_mut();
     let mut tmp: Vec<_> = blocks
         .iter_mut()
-        .flat_map(|block| block.tree_iter())
+        .flat_map(cilly::basic_block::BasicBlock::tree_iter)
         .map(cilly::cil_tree::CILTree::root_mut)
         .collect();
     tmp.iter_mut()
@@ -22,11 +17,13 @@ pub(crate) fn resolve_global_allocations(
             if let CILIterElemMut::Node(node) = elem {
                 match node {
                     CILNode::LoadGlobalAllocPtr { alloc_id } => {
-                        *node = crate::assembly::add_allocation(asm, *alloc_id, tcx, tycache);
+                        let (tcx, asm) = ctx.tcx_and_asm();
+                        *node = crate::assembly::add_allocation(*alloc_id, asm, tcx);
                     }
                     CILNode::PointerToConstValue(bytes) => {
+                        let asm = ctx.asm_mut();
                         *node = CILNode::LDStaticField(Box::new(crate::assembly::add_const_value(
-                            asm, **bytes, tcx,
+                            asm, **bytes,
                         )));
                     }
                     _ => (),

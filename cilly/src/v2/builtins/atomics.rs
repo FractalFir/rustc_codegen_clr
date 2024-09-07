@@ -26,6 +26,33 @@ pub fn emulate_uint8_cmp_xchng(asm: &mut Assembly, patcher: &mut MissingMethodPa
         },
         Int::I32,
     );
+    let name = asm.alloc_string("atomic_xchng_u8");
+    let generator = move |_, asm: &mut Assembly| {
+        let ldarg_0 = asm.alloc_node(CILNode::LdArg(0));
+        let ldarg_1 = asm.alloc_node(CILNode::LdArg(1));
+        let ldloc_0 = asm.alloc_node(CILNode::LdLoc(0));
+        let uint8_idx = asm.alloc_type(Type::Int(Int::U8));
+        // Load value at addr 0 and write it to tmp
+        let arg0_val = asm.alloc_node(CILNode::LdInd {
+            addr: ldarg_0,
+            tpe: uint8_idx,
+            volitale: true,
+        });
+        let set_tmp = asm.alloc_root(CILRoot::StLoc(0, arg0_val));
+        // Copy arg1 to addr0
+        let copy_arg1 = asm.alloc_root(CILRoot::StInd(Box::new((
+            ldarg_0,
+            ldarg_1,
+            Type::Int(Int::U8),
+            true,
+        ))));
+        let ret = asm.alloc_root(CILRoot::Ret(ldloc_0));
+        MethodImpl::MethodBody {
+            blocks: vec![BasicBlock::new(vec![set_tmp, copy_arg1, ret], 0, None)],
+            locals: vec![(None, uint8_idx)],
+        }
+    };
+    patcher.insert(name, Box::new(generator));
 }
 pub fn generate_atomic(
     asm: &mut Assembly,
@@ -51,7 +78,7 @@ pub fn generate_atomic(
 
         let cmpxchng_sig = asm.sig([tref, tpe, tpe], tpe);
         let interlocked = ClassRef::interlocked(asm);
-        let interlocked = asm.alloc_class_ref(interlocked);
+
         let compare_exchange = asm.alloc_string("CompareExchange");
         let mref = asm.alloc_methodref(MethodRef::new(
             interlocked,
@@ -121,6 +148,29 @@ pub fn generate_all_atomics(asm: &mut Assembly, patcher: &mut MissingMethodPatch
     generate_atomic_for_ints(asm, patcher, "min", int_min);
     // Emulates 1 byte compare exchange
     emulate_uint8_cmp_xchng(asm, patcher);
+    for int in [Int::ISize, Int::USize] {
+        generate_atomic(
+            asm,
+            patcher,
+            "or",
+            |asm, lhs, rhs, _| asm.alloc_node(CILNode::BinOp(lhs, rhs, BinOp::Or)),
+            int,
+        );
+        generate_atomic(
+            asm,
+            patcher,
+            "and",
+            |asm, lhs, rhs, _| asm.alloc_node(CILNode::BinOp(lhs, rhs, BinOp::And)),
+            int,
+        );
+        generate_atomic(
+            asm,
+            patcher,
+            "add",
+            |asm, lhs, rhs, _| asm.alloc_node(CILNode::BinOp(lhs, rhs, BinOp::Add)),
+            int,
+        );
+    }
 }
 /*
   .method public hidebysig static

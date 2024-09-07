@@ -1,21 +1,18 @@
 use std::fmt::Debug;
 
-use fxhash::FxHashMap;
-
 use crate::method::Method;
 use crate::static_field_desc::StaticFieldDescriptor;
+use crate::v2::{ClassRef, Int};
 use crate::{
     asm::Assembly, call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, eq, lt, size_of,
 };
-use crate::{
-    call, call_virt, conv_i32, conv_usize, ldc_i32, ldc_u32, mul, ptr, DotnetTypeRef, FnSig, Type,
-};
+use crate::{call, call_virt, conv_i32, conv_usize, ldc_i32, ldc_u32, mul, FnSig, Type};
 pub fn argc_argv_init_method(asm: &mut Assembly) -> CallSite {
     use std::num::NonZeroU8;
     let init_cs = CallSite::new(
         None,
         "argc_argv_init".into(),
-        FnSig::new(&[], Type::Void),
+        FnSig::new([], Type::Void),
         true,
     );
     if asm.contains_fn(&init_cs) {
@@ -24,7 +21,7 @@ pub fn argc_argv_init_method(asm: &mut Assembly) -> CallSite {
     let mut init_method = Method::new(
         crate::access_modifier::AccessModifer::Extern,
         crate::method::MethodType::Static,
-        FnSig::new(&[], Type::Void),
+        FnSig::new([], Type::Void),
         "argc_argv_init",
         vec![],
         vec![],
@@ -32,29 +29,32 @@ pub fn argc_argv_init_method(asm: &mut Assembly) -> CallSite {
     );
 
     // Allocate the variables necesarry for initializng args.
-    let argc = u32::try_from(init_method.add_local(Type::I32, Some("argc".into()))).unwrap();
+    let argc =
+        u32::try_from(init_method.add_local(Type::Int(Int::I32), Some("argc".into()))).unwrap();
+    let uint8_ptr = asm.nptr(Type::Int(Int::U8));
     let argv =
-        u32::try_from(init_method.add_local(ptr!(ptr!(Type::U8)), Some("argv".into()))).unwrap();
+        u32::try_from(init_method.add_local(asm.nptr(uint8_ptr), Some("argv".into()))).unwrap();
     let managed_args = u32::try_from(init_method.add_local(
-        Type::ManagedArray {
-            element: Box::new(DotnetTypeRef::string_type().into()),
+        Type::PlatformArray {
+            elem: asm.alloc_type(Type::PlatformString),
             dims: NonZeroU8::new(1).unwrap(),
         },
         Some("managed_args".into()),
     ))
     .unwrap();
-    let arg_idx = u32::try_from(init_method.add_local(Type::I32, Some("arg_idx".into()))).unwrap();
+    let arg_idx =
+        u32::try_from(init_method.add_local(Type::Int(Int::I32), Some("arg_idx".into()))).unwrap();
     // Get managed args
     let margs_init = CILRoot::STLoc {
         local: managed_args,
         tree: call!(
             CallSite::new_extern(
-                DotnetTypeRef::enviroment(),
+                ClassRef::enviroment(asm),
                 "GetCommandLineArgs".into(),
                 FnSig::new(
-                    &[],
-                    Type::ManagedArray {
-                        element: Box::new(DotnetTypeRef::string_type().into()),
+                    [],
+                    Type::PlatformArray {
+                        elem: asm.alloc_type(Type::PlatformString),
                         dims: NonZeroU8::new(1).unwrap()
                     }
                 ),
@@ -70,18 +70,19 @@ pub fn argc_argv_init_method(asm: &mut Assembly) -> CallSite {
             arr: CILNode::LDLoc(managed_args).into()
         }),
     };
+
     // Alloc argv
     let tree = call!(
-        CallSite::aligned_alloc(),
+        CallSite::aligned_alloc(asm),
         [
             mul!(
                 conv_usize!(CILNode::LDLoc(argc)),
-                conv_usize!(size_of!(Type::USize))
+                conv_usize!(size_of!(Type::Int(Int::USize)))
             ),
             conv_usize!(ldc_u32!(8))
         ]
     )
-    .cast_ptr(ptr!(ptr!(Type::U8)));
+    .cast_ptr(asm.nptr(uint8_ptr));
     let argv_alloc = CILRoot::STLoc { local: argv, tree };
     // Create the block which allocates argv and calculates argc.
     let start_bb = init_method.new_bb();
@@ -127,13 +128,14 @@ pub fn argc_argv_init_method(asm: &mut Assembly) -> CallSite {
         idx: CILNode::LDLoc(arg_idx).into(),
     };
     // Convert the nth managed argument to UTF16
-    let uarg = mstring_to_utf8ptr(arg_nth);
+    let uarg = mstring_to_utf8ptr(arg_nth, asm);
     // Store the converted arg at idx+1
     loop_block.trees_mut().push(
         CILRoot::STIndPtr(
-            CILNode::LDLoc(argv) + conv_usize!(size_of!(Type::ISize) * CILNode::LDLoc(arg_idx)),
+            CILNode::LDLoc(argv)
+                + conv_usize!(size_of!(Type::Int(Int::ISize)) * CILNode::LDLoc(arg_idx)),
             uarg,
-            Box::new(Type::U8),
+            Box::new(Type::Int(Int::U8)),
         )
         .into(),
     );
@@ -175,7 +177,7 @@ pub fn argc_argv_init_method(asm: &mut Assembly) -> CallSite {
     let loop_end_bb = init_method.new_bb();
     let mut blocks = init_method.blocks_mut();
     let loop_end_block = &mut blocks[loop_end_bb as usize];
-    let argv_static = StaticFieldDescriptor::new(None, ptr!(ptr!(Type::U8)), "argv".into());
+    let argv_static = StaticFieldDescriptor::new(None, asm.nptr(uint8_ptr), "argv".into());
     loop_end_block.trees_mut().push(
         CILRoot::SetStaticField {
             descr: Box::new(argv_static),
@@ -183,7 +185,7 @@ pub fn argc_argv_init_method(asm: &mut Assembly) -> CallSite {
         }
         .into(),
     );
-    let argc_static = StaticFieldDescriptor::new(None, Type::I32, "argc".into());
+    let argc_static = StaticFieldDescriptor::new(None, Type::Int(Int::I32), "argc".into());
     loop_end_block.trees_mut().push(
         CILRoot::SetStaticField {
             descr: Box::new(argc_static),
@@ -214,141 +216,30 @@ pub fn argc_argv_init_method(asm: &mut Assembly) -> CallSite {
     drop(blocks);
     asm.add_method(init_method);
     asm.add_static(Type::Bool, "argv_argc_init_status", false);
-    asm.add_static(ptr!(ptr!(Type::U8)), "argv", false);
-    asm.add_static(Type::I32, "argc", false);
+    let uint8_ptr_ptr = asm.nptr(uint8_ptr);
+    asm.add_static(uint8_ptr_ptr, "argv", false);
+    asm.add_static(Type::Int(Int::I32), "argc", false);
     init_cs
 }
-pub fn mstring_to_utf8ptr(mstring: CILNode) -> CILNode {
+pub fn mstring_to_utf8ptr(mstring: CILNode, asm: &mut Assembly) -> CILNode {
     call!(
         CallSite::new_extern(
-            DotnetTypeRef::marshal(),
+            ClassRef::marshal(asm),
             "StringToCoTaskMemUTF8".into(),
-            FnSig::new(&[DotnetTypeRef::string_type().into()], Type::ISize),
+            FnSig::new([Type::PlatformString], Type::Int(Int::ISize)),
             true
         ),
         [mstring]
     )
-    .cast_ptr(ptr!(Type::U8))
+    .cast_ptr(asm.nptr(Type::Int(Int::U8)))
 }
-/*
- .method public hidebysig
-        instance uint8** M () cil managed
-    {
-        // Method begins at RVA 0x2050
-        // Code size 182 (0xb6)
-        .maxstack 3
-        .locals init (
-            [0] int32 count,
-            [1] uint8** ptr,
-            [2] native uint num,
-            [3] class [System.Runtime]System.Collections.IDictionaryEnumerator enumerator,
-            [4] valuetype [System.Runtime]System.ValueTuple`2<string, string> valueTuple,
-            [5] string s,
-            [6] class [System.Runtime]System.IDisposable disposable
-        )
-
-        IL_0000: ldsfld uint8** C::environ
-        IL_0005: ldc.i4.0
-        IL_0006: conv.u
-        IL_0007: beq.s IL_000f
-
-        IL_0009: ldsfld uint8** C::environ
-        IL_000e: ret
-
-        IL_000f: call class [System.Runtime]System.Collections.IDictionary [System.Runtime]System.Environment::GetEnvironmentVariables()
-        IL_0014: dup
-        IL_0015: callvirt instance int32 [System.Runtime]System.Collections.ICollection::get_Count()
-        IL_001a: stloc.0
-        IL_001b: ldloc.0
-        IL_001c: ldc.i4.1
-        IL_001d: add
-        IL_001e: sizeof uint8*
-        IL_0024: mul
-        IL_0025: conv.i
-        IL_0026: sizeof uint8*
-        IL_002c: conv.i
-        IL_002d: call void* [System.Runtime.InteropServices]System.Runtime.InteropServices.NativeMemory::AlignedAlloc(native uint, native uint)
-        IL_0032: stloc.1
-        IL_0033: ldc.i4.0
-        IL_0034: conv.i
-        IL_0035: stloc.2
-        IL_0036: callvirt instance class [System.Runtime]System.Collections.IDictionaryEnumerator [System.Runtime]System.Collections.IDictionary::GetEnumerator()
-        IL_003b: stloc.3
-        .try
-        {
-            // sequence point: hidden
-            IL_003c: br.s IL_007e
-            // loop start (head: IL_007e)
-                IL_003e: ldloc.3
-
-                IL_003f: callvirt instance object [System.Runtime]System.Collections.IEnumerator::get_Current()
-                IL_0044: unbox.any valuetype [System.Runtime]System.ValueTuple`2<string, string>
-                IL_0049: stloc.s 4
-                IL_004b: ldloc.s 4
-                IL_004d: ldfld !0 valuetype [System.Runtime]System.ValueTuple`2<string, string>::Item1
-                IL_0052: ldstr "="
-                IL_0057: ldloc.s 4
-                IL_0059: ldfld !1 valuetype [System.Runtime]System.ValueTuple`2<string, string>::Item2
-                IL_005e: call string [System.Runtime]System.String::Concat(string, string, string)
-                IL_0063: stloc.s 5
-                IL_0065: ldloc.1
-                IL_0066: ldloc.2
-                IL_0067: conv.u8
-                IL_0068: sizeof uint8*
-                IL_006e: conv.i8
-                IL_006f: mul
-                IL_0070: conv.u
-                IL_0071: add
-                IL_0072: ldloc.s 5
-                IL_0074: call native int [System.Runtime.InteropServices]System.Runtime.InteropServices.Marshal::StringToCoTaskMemUTF8(string)
-                IL_0079: stind.i
-                IL_007a: ldloc.2
-                IL_007b: ldc.i4.1
-                IL_007c: add
-                IL_007d: stloc.2
-
-                IL_007e: ldloc.3
-                IL_007f: callvirt instance bool [System.Runtime]System.Collections.IEnumerator::MoveNext()
-                IL_0084: brtrue.s IL_003e
-            // end loop
-
-            IL_0086: leave.s IL_009c
-        } // end .try
-        finally
-        {
-            IL_0088: ldloc.3
-            IL_0089: isinst [System.Runtime]System.IDisposable
-            IL_008e: stloc.s 6
-            IL_0090: ldloc.s 6
-            IL_0092: brfalse.s IL_009b
-
-            IL_0094: ldloc.s 6
-            IL_0096: callvirt instance void [System.Runtime]System.IDisposable::Dispose()
-
-            IL_009b: endfinally
-        } // end handler
-
-        IL_009c: ldloc.1
-        IL_009d: ldloc.0
-        IL_009e: conv.i
-        IL_009f: sizeof uint8*
-        IL_00a5: mul
-        IL_00a6: add
-        IL_00a7: ldc.i4.0
-        IL_00a8: conv.u
-        IL_00a9: stind.i
-        IL_00aa: ldloc.1
-        IL_00ab: stsfld uint8** C::environ
-        IL_00b0: ldsfld uint8** C::environ
-        IL_00b5: ret
-    } // end of method C::M
-
-*/
 pub fn get_environ(asm: &mut Assembly) -> CallSite {
+    let uint8_ptr = asm.nptr(Type::Int(Int::U8));
+    let uint8_ptr_ptr = asm.nptr(uint8_ptr);
     let init_cs = CallSite::new(
         None,
         "get_environ".into(),
-        FnSig::new(&[], ptr!(ptr!(Type::U8))),
+        FnSig::new([], uint8_ptr_ptr),
         true,
     );
     if asm.contains_fn(&init_cs) {
@@ -357,30 +248,27 @@ pub fn get_environ(asm: &mut Assembly) -> CallSite {
     let mut get_environ = Method::new(
         crate::access_modifier::AccessModifer::Extern,
         crate::method::MethodType::Static,
-        FnSig::new(&[], ptr!(ptr!(Type::U8))),
+        FnSig::new([], uint8_ptr_ptr),
         "get_environ",
         vec![],
         vec![],
         vec![],
     );
     let dictionary_local = get_environ.add_local(
-        Type::DotnetType(Box::new(DotnetTypeRef::i_dictionary())),
+        Type::ClassRef(ClassRef::i_dictionary(asm)),
         Some("dict".into()),
     ) as u32;
-    let envc = get_environ.add_local(Type::I32, Some("envc".into())) as u32;
-    let arr_ptr = get_environ.add_local(ptr!(ptr!(Type::U8)), Some("arr_ptr".into())) as u32;
-    let idx = get_environ.add_local(Type::I32, Some("idx".into())) as u32;
+    let envc = get_environ.add_local(Type::Int(Int::I32), Some("envc".into())) as u32;
+    let arr_ptr = get_environ.add_local(uint8_ptr_ptr, Some("arr_ptr".into())) as u32;
+    let idx = get_environ.add_local(Type::Int(Int::I32), Some("idx".into())) as u32;
     let iter_local = get_environ.add_local(
-        Type::DotnetType(Box::new(DotnetTypeRef::dictionary_iterator())),
+        Type::ClassRef(ClassRef::dictionary_iterator(asm)),
         Some("iter".into()),
     ) as u32;
-    let keyval_tpe = DotnetTypeRef::dictionary_entry();
-    let keyval = get_environ.add_local(
-        Type::DotnetType(Box::new(keyval_tpe.clone())),
-        Some("keyval".into()),
-    ) as u32;
+    let keyval_tpe = ClassRef::dictionary_entry(asm);
+    let keyval = get_environ.add_local(Type::ClassRef(keyval_tpe), Some("keyval".into())) as u32;
     let encoded_keyval = get_environ.add_local(
-        Type::DotnetType(Box::new(DotnetTypeRef::string_type())),
+        Type::ClassRef(ClassRef::string(asm)),
         Some("encoded_keyval".into()),
     ) as u32;
     let first_check_bb = get_environ.new_bb();
@@ -395,9 +283,9 @@ pub fn get_environ(asm: &mut Assembly) -> CallSite {
             target: ret_bb,
             sub_target: 0,
             a: Box::new(CILNode::LDStaticField(Box::new(
-                StaticFieldDescriptor::new(None, ptr!(ptr!(Type::U8)), "environ".into()),
+                StaticFieldDescriptor::new(None, uint8_ptr_ptr, "environ".into()),
             ))),
-            b: Box::new(conv_usize!(ldc_u32!(0)).cast_ptr(ptr!(ptr!(Type::U8)))),
+            b: Box::new(conv_usize!(ldc_u32!(0)).cast_ptr(uint8_ptr_ptr)),
         }
         .into(),
     );
@@ -414,12 +302,9 @@ pub fn get_environ(asm: &mut Assembly) -> CallSite {
             local: dictionary_local,
             tree: call!(
                 CallSite::new(
-                    Some(DotnetTypeRef::enviroment()),
+                    Some(ClassRef::enviroment(asm)),
                     "GetEnvironmentVariables".into(),
-                    FnSig::new(
-                        &[],
-                        Type::DotnetType(Box::new(DotnetTypeRef::i_dictionary()))
-                    ),
+                    FnSig::new([], Type::ClassRef(ClassRef::i_dictionary(asm))),
                     true
                 ),
                 []
@@ -432,11 +317,11 @@ pub fn get_environ(asm: &mut Assembly) -> CallSite {
             local: envc,
             tree: call_virt!(
                 CallSite::new(
-                    Some(DotnetTypeRef::collection()),
+                    Some(ClassRef::i_collection(asm)),
                     "get_Count".into(),
                     FnSig::new(
-                        &[Type::DotnetType(Box::new(DotnetTypeRef::i_dictionary()))],
-                        Type::I32
+                        [Type::ClassRef(ClassRef::i_dictionary(asm))],
+                        Type::Int(Int::I32)
                     ),
                     false
                 ),
@@ -446,13 +331,13 @@ pub fn get_environ(asm: &mut Assembly) -> CallSite {
         .into(),
     );
     let element_count = CILNode::LDLoc(envc) + ldc_i32!(1);
-    let arr_size = conv_usize!(element_count * size_of!(ptr!(ptr!(Type::U8))));
-    let arr_align = conv_usize!(size_of!(ptr!(ptr!(Type::U8))));
+    let arr_size = conv_usize!(element_count * size_of!(uint8_ptr_ptr));
+    let arr_align = conv_usize!(size_of!(uint8_ptr_ptr));
     init.trees_mut().push(
         CILRoot::STLoc {
             local: arr_ptr,
-            tree: call!(CallSite::aligned_alloc(), [arr_size, arr_align])
-                .cast_ptr(ptr!(ptr!(Type::U8))),
+            tree: call!(CallSite::aligned_alloc(asm), [arr_size, arr_align])
+                .cast_ptr(uint8_ptr_ptr),
         }
         .into(),
     );
@@ -468,11 +353,11 @@ pub fn get_environ(asm: &mut Assembly) -> CallSite {
             local: iter_local,
             tree: call_virt!(
                 CallSite::new(
-                    Some(DotnetTypeRef::i_dictionary()),
+                    Some(ClassRef::i_dictionary(asm)),
                     "GetEnumerator".into(),
                     FnSig::new(
-                        &[Type::DotnetType(Box::new(DotnetTypeRef::i_dictionary()))],
-                        Type::DotnetType(Box::new(DotnetTypeRef::dictionary_iterator()))
+                        [Type::ClassRef(ClassRef::i_dictionary(asm))],
+                        Type::ClassRef(ClassRef::dictionary_iterator(asm))
                     ),
                     false
                 ),
@@ -494,7 +379,7 @@ pub fn get_environ(asm: &mut Assembly) -> CallSite {
         CILRoot::Ret {
             tree: CILNode::LDStaticField(Box::new(StaticFieldDescriptor::new(
                 None,
-                ptr!(ptr!(Type::U8)),
+                uint8_ptr_ptr,
                 "environ".into(),
             ))),
         }
@@ -507,12 +392,10 @@ pub fn get_environ(asm: &mut Assembly) -> CallSite {
             sub_target: 0,
             cond: call_virt!(
                 CallSite::new_extern(
-                    DotnetTypeRef::collection_iterator(),
+                    ClassRef::i_enumerator(asm),
                     "MoveNext".into(),
                     FnSig::new(
-                        &[Type::DotnetType(Box::new(
-                            DotnetTypeRef::dictionary_iterator()
-                        ))],
+                        [Type::ClassRef(ClassRef::dictionary_iterator(asm))],
                         Type::Bool,
                     ),
                     false
@@ -528,47 +411,35 @@ pub fn get_environ(asm: &mut Assembly) -> CallSite {
             tree: CILNode::UnboxAny(
                 Box::new(call_virt!(
                     CallSite::new_extern(
-                        DotnetTypeRef::collection_iterator(),
+                        ClassRef::i_enumerator(asm),
                         "get_Current".into(),
                         FnSig::new(
-                            &[Type::DotnetType(Box::new(
-                                DotnetTypeRef::dictionary_iterator()
-                            ))],
-                            Type::DotnetType(Box::new(DotnetTypeRef::object_type())),
+                            [Type::ClassRef(ClassRef::dictionary_iterator(asm))],
+                            Type::PlatformObject,
                         ),
                         false
                     ),
                     [CILNode::LDLoc(iter_local)]
                 )),
-                Box::new(Type::DotnetType(Box::new(keyval_tpe.clone()))),
+                Box::new(Type::ClassRef(keyval_tpe)),
             ),
         }
         .into(),
     );
     let key = call!(
         CallSite::new_extern(
-            keyval_tpe.clone(),
+            keyval_tpe,
             "get_Key".into(),
-            FnSig::new(
-                [Type::ManagedReference(
-                    Type::DotnetType(Box::new(keyval_tpe.clone())).into()
-                )],
-                Type::DotnetType(Box::new(DotnetTypeRef::object_type()))
-            ),
+            FnSig::new([asm.nref(Type::ClassRef(keyval_tpe))], Type::PlatformObject),
             false,
         ),
         [CILNode::LDLocA(keyval)]
     );
     let value = call!(
         CallSite::new_extern(
-            keyval_tpe.clone(),
+            keyval_tpe,
             "get_Value".into(),
-            FnSig::new(
-                [Type::ManagedReference(
-                    Type::DotnetType(Box::new(keyval_tpe.clone())).into()
-                )],
-                Type::DotnetType(Box::new(DotnetTypeRef::object_type()))
-            ),
+            FnSig::new([asm.nref(Type::ClassRef(keyval_tpe))], Type::PlatformObject),
             false,
         ),
         [CILNode::LDLocA(keyval)]
@@ -578,15 +449,15 @@ pub fn get_environ(asm: &mut Assembly) -> CallSite {
             local: encoded_keyval,
             tree: call!(
                 CallSite::new_extern(
-                    DotnetTypeRef::string_type(),
+                    ClassRef::string(asm),
                     "Concat".into(),
                     FnSig::new(
-                        &[
-                            Type::DotnetType(Box::new(DotnetTypeRef::object_type())),
-                            Type::DotnetType(Box::new(DotnetTypeRef::object_type())),
-                            Type::DotnetType(Box::new(DotnetTypeRef::object_type()))
+                        [
+                            Type::PlatformObject,
+                            Type::PlatformObject,
+                            Type::PlatformObject
                         ],
-                        Type::DotnetType(Box::new(DotnetTypeRef::string_type()))
+                        Type::PlatformString
                     ),
                     true
                 ),
@@ -595,13 +466,12 @@ pub fn get_environ(asm: &mut Assembly) -> CallSite {
         }
         .into(),
     );
-    let utf8_kval = mstring_to_utf8ptr(CILNode::LDLoc(encoded_keyval));
+    let utf8_kval = mstring_to_utf8ptr(CILNode::LDLoc(encoded_keyval), asm);
     loop_body.trees_mut().push(
         CILRoot::STIndPtr(
-            CILNode::LDLoc(arr_ptr)
-                + conv_usize!(CILNode::LDLoc(idx) * size_of!(ptr!(ptr!(Type::U8)))),
+            CILNode::LDLoc(arr_ptr) + conv_usize!(CILNode::LDLoc(idx) * size_of!(uint8_ptr_ptr)),
             utf8_kval,
-            Box::new(Type::U8),
+            Box::new(Type::Int(Int::U8)),
         )
         .into(),
     );
@@ -621,13 +491,12 @@ pub fn get_environ(asm: &mut Assembly) -> CallSite {
         .into(),
     );
     let loop_end = &mut blocks[loop_end_bb as usize];
-    let null_ptr = conv_usize!(ldc_u32!(0)).cast_ptr(ptr!(Type::U8));
+    let null_ptr = conv_usize!(ldc_u32!(0)).cast_ptr(uint8_ptr);
     loop_end.trees_mut().push(
         CILRoot::STIndPtr(
-            CILNode::LDLoc(arr_ptr)
-                + conv_usize!(CILNode::LDLoc(envc) * size_of!(ptr!(ptr!(Type::U8)))),
+            CILNode::LDLoc(arr_ptr) + conv_usize!(CILNode::LDLoc(envc) * size_of!(uint8_ptr_ptr)),
             null_ptr,
-            Box::new(Type::U8),
+            Box::new(Type::Int(Int::U8)),
         )
         .into(),
     );
@@ -635,7 +504,7 @@ pub fn get_environ(asm: &mut Assembly) -> CallSite {
         CILRoot::SetStaticField {
             descr: Box::new(StaticFieldDescriptor::new(
                 None,
-                ptr!(ptr!(Type::U8)),
+                uint8_ptr_ptr,
                 "environ".into(),
             )),
             value: CILNode::LDLoc(arr_ptr),
@@ -645,7 +514,7 @@ pub fn get_environ(asm: &mut Assembly) -> CallSite {
     drop(blocks);
     asm.add_method(get_environ);
 
-    asm.add_static(ptr!(ptr!(Type::U8)), "environ", true);
+    asm.add_static(uint8_ptr_ptr, "environ", true);
     init_cs
 }
 static CHARS: &[char] = &[
@@ -675,164 +544,7 @@ fn argv() {
     let mut asm = Assembly::empty();
     argc_argv_init_method(&mut asm);
 }
-pub trait MemoryUsage {
-    fn memory_usage(&self, counter: &mut impl MemoryUsageCounter) -> usize;
-}
-pub trait MemoryUsageCounter {
-    fn add_type(&mut self, tpe_name: &str, size: usize);
-    fn add_field(&mut self, tpe_name: &str, field_name: &str, size: usize);
-}
-impl<K: MemoryUsage, V: MemoryUsage> MemoryUsage for FxHashMap<K, V> {
-    fn memory_usage(&self, counter: &mut impl MemoryUsageCounter) -> usize {
-        let mut total_size = std::mem::size_of::<Self>();
-        let tpe_name = std::any::type_name::<Self>();
-        let values = self.values().map(|val| val.memory_usage(counter)).sum();
-        counter.add_field(tpe_name, "values", values);
-        total_size += values;
-        let keys = self.values().map(|val| val.memory_usage(counter)).sum();
-        total_size += keys;
-        counter.add_field(tpe_name, "keys", keys);
-        counter.add_type(tpe_name, total_size);
-        total_size
-    }
-}
-impl<T: MemoryUsage> MemoryUsage for Vec<T> {
-    fn memory_usage(&self, counter: &mut impl MemoryUsageCounter) -> usize {
-        let mut total_size = std::mem::size_of::<Self>();
-        let tpe_name = std::any::type_name::<Self>();
-        let elements = self.iter().map(|val| val.memory_usage(counter)).sum();
-        counter.add_field(tpe_name, "elements", elements);
-        total_size += elements;
-        counter.add_type(tpe_name, total_size);
-        total_size
-    }
-}
 
-impl<T: MemoryUsage> MemoryUsage for Option<T> {
-    fn memory_usage(&self, counter: &mut impl MemoryUsageCounter) -> usize {
-        let mut total_size = std::mem::size_of::<Self>();
-        let tpe_name = std::any::type_name::<Self>();
-        let inner = match self.as_ref() {
-            Some(inner) => inner.memory_usage(counter),
-            None => 0,
-        };
-        counter.add_field(tpe_name, "inner", inner);
-        total_size += inner;
-        counter.add_type(tpe_name, total_size);
-        total_size
-    }
-}
-
-impl<T: MemoryUsage> MemoryUsage for Box<T> {
-    fn memory_usage(&self, counter: &mut impl MemoryUsageCounter) -> usize {
-        let mut total_size = std::mem::size_of::<Self>();
-        let tpe_name = std::any::type_name::<Self>();
-        let inner = self.as_ref().memory_usage(counter);
-        counter.add_field(tpe_name, "inner", inner);
-        total_size += inner;
-        counter.add_type(tpe_name, total_size);
-        total_size
-    }
-}
-impl MemoryUsage for Box<str> {
-    fn memory_usage(&self, counter: &mut impl MemoryUsageCounter) -> usize {
-        let mut total_size = std::mem::size_of::<Self>();
-        let tpe_name = std::any::type_name::<Self>();
-        let inner = self.as_ref().len();
-        counter.add_field(tpe_name, "inner", inner);
-        total_size += inner;
-        counter.add_type(tpe_name, total_size);
-        total_size
-    }
-}
-impl MemoryUsage for bool {
-    fn memory_usage(&self, counter: &mut impl MemoryUsageCounter) -> usize {
-        let total_size = std::mem::size_of::<Self>();
-        counter.add_type("bool", total_size);
-        total_size
-    }
-}
-impl MemoryUsage for u16 {
-    fn memory_usage(&self, counter: &mut impl MemoryUsageCounter) -> usize {
-        let total_size = std::mem::size_of::<Self>();
-        counter.add_type("u16", total_size);
-        total_size
-    }
-}
-impl MemoryUsage for std::ops::Range<u64> {
-    fn memory_usage(&self, counter: &mut impl MemoryUsageCounter) -> usize {
-        let total_size = std::mem::size_of::<Self>();
-        counter.add_type("Range<u64>", total_size);
-        total_size
-    }
-}
-impl<T: MemoryUsage> MemoryUsage for &T {
-    fn memory_usage(&self, counter: &mut impl MemoryUsageCounter) -> usize {
-        (*self).memory_usage(counter)
-    }
-}
-impl<A: MemoryUsage> MemoryUsage for (A,) {
-    fn memory_usage(&self, counter: &mut impl MemoryUsageCounter) -> usize {
-        let mut total_size = std::mem::size_of::<Self>();
-        let tpe_name = std::any::type_name::<Self>();
-        let a = self.0.memory_usage(counter);
-        counter.add_field(tpe_name, "0", a);
-        total_size += a;
-        counter.add_type(tpe_name, total_size);
-        total_size
-    }
-}
-impl<A: MemoryUsage, B: MemoryUsage> MemoryUsage for (A, B) {
-    fn memory_usage(&self, counter: &mut impl MemoryUsageCounter) -> usize {
-        let mut total_size = std::mem::size_of::<Self>();
-        let tpe_name = std::any::type_name::<Self>();
-        let a = self.0.memory_usage(counter);
-        counter.add_field(tpe_name, "0", a);
-        total_size += a;
-        let b = self.1.memory_usage(counter);
-        counter.add_field(tpe_name, "1", b);
-        total_size += b;
-        counter.add_type(tpe_name, total_size);
-        total_size
-    }
-}
-impl<A: MemoryUsage, B: MemoryUsage, C: MemoryUsage> MemoryUsage for (A, B, C) {
-    fn memory_usage(&self, counter: &mut impl MemoryUsageCounter) -> usize {
-        let mut total_size = std::mem::size_of::<Self>();
-        let tpe_name = std::any::type_name::<Self>();
-        let a = self.0.memory_usage(counter);
-        counter.add_field(tpe_name, "0", a);
-        total_size += a;
-        let b = self.1.memory_usage(counter);
-        counter.add_field(tpe_name, "1", b);
-        total_size += b;
-        let c = self.2.memory_usage(counter);
-        counter.add_field(tpe_name, "2", c);
-        total_size += c;
-        counter.add_type(tpe_name, total_size);
-        total_size
-    }
-}
-impl<A: MemoryUsage, B: MemoryUsage, C: MemoryUsage, D: MemoryUsage> MemoryUsage for (A, B, C, D) {
-    fn memory_usage(&self, counter: &mut impl MemoryUsageCounter) -> usize {
-        let mut total_size = std::mem::size_of::<Self>();
-        let tpe_name = std::any::type_name::<Self>();
-        let a = self.0.memory_usage(counter);
-        counter.add_field(tpe_name, "0", a);
-        total_size += a;
-        let b = self.1.memory_usage(counter);
-        counter.add_field(tpe_name, "1", b);
-        total_size += b;
-        let c = self.2.memory_usage(counter);
-        counter.add_field(tpe_name, "2", c);
-        total_size += c;
-        let d = self.3.memory_usage(counter);
-        counter.add_field(tpe_name, "3", c);
-        total_size += d;
-        counter.add_type(tpe_name, total_size);
-        total_size
-    }
-}
 #[test]
 fn environ() {
     let mut asm = Assembly::empty();

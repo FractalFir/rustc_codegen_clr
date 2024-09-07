@@ -9,7 +9,7 @@ use rustc_middle::{
 use crate::assembly::MethodCompileCtx;
 pub(crate) fn handle_operand<'tcx>(
     operand: &Operand<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> CILNode {
     let res = ctx.type_from_cache(ctx.monomorphize(operand.ty(ctx.body(), ctx.tcx())));
     if res == Type::Void {
@@ -22,7 +22,7 @@ pub(crate) fn handle_operand<'tcx>(
 }
 pub(crate) fn operand_address<'tcx>(
     operand: &Operand<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> CILNode {
     match operand {
         Operand::Copy(place) | Operand::Move(place) => crate::place::place_adress(place, ctx),
@@ -44,7 +44,7 @@ pub(crate) fn operand_address<'tcx>(
 /// Checks if this operand is uninitialzed, and assigements using it can safely be skipped.
 pub(crate) fn is_uninit<'tcx>(
     operand: &Operand<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> bool {
     match operand {
         Operand::Copy(_) | Operand::Move(_) => false,
@@ -78,9 +78,8 @@ pub(crate) fn is_uninit<'tcx>(
                 }
                 ConstValue::Indirect { alloc_id, .. } => {
                     let data = ctx.tcx().global_alloc(alloc_id);
-                    let data = match data {
-                        rustc_middle::mir::interpret::GlobalAlloc::Memory(data) => data,
-                        _ => return false,
+                    let rustc_middle::mir::interpret::GlobalAlloc::Memory(data) = data else {
+                        return false;
                     };
                     let mask = data.0.init_mask();
                     let mut chunks =

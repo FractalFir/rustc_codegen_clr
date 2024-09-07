@@ -10,6 +10,7 @@ pub struct BasicBlock {
 }
 
 impl BasicBlock {
+    #[must_use]
     pub fn new(roots: Vec<RootIdx>, block_id: u32, handler: Option<Vec<Self>>) -> Self {
         Self {
             roots,
@@ -18,16 +19,18 @@ impl BasicBlock {
         }
     }
 
+    #[must_use]
     pub fn roots(&self) -> &[RootIdx] {
         &self.roots
     }
 
+    #[must_use]
     pub fn block_id(&self) -> u32 {
         self.block_id
     }
     pub fn iter_roots(&self) -> impl Iterator<Item = RootIdx> + '_ {
         let handler_iter: Box<dyn Iterator<Item = RootIdx>> = match self.handler() {
-            Some(handler) => Box::new(handler.iter().flat_map(|block| block.iter_roots())),
+            Some(handler) => Box::new(handler.iter().flat_map(BasicBlock::iter_roots)),
             None => Box::new(std::iter::empty()),
         };
         self.roots().iter().copied().chain(handler_iter)
@@ -35,13 +38,10 @@ impl BasicBlock {
     /// Remaps all the roots in this block using `root_map` and `node_root`
     /// Iterates trough the roots of this block and its handlers
     pub fn iter_roots_mut(&mut self) -> impl Iterator<Item = &mut RootIdx> + '_ {
-        let handler_iter: Box<dyn Iterator<Item = &mut RootIdx>> =
-            match self.handler.as_mut().map(|b| b) {
-                Some(handler) => {
-                    Box::new(handler.iter_mut().flat_map(|block| block.iter_roots_mut()))
-                }
-                None => Box::new(std::iter::empty()),
-            };
+        let handler_iter: Box<dyn Iterator<Item = &mut RootIdx>> = match self.handler.as_mut() {
+            Some(handler) => Box::new(handler.iter_mut().flat_map(BasicBlock::iter_roots_mut)),
+            None => Box::new(std::iter::empty()),
+        };
         self.roots.iter_mut().chain(handler_iter)
     }
     /// Modifies all nodes and roots in this `BasicBlock`
@@ -54,22 +54,27 @@ impl BasicBlock {
         self.iter_roots_mut().for_each(|root| {
             let get_root = asm.get_root(*root).clone();
             let val = get_root.map(asm, root_map, node_map);
-            *root = asm.alloc_root(val)
-        })
+            *root = asm.alloc_root(val);
+        });
     }
+    #[must_use]
     pub fn handler(&self) -> Option<&[BasicBlock]> {
-        self.handler.as_ref().map(|b| b.as_ref())
+        self.handler.as_ref().map(std::convert::AsRef::as_ref)
     }
     pub fn handler_mut(&mut self) -> Option<&mut Vec<BasicBlock>> {
-        self.handler.as_mut().map(|b| b.as_mut())
+        self.handler.as_mut()
     }
     pub fn roots_mut(&mut self) -> &mut Vec<RootIdx> {
         &mut self.roots
     }
     pub fn handler_and_root_mut(&mut self) -> (Option<&mut [BasicBlock]>, &mut Vec<RootIdx>) {
-        (self.handler.as_mut().map(|b| b.as_mut()), &mut self.roots)
+        (
+            self.handler.as_mut().map(std::convert::AsMut::as_mut),
+            &mut self.roots,
+        )
     }
     /// Checks if this basic block consists of nothing more than an unconditional jump to another block
+    #[must_use]
     pub fn is_direct_jump(&self, asm: &Assembly) -> Option<(u32, u32)> {
         let mut meningfull_root = self.iter_roots().filter(|root| {
             !matches!(
@@ -88,6 +93,7 @@ impl BasicBlock {
         }
     }
     /// Checks if this basic block consists of nothing more thaan an uncondtional rethrow
+    #[must_use]
     pub fn is_only_rethrow(&self, asm: &Assembly) -> bool {
         let mut meningfull_root = self.iter_roots().filter(|root| {
             !matches!(

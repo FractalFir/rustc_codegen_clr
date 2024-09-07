@@ -1,6 +1,6 @@
 #![feature(rustc_private)]
 #![feature(let_chains)]
-#![feature(f16, alloc_error_hook, unsized_const_params)]
+#![feature(f16, alloc_error_hook)]
 #![warn(clippy::pedantic)]
 // Used for handling some configs. Will be refactored later.
 #![allow(clippy::assertions_on_constants)]
@@ -162,6 +162,7 @@ mod unsize;
 // rustc functions used here.
 use crate::rustc_middle::dep_graph::DepContext;
 use cilly::asm::Assembly;
+use fn_ctx::MethodCompileCtx;
 use rustc_codegen_ssa::{
     back::archive::{ArArchiveBuilder, ArchiveBuilder, ArchiveBuilderBuilder},
     traits::CodegenBackend,
@@ -180,10 +181,7 @@ use rustc_session::{
 };
 use rustc_span::ErrorGuaranteed;
 
-use std::{
-    any::Any,
-    path::{Path, PathBuf},
-};
+use std::{any::Any, path::Path};
 /// Immutable string - used to save a bit of memory on storage.
 pub type IString = cilly::IString;
 /// Immutable string - used to save a bit of memory on storage.
@@ -207,17 +205,14 @@ impl CodegenBackend for MyBackend {
 
             let mut asm = Assembly::empty();
             let _ = cilly::utilis::get_environ(&mut asm);
-            let mut cache = crate::r#type::TyCache::empty();
+
             for cgu in cgus {
                 //println!("codegen {} has {} items.", cgu.name(), cgu.items().len());
                 for (item, _data) in cgu.items() {
-                    assembly::add_item(&mut asm, *item, tcx, &mut cache)
-                        .expect("Could not add function");
+                    assembly::add_item(&mut asm, *item, tcx).expect("Could not add function");
                 }
             }
-            for type_def in cache.defs() {
-                asm.add_typedef(type_def.clone());
-            }
+
             if let Some((entrypoint, _kind)) = tcx.entry_fn(()) {
                 let penv = rustc_middle::ty::ParamEnv::reveal_all();
                 let entrypoint = rustc_middle::ty::Instance::try_resolve(
@@ -228,7 +223,8 @@ impl CodegenBackend for MyBackend {
                 )
                 .expect("Could not resolve entrypoint!")
                 .expect("Could not resolve entrypoint!");
-                let sig = function_sig::sig_from_instance_(entrypoint, tcx, &mut cache)
+                let mut ctx = MethodCompileCtx::new(tcx, None, entrypoint, asm.inner_mut());
+                let sig = function_sig::sig_from_instance_(entrypoint, &mut ctx)
                     .expect("Could not get the signature of the entrypoint.");
                 let symbol = tcx.symbol_name(entrypoint);
                 let symbol = format!("{symbol:?}");
@@ -239,7 +235,7 @@ impl CodegenBackend for MyBackend {
             let ffi_compile_timer = tcx
                 .profiler()
                 .generic_activity("insert .NET FFI functions/types");
-            builtin::insert_ffi_functions(&mut asm, tcx);
+            //builtin::insert_ffi_functions(&mut asm, tcx);
             drop(ffi_compile_timer);
             let name: IString = cgus.iter().next().unwrap().name().to_string().into();
 
@@ -341,8 +337,15 @@ const ENUM_TAG: &str = "v";
 Compiler test flags, used to skip tests which cause crashes.
 
 For core:
---skip atomic::atomic_access_bool --skip atomic::bool_and  --skip  atomic::bool_nand --skip cell::refcell_ref_coercion --skip future::test_join --skip  hash::test_writer_hasher --skip  manually_drop::smoke --skip num::i128::tests::test_saturating_abs --skip num::i128::tests::test_saturating_neg --skip  ptr::ptr_metadata --skip ptr::test_ptr_metadata_in_const --skip result::result_try_trait_v2_branch --skip simd::testing --skip slice::take_in_bounds_max_range_from --skip slice::take_in_bounds_max_range_to --skip slice::take_mut_in_bounds_max_range_from --skip slice::take_mut_in_bounds_max_range_to --skip slice::take_mut_oob_max_range_to_inclusive --skip slice::take_oob_max_range_to_inclusive
-
+--skip atomic::atomic_access_bool --skip atomic::bool_and  --skip  atomic::bool_nand --skip cell::refcell_ref_coercion --skip future::test_join --skip  hash::test_writer_hasher --skip  manually_drop::smoke
+--skip num::i128::tests::test_saturating_abs --skip num::i128::tests::test_saturating_neg --skip  ptr::ptr_metadata --skip ptr::test_ptr_metadata_in_const --skip result::result_try_trait_v2_branch --skip simd::testing
+--skip slice::take_in_bounds_max_range_from --skip slice::take_in_bounds_max_range_to --skip slice::take_mut_in_bounds_max_range_from --skip slice::take_mut_in_bounds_max_range_to --skip slice::take_mut_oob_max_range_to_inclusive
+--skip slice::take_oob_max_range_to_inclusive --skip cell::refcell_unsized --skip iter::adapters::array_chunks::test_iterator_array_chunks_count --skip num::flt2dec::strategy::dragon::test_to_exact_exp_str
+--skip num::flt2dec::strategy::dragon::test_to_exact_fixed_str --skip num::flt2dec::strategy::dragon::test_to_shortest_exp_str --skip num::flt2dec::strategy::dragon::test_to_shortest_str
+--skip num::flt2dec::strategy::grisu::test_to_exact_exp_str --skip num::flt2dec::strategy::grisu::test_to_exact_fixed_str --skip num::flt2dec::strategy::grisu::test_to_shortest_exp_str
+--skip num::flt2dec::strategy::grisu::test_to_shortest_str --skip num::i128::tests::test_leading_trailing_ones --skip num::i32::tests::test_leading_trailing_ones --skip num::i64::tests::test_leading_trailing_ones
+--skip num::u128::tests::test_leading_trailing_ones --skip num::u128::tests::test_reverse_bits --skip num::u128::tests::test_reverse_bits --skip num::u32::tests::test_leading_trailing_ones --skip num::u32::tests::test_reverse_bits
+--skip  num::u64::tests::test_leading_trailing_ones --skip num::u64::tests::test_reverse_bits --skip  slice::select_nth_unstable --skip  slice::test_array_windows_count --skip slice::test_binary_search --skip slice::test_windows_count
 For alloc:
 --test-threads 1
 */

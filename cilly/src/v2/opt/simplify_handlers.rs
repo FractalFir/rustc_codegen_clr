@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_variables)]
 use fxhash::{FxHashMap, FxHashSet};
 
 use crate::v2::{Assembly, BasicBlock, CILRoot};
@@ -27,9 +28,9 @@ fn block_targets<'a, 'asm: 'a>(
 }
 fn block_gc(blocks: &mut Vec<BasicBlock>, asm: &Assembly) {
     //debug_assert!(crate::utilis::is_sorted(bbs.iter(),|a,b|a.id + 1 == b.id));
-    let mut alive: FxHashSet<u32> = (FxHashSet::default());
-    let mut resurecting = (FxHashSet::default());
-    let mut to_resurect = (FxHashSet::default());
+    let mut alive: FxHashSet<u32> = FxHashSet::default();
+    let mut resurecting = FxHashSet::default();
+    let mut to_resurect = FxHashSet::default();
     to_resurect.insert(blocks[0].block_id());
     while !to_resurect.is_empty() {
         alive.extend(&resurecting);
@@ -52,7 +53,7 @@ fn block_gc(blocks: &mut Vec<BasicBlock>, asm: &Assembly) {
         .iter()
         .filter(|bb| alive.contains(&bb.block_id()))
         .cloned()
-        .collect()
+        .collect();
 }
 pub fn simplify_bbs(handler: Option<&mut Vec<BasicBlock>>, asm: &mut Assembly, fuel: &mut OptFuel) {
     let Some(blocks) = handler else { return };

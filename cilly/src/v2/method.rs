@@ -1,4 +1,4 @@
-use fxhash::{FxHashMap, FxHashSet};
+use fxhash::FxHashMap;
 use serde::{Deserialize, Serialize};
 
 use super::{
@@ -19,6 +19,7 @@ pub struct MethodRef {
 }
 
 impl MethodRef {
+    #[must_use]
     pub fn into_def(
         &self,
         implementation: MethodImpl,
@@ -39,6 +40,7 @@ impl MethodRef {
             arg_names,
         )
     }
+    #[must_use]
     pub fn new(
         class: ClassRefIdx,
         name: StringIdx,
@@ -55,22 +57,27 @@ impl MethodRef {
         }
     }
 
+    #[must_use]
     pub fn class(&self) -> ClassRefIdx {
         self.class
     }
 
+    #[must_use]
     pub fn name(&self) -> StringIdx {
         self.name
     }
 
+    #[must_use]
     pub fn sig(&self) -> SigIdx {
         self.sig
     }
 
+    #[must_use]
     pub fn kind(&self) -> MethodKind {
         self.kind
     }
 
+    #[must_use]
     pub fn generics(&self) -> &[Type] {
         &self.generics
     }
@@ -116,6 +123,7 @@ impl MethodDef {
             .chain(local_types.copied())
             .chain(body_types)
     }
+    #[must_use]
     pub fn iter_cil<'asm: 'method, 'method>(
         &'method self,
         asm: &'asm Assembly,
@@ -124,7 +132,7 @@ impl MethodDef {
             MethodImpl::MethodBody { blocks, .. } => Some(
                 blocks
                     .iter()
-                    .flat_map(|block| block.iter_roots())
+                    .flat_map(super::basic_block::BasicBlock::iter_roots)
                     .flat_map(|root| super::CILIter::new(asm.get_root(root).clone(), asm)),
             ),
             MethodImpl::Extern { .. } => None,
@@ -134,6 +142,7 @@ impl MethodDef {
             MethodImpl::Missing => None,
         }
     }
+    #[must_use]
     pub fn ref_to(&self) -> MethodRef {
         MethodRef::new(
             *self.class(),
@@ -143,6 +152,7 @@ impl MethodDef {
             vec![].into(),
         )
     }
+    #[must_use]
     pub fn new(
         access: Access,
         class: ClassDefIdx,
@@ -157,31 +167,37 @@ impl MethodDef {
             class,
             name,
             sig,
+            arg_names,
             kind,
             implementation,
-            arg_names,
         }
     }
 
+    #[must_use]
     pub fn class(&self) -> ClassDefIdx {
         self.class
     }
 
+    #[must_use]
     pub fn name(&self) -> StringIdx {
         self.name
     }
 
+    #[must_use]
     pub fn sig(&self) -> SigIdx {
         self.sig
     }
 
+    #[must_use]
     pub fn kind(&self) -> MethodKind {
         self.kind
     }
 
+    #[must_use]
     pub fn implementation(&self) -> &MethodImpl {
         &self.implementation
     }
+    #[must_use]
     pub fn resolved_implementation<'asm: 'method, 'method>(
         &'method self,
         asm: &'asm Assembly,
@@ -200,12 +216,12 @@ impl MethodDef {
         &mut self.implementation
     }
 
-    pub(crate) fn from_v1(
+    pub fn from_v1(
         v1: &crate::method::Method,
         asm: &mut super::Assembly,
         class: ClassDefIdx,
     ) -> Self {
-        let sig = FnSig::from_v1(v1.call_site().signature(), asm);
+        let sig = FnSig::from_v1(v1.call_site().signature());
         let sig = asm.alloc_sig(sig);
         let acceess = match v1.access() {
             crate::access_modifier::AccessModifer::Private => Access::Private,
@@ -230,10 +246,9 @@ impl MethodDef {
             .locals()
             .iter()
             .map(|(name, tpe)| {
-                let tpe = Type::from_v1(tpe, asm);
                 (
                     name.as_ref().map(|name| asm.alloc_string(name.clone())),
-                    asm.alloc_type(tpe),
+                    asm.alloc_type(*tpe),
                 )
             })
             .collect();
@@ -446,7 +461,7 @@ impl MethodImpl {
         };
         let mut new_locals = std::sync::Mutex::new(Vec::new());
         let local_map = std::sync::Mutex::new(FxHashMap::default());
-        blocks.iter_mut().for_each(|block| {
+        for block in blocks.iter_mut() {
             block.map_roots(
                 asm,
                 &mut |root, _| match root {
@@ -489,8 +504,8 @@ impl MethodImpl {
                     }
                     _ => node,
                 },
-            )
-        });
+            );
+        }
         // Swap new and locals
         std::mem::swap(locals, new_locals.get_mut().unwrap());
     }
@@ -508,6 +523,7 @@ impl std::ops::Deref for MethodDefIdx {
 impl MethodRefIdx {
     /// # Safety
     /// This function can't cause UB, but it can corrupt the internal assembly representation. Can only be used to rebuild a [`MethodRefIdx`] obtained in some other way.
+    #[must_use]
     pub unsafe fn from_raw(raw: BiMapIndex) -> Self {
         Self(raw)
     }

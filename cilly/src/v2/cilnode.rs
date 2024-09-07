@@ -3,13 +3,11 @@ use serde::{Deserialize, Serialize};
 use super::bimap::BiMapIndex;
 use super::field::{StaticFieldDesc, StaticFieldIdx};
 use super::{bimap::IntoBiMapIndex, Assembly, Const, Int, MethodRefIdx, SigIdx, TypeIdx};
-use super::{FieldDesc, FieldIdx, Float, StringIdx};
-use crate::r#type::Type as V1Type;
+use super::{ClassRef, FieldDesc, FieldIdx, Float, StringIdx};
+
+use crate::cil_node::CILNode as V1Node;
+use crate::v2::{FnSig, MethodRef, Type};
 use crate::IString;
-use crate::{
-    cil_node::CILNode as V1Node,
-    v2::{ClassRef, FnSig, MethodRef, Type},
-};
 #[derive(Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct NodeIdx(BiMapIndex);
 impl IntoBiMapIndex for NodeIdx {
@@ -147,9 +145,33 @@ pub enum BinOp {
     Div,
 }
 impl CILNode {
+    /// Turns a native object handle into a special handle of type [`Int::ISize`]
+    #[must_use]
+    pub fn ref_to_handle(&self, asm: &mut Assembly) -> Self {
+        let gc_handle = ClassRef::gc_handle(asm);
+        let alloc = asm.alloc_string("Alloc");
+        let alloc = asm.class_ref(gc_handle).clone().static_mref(
+            &[Type::PlatformObject],
+            Type::ClassRef(gc_handle),
+            alloc,
+            asm,
+        );
+        let op_explict = asm.alloc_string("op_Explicit");
+        let op_explict = asm.class_ref(gc_handle).clone().static_mref(
+            &[Type::ClassRef(gc_handle)],
+            Type::Int(Int::ISize),
+            op_explict,
+            asm,
+        );
+        let arg = asm.alloc_node(self.clone());
+        let alloc = asm.alloc_node(CILNode::Call(Box::new((alloc, [arg].into()))));
+        CILNode::Call(Box::new((op_explict, [alloc].into())))
+    }
     // WIP
     #[allow(unused_variables)]
     /// Typechecks this node, and returns its type if its valid.
+    /// # Errors
+    /// Returns an error if this node can't pass type checks.
     pub fn get_type(
         &self,
         sig: SigIdx,
@@ -163,14 +185,14 @@ impl CILNode {
                 let rhs = asm.get_node(*rhs).clone();
                 let lhs = lhs.get_type(sig, locals, asm)?;
                 let rhs = rhs.get_type(sig, locals, asm)?;
-                if lhs != rhs {
+                if lhs == rhs {
+                    Ok(lhs)
+                } else {
                     match (rhs, lhs) {
                         (Type::Int(Int::USize | Int::ISize), Type::Ptr(_)) => Ok(rhs),
                         (Type::Ptr(_), Type::Int(Int::USize | Int::ISize)) => Ok(lhs),
                         _ => Err(format!("mismatched binop args. {lhs:?} != {rhs:?}").into()),
                     }
-                } else {
-                    Ok(lhs)
                 }
             }
             CILNode::BinOp(lhs, rhs, op) => todo!("op:{op:?}"),
@@ -223,6 +245,8 @@ impl CILNode {
     }
 }
 impl CILNode {
+    // This function has to be complex
+    #[allow(clippy::too_many_lines)]
     pub fn from_v1(v1: &V1Node, asm: &mut Assembly) -> Self {
         match v1 {
             // Varaible access
@@ -336,20 +360,19 @@ impl CILNode {
                 }
             }
             V1Node::LdObj { ptr, obj } => {
-                let obj = Type::from_v1(obj, asm);
                 let ptr = Self::from_v1(ptr, asm);
                 Self::LdInd {
                     addr: asm.alloc_node(ptr),
-                    tpe: asm.alloc_type(obj),
+                    tpe: asm.alloc_type(*obj.as_ref()),
                     volitale: false,
                 }
             }
             V1Node::LDIndPtr { ptr, loaded_ptr } => {
                 let ptr = Self::from_v1(ptr, asm);
-                let loaded_ptr = Type::from_v1(loaded_ptr, asm);
+
                 Self::LdInd {
                     addr: asm.alloc_node(ptr),
-                    tpe: asm.alloc_type(loaded_ptr),
+                    tpe: asm.alloc_type(*loaded_ptr.as_ref()),
                     volitale: false,
                 }
             }
@@ -490,21 +513,11 @@ impl CILNode {
                 let val = Self::from_v1(val, asm);
 
                 let ptr = match &**new_ptr {
-                    V1Type::USize => PtrCastRes::USize,
-                    V1Type::ISize => PtrCastRes::ISize,
-                    V1Type::Ptr(inner) => {
-                        let inner = Type::from_v1(inner, asm);
-                        PtrCastRes::Ptr(asm.alloc_type(inner))
-                    }
-                    V1Type::ManagedReference(inner) => {
-                        let inner = Type::from_v1(inner, asm);
-                        PtrCastRes::Ref(asm.alloc_type(inner))
-                    }
-                    V1Type::DelegatePtr(sig) => {
-                        let sig = FnSig::from_v1(sig, asm);
-                        let sig = asm.alloc_sig(sig);
-                        PtrCastRes::FnPtr(sig)
-                    }
+                    Type::Int(Int::USize) => PtrCastRes::USize,
+                    Type::Int(Int::ISize) => PtrCastRes::ISize,
+                    Type::Ptr(inner) => PtrCastRes::Ptr(*inner),
+                    Type::Ref(inner) => PtrCastRes::Ref(*inner),
+                    Type::FnPtr(sig) => PtrCastRes::FnPtr(*sig),
                     _ => panic!("Type {new_ptr:?} is not a pointer."),
                 };
                 CILNode::PtrCast(asm.alloc_node(val), Box::new(ptr))
@@ -638,22 +651,10 @@ impl CILNode {
                         asm.alloc_node(node)
                     })
                     .collect();
-                let sig = FnSig::from_v1(callargs.site.signature(), asm);
+                let sig = FnSig::from_v1(callargs.site.signature());
                 let sig = asm.alloc_sig(sig);
-                let generics: Box<[_]> = callargs
-                    .site
-                    .generics()
-                    .iter()
-                    .map(|gen| Type::from_v1(gen, asm))
-                    .collect();
-                let class = callargs
-                    .site
-                    .class()
-                    .map(|dt| {
-                        let cref = ClassRef::from_v1(dt, asm);
-                        asm.alloc_class_ref(cref)
-                    })
-                    .unwrap_or_else(|| *asm.main_module());
+                let generics: Box<[_]> = (callargs.site.generics()).into();
+                let class = callargs.site.class().unwrap_or_else(|| *asm.main_module());
                 let name = asm.alloc_string(callargs.site.name());
                 let method_ref = if callargs.site.is_static() {
                     MethodRef::new(class, name, sig, MethodKind::Static, generics)
@@ -672,22 +673,10 @@ impl CILNode {
                         asm.alloc_node(node)
                     })
                     .collect();
-                let sig = FnSig::from_v1(callargs.site.signature(), asm);
+                let sig = FnSig::from_v1(callargs.site.signature());
                 let sig = asm.alloc_sig(sig);
-                let generics: Box<[_]> = callargs
-                    .site
-                    .generics()
-                    .iter()
-                    .map(|gen| Type::from_v1(gen, asm))
-                    .collect();
-                let class = callargs
-                    .site
-                    .class()
-                    .map(|dt| {
-                        let cref = ClassRef::from_v1(dt, asm);
-                        asm.alloc_class_ref(cref)
-                    })
-                    .unwrap_or_else(|| *asm.main_module());
+                let generics: Box<[_]> = (callargs.site.generics()).into();
+                let class = callargs.site.class().unwrap_or_else(|| *asm.main_module());
                 let name = asm.alloc_string(callargs.site.name());
                 assert!(!callargs.site.is_static());
                 let method_ref = MethodRef::new(class, name, sig, MethodKind::Virtual, generics);
@@ -703,22 +692,10 @@ impl CILNode {
                         asm.alloc_node(node)
                     })
                     .collect();
-                let sig = FnSig::from_v1(callargs.site.signature(), asm);
+                let sig = FnSig::from_v1(callargs.site.signature());
                 let sig = asm.alloc_sig(sig);
-                let generics: Box<[_]> = callargs
-                    .site
-                    .generics()
-                    .iter()
-                    .map(|gen| Type::from_v1(gen, asm))
-                    .collect();
-                let class = callargs
-                    .site
-                    .class()
-                    .map(|dt| {
-                        let cref = ClassRef::from_v1(dt, asm);
-                        asm.alloc_class_ref(cref)
-                    })
-                    .unwrap_or_else(|| *asm.main_module());
+                let generics: Box<[_]> = (callargs.site.generics()).into();
+                let class = callargs.site.class().unwrap_or_else(|| *asm.main_module());
                 let name = asm.alloc_string(callargs.site.name());
                 assert!(
                     !callargs.site.is_static(),
@@ -737,14 +714,8 @@ impl CILNode {
                 let string = asm.alloc_string(string.clone());
                 Const::PlatformString(string).into()
             }
-            V1Node::SizeOf(tpe) => {
-                let tpe = Type::from_v1(tpe, asm);
-                Self::SizeOf(asm.alloc_type(tpe))
-            }
-            V1Node::LDTypeToken(tpe) => {
-                let tpe = Type::from_v1(tpe, asm);
-                Self::LdTypeToken(asm.alloc_type(tpe))
-            }
+            V1Node::SizeOf(tpe) => Self::SizeOf(asm.alloc_type(*tpe.as_ref())),
+            V1Node::LDTypeToken(tpe) => Self::LdTypeToken(asm.alloc_type(*tpe.as_ref())),
             V1Node::LdcU64(val) => Const::U64(*val).into(),
             V1Node::LdcU32(val) => Const::U32(*val).into(),
             V1Node::LdcU16(val) => Const::U16(*val).into(),
@@ -760,24 +731,21 @@ impl CILNode {
             // Special
             V1Node::IsInst(combined) => {
                 let (val, tpe) = combined.as_ref();
-                let tpe = ClassRef::from_v1(tpe, asm);
-                let tpe = asm.alloc_class_ref(tpe);
-                let tpe = asm.alloc_type(tpe);
+
+                let tpe = asm.alloc_type(Type::ClassRef(*tpe));
                 let val = Self::from_v1(val, asm);
 
                 Self::IsInst(asm.alloc_node(val), tpe)
             }
             V1Node::CheckedCast(combined) => {
                 let (val, tpe) = combined.as_ref();
-                let tpe = ClassRef::from_v1(tpe, asm);
-                let tpe = asm.alloc_class_ref(tpe);
-                let tpe = asm.alloc_type(tpe);
-                let val = Self::from_v1(val, asm);
 
+                let val = Self::from_v1(val, asm);
+                let tpe = asm.alloc_type(Type::ClassRef(*tpe));
                 Self::CheckedCast(asm.alloc_node(val), tpe)
             }
             V1Node::CallI(sig_ptr_args) => {
-                let sig = FnSig::from_v1(&sig_ptr_args.0, asm);
+                let sig = FnSig::from_v1(&sig_ptr_args.0);
                 let sig = asm.alloc_sig(sig);
                 let ptr = Self::from_v1(&sig_ptr_args.1, asm);
                 let ptr = asm.alloc_node(ptr);
@@ -797,8 +765,7 @@ impl CILNode {
                 CILNode::LocAlloc { size }
             }
             V1Node::LocAllocAligned { tpe, align } => {
-                let tpe = Type::from_v1(tpe, asm);
-                let tpe = asm.alloc_type(tpe);
+                let tpe = asm.alloc_type(*tpe.as_ref());
                 CILNode::LocAllocAlgined { tpe, align: *align }
             }
             V1Node::LDStaticField(sfld) => {
@@ -806,20 +773,10 @@ impl CILNode {
                 Self::LdStaticField(asm.alloc_sfld(sfld))
             }
             V1Node::LDFtn(site) => {
-                let sig = FnSig::from_v1(site.signature(), asm);
+                let sig = FnSig::from_v1(site.signature());
                 let sig = asm.alloc_sig(sig);
-                let generics: Box<[_]> = site
-                    .generics()
-                    .iter()
-                    .map(|gen| Type::from_v1(gen, asm))
-                    .collect();
-                let class = site
-                    .class()
-                    .map(|dt| {
-                        let cref = ClassRef::from_v1(dt, asm);
-                        asm.alloc_class_ref(cref)
-                    })
-                    .unwrap_or_else(|| *asm.main_module());
+                let generics: Box<[_]> = (site.generics()).into();
+                let class = site.class().unwrap_or_else(|| *asm.main_module());
                 let name = asm.alloc_string(site.name());
 
                 let method_ref = if site.is_static() {
@@ -832,9 +789,10 @@ impl CILNode {
             }
             V1Node::Volatile(inner) => {
                 let mut tmp = Self::from_v1(inner, asm);
-                match &mut tmp {
-                    Self::LdInd { volitale, .. } => *volitale = true,
-                    _ => panic!(),
+                if let Self::LdInd { volitale, .. } = &mut tmp {
+                    *volitale = true;
+                } else {
+                    panic!()
                 }
                 tmp
             }
@@ -853,21 +811,19 @@ impl CILNode {
             V1Node::UnboxAny(object, tpe) => {
                 let object = Self::from_v1(object, asm);
                 let object = asm.alloc_node(object);
-                let tpe = Type::from_v1(tpe, asm);
-                let tpe = asm.alloc_type(tpe);
+                let tpe = asm.alloc_type(*tpe.as_ref());
                 Self::UnboxAny { object, tpe }
             }
-            V1Node::LdNull(tpe) => {
-                let tpe = ClassRef::from_v1(tpe, asm);
-                let tpe = asm.alloc_class_ref(tpe);
-                Self::Const(Box::new(Const::Null(tpe)))
-            }
+            V1Node::LdNull(tpe) => Self::Const(Box::new(Const::Null(*tpe))),
             _ => todo!("v1:{v1:?}"),
         }
     }
 }
 impl CILNode {
     /// Changes the node by applying the `map` closure to each node. This process is
+    // The complexity of this function is unavoidable.
+    #[allow(clippy::too_many_lines)]
+    #[must_use]
     pub fn map(self, asm: &mut Assembly, map: &mut impl Fn(Self, &mut Assembly) -> Self) -> Self {
         match self {
             CILNode::Const(_)

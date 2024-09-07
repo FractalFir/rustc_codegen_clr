@@ -5,7 +5,7 @@ pub struct AssemblyRef {
 }
 impl AssemblyRef {
     pub fn decode_assembly_ref<'tcx>(arg: GenericArg<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
-        let name = garg_to_string(arg, tcx).into();
+        let name = garg_to_string(arg, tcx);
         Self { name }
     }
     /// Name of the assembly reference if it is extern(not empty).

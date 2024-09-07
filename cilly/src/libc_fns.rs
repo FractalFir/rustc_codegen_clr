@@ -4,7 +4,6 @@ pub const LIBC_FNS: &[&str] = &[
     "__errno_location",
     "__xpg_strerror_r",
     "a64l",
-    "abort",
     "abs",
     "accept4",
     "accept",
@@ -582,14 +581,7 @@ pub const LIBC_FNS: &[&str] = &[
     "wprintf",
     "write",
     "writev",
-    "wscanf", /* "pthread_attr_destroy",
-              "pthread_attr_init",
-              "pthread_attr_setstacksize",
-              "pthread_create",
-              "pthread_detach",
-              "pthread_join",
-              "pthread_self",
-              "pthread_setname_np",*/
+    "wscanf",
 ];
 pub const LIBC_MODIFIES_ERRNO: &[&str] = &[
     "bind",
