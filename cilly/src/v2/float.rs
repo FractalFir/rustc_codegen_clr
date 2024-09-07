@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use super::{
     cilnode::MethodKind,
     hashable::{HashableF32, HashableF64},
-    Assembly, CILNode, ClassRef, Const, MethodRef, NodeIdx, Type,
+    Assembly, CILNode, ClassRef, ClassRefIdx, Const, MethodRef, NodeIdx, Type,
 };
 
 #[derive(Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize)]
@@ -73,6 +73,32 @@ impl Float {
             Float::F32 => "f32",
             Float::F64 => "f64",
             Float::F128 => "f128",
+        }
+    }
+    /// Clamps the float to a range <fmin,fmax>
+    pub fn clamp(&self, val: NodeIdx, fmin: NodeIdx, fmax: NodeIdx, asm: &mut Assembly) -> NodeIdx {
+        let class = self.class(asm);
+        let clamp = asm.alloc_string("Clamp");
+        let sig = asm.sig(
+            [Type::Float(*self), Type::Float(*self), Type::Float(*self)],
+            *self,
+        );
+        let mref = asm.alloc_methodref(MethodRef::new(
+            class,
+            clamp,
+            sig,
+            MethodKind::Static,
+            [].into(),
+        ));
+        asm.alloc_node(CILNode::Call(Box::new((mref, [val, fmin, fmax].into()))))
+    }
+    /// Returns a class representing this flaoting-point type.
+    fn class(&self, asm: &mut Assembly) -> ClassRefIdx {
+        match self {
+            Float::F16 => ClassRef::half(asm),
+            Float::F32 => ClassRef::single(asm),
+            Float::F64 => ClassRef::double(asm),
+            Float::F128 => todo!(),
         }
     }
 }
