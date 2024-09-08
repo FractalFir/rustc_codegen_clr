@@ -951,6 +951,12 @@ impl ILExporter {
                     call.0
                 )
             }
+            super::CILRoot::CpObj { src, dst, tpe } => {
+                self.export_node(asm, out, *src)?;
+                self.export_node(asm, out, *dst)?;
+                let tpe = type_il(asm.get_type(*tpe), asm);
+                writeln!(out, "cpobj {tpe}")
+            }
             super::CILRoot::StInd(stind) => {
                 self.export_node(asm, out, stind.0)?;
                 self.export_node(asm, out, stind.1)?;

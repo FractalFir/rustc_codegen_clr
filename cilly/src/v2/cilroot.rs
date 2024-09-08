@@ -5,7 +5,7 @@ use super::{
     cilnode::MethodKind,
     field::FieldIdx,
     Assembly, CILNode, FieldDesc, Float, FnSig, Int, MethodRef, MethodRefIdx, NodeIdx, SigIdx,
-    StaticFieldDesc, StaticFieldIdx, StringIdx, Type,
+    StaticFieldDesc, StaticFieldIdx, StringIdx, Type, TypeIdx,
 };
 use crate::cil_root::CILRoot as V1Root;
 //use crate::cil_node::CILNode as V1Node;
@@ -50,6 +50,11 @@ pub enum CILRoot {
     SetStaticField {
         field: StaticFieldIdx,
         val: NodeIdx,
+    },
+    CpObj {
+        src: NodeIdx,
+        dst: NodeIdx,
+        tpe: TypeIdx,
     },
 }
 
@@ -130,6 +135,7 @@ impl CILRoot {
                 args.push(ptr);
                 args.into()
             }
+            CILRoot::CpObj { src, dst, tpe } => [src, dst].into(),
         }
     }
     #[allow(clippy::too_many_lines)]
@@ -550,6 +556,16 @@ impl CILRoot {
                     tpe,
                     volitale,
                 )));
+                root_map(root, asm)
+            }
+            CILRoot::CpObj { src, dst, tpe } => {
+                let src = asm.get_node(src).clone().map(asm, node_map);
+                let dst = asm.get_node(dst).clone().map(asm, node_map);
+                let root = CILRoot::CpObj {
+                    src: asm.alloc_node(src),
+                    dst: asm.alloc_node(dst),
+                    tpe,
+                };
                 root_map(root, asm)
             }
             CILRoot::InitBlk(blk) => {

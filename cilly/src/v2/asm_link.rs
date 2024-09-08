@@ -429,6 +429,18 @@ impl Assembly {
                 let tpe = self.translate_type(source, *tpe);
                 CILRoot::StInd(Box::new((addr, val, tpe, *volitile)))
             }
+            CILRoot::CpObj { src, dst, tpe } => {
+                let src = self.translate_node(source, source.get_node(src).clone());
+                let src = self.alloc_node(src);
+                let dst = self.translate_node(source, source.get_node(dst).clone());
+                let dst = self.alloc_node(dst);
+                let tpe = self.translate_type(source, *source.get_type(tpe));
+                CILRoot::CpObj {
+                    src,
+                    dst,
+                    tpe: self.alloc_type(tpe),
+                }
+            }
             CILRoot::InitBlk(info) => {
                 let (dst, val, count) = info.as_ref();
                 let dst = self.translate_node(source, source.get_node(*dst).clone());

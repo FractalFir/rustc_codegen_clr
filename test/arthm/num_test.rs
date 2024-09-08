@@ -18,6 +18,9 @@
 #![no_std]
 use core::num::NonZero;
 include!("../common.rs");
+extern "C" {
+    fn ldexpf(arg: f32, exp: f32) -> f32;
+}
 #[inline(never)]
 #[no_mangle]
 fn check_float_nan() {
@@ -37,6 +40,7 @@ pub fn test_variadic_fnptr() {
     test!(!(p < q));
 }
 fn main() {
+    unsafe { black_box(ldexpf(black_box(434.43), 1232.3434)) };
     check_float_nan();
     const A: u32 = 0b0101100;
     const B: u32 = 0b0100001;

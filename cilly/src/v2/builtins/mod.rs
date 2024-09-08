@@ -1,6 +1,7 @@
 use super::{
-    asm::MissingMethodPatcher, cilnode::MethodKind, Access, Assembly, BasicBlock, CILNode, CILRoot,
-    ClassDef, ClassRef, Const, FieldDesc, Int, MethodDef, MethodImpl, MethodRef, Type,
+    asm::MissingMethodPatcher, cilnode::MethodKind, cilroot::BranchCond, Access, Assembly,
+    BasicBlock, CILNode, CILRoot, ClassDef, ClassRef, Const, FieldDesc, Int, MethodDef, MethodImpl,
+    MethodRef, Type,
 };
 
 pub mod atomics;
@@ -159,6 +160,7 @@ pub fn insert_heap(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
     insert_rust_realloc(asm, patcher);
     insert_rust_dealloc(asm, patcher);
     insert_catch_unwind(asm, patcher);
+    insert_pause(asm, patcher);
     let rust_exception = asm.alloc_string("RustException");
     let data_pointer = asm.alloc_string("data_pointer");
     let this = asm.alloc_string("this");
@@ -200,6 +202,18 @@ pub fn insert_heap(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
         vec![Some(this), Some(data_pointer)],
     ));
 }
+
+fn insert_pause(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
+    let name = asm.alloc_string("llvm.x86.sse2.pause");
+    let generator = move |_, asm: &mut Assembly| {
+        let ret = asm.alloc_root(CILRoot::VoidRet);
+        MethodImpl::MethodBody {
+            blocks: vec![BasicBlock::new(vec![ret], 0, None)],
+            locals: vec![],
+        }
+    };
+    patcher.insert(name, Box::new(generator));
+}
 fn insert_catch_unwind(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
     let name = asm.alloc_string("catch_unwind");
     let generator = move |_, asm: &mut Assembly| {
@@ -233,6 +247,14 @@ fn insert_catch_unwind(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
             asm.alloc_class_ref(ClassRef::new(rust_exception, None, false, [].into()));
         let rust_exception_tpe = Type::ClassRef(rust_exception);
         let rust_exception_tpe = asm.alloc_type(rust_exception_tpe);
+        // Check if exception is the right type, otherwise jump away
+        let check_exception_tpe = asm.alloc_node(CILNode::IsInst(ldloc_1, rust_exception_tpe));
+        let rethrow_if_wrong_exception = asm.alloc_root(CILRoot::Branch(Box::new((
+            0,
+            4,
+            Some(BranchCond::False(check_exception_tpe)),
+        ))));
+        // Cast the excpetion
         let cast_exception = asm.alloc_node(CILNode::CheckedCast(ldloc_1, rust_exception_tpe));
         let data_pointer = asm.alloc_string("data_pointer");
         let ptr_field = asm.alloc_field(FieldDesc::new(
@@ -253,27 +275,25 @@ fn insert_catch_unwind(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
         let const_1 = asm.alloc_node(Const::I32(1));
         let ret_0 = asm.alloc_root(CILRoot::Ret(const_0));
         let ret_1 = asm.alloc_root(CILRoot::Ret(const_1));
-        // Debug
-        let console = ClassRef::console(asm);
-        let write_line = asm.alloc_string("WriteLine");
-        let write_line = asm.class_ref(console).clone().static_mref(
-            &[Type::PlatformObject],
-            Type::Void,
-            write_line,
-            asm,
-        );
-        let print_exception =
-            asm.alloc_root(CILRoot::Call(Box::new((write_line, Box::new([ldloc_1])))));
+        let rethrow = asm.alloc_root(CILRoot::ReThrow);
         MethodImpl::MethodBody {
             blocks: vec![
                 BasicBlock::new(
                     vec![calli_try, exit_try_success],
                     0,
-                    Some(vec![BasicBlock::new(
-                        vec![set_exception, calli_catch, exit_try_faliure],
-                        1,
-                        None,
-                    )]),
+                    Some(vec![
+                        BasicBlock::new(
+                            vec![
+                                set_exception,
+                                rethrow_if_wrong_exception,
+                                calli_catch,
+                                exit_try_faliure,
+                            ],
+                            1,
+                            None,
+                        ),
+                        BasicBlock::new(vec![rethrow], 4, None),
+                    ]),
                 ),
                 BasicBlock::new(vec![ret_0], 2, None),
                 BasicBlock::new(vec![ret_1], 3, None),

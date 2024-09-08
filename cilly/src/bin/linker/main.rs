@@ -160,7 +160,22 @@ fn main() {
     // Load assemblies from files
 
     let (mut final_assembly, _) = load::load_assemblies(to_link.as_slice(), ar_to_link.as_slice());
-
+    /*
+       {
+           let msg = final_assembly.alloc_string("Starting constant initialization");
+           let msg = final_assembly.alloc_node(Const::PlatformString(msg));
+           let console = ClassRef::console(&mut final_assembly);
+           let fn_name = final_assembly.alloc_string("WriteLine");
+           let mref = final_assembly.class_ref(console).clone().static_mref(
+               &[Type::PlatformString],
+               Type::Void,
+               fn_name,
+               &mut final_assembly,
+           );
+           let stat = final_assembly.alloc_root(CILRoot::Call(Box::new((mref, [msg].into()))));
+           final_assembly.add_cctor(&[stat]);
+       }
+    */
     let path: std::path::PathBuf = output_file_path.into();
 
     let is_lib = output_file_path.contains(".dll")
@@ -357,7 +372,7 @@ fn main() {
     cilly::v2::builtins::instert_threading(&mut final_assembly, &mut overrides);
     cilly::v2::builtins::insert_swap_at_generic(&mut final_assembly, &mut overrides);
     cilly::v2::builtins::insert_bounds_check(&mut final_assembly, &mut overrides);
-
+    cilly::v2::builtins::math::math(&mut final_assembly, &mut overrides);
     // Ensure the cctor and tcctor exist!
     let _ = final_assembly.tcctor();
     let _ = final_assembly.cctor();

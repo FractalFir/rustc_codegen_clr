@@ -109,7 +109,7 @@ impl Assembly {
     pub fn methods_with<'a>(
         &'a self,
         mut filter: impl FnMut(&Self, MethodDefIdx, &MethodDef) -> bool + 'a,
-    ) -> impl Iterator<Item = (&MethodDefIdx, &MethodDef)> + 'a {
+    ) -> impl Iterator<Item = (&'a MethodDefIdx, &'a MethodDef)> + 'a {
         self.method_defs
             .iter()
             .filter(move |(id, def)| filter(self, **id, def))
@@ -141,7 +141,7 @@ impl Assembly {
     pub fn find_strs_containing<'a, P: std::str::pattern::Pattern + Clone + 'a>(
         &'a self,
         pat: P,
-    ) -> impl Iterator<Item = StringIdx> + '_ {
+    ) -> impl Iterator<Item = StringIdx> + 'a {
         self.strings
             .0
             .iter()

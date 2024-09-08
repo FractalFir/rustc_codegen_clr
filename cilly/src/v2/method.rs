@@ -278,6 +278,9 @@ impl MethodDef {
                 arg_debug_count,
                 v1.call_site().name()
                 );
+                for arg in &arg_names {
+                    println!("{:?}", arg.map(|arg| asm.get_string(arg)));
+                }
                 arg_names.truncate(arg_sig_count);
             }
         }

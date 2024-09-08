@@ -101,6 +101,20 @@ impl Float {
             Float::F128 => todo!(),
         }
     }
+    /// Raises base to power.
+    pub fn pow(&self, base: NodeIdx, exp: NodeIdx, asm: &mut Assembly) -> NodeIdx {
+        let pow = asm.alloc_string("Pow");
+        let class = self.class(asm);
+        let sig = asm.sig([Type::Float(*self), Type::Float(*self)], *self);
+        let mref = asm.alloc_methodref(MethodRef::new(
+            class,
+            pow,
+            sig,
+            MethodKind::Static,
+            [].into(),
+        ));
+        asm.alloc_node(CILNode::Call(Box::new((mref, Box::new([base, exp])))))
+    }
 }
 impl From<Float> for Type {
     fn from(value: Float) -> Self {

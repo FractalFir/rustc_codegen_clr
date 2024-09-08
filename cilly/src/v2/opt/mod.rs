@@ -1,8 +1,8 @@
 use simplify_handlers::simplify_bbs;
 
 use super::{
-    cilroot::BranchCond, method::LocalDef, BasicBlock, CILIter, CILIterElem, CILNode, CILRoot,
-    Const, Int, MethodImpl, NodeIdx, RootIdx, Type,
+    cilroot::BranchCond, method::LocalDef, BasicBlock, BinOp, CILIter, CILIterElem, CILNode,
+    CILRoot, Const, Int, MethodImpl, NodeIdx, RootIdx, Type,
 };
 use crate::v2::{Assembly, MethodDef};
 use std::collections::HashMap;
@@ -76,8 +76,25 @@ impl CILNode {
                         | Type::FnPtr(_)
                         | Type::Ptr(_)
                         | Type::ClassRef(_)
-                        | Type::Int(Int::USize | Int::I64 | Int::U64 | Int::U32 | Int::I32)
+                        | Type::Int(
+                            Int::I128
+                            | Int::U128
+                            | Int::USize
+                            | Int::ISize
+                            | Int::I64
+                            | Int::U64
+                            | Int::U32
+                            | Int::I32,
+                        )
                         | Type::Ref(_) => asm.get_node(new_node).clone(),
+                        /*Type::Int(int @ (Int::I8 | Int::U8 | Int::I16 | Int::U16)) => {
+                            CILNode::IntCast {
+                                input: new_node,
+                                target: int,
+                                // Does not matter, since this does nothing for ints < 32 bits, which this arm handles.
+                                extend: super::cilnode::ExtendKind::ZeroExtend,
+                            }
+                        }*/
                         _ => CILNode::LdLoc(*loc),
                     }
                 } else {
@@ -539,26 +556,138 @@ impl MethodDef {
                         CILNode::LdLoc(_) => CILRoot::Nop,
                         _ => root,
                     },
+                    /*
+                    CILRoot::StInd(ref info) => match asm.get_node(info.1) {
+                        CILNode::LdInd {
+                            addr: src_addr,
+                            tpe,
+                            volitale:_,
+                        } => {
+                            assert_eq!(*asm.get_type(*tpe), info.2);
+                            CILRoot::CpObj {
+                                src: *src_addr,
+                                dst: info.0,
+                                tpe: asm.alloc_type(info.2),
+                            }
+                        }
+                        _ => root,
+                    },*/
                     CILRoot::Branch(ref info) => {
                         let (target, sub_target, cond) = info.as_ref();
                         match cond {
-                            Some(BranchCond::False(cond)) => match asm.get_node(*cond) {
-                                CILNode::Const(cst) => match cst.as_ref() {
-                                    Const::Bool(false) => {
-                                        CILRoot::Branch(Box::new((*target, *sub_target, None)))
+                            Some(BranchCond::False(cond)) => {
+                                match asm.get_node(*cond) {
+                                    CILNode::Const(cst) => match cst.as_ref() {
+                                        Const::Bool(false) => {
+                                            CILRoot::Branch(Box::new((*target, *sub_target, None)))
+                                        }
+                                        Const::Bool(true) => CILRoot::Nop,
+                                        _ => root,
+                                    },
+                                    // a == b is false <=> a != b
+                                    CILNode::BinOp(lhs, rhs, BinOp::Eq) => {
+                                        CILRoot::Branch(Box::new((
+                                            *target,
+                                            *sub_target,
+                                            Some(BranchCond::Ne(*lhs, *rhs)),
+                                        )))
                                     }
-                                    Const::Bool(true) => CILRoot::Nop,
                                     _ => root,
-                                },
+                                }
+                            }
+                            Some(BranchCond::True(cond)) => match asm.get_node(*cond) {
+                                // a == b  is true <=> a == b
+                                CILNode::BinOp(lhs, rhs, BinOp::Eq) => CILRoot::Branch(Box::new((
+                                    *target,
+                                    *sub_target,
+                                    Some(BranchCond::Eq(*lhs, *rhs)),
+                                ))),
                                 _ => root,
                             },
-                            Some(BranchCond::Eq(lhs, rhs)) => {
+                            Some(BranchCond::Ne(lhs, rhs)) => {
                                 match (asm.get_node(*lhs), asm.get_node(*rhs)) {
                                     (_, CILNode::Const(cst)) => match cst.as_ref() {
-                                        Const::ISize(0) => CILRoot::Branch(Box::new((
+                                        // val != false <=> val is true
+                                        Const::Bool(false)
+                                        | Const::ISize(0)
+                                        | Const::USize(0)
+                                        | Const::I64(0)
+                                        | Const::U64(0)
+                                        | Const::I32(0)
+                                        | Const::U32(0)
+                                        | Const::I16(0)
+                                        | Const::U16(0)
+                                        | Const::I8(0)
+                                        | Const::U8(0) => CILRoot::Branch(Box::new((
+                                            *target,
+                                            *sub_target,
+                                            Some(BranchCond::True(*lhs)),
+                                        ))),
+                                        // val != true <=> val is false
+                                        Const::Bool(true) => CILRoot::Branch(Box::new((
                                             *target,
                                             *sub_target,
                                             Some(BranchCond::False(*lhs)),
+                                        ))),
+                                        _ => root,
+                                    },
+                                    (CILNode::Const(cst), _) => match cst.as_ref() {
+                                        // val != false <=> val is true
+                                        Const::Bool(false)
+                                        | Const::ISize(0)
+                                        | Const::USize(0)
+                                        | Const::I64(0)
+                                        | Const::U64(0)
+                                        | Const::I32(0)
+                                        | Const::U32(0)
+                                        | Const::I16(0)
+                                        | Const::U16(0)
+                                        | Const::I8(0)
+                                        | Const::U8(0) => CILRoot::Branch(Box::new((
+                                            *target,
+                                            *sub_target,
+                                            Some(BranchCond::True(*rhs)),
+                                        ))),
+                                        _ => root,
+                                    },
+                                    _ => root,
+                                }
+                            }
+                            Some(BranchCond::Eq(lhs, rhs)) => {
+                                match (asm.get_node(*lhs), asm.get_node(*rhs)) {
+                                    (_, CILNode::Const(cst)) => match cst.as_ref() {
+                                        Const::Bool(false)
+                                        | Const::ISize(0)
+                                        | Const::USize(0)
+                                        | Const::I64(0)
+                                        | Const::U64(0)
+                                        | Const::I32(0)
+                                        | Const::U32(0)
+                                        | Const::I16(0)
+                                        | Const::U16(0)
+                                        | Const::I8(0)
+                                        | Const::U8(0) => CILRoot::Branch(Box::new((
+                                            *target,
+                                            *sub_target,
+                                            Some(BranchCond::False(*lhs)),
+                                        ))),
+                                        _ => root,
+                                    },
+                                    (CILNode::Const(cst), _) => match cst.as_ref() {
+                                        Const::Bool(false)
+                                        | Const::ISize(0)
+                                        | Const::USize(0)
+                                        | Const::I64(0)
+                                        | Const::U64(0)
+                                        | Const::I32(0)
+                                        | Const::U32(0)
+                                        | Const::I16(0)
+                                        | Const::U16(0)
+                                        | Const::I8(0)
+                                        | Const::U8(0) => CILRoot::Branch(Box::new((
+                                            *target,
+                                            *sub_target,
+                                            Some(BranchCond::False(*rhs)),
                                         ))),
                                         _ => root,
                                     },

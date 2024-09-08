@@ -67,7 +67,7 @@ impl Type {
         tmp
     }
     #[must_use]
-    pub fn deref<'a, 'b: 'a>(&'a self, asm: &'b Assembly) -> &Self {
+    pub fn deref<'a, 'b: 'a>(&'a self, asm: &'b Assembly) -> &'a Self {
         match self {
             Type::Ptr(inner) | Type::Ref(inner) => asm.get_type(*inner),
             _ => panic!(),

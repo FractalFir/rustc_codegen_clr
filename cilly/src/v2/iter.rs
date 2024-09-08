@@ -89,6 +89,24 @@ impl<'asm> Iterator for CILIter<'asm> {
                         continue;
                     }
                 },
+                CILIterElem::Root(CILRoot::CpObj { src, dst, tpe }) => match idx {
+                    1 => {
+                        *idx += 1;
+                        let lhs = self.asm.get_node(*src);
+                        self.elems.push((CILIterElem::Node(lhs.clone()), 0));
+                        continue;
+                    }
+                    2 => {
+                        *idx += 1;
+                        let rhs = self.asm.get_node(*dst);
+                        self.elems.push((CILIterElem::Node(rhs.clone()), 0));
+                        continue;
+                    }
+                    _ => {
+                        self.elems.pop();
+                        continue;
+                    }
+                },
                 CILIterElem::Node(
                     CILNode::BinOp(lhs, rhs, _)
                     | CILNode::LdElelemRef {
@@ -510,6 +528,9 @@ impl<'this, T: Iterator<Item = CILIterElem> + 'this> TpeIter<'this> for T {
                         let class = Type::ClassRef(field.owner());
                         let tpe = field.tpe();
                         Some(Box::new([class, tpe].into_iter()))
+                    }
+                    CILRoot::CpObj { tpe, .. } => {
+                        Some(Box::new(std::iter::once(*asm.get_type(tpe))))
                     }
                     // Since this method is called, then if it uses an "internal" type, we must assume it is defined in this module. Thus, its types are already included, and we don't need to include them again.
                     CILRoot::Call(_) | CILRoot::CallI(_) => None,
