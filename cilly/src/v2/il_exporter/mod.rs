@@ -301,11 +301,7 @@ impl ILExporter {
                     }
                 }
                 super::Const::F32(float) => {
-                    let const_literal = if float.is_nan() {
-                        [0x00, 0x00, 0xF8, 0xFF]
-                    } else {
-                        float.to_le_bytes()
-                    };
+                    let const_literal = float.to_le_bytes();
                     writeln!(
                         out,
                         "ldc.r4 ({:02x} {:02x} {:02x} {:02x})",
@@ -313,11 +309,7 @@ impl ILExporter {
                     )
                 }
                 super::Const::F64(float) => {
-                    let const_literal = if float.is_nan() {
-                        [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xF8, 0xFF]
-                    } else {
-                        float.to_le_bytes()
-                    };
+                    let const_literal = float.to_le_bytes();
                     writeln!(
                         out,
                         "ldc.r8 ({:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x})",

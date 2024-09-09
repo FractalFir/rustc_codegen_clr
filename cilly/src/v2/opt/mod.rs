@@ -87,14 +87,18 @@ impl CILNode {
                             | Int::I32,
                         )
                         | Type::Ref(_) => asm.get_node(new_node).clone(),
-                        /*Type::Int(int @ (Int::I8 | Int::U8 | Int::I16 | Int::U16)) => {
+                        Type::Int(int @ (Int::I8 | Int::U8 | Int::I16 | Int::U16)) => {
                             CILNode::IntCast {
                                 input: new_node,
                                 target: int,
                                 // Does not matter, since this does nothing for ints < 32 bits, which this arm handles.
-                                extend: super::cilnode::ExtendKind::ZeroExtend,
+                                extend: if int.is_signed() {
+                                    super::cilnode::ExtendKind::SignExtend
+                                } else {
+                                    super::cilnode::ExtendKind::ZeroExtend
+                                },
                             }
-                        }*/
+                        }
                         _ => CILNode::LdLoc(*loc),
                     }
                 } else {
@@ -592,6 +596,53 @@ impl MethodDef {
                                             Some(BranchCond::Ne(*lhs, *rhs)),
                                         )))
                                     }
+                                    // a > b is false <=> a <= b
+                                    CILNode::BinOp(lhs, rhs, BinOp::Gt) => {
+                                        CILRoot::Branch(Box::new((
+                                            *target,
+                                            *sub_target,
+                                            Some(BranchCond::Le(
+                                                *lhs,
+                                                *rhs,
+                                                super::cilroot::CmpKind::Ordered,
+                                            )),
+                                        )))
+                                    }
+                                    CILNode::BinOp(lhs, rhs, BinOp::GtUn) => {
+                                        CILRoot::Branch(Box::new((
+                                            *target,
+                                            *sub_target,
+                                            Some(BranchCond::Le(
+                                                *lhs,
+                                                *rhs,
+                                                super::cilroot::CmpKind::Unordered,
+                                            )),
+                                        )))
+                                    }
+                                    // a < b is false <=> a >= b
+                                    CILNode::BinOp(lhs, rhs, BinOp::Lt) => {
+                                        CILRoot::Branch(Box::new((
+                                            *target,
+                                            *sub_target,
+                                            Some(BranchCond::Ge(
+                                                *lhs,
+                                                *rhs,
+                                                super::cilroot::CmpKind::Ordered,
+                                            )),
+                                        )))
+                                    }
+                                    CILNode::BinOp(lhs, rhs, BinOp::LtUn) => {
+                                        CILRoot::Branch(Box::new((
+                                            *target,
+                                            *sub_target,
+                                            Some(BranchCond::Ge(
+                                                *lhs,
+                                                *rhs,
+                                                super::cilroot::CmpKind::Unordered,
+                                            )),
+                                        )))
+                                    }
+                                    //CILNode::IntCast { input, target, extend }
                                     _ => root,
                                 }
                             }
@@ -601,6 +652,46 @@ impl MethodDef {
                                     *target,
                                     *sub_target,
                                     Some(BranchCond::Eq(*lhs, *rhs)),
+                                ))),
+                                CILNode::BinOp(lhs, rhs, BinOp::GtUn) => {
+                                    CILRoot::Branch(Box::new((
+                                        *target,
+                                        *sub_target,
+                                        Some(BranchCond::Gt(
+                                            *lhs,
+                                            *rhs,
+                                            super::cilroot::CmpKind::Unordered,
+                                        )),
+                                    )))
+                                }
+                                CILNode::BinOp(lhs, rhs, BinOp::Gt) => CILRoot::Branch(Box::new((
+                                    *target,
+                                    *sub_target,
+                                    Some(BranchCond::Gt(
+                                        *lhs,
+                                        *rhs,
+                                        super::cilroot::CmpKind::Ordered,
+                                    )),
+                                ))),
+                                CILNode::BinOp(lhs, rhs, BinOp::LtUn) => {
+                                    CILRoot::Branch(Box::new((
+                                        *target,
+                                        *sub_target,
+                                        Some(BranchCond::Lt(
+                                            *lhs,
+                                            *rhs,
+                                            super::cilroot::CmpKind::Unordered,
+                                        )),
+                                    )))
+                                }
+                                CILNode::BinOp(lhs, rhs, BinOp::Lt) => CILRoot::Branch(Box::new((
+                                    *target,
+                                    *sub_target,
+                                    Some(BranchCond::Lt(
+                                        *lhs,
+                                        *rhs,
+                                        super::cilroot::CmpKind::Ordered,
+                                    )),
                                 ))),
                                 _ => root,
                             },

@@ -15,6 +15,7 @@ pub fn opt_node(node: crate::v2::CILNode, asm: &mut Assembly) -> CILNode {
                 (Const::U32(val), Int::U32) => Const::U32(*val).into(),
                 (Const::I32(val), Int::I32) => Const::I32(*val).into(),
                 (Const::I32(val), Int::U32) => Const::U32(*val as u32).into(),
+                (Const::U64(val), Int::U8) => Const::U8(*val as u8).into(),
                 _ => node,
             },
             CILNode::IntCast {
