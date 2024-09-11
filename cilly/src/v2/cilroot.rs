@@ -433,8 +433,8 @@ impl CILRoot {
     pub fn map(
         self,
         asm: &mut Assembly,
-        root_map: &mut impl Fn(Self, &mut Assembly) -> Self,
-        node_map: &mut impl Fn(CILNode, &mut Assembly) -> CILNode,
+        root_map: &mut impl FnMut(Self, &mut Assembly) -> Self,
+        node_map: &mut impl FnMut(CILNode, &mut Assembly) -> CILNode,
     ) -> Self {
         match self {
             CILRoot::StLoc(loc, val) => {

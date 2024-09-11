@@ -1,6 +1,8 @@
 use crate::v2::{Assembly, CILNode, Const, Int, Type};
 
-pub fn opt_node(node: crate::v2::CILNode, asm: &mut Assembly) -> CILNode {
+use super::OptFuel;
+
+pub fn opt_node(node: crate::v2::CILNode, asm: &mut Assembly, fuel: &mut OptFuel) -> CILNode {
     match node {
         CILNode::IntCast {
             input,
@@ -59,6 +61,7 @@ pub fn opt_node(node: crate::v2::CILNode, asm: &mut Assembly) -> CILNode {
             }
             _ => node,
         },
+        CILNode::Call(info) => super::inline::trivial_inline_call(info.0, &info.1, fuel, asm),
         CILNode::LdInd {
             addr,
             tpe,
@@ -71,6 +74,17 @@ pub fn opt_node(node: crate::v2::CILNode, asm: &mut Assembly) -> CILNode {
             },
             CILNode::LdLocA(loc) => CILNode::LdLoc(*loc),
             CILNode::LdArgA(loc) => CILNode::LdArg(*loc),
+            CILNode::LdFieldAdress { addr, field } => {
+                let field_desc = asm.get_field(*field);
+                if field_desc.tpe() == *asm.get_type(tpe) {
+                    CILNode::LdField {
+                        addr: *addr,
+                        field: *field,
+                    }
+                } else {
+                    node
+                }
+            }
             _ => node,
         },
 

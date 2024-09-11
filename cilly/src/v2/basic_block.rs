@@ -76,12 +76,7 @@ impl BasicBlock {
     /// Checks if this basic block consists of nothing more than an unconditional jump to another block
     #[must_use]
     pub fn is_direct_jump(&self, asm: &Assembly) -> Option<(u32, u32)> {
-        let mut meningfull_root = self.iter_roots().filter(|root| {
-            !matches!(
-                asm.get_root(*root),
-                CILRoot::Nop | CILRoot::SourceFileInfo { .. }
-            )
-        });
+        let mut meningfull_root = self.meaningfull_roots(asm);
         let root = meningfull_root.next()?;
         let CILRoot::Branch(binfo) = asm.get_root(root) else {
             return None;
@@ -95,16 +90,23 @@ impl BasicBlock {
     /// Checks if this basic block consists of nothing more thaan an uncondtional rethrow
     #[must_use]
     pub fn is_only_rethrow(&self, asm: &Assembly) -> bool {
-        let mut meningfull_root = self.iter_roots().filter(|root| {
-            !matches!(
-                asm.get_root(*root),
-                CILRoot::Nop | CILRoot::SourceFileInfo { .. }
-            )
-        });
+        let mut meningfull_root = self.meaningfull_roots(asm);
         let Some(root) = meningfull_root.next() else {
             return false;
         };
         CILRoot::ReThrow == *asm.get_root(root) && meningfull_root.next().is_none()
+    }
+
+    pub fn meaningfull_roots<'s, 'asm: 's>(
+        &'s self,
+        asm: &'asm Assembly,
+    ) -> impl Iterator<Item = RootIdx> + 's {
+        self.iter_roots().filter(move |root| {
+            !matches!(
+                asm.get_root(*root),
+                CILRoot::Nop | CILRoot::SourceFileInfo { .. }
+            )
+        })
     }
 
     pub fn remove_handler(&mut self) {

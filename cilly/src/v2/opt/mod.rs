@@ -1,3 +1,4 @@
+use inline::inline_trivial_call_root;
 use simplify_handlers::simplify_bbs;
 
 use super::{
@@ -6,6 +7,7 @@ use super::{
 };
 use crate::v2::{Assembly, MethodDef};
 use std::collections::HashMap;
+mod inline;
 mod opt_node;
 mod simplify_handlers;
 #[derive(Clone, Eq, PartialEq, Debug)]
@@ -489,8 +491,8 @@ impl MethodDef {
     pub fn map_roots(
         &mut self,
         asm: &mut Assembly,
-        root_map: &mut impl Fn(CILRoot, &mut Assembly) -> CILRoot,
-        node_map: &mut impl Fn(CILNode, &mut Assembly) -> CILNode,
+        root_map: &mut impl FnMut(CILRoot, &mut Assembly) -> CILRoot,
+        node_map: &mut impl FnMut(CILNode, &mut Assembly) -> CILNode,
     ) {
         if let Some(roots) = self.iter_roots_mut() {
             roots.for_each(|root| {
@@ -553,6 +555,8 @@ impl MethodDef {
             }
         }
         if fuel.consume(5) {
+            // TODO: this is a hack, which makes root inlining optimizations not consume fuel.
+            let mut root_fuel = fuel.clone();
             self.map_roots(
                 asm,
                 &mut |root, asm| match root {
@@ -560,6 +564,9 @@ impl MethodDef {
                         CILNode::LdLoc(_) => CILRoot::Nop,
                         _ => root,
                     },
+                    CILRoot::Call(info) => {
+                        inline_trivial_call_root(info.0, &info.1, &mut root_fuel, asm)
+                    }
                     /*
                     CILRoot::StInd(ref info) => match asm.get_node(info.1) {
                         CILNode::LdInd {
@@ -790,7 +797,7 @@ impl MethodDef {
                     }
                     _ => root,
                 },
-                &mut opt_node::opt_node,
+                &mut |node, asm| opt_node::opt_node(node, asm, fuel),
             );
         }
         if fuel.consume(5) {
