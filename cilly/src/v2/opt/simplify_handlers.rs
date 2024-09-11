@@ -3,7 +3,7 @@ use fxhash::{FxHashMap, FxHashSet};
 
 use crate::v2::{Assembly, BasicBlock, CILRoot};
 
-use super::OptFuel;
+use super::{OptFuel, SideEffectInfoCache};
 fn block_with_id(blocks: &[BasicBlock], id: u32) -> Option<&BasicBlock> {
     blocks.iter().find(|block| block.block_id() == id)
 }
@@ -55,7 +55,12 @@ fn block_gc(blocks: &mut Vec<BasicBlock>, asm: &Assembly) {
         .cloned()
         .collect();
 }
-pub fn simplify_bbs(handler: Option<&mut Vec<BasicBlock>>, asm: &mut Assembly, fuel: &mut OptFuel) {
+pub fn simplify_bbs(
+    handler: Option<&mut Vec<BasicBlock>>,
+    asm: &mut Assembly,
+    fuel: &mut OptFuel,
+    cache: &mut SideEffectInfoCache,
+) {
     let Some(blocks) = handler else { return };
     let direct_jumps: FxHashMap<_, Option<(u32, u32)>> = blocks
         .iter()
@@ -65,14 +70,15 @@ pub fn simplify_bbs(handler: Option<&mut Vec<BasicBlock>>, asm: &mut Assembly, f
         .iter()
         .map(|block| (block.block_id(), block.is_only_rethrow(asm)))
         .collect();
-    for root in blocks
+    let mut root_iter = blocks
         .iter_mut()
         .flat_map(|block| block.roots_mut().iter_mut())
-    {
+        .peekable();
+    while let Some(root) = root_iter.next() {
         let CILRoot::Branch(info) = asm.get_root(*root) else {
             continue;
         };
-        /*let (target, sub_target, cond) = info.as_ref();
+        let (target, sub_target, cond) = info.as_ref();
         // Sub target of 0, look up by the target
         let jump = if *sub_target == 0 {
             direct_jumps.get(target)
@@ -83,6 +89,21 @@ pub fn simplify_bbs(handler: Option<&mut Vec<BasicBlock>>, asm: &mut Assembly, f
             continue;
         };
         let Some((target, sub_target)) = jump else {
+            // Check that this jump is unconditonal, or the next root is a rethrow!
+            if let Some(cond) = cond {
+                if root_iter.peek().map(|root| asm.get_root(**root)) != Some(&CILRoot::ReThrow) {
+                    continue;
+                }
+                // If some args have side effects, this optimization has to replace this branch with pops. TODO: implement that.
+                if cond
+                    .nodes()
+                    .into_iter()
+                    .any(|node| cache.has_side_effects(node, asm))
+                {
+                    continue;
+                }
+            }
+            // TODO: Correctnesss:Check if this root's tree has no side effects!
             let rethrow = if *sub_target == 0 {
                 rethrows.get(target).unwrap()
             } else {
@@ -93,6 +114,7 @@ pub fn simplify_bbs(handler: Option<&mut Vec<BasicBlock>>, asm: &mut Assembly, f
             }
             continue;
         };
+        /*
         if fuel.consume(1) {
             *root = asm.alloc_root(CILRoot::Branch(Box::new((
                 *target,

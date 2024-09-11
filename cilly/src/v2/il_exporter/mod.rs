@@ -182,8 +182,10 @@ impl ILExporter {
                     None => format!("\n  {}",non_void_type_il(asm.get_type(*tpe), asm)),
                 }).intersperse(",".to_owned()).collect();
                 writeln!(out," .locals ({locals})")?;
-                for block in blocks{
-                    if block.handler().is_some(){
+                let mut blocks_iter = blocks.iter().peekable();
+                let mut is_in_multiblock_handler = false;
+                while let Some(block) = blocks_iter.next(){
+                    if block.handler().is_some() && !is_in_multiblock_handler{
                         writeln!(out,".try{{")?;
                     }
                     writeln!(out," bb{}:",block.block_id())?;
@@ -191,6 +193,9 @@ impl ILExporter {
                         self.export_root(asm,out,*root,false)?;
                     }
                     if let Some(handler) = block.handler(){
+                        if Some(handler) == blocks_iter.peek().and_then(|block|block.handler()){
+                            eprintln!("Multiblock handler candiate");
+                        }
                         writeln!(out,"}} catch [System.Runtime]System.Object{{")?;
                         // Check for the GetException intrinsic. If it is not used, put a pop here.
                         if !handler.iter().flat_map(super::basic_block::BasicBlock::roots).flat_map(|root|CILIter::new(asm.get_root(*root).clone(),asm)).any(|elem|matches!(elem,CILIterElem::Node(CILNode::GetException))){
@@ -202,10 +207,9 @@ impl ILExporter {
                                 self.export_root(asm,out,*root,true)?;
                             }
                         }
-                    }
-                      if block.handler().is_some(){
                         writeln!(out,"}}")?;
                     }
+                    
                 }
             }
             MethodImpl::Extern { .. } => (),

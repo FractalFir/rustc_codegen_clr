@@ -36,6 +36,24 @@ pub fn opt_node(node: crate::v2::CILNode, asm: &mut Assembly) -> CILNode {
                             extend: *extend2,
                         }
                     }
+                    (Int::U64 | Int::I64, Int::U64 | Int::I64) => {
+                        // A u64 to i64 cast does nothing, except change the type on the evaulation stack(the bits are unchanged).
+                        // So, we can just create a cast like it.
+                        CILNode::IntCast {
+                            input: *input2,
+                            target,
+                            extend: *extend2,
+                        }
+                    }
+                    (Int::U32 | Int::I32, Int::U32 | Int::I32) => {
+                        // A u64 to i64 cast does nothing, except change the type on the evaulation stack(the bits are unchanged).
+                        // So, we can just create a cast like it.
+                        CILNode::IntCast {
+                            input: *input2,
+                            target,
+                            extend: *extend2,
+                        }
+                    }
                     _ => node,
                 }
             }

@@ -8,6 +8,7 @@ use cilly::v2::{
     asm::Assembly, cillyir_exporter::CillyIRExpoter, il_exporter::ILExporter, Access, CILIter,
     MethodImpl, MethodRefIdx,
 };
+use fxhash::FxHashSet;
 
 fn main() {
     let mut asm = Assembly::default();
@@ -42,6 +43,21 @@ fn main() {
         let body = body.trim().trim_matches(')').trim();
         let stem = stem.trim();
         match stem {
+            "simptypes" => {
+                let start = std::time::Instant::now();
+                let mut simplify_candidates = FxHashSet::default();
+                for (id, def) in asm.class_defs() {
+                    if def.fields().len() == 1 && def.methods().is_empty() {
+                        simplify_candidates.insert(id);
+                    }
+                }
+                eprintln!(
+                    "Found {} simplificaiton candiates in {} ns. Total types:{}",
+                    simplify_candidates.len(),
+                    start.elapsed().as_nanos(),
+                    asm.class_defs().len()
+                );
+            }
             "deadcode" => asm.eliminate_dead_code(),
             "opt" => {
                 let mut fuel = asm.default_fuel();

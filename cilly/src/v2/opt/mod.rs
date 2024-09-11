@@ -799,8 +799,8 @@ impl MethodDef {
         if fuel.consume(6) {
             if let MethodImpl::MethodBody { blocks, .. } = self.implementation_mut() {
                 for block in blocks.iter_mut() {
-                    simplify_bbs(block.handler_mut(), asm, fuel);
-                    /*
+                    simplify_bbs(block.handler_mut(), asm, fuel, cache);
+
                     let Some(handler) = block.handler() else {
                         return;
                     };
@@ -808,7 +808,7 @@ impl MethodDef {
                     if handler.iter().all(|block| block.is_only_rethrow(asm)) {
                         //panic!("about to remove {handler}");
                         block.remove_handler();
-                    }*/
+                    }
                 }
                 // simplify_bbs(Some(blocks), asm, fuel)
             };

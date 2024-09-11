@@ -98,6 +98,55 @@ fn insert_rust_alloc(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
     };
     patcher.insert(name, Box::new(generator));
 }
+fn insert_rust_alloc_zeroed(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
+    let name = asm.alloc_string("__rust_alloc_zeroed");
+    let generator = move |_, asm: &mut Assembly| {
+        let size = asm.alloc_node(CILNode::LdArg(0));
+        let align = asm.alloc_node(CILNode::LdArg(1));
+        let void_ptr = asm.nptr(Type::Void);
+        let sig = asm.sig([Type::Int(Int::USize), Type::Int(Int::USize)], void_ptr);
+        let aligned_alloc = asm.alloc_string("AlignedAlloc");
+        let native_mem = ClassRef::native_mem(asm);
+        let call_method = asm.alloc_methodref(MethodRef::new(
+            native_mem,
+            aligned_alloc,
+            sig,
+            MethodKind::Static,
+            [].into(),
+        ));
+        let alloc = asm.alloc_node(CILNode::Call(Box::new((
+            call_method,
+            Box::new([size, align]),
+        ))));
+        let alloc = asm.alloc_root(CILRoot::StLoc(0, alloc));
+        let cap = asm.alloc_node(Const::USize(ALLOC_CAP));
+        let check = asm.alloc_root(CILRoot::Branch(Box::new((
+            1,
+            0,
+            Some(super::cilroot::BranchCond::Gt(
+                size,
+                cap,
+                super::cilroot::CmpKind::Unsigned,
+            )),
+        ))));
+        let throw =
+            crate::cil_root::CILRoot::throw(&format!("Alloc limit of {ALLOC_CAP} exceeded.",), asm);
+        let throw = CILRoot::from_v1(&throw, asm);
+        let throw = asm.alloc_root(throw);
+        let zero = asm.alloc_node(Const::U8(0));
+        let alloc_val = asm.alloc_node(CILNode::LdLoc(0));
+        let zero = asm.alloc_root(CILRoot::InitBlk(Box::new((alloc_val, zero, size))));
+        let ret = asm.alloc_root(CILRoot::Ret(alloc_val));
+        MethodImpl::MethodBody {
+            blocks: vec![
+                BasicBlock::new(vec![check, alloc, zero, ret], 0, None),
+                BasicBlock::new(vec![throw], 1, None),
+            ],
+            locals: vec![(None, asm.alloc_type(Type::Int(Int::USize)))],
+        }
+    };
+    patcher.insert(name, Box::new(generator));
+}
 fn insert_rust_realloc(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
     let name = asm.alloc_string("__rust_realloc");
     let generator = move |_, asm: &mut Assembly| {
@@ -157,6 +206,7 @@ fn insert_rust_dealloc(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
 
 pub fn insert_heap(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
     insert_rust_alloc(asm, patcher);
+    insert_rust_alloc_zeroed(asm, patcher);
     insert_rust_realloc(asm, patcher);
     insert_rust_dealloc(asm, patcher);
     insert_catch_unwind(asm, patcher);

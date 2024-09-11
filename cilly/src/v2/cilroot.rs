@@ -69,6 +69,19 @@ pub enum BranchCond {
     Le(NodeIdx, NodeIdx, CmpKind),
     Ge(NodeIdx, NodeIdx, CmpKind),
 }
+impl BranchCond {
+    pub(crate) fn nodes(&self) -> Vec<NodeIdx> {
+        match self {
+            BranchCond::True(cond) | BranchCond::False(cond) => vec![*cond],
+            BranchCond::Eq(lhs, rhs)
+            | BranchCond::Ne(lhs, rhs)
+            | BranchCond::Lt(lhs, rhs, _)
+            | BranchCond::Gt(lhs, rhs, _)
+            | BranchCond::Le(lhs, rhs, _)
+            | BranchCond::Ge(lhs, rhs, _) => vec![*lhs, *rhs],
+        }
+    }
+}
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub enum CmpKind {
     Ordered,
