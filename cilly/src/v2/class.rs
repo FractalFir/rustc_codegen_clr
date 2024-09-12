@@ -500,11 +500,7 @@ impl ClassDef {
         self.generics
     }
 
-    pub(super) fn merge_defs(
-        &mut self,
-        translated: ClassDef,
-        strings: &super::BiMap<StringIdx, IString>,
-    ) {
+    pub(super) fn merge_defs(&mut self, translated: ClassDef) {
         // Check name matches
         assert_eq!(self.name(), translated.name());
 
@@ -514,13 +510,7 @@ impl ClassDef {
         assert_eq!(self.generics(), translated.generics());
         // Check inheretence matches
         assert_eq!(self.extends(), translated.extends());
-        // C void does some wierd stuff, but it is harmless, so we just ignore its phantom fields.
-        if !strings.get(self.name()).contains("core.ffi.c_void") {
-            // If we want to merge types, we need to confoirm they have identical fields.
-            assert_eq!(self.fields(), translated.fields());
-            // Check size matches
-            assert_eq!(self.explict_size(), translated.explict_size());
-        }
+
         // Merge the static fields, removing duplicates
         self.static_fields_mut().extend(translated.static_fields());
         make_unique(&mut self.static_fields);
@@ -564,90 +554,124 @@ fn make_unique<T: Eq + std::hash::Hash>(input: &mut Vec<T>) {
     let mut tmp = into_unique(tmp);
     std::mem::swap(&mut tmp, input);
 }
-/*
-fn into_unique_configurable<T, K: Eq + std::hash::Hash>(
-    input: Vec<T>,
-    by: impl Fn(&T) -> K,
-    on_collision: impl Fn(T, T) -> T,
-) -> Vec<T> {
-    let mut map = FxHashMap::default();
-    for item in input {
-        match map.entry(by(&item)) {
-            std::collections::hash_map::Entry::Occupied(occupied) => todo!(),
-            std::collections::hash_map::Entry::Vacant(vacant) => {
-                vacant.insert(item);
-            }
-        }
-    }
-    todo!()
+#[test]
+fn test_into_unique() {
+    assert!(into_unique::<u32>(vec![]).is_empty());
+    assert_eq!(into_unique::<u32>(vec![0]), vec![0]);
+    assert_eq!(into_unique::<u32>(vec![0, 0]), vec![0]);
+    assert_eq!(into_unique::<u32>(vec![2, 1, 1]).len(), 2);
+    let mut v = vec![];
+    make_unique::<u32>(&mut v);
+    assert!(v.is_empty());
+    let mut v = vec![0];
+    make_unique::<u32>(&mut v);
+    assert_eq!(v, vec![0]);
+    let mut v = vec![0, 1];
+    make_unique::<u32>(&mut v);
+    assert_eq!(v, vec![0, 1]);
+    let mut v = vec![2, 1, 1];
+    make_unique::<u32>(&mut v);
+    assert_eq!(v.len(), 2);
 }
-*/
 #[test]
 fn has_explicit_layout() {
-    let mut asm = Assembly::default();
-    let name = asm.alloc_string("MyClass");
-    let def = ClassDef::new(name, false, 0, None, vec![], vec![], Access::Extern, None);
-    assert!(!def.has_explicit_layout());
-    let def = ClassDef::new(
-        name,
-        false,
-        0,
-        None,
-        vec![],
-        vec![],
-        Access::Extern,
-        Some(NonZeroU32::new(1000).unwrap()),
-    );
-    assert_eq!(def.fields().len(), 0);
-    assert!(def.has_explicit_layout());
-    let def = ClassDef::new(
-        name,
-        false,
-        0,
-        None,
-        vec![(Type::Bool, name, Some(1000))],
-        vec![],
-        Access::Extern,
-        None,
-    );
-    assert_eq!(def.fields().len(), 1);
-    assert!(def.has_explicit_layout());
-    let def = ClassDef::new(
-        name,
-        false,
-        0,
-        None,
-        vec![],
-        vec![(Type::Bool, name, false)],
-        Access::Extern,
-        None,
-    );
-    assert_eq!(def.static_fields().len(), 1);
-    assert!(!def.has_explicit_layout());
-    let def = ClassDef::new(
-        name,
-        false,
-        0,
-        None,
-        vec![(Type::Bool, name, None)],
-        vec![],
-        Access::Extern,
-        None,
-    );
-    assert_eq!(def.fields().len(), 1);
-    assert!(!def.has_explicit_layout());
-    let def = ClassDef::new(
-        name,
-        false,
-        0,
-        None,
-        vec![(Type::Bool, name, Some(1000))],
-        vec![],
-        Access::Extern,
-        Some(NonZeroU32::new(1000).unwrap()),
-    );
-    assert_eq!(def.fields().len(), 1);
-    assert!(def.has_explicit_layout());
+    let vt = [true, false];
+    for is_valuetype in vt {
+        let mut asm = Assembly::default();
+        let name = asm.alloc_string("MyClass");
+        let def = ClassDef::new(
+            name,
+            is_valuetype,
+            0,
+            None,
+            vec![],
+            vec![],
+            Access::Extern,
+            None,
+        );
+        assert!(def.explict_size().is_none());
+        assert!(!def.has_explicit_layout());
+        assert_eq!(is_valuetype, def.is_valuetype());
+        assert_eq!(is_valuetype, def.ref_to().is_valuetype());
+        let def = ClassDef::new(
+            name,
+            is_valuetype,
+            0,
+            None,
+            vec![],
+            vec![],
+            Access::Extern,
+            Some(NonZeroU32::new(1000).unwrap()),
+        );
+        assert_eq!(def.fields().len(), 0);
+        assert!(def.has_explicit_layout());
+        assert_eq!(is_valuetype, def.is_valuetype());
+        assert_eq!(is_valuetype, def.ref_to().is_valuetype());
+        let def = ClassDef::new(
+            name,
+            is_valuetype,
+            0,
+            None,
+            vec![(Type::Bool, name, Some(1000))],
+            vec![],
+            Access::Extern,
+            None,
+        );
+        assert!(def.explict_size().is_none());
+        assert_eq!(def.fields().len(), 1);
+        assert!(def.has_explicit_layout());
+        assert_eq!(is_valuetype, def.is_valuetype());
+        assert_eq!(is_valuetype, def.ref_to().is_valuetype());
+        let mut def = ClassDef::new(
+            name,
+            is_valuetype,
+            0,
+            None,
+            vec![],
+            vec![(Type::Bool, name, false)],
+            Access::Extern,
+            None,
+        );
+        assert!(def.explict_size().is_none());
+        assert_eq!(def.static_fields().len(), 1);
+        assert_eq!(def.static_fields_mut().len(), 1);
+        assert!(def.has_static_field(name, Type::Bool));
+        assert!(!def.has_static_field(name, Type::PlatformChar));
+        assert!(!def.has_static_field(asm.alloc_string("CuteString"), Type::Bool));
+        assert!(!def.has_explicit_layout());
+        assert_eq!(is_valuetype, def.is_valuetype());
+        assert_eq!(is_valuetype, def.ref_to().is_valuetype());
+        let def = ClassDef::new(
+            name,
+            is_valuetype,
+            0,
+            None,
+            vec![(Type::Bool, name, None)],
+            vec![],
+            Access::Extern,
+            None,
+        );
+        assert!(def.explict_size().is_none());
+        assert_eq!(def.fields().len(), 1);
+        assert_eq!(is_valuetype, def.is_valuetype());
+        assert_eq!(is_valuetype, def.ref_to().is_valuetype());
+        assert!(!def.has_explicit_layout());
+        let def = ClassDef::new(
+            name,
+            is_valuetype,
+            0,
+            None,
+            vec![(Type::Bool, name, Some(1000))],
+            vec![],
+            Access::Extern,
+            Some(NonZeroU32::new(1000).unwrap()),
+        );
+        assert_eq!(def.explict_size(), Some(NonZeroU32::new(1000).unwrap()));
+        assert_eq!(def.fields().len(), 1);
+        assert!(def.has_explicit_layout());
+        assert_eq!(is_valuetype, def.is_valuetype());
+        assert_eq!(is_valuetype, def.ref_to().is_valuetype());
+    }
 }
 #[test]
 fn generics() {
@@ -697,4 +721,77 @@ fn type_gc() {
     assert_eq!(asm.class_defs().len(), 2);
     asm.eliminate_dead_types();
     assert_eq!(asm.class_defs().len(), 1);
+}
+#[test]
+fn merge_defs() {
+    let mut asm = Assembly::default();
+    let name: StringIdx = asm.alloc_string("Stay");
+    let def = ClassDef::new(name, false, 0, None, vec![], vec![], Access::Extern, None);
+
+    def.clone().merge_defs(def);
+}
+#[test]
+#[should_panic]
+fn merge_defs_different() {
+    let mut asm = Assembly::default();
+    let name: StringIdx = asm.alloc_string("Stay");
+    let mut stay = ClassDef::new(name, false, 0, None, vec![], vec![], Access::Extern, None);
+    let name: StringIdx = asm.alloc_string("Gone");
+    let gone = ClassDef::new(name, false, 0, None, vec![], vec![], Access::Public, None);
+
+    stay.merge_defs(gone);
+}
+#[test]
+fn extends() {
+    let mut asm = Assembly::default();
+    let name: StringIdx = asm.alloc_string("Stay");
+    let exception = ClassRef::exception(&mut asm);
+    let def = ClassDef::new(name, false, 0, None, vec![], vec![], Access::Extern, None);
+    assert_eq!(def.iter_types().count(), 0);
+    assert!(def.extends().is_none());
+    let def = ClassDef::new(
+        name,
+        false,
+        0,
+        Some(exception),
+        vec![],
+        vec![],
+        Access::Extern,
+        None,
+    );
+    assert_eq!(def.extends(), Some(exception));
+    assert_eq!(def.iter_types().count(), 1);
+}
+#[test]
+fn class_ref() {
+    let mut asm = Assembly::default();
+    let names = [
+        asm.alloc_string("CuteClass"),
+        asm.alloc_string("SpookyClass"),
+        asm.alloc_string("BraveClass"),
+    ];
+    let asms = [
+        None,
+        Some(asm.alloc_string("NiceAssembly")),
+        Some(asm.alloc_string("GreatAssembly")),
+    ];
+    let valuetypes = [false, true];
+    let generics = [
+        vec![],
+        vec![Type::Bool],
+        vec![Type::Bool, Type::PlatformObject],
+    ];
+    for name in names {
+        for asm in asms {
+            for valuetype in valuetypes {
+                for generic in &generics {
+                    let cref = ClassRef::new(name, asm, valuetype, generic.clone().into());
+                    assert_eq!(cref.name(), name);
+                    assert_eq!(cref.asm(), asm);
+                    assert_eq!(cref.is_valuetype(), valuetype);
+                    assert_eq!(cref.generics(), generic);
+                }
+            }
+        }
+    }
 }

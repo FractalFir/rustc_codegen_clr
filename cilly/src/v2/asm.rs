@@ -879,7 +879,7 @@ impl Assembly {
             let class_ref = self.alloc_class_ref(translated.ref_to());
             match self.class_defs.entry(ClassDefIdx(class_ref)) {
                 std::collections::hash_map::Entry::Occupied(mut occupied) => {
-                    occupied.get_mut().merge_defs(translated, &self.strings);
+                    occupied.get_mut().merge_defs(translated);
                 }
                 std::collections::hash_map::Entry::Vacant(vacant) => {
                     vacant.insert(translated);

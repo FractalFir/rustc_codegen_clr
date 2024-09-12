@@ -530,3 +530,145 @@ impl MethodRefIdx {
         Self(raw)
     }
 }
+#[test]
+fn locals() {
+    fn method(locals: &[LocalDef], asm: &mut Assembly) -> MethodDef {
+        let name: StringIdx = asm.alloc_string("DoSomething");
+        let mimpl = MethodImpl::MethodBody {
+            blocks: vec![],
+            locals: locals.into(),
+        };
+        let main_module = asm.main_module();
+        let sig = asm.sig([], Type::Void);
+        MethodDef::new(
+            Access::Extern,
+            main_module,
+            name,
+            sig,
+            MethodKind::Static,
+            mimpl,
+            vec![],
+        )
+    }
+    let mut asm = Assembly::default();
+    assert_eq!(method(&[], &mut asm).iter_locals(&asm).count(), 0);
+    let tpe = asm.alloc_type(Type::Bool);
+    let tpe2 = asm.alloc_type(Type::Bool);
+    assert_eq!(
+        method(&[(None, tpe)], &mut asm).iter_locals(&asm).count(),
+        1
+    );
+    assert_eq!(
+        method(&[(None, tpe), (None, tpe2)], &mut asm)
+            .iter_locals(&asm)
+            .cloned()
+            .collect::<Vec<(Option<StringIdx>, _)>>(),
+        vec![(None, tpe), (None, tpe2)]
+    );
+    let mut method = method(&[(None, tpe), (None, tpe2)], &mut asm);
+    assert_eq!(
+        method
+            .iter_locals(&asm)
+            .cloned()
+            .collect::<Vec<(Option<StringIdx>, _)>>(),
+        vec![(None, tpe), (None, tpe2)]
+    );
+    method.implementation.realloc_locals(&mut asm);
+    assert_eq!(method.iter_locals(&asm).count(), 0);
+}
+#[test]
+fn test_extern() {
+    assert!(!MethodImpl::MethodBody {
+        blocks: vec![],
+        locals: vec![],
+    }
+    .is_extern());
+    let mut asm = Assembly::default();
+    let name: StringIdx = asm.alloc_string("libsomething.so");
+    assert!(MethodImpl::Extern {
+        lib: name,
+        preserve_errno: false,
+    }
+    .is_extern())
+}
+#[test]
+fn cil() {
+    use super::RootIdx;
+    fn method(roots: &[RootIdx], asm: &mut Assembly) -> MethodDef {
+        let name: StringIdx = asm.alloc_string("DoSomething");
+        let mimpl = MethodImpl::MethodBody {
+            blocks: vec![BasicBlock::new(roots.to_vec(), 0, None)],
+            locals: vec![],
+        };
+        let main_module = asm.main_module();
+        let sig = asm.sig([], Type::Void);
+        MethodDef::new(
+            Access::Extern,
+            main_module,
+            name,
+            sig,
+            MethodKind::Static,
+            mimpl,
+            vec![],
+        )
+    }
+    let mut asm = Assembly::default();
+    assert_eq!(
+        method(&[], &mut asm)
+            .iter_cil(&asm)
+            .map(|iter| iter.count()),
+        Some(0)
+    );
+    let void_ret = asm.alloc_root(CILRoot::VoidRet);
+    assert_eq!(
+        method(&[void_ret], &mut asm)
+            .iter_cil(&asm)
+            .map(|iter| iter.collect::<Vec<_>>()),
+        Some(vec![CILIterElem::Root(CILRoot::VoidRet)])
+    );
+    let const0 = asm.alloc_node(crate::v2::Const::I32(0));
+    let const0_ret = asm.alloc_root(CILRoot::Ret(const0));
+    assert_eq!(
+        method(&[const0_ret], &mut asm)
+            .iter_cil(&asm)
+            .map(|iter| iter.collect::<Vec<_>>()),
+        Some(vec![
+            CILIterElem::Root(CILRoot::Ret(const0)),
+            CILIterElem::Node(crate::v2::Const::I32(0).into()),
+        ])
+    );
+    let name: StringIdx = asm.alloc_string("DoSomething");
+    let main_module = asm.main_module();
+    let sig = asm.sig([], Type::Void);
+    assert_eq!(
+        MethodDef::new(
+            Access::Extern,
+            main_module,
+            name,
+            sig,
+            MethodKind::Static,
+            MethodImpl::Extern {
+                lib: name,
+                preserve_errno: false,
+            },
+            vec![],
+        )
+        .iter_cil(&asm)
+        .map(|iter| iter.count()),
+        None,
+    );
+    assert_eq!(
+        MethodDef::new(
+            Access::Extern,
+            main_module,
+            name,
+            sig,
+            MethodKind::Static,
+            MethodImpl::Missing,
+            vec![],
+        )
+        .iter_cil(&asm)
+        .map(|iter| iter.count()),
+        None,
+    );
+}

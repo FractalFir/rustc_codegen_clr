@@ -597,10 +597,10 @@ impl Assembly {
             def.explict_size(),
         );
         let class_ref = self.alloc_class_ref(translated.ref_to());
-        let (defs_mut, strings) = self.class_defs_mut_strings();
+        let (defs_mut, _) = self.class_defs_mut_strings();
         match defs_mut.entry(ClassDefIdx(class_ref)) {
             std::collections::hash_map::Entry::Occupied(mut occupied) => {
-                occupied.get_mut().merge_defs(translated.clone(), strings);
+                occupied.get_mut().merge_defs(translated.clone());
             }
             std::collections::hash_map::Entry::Vacant(vacant) => {
                 vacant.insert(translated.clone());
