@@ -202,6 +202,8 @@ impl ILExporter {
                             writeln!(out,"pop")?;
                         }
                         for hblock in handler{
+                            //DEBUG REMOVE THIS
+                            writeln!(out,"// is_only_rethrow:{}",hblock.is_only_rethrow(asm))?;
                             writeln!(out," h{}_{}:",block.block_id(),hblock.block_id())?;
                             for root in hblock.roots(){
                                 self.export_root(asm,out,*root,true)?;
@@ -482,7 +484,7 @@ impl ILExporter {
             }
             super::CILNode::RefToPtr(inner) => {
                 self.export_node(asm, out, *inner)?;
-                writeln!(out, "conv.u")
+                writeln!(out, "conv.u//rtp")
             }
             super::CILNode::PtrCast(val, _) => self.export_node(asm, out, *val),
             super::CILNode::LdFieldAdress { addr, field } => {

@@ -351,6 +351,34 @@ impl MethodImpl {
         // Check if each local is ever read or its address is taken
         let mut local_reads = vec![false; locals.len()];
         let mut local_address_of = vec![false; locals.len()];
+        /*
+        let blocks_copy = blocks.clone();
+        for block in blocks.iter_mut() {
+            let Some(root) = block.roots().last() else {
+                continue;
+            };
+            let CILRoot::Branch(info) = asm.get_root(*root) else {
+                continue;
+            };
+            let (target, sub_target, None) = info.as_ref() else {
+                continue;
+            };
+            let id = blockid_from_jump(*target, *sub_target);
+            if id == block.block_id() {
+                continue;
+            }
+            let Some(target_block) = block_with_id(&blocks_copy, id) else {
+                continue;
+            };
+            let (None, None) = (block.handler(), target_block.handler()) else {
+                continue;
+            };
+            if fuel.consume(4) {
+                block.roots_mut().pop();
+                block.roots_mut().extend(target_block.roots());
+            }
+        } */
+
         if !fuel.consume(8) {
             return;
         }
@@ -451,7 +479,15 @@ impl MethodDef {
         }
         if fuel.consume(5) {
             if let Some(roots) = self.iter_roots_mut() {
-                let mut peekable = roots.peekable();
+                let roots: Vec<_> = roots
+                    .filter(|root| {
+                        !matches!(
+                            asm.get_root(**root),
+                            CILRoot::Nop | CILRoot::SourceFileInfo { .. }
+                        )
+                    })
+                    .collect();
+                let mut peekable = roots.into_iter().peekable();
                 while let Some(curr) = peekable.next() {
                     let Some(peek) = peekable.peek() else {
                         continue;
@@ -468,6 +504,19 @@ impl MethodDef {
                         {
                             *curr = nop
                         }*/
+                        // If we return var a immeditaly after assigining it, we can just return it.
+                        (CILRoot::StLoc(set_loc, tree), CILRoot::Ret(ret_loc)) => {
+                            let CILNode::LdLoc(ret_loc) = asm.get_node(*ret_loc) else {
+                                continue;
+                            };
+                            if set_loc != ret_loc {
+                                continue;
+                            }
+                            let tree = *tree;
+                            *curr = nop;
+                            let curr = peekable.next().unwrap();
+                            *curr = asm.alloc_root(CILRoot::Ret(tree));
+                        }
                         (CILRoot::Branch(info), CILRoot::Branch(info2))
                             if is_branch_unconditional(info2) =>
                         {
@@ -738,30 +787,74 @@ impl MethodDef {
         if fuel.consume(5) {
             self.implementation_mut().remove_duplicate_sfi(asm);
         }
-        if fuel.consume(6) {
-            if let MethodImpl::MethodBody { blocks, .. } = self.implementation_mut() {
-                for block in blocks.iter_mut() {
-                    simplify_bbs(block.handler_mut(), asm, fuel, cache);
 
-                    let Some(handler) = block.handler() else {
-                        return;
-                    };
-                    // If tall the blocks only rethrow(and don't do anything else!), then this handler nothing, and we can ommit it
-                    if handler.iter().all(|block| block.is_only_rethrow(asm)) {
-                        //panic!("about to remove {handler}");
-                        block.remove_handler();
-                    }
+        if let MethodImpl::MethodBody { blocks, .. } = self.implementation_mut() {
+            for block in blocks.iter_mut() {
+                let Some(handler) = block.handler() else {
+                    continue;
+                };
+                // If this handler does nothing besides jumping around, seting locals, and then rethrows, then this handler should optimize away into nothing.
+                if handler.iter().all(|block| {
+                    block
+                        .meaningfull_roots(asm)
+                        .all(|root| match asm.get_root(root) {
+                            CILRoot::Branch(info) => {
+                                if let Some(cond) = &info.2 {
+                                    cond.nodes()
+                                        .iter()
+                                        .all(|node| !cache.has_side_effects(*node, asm))
+                                } else {
+                                    true
+                                }
+                            }
+                            CILRoot::StLoc(_, tree) => !cache.has_side_effects(*tree, asm),
+                            CILRoot::ReThrow | CILRoot::Nop | CILRoot::SetStaticField { .. } => {
+                                true
+                            }
+                            _ => false,
+                        })
+                }) && fuel.consume(6)
+                {
+                    block.remove_handler();
                 }
-                // simplify_bbs(Some(blocks), asm, fuel)
-            };
-        }
+            }
+            // simplify_bbs(Some(blocks), asm, fuel)
+        };
     }
 }
 #[must_use]
 pub fn is_branch_unconditional(branch: &(u32, u32, Option<BranchCond>)) -> bool {
     branch.2.is_none()
 }
-
+fn blockid_from_jump(target: u32, sub_target: u32) -> u32 {
+    if sub_target == 0 {
+        target
+    } else {
+        sub_target
+    }
+}
+fn block_with_id(blocks: &[BasicBlock], id: u32) -> Option<&BasicBlock> {
+    blocks.iter().find(|block| block.block_id() == id)
+}
+#[test]
+fn find_block() {
+    let blocks = vec![];
+    assert!(block_with_id(&blocks, 0).is_none());
+    let blocks = vec![
+        BasicBlock::new(vec![], 0, None),
+        BasicBlock::new(vec![], 1, None),
+    ];
+    assert!(block_with_id(&blocks, 0).is_some());
+    assert!(block_with_id(&blocks, 1).is_some());
+    assert!(block_with_id(&blocks, 2).is_none());
+}
+#[test]
+fn blockid() {
+    assert_eq!(blockid_from_jump(0, 0), 0);
+    assert_eq!(blockid_from_jump(2, 1), 1);
+    assert_eq!(blockid_from_jump(1, 2), 2);
+    assert_eq!(blockid_from_jump(2, 0), 2);
+}
 #[test]
 fn opt_mag() {
     use super::{BinOp, Float};
