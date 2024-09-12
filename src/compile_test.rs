@@ -32,8 +32,10 @@ pub fn test_dotnet_executable(file_path: &str, test_dir: &str) -> String {
         } else {
             format!("{test_dir}/{file_path}.runtimeconfig.json")
         };
-        println!("{config_path:?}");
-        let mut file = std::fs::File::create(config_path).unwrap();
+
+        let mut file = std::fs::File::create(&config_path).unwrap_or_else(|err| {
+            panic!("Could not create runtime config file at {config_path:?} due to {err:?}")
+        });
         file.write_all(cilly::v2::il_exporter::get_runtime_config().as_bytes())
             .expect("Could not write runtime config");
         //RUNTIME_CONFIG
