@@ -180,7 +180,11 @@ impl CILNode {
     ) -> Result<Type, IString> {
         match self {
             CILNode::Const(cst) => Ok(cst.as_ref().get_type()),
-            CILNode::BinOp(lhs, rhs, BinOp::Add | BinOp::Sub | BinOp::Mul) => {
+            CILNode::BinOp(
+                lhs,
+                rhs,
+                BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Rem | BinOp::RemUn,
+            ) => {
                 let lhs = asm.get_node(*lhs).clone();
                 let rhs = asm.get_node(*rhs).clone();
                 let lhs = lhs.get_type(sig, locals, asm)?;

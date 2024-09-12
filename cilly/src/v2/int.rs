@@ -196,3 +196,29 @@ impl Int {
         }
     }
 }
+#[test]
+fn is_signed() {
+    let unsigned = [Int::U8, Int::U16, Int::U32, Int::U64, Int::U128, Int::USize];
+    let signed = [Int::I8, Int::I16, Int::I32, Int::I64, Int::I128, Int::ISize];
+    for signed in signed {
+        assert!(signed.is_signed());
+    }
+    for unsigned in unsigned {
+        assert!(!unsigned.is_signed());
+    }
+}
+#[test]
+fn name() {
+    assert_eq!(Int::USize.name(), "usize");
+    assert_eq!(Int::ISize.name(), "isize");
+    assert_eq!(Int::U128.name(), "u128");
+    assert_eq!(Int::I128.name(), "i128");
+    assert_eq!(Int::U64.name(), "u64");
+    assert_eq!(Int::I64.name(), "i64");
+    assert_eq!(Int::U32.name(), "u32");
+    assert_eq!(Int::I32.name(), "i32");
+    assert_eq!(Int::U16.name(), "u16");
+    assert_eq!(Int::I16.name(), "i16");
+    assert_eq!(Int::U8.name(), "u8");
+    assert_eq!(Int::I8.name(), "i8");
+}

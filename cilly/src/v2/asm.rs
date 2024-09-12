@@ -1,5 +1,5 @@
 use super::{
-    bimap::{calculate_hash, BiMap, BiMapIndex, IntoBiMapIndex},
+    bimap::{BiMap, BiMapIndex, IntoBiMapIndex},
     cilnode::{BinOp, MethodKind, UnOp},
     opt::{OptFuel, SideEffectInfoCache},
     Access, CILNode, CILRoot, ClassDef, ClassDefIdx, ClassRef, ClassRefIdx, Const, Exporter,
@@ -13,22 +13,12 @@ use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use std::any::type_name;
 
-#[derive(Default, Serialize, Deserialize, Eq, PartialEq, Clone, Debug)]
-pub(crate) struct IStringWrapper(pub(super) IString);
-impl std::hash::Hash for IStringWrapper {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        calculate_hash(&0xC0FE_BEEFu32).hash(state);
-        for char in self.0.chars() {
-            calculate_hash(&char).hash(state);
-        }
-    }
-}
 pub type MissingMethodPatcher =
     FxHashMap<StringIdx, Box<dyn Fn(MethodRefIdx, &mut Assembly) -> MethodImpl>>;
 #[derive(Default, Serialize, Deserialize, Clone)]
 pub struct Assembly {
     /// A list of strings used in this assembly
-    strings: BiMap<StringIdx, IStringWrapper>,
+    strings: BiMap<StringIdx, IString>,
     /// A list of all types in this assembly
     types: BiMap<TypeIdx, Type>,
     class_refs: BiMap<ClassRefIdx, ClassRef>,
@@ -147,7 +137,7 @@ impl Assembly {
             .iter()
             .enumerate()
             .filter_map(move |(idx, str)| {
-                if str.0.contains(pat.clone()) {
+                if str.contains(pat.clone()) {
                     Some(StringIdx(BiMapIndex::new((idx + 1) as u32).unwrap()))
                 } else {
                     None
@@ -155,7 +145,7 @@ impl Assembly {
             })
     }
     pub fn get_prealllocated_string(&self, string: impl Into<IString>) -> Option<StringIdx> {
-        self.strings.1.get(&IStringWrapper(string.into())).copied()
+        self.strings.1.get(&(string.into())).copied()
     }
     pub fn class_mut(&mut self, id: ClassDefIdx) -> &mut ClassDef {
         self.class_defs.get_mut(&id).unwrap()
@@ -173,11 +163,11 @@ impl Assembly {
         self.method_defs.get(&dref).unwrap()
     }
     pub fn alloc_string(&mut self, string: impl Into<IString>) -> StringIdx {
-        self.strings.alloc(IStringWrapper(string.into()))
+        self.strings.alloc(string.into())
     }
     #[must_use]
     pub fn get_string(&self, key: StringIdx) -> &IString {
-        &self.strings.get(key).0
+        self.strings.get(key)
     }
     pub fn sig(&mut self, input: impl Into<Box<[Type]>>, output: impl Into<Type>) -> SigIdx {
         self.sigs.alloc(FnSig::new(input.into(), output.into()))
@@ -711,6 +701,13 @@ impl Assembly {
             .flat_map(|tpe| tpe.iter_class_refs(self).collect::<Vec<_>>())
             .filter_map(|cref| self.class_ref_to_def(cref))
             .collect();
+        previosly_ressurected.extend(self.class_defs().iter().filter_map(|(defid, def)| {
+            if def.access().is_extern() {
+                Some(defid)
+            } else {
+                None
+            }
+        }));
         let rust_void = self.alloc_string("RustVoid");
         let rust_void = self.alloc_class_ref(ClassRef::new(rust_void, None, true, vec![].into()));
         if let Some(cref) = self.class_ref_to_def(rust_void) {
@@ -911,7 +908,7 @@ impl Assembly {
         &mut self,
     ) -> (
         &mut FxHashMap<ClassDefIdx, ClassDef>,
-        &BiMap<StringIdx, IStringWrapper>,
+        &BiMap<StringIdx, IString>,
     ) {
         (&mut self.class_defs, &self.strings)
     }

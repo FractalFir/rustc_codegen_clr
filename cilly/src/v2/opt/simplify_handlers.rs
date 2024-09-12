@@ -55,6 +55,13 @@ fn block_gc(blocks: &mut Vec<BasicBlock>, asm: &Assembly) {
         .cloned()
         .collect();
 }
+fn blockid_from_jump(target: u32, sub_target: u32) -> u32 {
+    if sub_target == 0 {
+        target
+    } else {
+        sub_target
+    }
+}
 pub fn simplify_bbs(
     handler: Option<&mut Vec<BasicBlock>>,
     asm: &mut Assembly,
@@ -80,11 +87,7 @@ pub fn simplify_bbs(
         };
         let (target, sub_target, cond) = info.as_ref();
         // Sub target of 0, look up by the target
-        let jump = if *sub_target == 0 {
-            direct_jumps.get(target)
-        } else {
-            direct_jumps.get(sub_target)
-        };
+        let jump = direct_jumps.get(&blockid_from_jump(*target, *sub_target));
         let Some(jump) = jump else {
             continue;
         };
@@ -104,11 +107,9 @@ pub fn simplify_bbs(
                 }
             }
             // TODO: Correctnesss:Check if this root's tree has no side effects!
-            let rethrow = if *sub_target == 0 {
-                rethrows.get(target).unwrap()
-            } else {
-                rethrows.get(sub_target).unwrap()
-            };
+            let rethrow = rethrows
+                .get(&blockid_from_jump(*target, *sub_target))
+                .unwrap();
             if *rethrow && fuel.consume(1) {
                 *root = asm.alloc_root(CILRoot::ReThrow);
             }
@@ -125,4 +126,35 @@ pub fn simplify_bbs(
     }
 
     //block_gc(handler, asm);
+}
+#[test]
+fn find_block() {
+    let blocks = vec![];
+    assert!(block_with_id(&blocks, 0).is_none());
+    let blocks = vec![
+        BasicBlock::new(vec![], 0, None),
+        BasicBlock::new(vec![], 1, None),
+    ];
+    assert!(block_with_id(&blocks, 0).is_some());
+    assert!(block_with_id(&blocks, 1).is_some());
+    assert!(block_with_id(&blocks, 2).is_none());
+}
+#[test]
+fn targets() {
+    let mut asm = Assembly::default();
+    let block = BasicBlock::new(vec![], 0, None);
+    assert_eq!(block_targets(&block, &asm).count(), 0);
+    let nop = asm.alloc_root(CILRoot::Nop);
+    let block = BasicBlock::new(vec![nop], 0, None);
+    assert_eq!(block_targets(&block, &asm).count(), 0);
+    let goto = asm.alloc_root(CILRoot::Branch(Box::new((0, 0, None))));
+    let block = BasicBlock::new(vec![nop, goto, nop], 0, None);
+    assert_eq!(block_targets(&block, &asm).count(), 1);
+}
+#[test]
+fn blockid() {
+    assert_eq!(blockid_from_jump(0, 0), 0);
+    assert_eq!(blockid_from_jump(2, 1), 1);
+    assert_eq!(blockid_from_jump(1, 2), 2);
+    assert_eq!(blockid_from_jump(2, 0), 2);
 }

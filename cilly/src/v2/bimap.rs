@@ -1,6 +1,7 @@
-use fxhash::{FxHashMap, FxHasher};
+use fxhash::FxHashMap;
 use serde::{Deserialize, Serialize};
 use std::{collections::hash_map::Entry, fmt::Debug, hash::Hash, num::NonZeroU32};
+
 #[derive(Serialize, Deserialize, Clone)]
 pub struct BiMap<Key, Value: Eq + Hash>(pub Vec<Value>, pub FxHashMap<Value, Key>);
 impl<Key: IntoBiMapIndex + Eq + Hash + Clone, Value: Eq + Hash + Clone> Default
@@ -53,9 +54,20 @@ pub trait IntoBiMapIndex {
     fn from_index(val: BiMapIndex) -> Self;
     fn as_bimap_index(&self) -> BiMapIndex;
 }
-pub fn calculate_hash<T: std::hash::Hash>(t: &T) -> u64 {
-    use std::hash::Hasher;
-    let mut s = FxHasher::default();
-    t.hash(&mut s);
-    s.finish()
+#[test]
+fn bimap_alloc() {
+    use super::StringIdx;
+    use crate::IString;
+    let mut map = BiMap::<StringIdx, IString>::default();
+    assert!(map.is_empty());
+    assert_eq!(map.len(), 0);
+    let hi = map.alloc("Hi".into());
+    assert!(!map.is_empty());
+    assert_eq!(**map.get(hi), *"Hi");
+    assert_eq!(map.len(), 1);
+    let bob = map.alloc("Bob".into());
+    assert_ne!(hi, bob);
+    assert_eq!(**map.get(bob), *"Bob");
+    assert_eq!(map.len(), 2);
+    assert!(!map.is_empty());
 }

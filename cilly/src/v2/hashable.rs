@@ -45,3 +45,10 @@ impl PartialEq for HashableF64 {
     }
 }
 impl Eq for HashableF64 {}
+#[test]
+fn eq() {
+    assert_eq!(HashableF32(f32::NAN), HashableF32(f32::NAN));
+    assert_eq!(HashableF32(5.0), HashableF32(5.0));
+    assert_eq!(HashableF64(f64::NAN), HashableF64(f64::NAN));
+    assert_eq!(HashableF64(5.0), HashableF64(5.0));
+}

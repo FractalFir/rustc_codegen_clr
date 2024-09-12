@@ -121,3 +121,10 @@ impl From<Float> for Type {
         Type::Float(value)
     }
 }
+#[test]
+fn name() {
+    assert_eq!(Float::F16.name(), "f16");
+    assert_eq!(Float::F32.name(), "f32");
+    assert_eq!(Float::F64.name(), "f64");
+    assert_eq!(Float::F128.name(), "f128");
+}

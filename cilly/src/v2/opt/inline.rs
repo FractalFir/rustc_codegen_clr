@@ -1,9 +1,10 @@
+use super::OptFuel;
 use crate::v2::{
     cilnode::MethodKind, Assembly, CILIter, CILIterElem, CILNode, CILRoot, MethodDef, MethodImpl,
     MethodRefIdx, NodeIdx, RootIdx,
 };
-
-use super::OptFuel;
+#[cfg(test)]
+use crate::v2::{BasicBlock, Const, Type};
 fn trivial_inline_block<'def, 'asm: 'def>(
     def: &'def MethodDef,
     asm: &'asm mut Assembly,
@@ -144,4 +145,48 @@ pub fn inline_trivial_call_root(
         Some(node) => node,
         None => CILRoot::Call(Box::new((calle, call_args.into()))),
     }
+}
+#[test]
+fn test_inline() {
+    let mut asm = Assembly::default();
+    let mut fuel = OptFuel::new(0);
+    let val = asm.alloc_node(Const::Bool(false));
+    let ret = asm.alloc_root(CILRoot::Ret(val));
+    assert!(trivial_inline_node(
+        &MethodDef::new(
+            crate::v2::Access::Extern,
+            asm.main_module(),
+            asm.alloc_string("Hi"),
+            asm.sig([], Type::Void),
+            MethodKind::Static,
+            MethodImpl::MethodBody {
+                blocks: vec![BasicBlock::new(vec![ret], 0, None)],
+                locals: vec![],
+            },
+            vec![],
+        ),
+        &[],
+        &mut fuel,
+        &mut asm,
+    )
+    .is_none());
+    let mut fuel = OptFuel::new(1000);
+    assert!(trivial_inline_node(
+        &MethodDef::new(
+            crate::v2::Access::Extern,
+            asm.main_module(),
+            asm.alloc_string("Hi"),
+            asm.sig([], Type::Void),
+            MethodKind::Static,
+            MethodImpl::MethodBody {
+                blocks: vec![BasicBlock::new(vec![ret], 0, None)],
+                locals: vec![],
+            },
+            vec![],
+        ),
+        &[],
+        &mut fuel,
+        &mut asm,
+    )
+    .is_some());
 }

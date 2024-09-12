@@ -148,7 +148,7 @@ impl CILRoot {
                 args.push(ptr);
                 args.into()
             }
-            CILRoot::CpObj { src, dst, tpe } => [src, dst].into(),
+            CILRoot::CpObj { src, dst, .. } => [src, dst].into(),
         }
     }
     #[allow(clippy::too_many_lines)]

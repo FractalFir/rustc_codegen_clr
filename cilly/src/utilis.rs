@@ -539,18 +539,6 @@ pub fn assert_unique<T: std::hash::Hash + PartialEq + Eq>(val: &[T], msg: impl D
     set.extend(val.iter());
     assert_eq!(set.len(), val.len(), "{msg:?}");
 }
-#[test]
-fn argv() {
-    let mut asm = Assembly::empty();
-    argc_argv_init_method(&mut asm);
-}
-
-#[test]
-fn environ() {
-    let mut asm = Assembly::empty();
-
-    get_environ(&mut asm);
-}
 #[must_use]
 pub fn escape_class_name(name: &str) -> String {
     name.replace("::", ".")
@@ -575,4 +563,31 @@ pub fn escape_class_name(name: &str) -> String {
         .replace(';', "_scol_")
         .replace('!', "_excl_")
         .replace('\"', "_qt_")
+}
+#[test]
+fn argv() {
+    let mut asm = Assembly::empty();
+    argc_argv_init_method(&mut asm);
+}
+
+#[test]
+fn environ() {
+    let mut asm = Assembly::empty();
+    get_environ(&mut asm);
+}
+#[test]
+fn test_escape_name() {
+    assert_eq!(escape_class_name("SomeFunnyType"), "SomeFunnyType");
+    assert_eq!(
+        escape_class_name("MyNamespace::SomeFunnyType"),
+        "MyNamespace.SomeFunnyType"
+    );
+    assert_eq!(
+        escape_class_name("MyNamespace..SomeFunnyType"),
+        "MyNamespace.SomeFunnyType"
+    );
+    assert_eq!(
+        escape_class_name("SomeFunnyType<[Inner]>"),
+        "SomeFunnyType_lt__lsbra_Inner_rsbra__gt_"
+    );
 }

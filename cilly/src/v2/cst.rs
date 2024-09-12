@@ -5,7 +5,7 @@ use super::{
     CILNode, ClassRefIdx, Float, Int, StringIdx, Type,
 };
 
-#[derive(PartialEq, Eq, Clone, Debug, Hash, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Copy, Clone, Debug, Hash, Serialize, Deserialize)]
 pub enum Const {
     I8(i8),
     I16(i16),

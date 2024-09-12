@@ -2,6 +2,8 @@ use std::num::NonZeroU32;
 
 use serde::{Deserialize, Serialize};
 
+use crate::IString;
+
 use super::{
     access::Access,
     bimap::{BiMapIndex, IntoBiMapIndex},
@@ -35,10 +37,8 @@ impl ClassRef {
     #[must_use]
     pub fn display(&self, asm: &Assembly) -> String {
         format!(
-            "ClassRef{{name:{:?} {},asm:{:?} {:?},is_valuetype:{},generics{:?}}}",
-            self.name(),
+            "ClassRef{{name:{},asm:{:?},is_valuetype:{},generics{:?}}}",
             asm.get_string(self.name()),
-            self.asm(),
             self.asm().map(|idx| asm.get_string(idx)),
             self.is_valuetype(),
             self.generics()
@@ -503,7 +503,7 @@ impl ClassDef {
     pub(super) fn merge_defs(
         &mut self,
         translated: ClassDef,
-        strings: &super::BiMap<StringIdx, super::asm::IStringWrapper>,
+        strings: &super::BiMap<StringIdx, IString>,
     ) {
         // Check name matches
         assert_eq!(self.name(), translated.name());
@@ -515,7 +515,7 @@ impl ClassDef {
         // Check inheretence matches
         assert_eq!(self.extends(), translated.extends());
         // C void does some wierd stuff, but it is harmless, so we just ignore its phantom fields.
-        if !strings.get(self.name()).0.contains("core.ffi.c_void") {
+        if !strings.get(self.name()).contains("core.ffi.c_void") {
             // If we want to merge types, we need to confoirm they have identical fields.
             assert_eq!(self.fields(), translated.fields());
             // Check size matches
@@ -582,3 +582,119 @@ fn into_unique_configurable<T, K: Eq + std::hash::Hash>(
     todo!()
 }
 */
+#[test]
+fn has_explicit_layout() {
+    let mut asm = Assembly::default();
+    let name = asm.alloc_string("MyClass");
+    let def = ClassDef::new(name, false, 0, None, vec![], vec![], Access::Extern, None);
+    assert!(!def.has_explicit_layout());
+    let def = ClassDef::new(
+        name,
+        false,
+        0,
+        None,
+        vec![],
+        vec![],
+        Access::Extern,
+        Some(NonZeroU32::new(1000).unwrap()),
+    );
+    assert_eq!(def.fields().len(), 0);
+    assert!(def.has_explicit_layout());
+    let def = ClassDef::new(
+        name,
+        false,
+        0,
+        None,
+        vec![(Type::Bool, name, Some(1000))],
+        vec![],
+        Access::Extern,
+        None,
+    );
+    assert_eq!(def.fields().len(), 1);
+    assert!(def.has_explicit_layout());
+    let def = ClassDef::new(
+        name,
+        false,
+        0,
+        None,
+        vec![],
+        vec![(Type::Bool, name, false)],
+        Access::Extern,
+        None,
+    );
+    assert_eq!(def.static_fields().len(), 1);
+    assert!(!def.has_explicit_layout());
+    let def = ClassDef::new(
+        name,
+        false,
+        0,
+        None,
+        vec![(Type::Bool, name, None)],
+        vec![],
+        Access::Extern,
+        None,
+    );
+    assert_eq!(def.fields().len(), 1);
+    assert!(!def.has_explicit_layout());
+    let def = ClassDef::new(
+        name,
+        false,
+        0,
+        None,
+        vec![(Type::Bool, name, Some(1000))],
+        vec![],
+        Access::Extern,
+        Some(NonZeroU32::new(1000).unwrap()),
+    );
+    assert_eq!(def.fields().len(), 1);
+    assert!(def.has_explicit_layout());
+}
+#[test]
+fn generics() {
+    let mut asm = Assembly::default();
+    let name = asm.alloc_string("MyClass");
+    let def = ClassDef::new(name, false, 0, None, vec![], vec![], Access::Extern, None);
+    assert_eq!(def.generics(), 0);
+    assert_eq!(def.ref_to().generics(), &[]);
+    let def = ClassDef::new(name, false, 5, None, vec![], vec![], Access::Extern, None);
+    assert_eq!(def.generics(), 5);
+}
+#[test]
+fn display_class_ref() {
+    let mut asm = Assembly::default();
+    let name: StringIdx = asm.alloc_string("MyClass");
+    let def = ClassDef::new(name, false, 0, None, vec![], vec![], Access::Extern, None);
+    assert_eq!(
+        def.ref_to().display(&asm),
+        "ClassRef{name:MyClass,asm:None,is_valuetype:false,generics[]}"
+    );
+}
+#[test]
+fn type_gc() {
+    let mut asm = Assembly::default();
+    let name: StringIdx = asm.alloc_string("Stay");
+    asm.class_def(ClassDef::new(
+        name,
+        false,
+        0,
+        None,
+        vec![],
+        vec![],
+        Access::Extern,
+        None,
+    ));
+    let name: StringIdx = asm.alloc_string("Gone");
+    asm.class_def(ClassDef::new(
+        name,
+        false,
+        0,
+        None,
+        vec![],
+        vec![],
+        Access::Public,
+        None,
+    ));
+    assert_eq!(asm.class_defs().len(), 2);
+    asm.eliminate_dead_types();
+    assert_eq!(asm.class_defs().len(), 1);
+}

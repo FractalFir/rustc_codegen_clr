@@ -1,45 +1,22 @@
 use inline::inline_trivial_call_root;
 use simplify_handlers::simplify_bbs;
 
+#[cfg(test)]
+use super::Float;
+
 use super::{
     cilroot::BranchCond, method::LocalDef, BasicBlock, BinOp, CILIter, CILIterElem, CILNode,
     CILRoot, Const, Int, MethodImpl, NodeIdx, RootIdx, Type,
 };
 use crate::v2::{Assembly, MethodDef};
-use std::collections::HashMap;
+pub use opt_fuel::OptFuel;
+pub use side_effect::*;
 mod inline;
+mod opt_fuel;
 mod opt_node;
+mod side_effect;
 mod simplify_handlers;
-#[derive(Clone, Eq, PartialEq, Debug)]
-pub struct OptFuel(u32);
-impl OptFuel {
-    #[must_use]
-    pub fn scale(self, scale: f32) -> Self {
-        let inner = self.0;
-        #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
-        let scale_div = (1.0 / scale) as u32;
-        Self(inner / scale_div)
-    }
-    /// Creates *fuel* fuel
-    #[must_use]
-    pub fn new(fuel: u32) -> Self {
-        Self(fuel)
-    }
-    /// Decreases the ammount of fuel avalible if fuel present, and returns false if not enough fuel present.
-    pub fn consume(&mut self, cost: u32) -> bool {
-        if self.0 > cost {
-            self.0 -= 1;
-            true
-        } else {
-            false
-        }
-    }
-    /// Checks if no fuel remains
-    #[must_use]
-    pub fn exchausted(&self) -> bool {
-        self.0 == 0
-    }
-}
+mod test;
 
 impl CILNode {
     // The complexity of this function is unavoidable.
@@ -53,176 +30,51 @@ impl CILNode {
         new_node: NodeIdx,
         fuel: &mut OptFuel,
     ) -> Self {
-        match self {
-            CILNode::BinOp(rhs, lhs, biop) => {
-                let rhs = asm.get_node(*rhs).clone();
-                let lhs = asm.get_node(*lhs).clone();
-                let rhs = rhs.propagate_locals(asm, idx, tpe, new_node, fuel);
-                let lhs = lhs.propagate_locals(asm, idx, tpe, new_node, fuel);
-                CILNode::BinOp(asm.alloc_node(rhs), asm.alloc_node(lhs), *biop)
-            }
-            CILNode::UnOp(input, unop) => {
-                let input = asm.get_node(*input).clone();
-                let input = input.propagate_locals(asm, idx, tpe, new_node, fuel);
-                let input = asm.alloc_node(input);
-                CILNode::UnOp(input, unop.clone())
-            }
-            CILNode::LdLoc(loc) => {
-                if *loc == idx {
-                    if !fuel.consume(1) {
-                        return self.clone();
-                    }
-                    match tpe {
-                        Type::Float(_)
-                        | Type::Bool
-                        | Type::FnPtr(_)
-                        | Type::Ptr(_)
-                        | Type::ClassRef(_)
-                        | Type::Int(
-                            Int::I128
-                            | Int::U128
-                            | Int::USize
-                            | Int::ISize
-                            | Int::I64
-                            | Int::U64
-                            | Int::U32
-                            | Int::I32,
-                        )
-                        | Type::Ref(_) => asm.get_node(new_node).clone(),
-                        Type::Int(int @ (Int::I8 | Int::U8 | Int::I16 | Int::U16)) => {
-                            CILNode::IntCast {
-                                input: new_node,
-                                target: int,
-                                // Does not matter, since this does nothing for ints < 32 bits, which this arm handles.
-                                extend: if int.is_signed() {
-                                    super::cilnode::ExtendKind::SignExtend
-                                } else {
-                                    super::cilnode::ExtendKind::ZeroExtend
-                                },
-                            }
+        self.clone().map(asm, &mut |node, asm| {
+            match node {
+                CILNode::LdLoc(loc) => {
+                    if loc == idx {
+                        if !fuel.consume(1) {
+                            return self.clone();
                         }
-                        _ => CILNode::LdLoc(*loc),
+                        match tpe {
+                            Type::Float(_)
+                            | Type::Bool
+                            | Type::FnPtr(_)
+                            | Type::Ptr(_)
+                            | Type::ClassRef(_)
+                            | Type::Int(
+                                Int::I128
+                                | Int::U128
+                                | Int::USize
+                                | Int::ISize
+                                | Int::I64
+                                | Int::U64
+                                | Int::U32
+                                | Int::I32,
+                            )
+                            | Type::Ref(_) => asm.get_node(new_node).clone(),
+                            Type::Int(int @ (Int::I8 | Int::U8 | Int::I16 | Int::U16)) => {
+                                CILNode::IntCast {
+                                    input: new_node,
+                                    target: int,
+                                    // Does not matter, since this does nothing for ints < 32 bits, which this arm handles.
+                                    extend: if int.is_signed() {
+                                        super::cilnode::ExtendKind::SignExtend
+                                    } else {
+                                        super::cilnode::ExtendKind::ZeroExtend
+                                    },
+                                }
+                            }
+                            _ => CILNode::LdLoc(loc),
+                        }
+                    } else {
+                        CILNode::LdLoc(loc)
                     }
-                } else {
-                    CILNode::LdLoc(*loc)
                 }
+                _ => node,
             }
-            CILNode::LdLocA(loc) => CILNode::LdLocA(*loc), // This takes an address, so we can't propagate it
-            CILNode::LdArg(arg) => CILNode::LdArg(*arg),
-            CILNode::LdArgA(arg) => CILNode::LdArgA(*arg),
-            CILNode::Call(_) => todo!(),
-            CILNode::IntCast {
-                input,
-                target,
-                extend,
-            } => {
-                let input = asm.get_node(*input).clone();
-                let input = input.propagate_locals(asm, idx, tpe, new_node, fuel);
-                let input = asm.alloc_node(input);
-                CILNode::IntCast {
-                    input,
-                    target: *target,
-                    extend: *extend,
-                }
-            }
-            CILNode::FloatCast {
-                input,
-                target,
-                is_signed,
-            } => {
-                let input = asm.get_node(*input).clone();
-                let input = input.propagate_locals(asm, idx, tpe, new_node, fuel);
-                let input = asm.alloc_node(input);
-                CILNode::FloatCast {
-                    input,
-                    target: *target,
-                    is_signed: *is_signed,
-                }
-            }
-            CILNode::RefToPtr(ptr) => {
-                let ptr = asm.get_node(*ptr).clone();
-                let ptr = ptr.propagate_locals(asm, idx, tpe, new_node, fuel);
-                let ptr = asm.alloc_node(ptr);
-                CILNode::RefToPtr(ptr)
-            }
-            CILNode::PtrCast(ptr, cast_res) => {
-                let ptr = asm.get_node(*ptr).clone();
-                let ptr = ptr.propagate_locals(asm, idx, tpe, new_node, fuel);
-                let ptr = asm.alloc_node(ptr);
-                CILNode::PtrCast(ptr, cast_res.clone())
-            }
-            CILNode::LdFieldAdress { addr, field } => {
-                let addr = asm.get_node(*addr).clone();
-                let addr = addr.propagate_locals(asm, idx, tpe, new_node, fuel);
-                let addr = asm.alloc_node(addr);
-                CILNode::LdFieldAdress {
-                    addr,
-                    field: *field,
-                }
-            }
-            CILNode::LdField { addr, field } => {
-                let addr = asm.get_node(*addr).clone();
-                let addr = addr.propagate_locals(asm, idx, tpe, new_node, fuel);
-                let addr = asm.alloc_node(addr);
-                CILNode::LdField {
-                    addr,
-                    field: *field,
-                }
-            }
-            CILNode::LdInd {
-                addr,
-                tpe: tpe2,
-                volitale,
-            } => {
-                let addr = asm.get_node(*addr).clone();
-                let addr = addr.propagate_locals(asm, idx, tpe, new_node, fuel);
-                let addr = asm.alloc_node(addr);
-                CILNode::LdInd {
-                    addr,
-                    tpe: *tpe2,
-                    volitale: *volitale,
-                }
-            }
-            CILNode::IsInst(_, _) => todo!(),
-            CILNode::CheckedCast(_, _) => todo!(),
-            CILNode::CallI(_) => todo!(),
-            CILNode::GetException
-            | CILNode::SizeOf(_)
-            | CILNode::LocAlloc { .. }
-            | CILNode::LdStaticField(_)
-            | CILNode::LdFtn(_)
-            | CILNode::LdTypeToken(_)
-            | CILNode::LocAllocAlgined { .. }
-            | CILNode::Const(_) => self.clone(),
-            CILNode::LdLen(arr) => {
-                let arr = asm.get_node(*arr).clone();
-                let arr = arr.propagate_locals(asm, idx, tpe, new_node, fuel);
-                let arr = asm.alloc_node(arr);
-                CILNode::LdLen(arr)
-            }
-
-            CILNode::LdElelemRef { array, index } => {
-                let array = asm.get_node(*array).clone();
-                let array = array.propagate_locals(asm, idx, tpe, new_node, fuel);
-                let array = asm.alloc_node(array);
-                CILNode::LdElelemRef {
-                    array,
-                    index: *index,
-                }
-            }
-            CILNode::UnboxAny {
-                object,
-                tpe: unboxtpe,
-            } => {
-                let object = asm.get_node(*object).clone();
-                let object = object.propagate_locals(asm, idx, tpe, new_node, fuel);
-                let object = asm.alloc_node(object);
-                CILNode::UnboxAny {
-                    object,
-                    tpe: *unboxtpe,
-                }
-            }
-        }
+        })
     }
 }
 impl BasicBlock {
@@ -414,7 +266,13 @@ impl MethodImpl {
                 }
             }
         }
-
+        self.remove_nops(asm);
+    }
+    pub fn remove_nops(&mut self, asm: &mut Assembly) {
+        // Optimization only suported for methods with locals
+        let MethodImpl::MethodBody { blocks, .. } = self else {
+            return;
+        };
         // Remove Nops
         for block in blocks.iter_mut() {
             block
@@ -431,55 +289,7 @@ impl MethodImpl {
         }
     }
 }
-#[derive(Default)]
-pub struct SideEffectInfoCache {
-    side_effects: HashMap<NodeIdx, bool>,
-}
-impl SideEffectInfoCache {
-    /// Checks if a node may have side effects(if dupilcating it and poping the result would change the way a program runs).
-    #[allow(clippy::match_same_arms)]
-    fn has_side_effects(&mut self, node: NodeIdx, asm: &Assembly) -> bool {
-        if let Some(side_effect) = self.side_effects.get(&node) {
-            return *side_effect;
-        }
-        let side_effect = match asm.get_node(node) {
-            CILNode::LdTypeToken(_)
-            | CILNode::LdFtn(_)
-            | CILNode::Const(_)
-            | CILNode::SizeOf(_) => false, // Constant, can't have side effects
-            CILNode::BinOp(lhs, rhs, _) => {
-                self.has_side_effects(*lhs, asm) || self.has_side_effects(*rhs, asm)
-            }
-            CILNode::UnOp(arg, _) => self.has_side_effects(*arg, asm), // UnOp, only has side effects if its arg has side effects
-            CILNode::LdLoc(_) | CILNode::LdArg(_) => false, // Reading a variable has no side effects
-            CILNode::LdLocA(_) | CILNode::LdArgA(_) => false, // Getting the address of something has no side effects.
-            CILNode::Call(_) => true, // For now, we assume all calls have side effects.
-            CILNode::RefToPtr(input)
-            | CILNode::IntCast { input, .. }
-            | CILNode::FloatCast { input, .. }
-            | CILNode::PtrCast(input, _) => self.has_side_effects(*input, asm), // Casts don't have side effects, unless their input has one.
-            CILNode::LdFieldAdress { addr, .. }
-            | CILNode::LdField { addr, .. }
-            | CILNode::LdInd { addr, .. } => self.has_side_effects(*addr, asm), // Reading a pointer or a field never has side effects.
-            CILNode::GetException => true, // This is a low-level, unsafe operation, which manipulates the runtime stack, and can't be preformed twice. It for sure has side effects.
-            CILNode::UnboxAny { object, .. }
-            | CILNode::IsInst(object, _)
-            | CILNode::CheckedCast(object, _) => {
-                self.has_side_effects(*object, asm) // Class checks / casts / unboxes have no side effects.
-            }
-            CILNode::CallI(_) => true, // Indidrect calls may have side effects
-            CILNode::LocAllocAlgined { .. } | CILNode::LocAlloc { .. } => true, // Allocation has side effects
-            CILNode::LdStaticField(_) => false, // Loading static fields has no side effects.
-            CILNode::LdLen(arr) => self.has_side_effects(*arr, asm), // Loading a length only has side effects if the index has array.
-            CILNode::LdElelemRef { array, index } => {
-                self.has_side_effects(*array, asm) | self.has_side_effects(*index, asm)
-                // Indexing only has side effects if the index or array address has side effects.
-            }
-        };
-        self.side_effects.insert(node, side_effect);
-        side_effect
-    }
-}
+
 impl MethodDef {
     pub fn iter_roots_mut(&mut self) -> Option<impl Iterator<Item = &mut RootIdx>> {
         self.implementation_mut().blocks_mut().map(|blocks| {
@@ -822,6 +632,11 @@ impl MethodDef {
         }
     }
 }
+#[must_use]
+pub fn is_branch_unconditional(branch: &(u32, u32, Option<BranchCond>)) -> bool {
+    branch.2.is_none()
+}
+
 #[test]
 fn opt_mag() {
     use super::{BinOp, Float};
@@ -886,50 +701,59 @@ fn opt_mag() {
 
     asm.opt(&mut fuel);
 
-    /*
-    .method public hidebysig static  float32 'mag'(float32 'x',float32 'y') cil managed {// Method ID MethodDefIdx(MethodRefIdx(18))
-        .maxstack 8
-         .locals (
-          float32,
-          float32,
-          float32)
-         bb0:
-        .line 19:5 './add.rs'
-        ldarg.0
-        ldarg.0
-        mul
-        stloc.0
-        .line 19:13 './add.rs'
-        ldarg.1
-        ldarg.1
-        mul
-        stloc.1
-        .line 19:5 './add.rs'
-        ldloc.0
-        ldloc.1
-        add
-        stloc.2
-        .line 20:2 './add.rs'
-        ldloc.2
-        ret
-        }
-    */
     asm.export("/tmp/opt_mag.exe", ILExporter::new(*ILASM_FLAVOUR, false));
 }
-/*
-  Breaks:
-   compile_test::fuzz46::stable::debug
-    compile_test::fuzz46::stable::release
-    compile_test::fuzz80::stable::debug
-    compile_test::fuzz80::stable::release
-    compile_test::fuzz95::stable::debug
-    compile_test::fuzz95::stable::release
 
-
-
-
-*/
-#[must_use]
-pub fn is_branch_unconditional(branch: &(u32, u32, Option<BranchCond>)) -> bool {
-    branch.2.is_none()
+#[test]
+fn is_branch_unconditional_test() {
+    assert!(is_branch_unconditional(&(0, 0, None)));
+    let mut asm = Assembly::default();
+    let arg0 = asm.alloc_node(CILNode::LdArg(0));
+    assert!(!is_branch_unconditional(&(
+        0,
+        0,
+        Some(BranchCond::True(arg0))
+    )));
+}
+#[test]
+fn local_prop() {
+    let mut asm = Assembly::default();
+    let arg0 = asm.alloc_node(CILNode::LdArg(0));
+    let stloc_0 = asm.alloc_root(CILRoot::StLoc(0, arg0));
+    let loc0 = CILNode::LdLoc(0);
+    let sum = asm.biop(loc0.clone(), loc0, BinOp::Add);
+    let sum = asm.alloc_node(sum);
+    let ret = asm.alloc_root(CILRoot::Ret(sum));
+    let mut block = BasicBlock::new(vec![stloc_0, ret], 0, None);
+    let mut cache = SideEffectInfoCache::default();
+    let mut fuel = OptFuel::new(1000);
+    let isize_tpe = asm.alloc_type(Type::Int(Int::ISize));
+    block.local_opt(&mut asm, &[(None, isize_tpe)], &mut cache, &mut fuel);
+    let mut iter = block.roots().iter();
+    assert!(iter.next().is_some());
+    let opt_ret = iter.next().unwrap();
+    let sum_arg0 = asm.biop(CILNode::LdArg(0), CILNode::LdArg(0), BinOp::Add);
+    let sum_arg0 = asm.alloc_node(sum_arg0);
+    let ret = asm.alloc_root(CILRoot::Ret(sum_arg0));
+    assert_eq!(ret, *opt_ret);
+}
+#[test]
+fn remove_nops() {
+    let mut asm = Assembly::default();
+    let arg0 = asm.alloc_node(CILNode::LdArg(0));
+    let stloc_0 = asm.alloc_root(CILRoot::StLoc(0, arg0));
+    let loc0 = CILNode::LdLoc(0);
+    let sum = asm.biop(loc0.clone(), loc0, BinOp::Add);
+    let sum = asm.alloc_node(sum);
+    let ret = asm.alloc_root(CILRoot::Ret(sum));
+    let nop = asm.alloc_root(CILRoot::Nop);
+    let block = BasicBlock::new(vec![nop, stloc_0, nop, ret, nop], 0, None);
+    let loc = asm.alloc_type(Type::Float(Float::F32));
+    let mut mimpl = MethodImpl::MethodBody {
+        blocks: vec![block],
+        locals: vec![(None, loc)],
+    };
+    assert_eq!(mimpl.blocks_mut().unwrap()[0].roots().len(), 5);
+    mimpl.remove_nops(&mut asm);
+    assert_eq!(mimpl.blocks_mut().unwrap()[0].roots().len(), 2);
 }
