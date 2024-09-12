@@ -2,17 +2,17 @@ use std::fmt::Debug;
 
 use crate::method::Method;
 use crate::static_field_desc::StaticFieldDescriptor;
-use crate::v2::{ClassRef, Int};
+use crate::v2::{ClassRef, FnSig, Int};
 use crate::{
     asm::Assembly, call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, eq, lt, size_of,
 };
-use crate::{call, call_virt, conv_i32, conv_usize, ldc_i32, ldc_u32, mul, FnSig, Type};
+use crate::{call, call_virt, conv_i32, conv_usize, ldc_i32, ldc_u32, mul, Type};
 pub fn argc_argv_init_method(asm: &mut Assembly) -> CallSite {
     use std::num::NonZeroU8;
     let init_cs = CallSite::new(
         None,
         "argc_argv_init".into(),
-        FnSig::new([], Type::Void),
+        FnSig::new(Box::new([]), Type::Void),
         true,
     );
     if asm.contains_fn(&init_cs) {
@@ -21,7 +21,7 @@ pub fn argc_argv_init_method(asm: &mut Assembly) -> CallSite {
     let mut init_method = Method::new(
         crate::access_modifier::AccessModifer::Extern,
         crate::method::MethodType::Static,
-        FnSig::new([], Type::Void),
+        FnSig::new(Box::new([]), Type::Void),
         "argc_argv_init",
         vec![],
         vec![],
@@ -52,7 +52,7 @@ pub fn argc_argv_init_method(asm: &mut Assembly) -> CallSite {
                 ClassRef::enviroment(asm),
                 "GetCommandLineArgs".into(),
                 FnSig::new(
-                    [],
+                    Box::new([]),
                     Type::PlatformArray {
                         elem: asm.alloc_type(Type::PlatformString),
                         dims: NonZeroU8::new(1).unwrap()
@@ -226,7 +226,7 @@ pub fn mstring_to_utf8ptr(mstring: CILNode, asm: &mut Assembly) -> CILNode {
         CallSite::new_extern(
             ClassRef::marshal(asm),
             "StringToCoTaskMemUTF8".into(),
-            FnSig::new([Type::PlatformString], Type::Int(Int::ISize)),
+            FnSig::new(Box::new([Type::PlatformString]), Type::Int(Int::ISize)),
             true
         ),
         [mstring]
@@ -239,7 +239,7 @@ pub fn get_environ(asm: &mut Assembly) -> CallSite {
     let init_cs = CallSite::new(
         None,
         "get_environ".into(),
-        FnSig::new([], uint8_ptr_ptr),
+        FnSig::new(Box::new([]), uint8_ptr_ptr),
         true,
     );
     if asm.contains_fn(&init_cs) {
@@ -248,7 +248,7 @@ pub fn get_environ(asm: &mut Assembly) -> CallSite {
     let mut get_environ = Method::new(
         crate::access_modifier::AccessModifer::Extern,
         crate::method::MethodType::Static,
-        FnSig::new([], uint8_ptr_ptr),
+        FnSig::new(Box::new([]), uint8_ptr_ptr),
         "get_environ",
         vec![],
         vec![],
@@ -304,7 +304,7 @@ pub fn get_environ(asm: &mut Assembly) -> CallSite {
                 CallSite::new(
                     Some(ClassRef::enviroment(asm)),
                     "GetEnvironmentVariables".into(),
-                    FnSig::new([], Type::ClassRef(ClassRef::i_dictionary(asm))),
+                    FnSig::new(Box::new([]), Type::ClassRef(ClassRef::i_dictionary(asm))),
                     true
                 ),
                 []
@@ -320,7 +320,7 @@ pub fn get_environ(asm: &mut Assembly) -> CallSite {
                     Some(ClassRef::i_collection(asm)),
                     "get_Count".into(),
                     FnSig::new(
-                        [Type::ClassRef(ClassRef::i_dictionary(asm))],
+                        Box::new([Type::ClassRef(ClassRef::i_dictionary(asm))]),
                         Type::Int(Int::I32)
                     ),
                     false
@@ -356,7 +356,7 @@ pub fn get_environ(asm: &mut Assembly) -> CallSite {
                     Some(ClassRef::i_dictionary(asm)),
                     "GetEnumerator".into(),
                     FnSig::new(
-                        [Type::ClassRef(ClassRef::i_dictionary(asm))],
+                        Box::new([Type::ClassRef(ClassRef::i_dictionary(asm))]),
                         Type::ClassRef(ClassRef::dictionary_iterator(asm))
                     ),
                     false
@@ -395,7 +395,7 @@ pub fn get_environ(asm: &mut Assembly) -> CallSite {
                     ClassRef::i_enumerator(asm),
                     "MoveNext".into(),
                     FnSig::new(
-                        [Type::ClassRef(ClassRef::dictionary_iterator(asm))],
+                        Box::new([Type::ClassRef(ClassRef::dictionary_iterator(asm))]),
                         Type::Bool,
                     ),
                     false
@@ -414,7 +414,7 @@ pub fn get_environ(asm: &mut Assembly) -> CallSite {
                         ClassRef::i_enumerator(asm),
                         "get_Current".into(),
                         FnSig::new(
-                            [Type::ClassRef(ClassRef::dictionary_iterator(asm))],
+                            Box::new([Type::ClassRef(ClassRef::dictionary_iterator(asm))]),
                             Type::PlatformObject,
                         ),
                         false
@@ -430,7 +430,10 @@ pub fn get_environ(asm: &mut Assembly) -> CallSite {
         CallSite::new_extern(
             keyval_tpe,
             "get_Key".into(),
-            FnSig::new([asm.nref(Type::ClassRef(keyval_tpe))], Type::PlatformObject),
+            FnSig::new(
+                Box::new([asm.nref(Type::ClassRef(keyval_tpe))]),
+                Type::PlatformObject
+            ),
             false,
         ),
         [CILNode::LDLocA(keyval)]
@@ -439,7 +442,10 @@ pub fn get_environ(asm: &mut Assembly) -> CallSite {
         CallSite::new_extern(
             keyval_tpe,
             "get_Value".into(),
-            FnSig::new([asm.nref(Type::ClassRef(keyval_tpe))], Type::PlatformObject),
+            FnSig::new(
+                Box::new([asm.nref(Type::ClassRef(keyval_tpe))]),
+                Type::PlatformObject
+            ),
             false,
         ),
         [CILNode::LDLocA(keyval)]
@@ -452,11 +458,11 @@ pub fn get_environ(asm: &mut Assembly) -> CallSite {
                     ClassRef::string(asm),
                     "Concat".into(),
                     FnSig::new(
-                        [
+                        Box::new([
                             Type::PlatformObject,
                             Type::PlatformObject,
                             Type::PlatformObject
-                        ],
+                        ]),
                         Type::PlatformString
                     ),
                     true

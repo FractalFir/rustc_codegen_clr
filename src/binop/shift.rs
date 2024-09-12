@@ -5,10 +5,8 @@ use cilly::{
     call,
     call_site::CallSite,
     cil_node::CILNode,
-    conv_i32, conv_u32,
-    fn_sig::FnSig,
-    ldc_u32, rem_un, shl, shr, shr_un,
-    v2::{ClassRef, Int},
+    conv_i32, conv_u32, ldc_u32, rem_un, shl, shr, shr_un,
+    v2::{ClassRef, FnSig, Int},
     Type,
 };
 
@@ -28,7 +26,7 @@ pub fn shr_unchecked<'tcx>(
                     ClassRef::uint_128(ctx.asm_mut()).into(),
                     "op_RightShift".into(),
                     FnSig::new(
-                        [Type::Int(Int::U128), Type::Int(Int::I32)],
+                        [Type::Int(Int::U128), Type::Int(Int::I32)].into(),
                         Type::Int(Int::U128)
                     ),
                     true,
@@ -45,7 +43,7 @@ pub fn shr_unchecked<'tcx>(
                     ClassRef::int_128(ctx.asm_mut()).into(),
                     "op_RightShift".into(),
                     FnSig::new(
-                        [Type::Int(Int::I128), Type::Int(Int::I32)],
+                        [Type::Int(Int::I128), Type::Int(Int::I32)].into(),
                         Type::Int(Int::I128)
                     ),
                     true,
@@ -96,7 +94,7 @@ pub fn shr_checked<'tcx>(
                     ClassRef::uint_128(ctx.asm_mut()).into(),
                     "op_RightShift".into(),
                     FnSig::new(
-                        [Type::Int(Int::U128), Type::Int(Int::I32)],
+                        [Type::Int(Int::U128), Type::Int(Int::I32)].into(),
                         Type::Int(Int::U128)
                     ),
                     true,
@@ -116,7 +114,7 @@ pub fn shr_checked<'tcx>(
                     ClassRef::int_128(ctx.asm_mut()).into(),
                     "op_RightShift".into(),
                     FnSig::new(
-                        [Type::Int(Int::I128), Type::Int(Int::I32)],
+                        [Type::Int(Int::I128), Type::Int(Int::I32)].into(),
                         Type::Int(Int::I128)
                     ),
                     true,
@@ -189,7 +187,7 @@ pub fn shl_checked<'tcx>(
                     ClassRef::uint_128(ctx.asm_mut()).into(),
                     "op_LeftShift".into(),
                     FnSig::new(
-                        [Type::Int(Int::U128), Type::Int(Int::I32)],
+                        [Type::Int(Int::U128), Type::Int(Int::I32)].into(),
                         Type::Int(Int::U128)
                     ),
                     true,
@@ -214,7 +212,7 @@ pub fn shl_checked<'tcx>(
                     ClassRef::int_128(ctx.asm_mut()).into(),
                     "op_LeftShift".into(),
                     FnSig::new(
-                        [Type::Int(Int::I128), Type::Int(Int::I32)],
+                        [Type::Int(Int::I128), Type::Int(Int::I32)].into(),
                         Type::Int(Int::I128)
                     ),
                     true,
@@ -291,7 +289,7 @@ pub fn shl_unchecked<'tcx>(
                     ClassRef::uint_128(ctx.asm_mut()).into(),
                     "op_LeftShift".into(),
                     FnSig::new(
-                        [Type::Int(Int::U128), Type::Int(Int::I32)],
+                        [Type::Int(Int::U128), Type::Int(Int::I32)].into(),
                         Type::Int(Int::U128)
                     ),
                     true,
@@ -308,7 +306,7 @@ pub fn shl_unchecked<'tcx>(
                     ClassRef::int_128(ctx.asm_mut()).into(),
                     "op_LeftShift".into(),
                     FnSig::new(
-                        [Type::Int(Int::I128), Type::Int(Int::I32)],
+                        [Type::Int(Int::I128), Type::Int(Int::I32)].into(),
                         Type::Int(Int::I128)
                     ),
                     true,

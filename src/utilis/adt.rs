@@ -6,8 +6,8 @@ use cilly::{
     eq,
     field_desc::FieldDescriptor,
     gt_un, ldc_u64, sub,
-    v2::{Assembly, ClassRef, ClassRefIdx, Float, Int},
-    FnSig, Type,
+    v2::{Assembly, ClassRef, ClassRefIdx, Float, FnSig, Int},
+    Type,
 };
 use rustc_middle::ty::{AdtDef, Ty};
 use rustc_target::abi::{
@@ -317,7 +317,10 @@ pub fn get_discr<'tcx>(
                         CallSite::new_extern(
                             ClassRef::uint_128(ctx.asm_mut()),
                             "op_Equality".into(),
-                            FnSig::new([Type::Int(Int::U128), Type::Int(Int::U128)], Type::Bool),
+                            FnSig::new(
+                                Box::new([Type::Int(Int::U128), Type::Int(Int::U128)]),
+                                Type::Bool
+                            ),
                             true
                         ),
                         [
@@ -332,7 +335,10 @@ pub fn get_discr<'tcx>(
                         CallSite::new_extern(
                             ClassRef::int_128(ctx.asm_mut()),
                             "op_Equality".into(),
-                            FnSig::new([Type::Int(Int::I128), Type::Int(Int::I128)], Type::Bool),
+                            FnSig::new(
+                                Box::new([Type::Int(Int::I128), Type::Int(Int::I128)]),
+                                Type::Bool
+                            ),
                             true
                         ),
                         [
@@ -389,7 +395,10 @@ pub fn get_discr<'tcx>(
                         CallSite::new_extern(
                             ClassRef::uint_128(ctx.asm_mut()),
                             "op_GreaterThan".into(),
-                            FnSig::new([Type::Int(Int::U128), Type::Int(Int::U128)], Type::Bool),
+                            FnSig::new(
+                                Box::new([Type::Int(Int::U128), Type::Int(Int::U128)]),
+                                Type::Bool
+                            ),
                             true
                         ),
                         [
@@ -401,7 +410,10 @@ pub fn get_discr<'tcx>(
                         CallSite::new_extern(
                             ClassRef::int_128(ctx.asm_mut()),
                             "op_GreaterThan".into(),
-                            FnSig::new([Type::Int(Int::I128), Type::Int(Int::I128)], Type::Bool),
+                            FnSig::new(
+                                Box::new([Type::Int(Int::I128), Type::Int(Int::I128)]),
+                                Type::Bool
+                            ),
                             true
                         ),
                         [

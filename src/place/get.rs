@@ -1,7 +1,13 @@
 use crate::{assembly::MethodCompileCtx, r#type::fat_ptr_to};
 use cilly::{
-    call, call_site::CallSite, cil_node::CILNode, conv_usize, field_desc::FieldDescriptor,
-    fn_sig::FnSig, ld_field, ldc_u32, ldc_u64, v2::Int, Type,
+    call,
+    call_site::CallSite,
+    cil_node::CILNode,
+    conv_usize,
+    field_desc::FieldDescriptor,
+    ld_field, ldc_u32, ldc_u64,
+    v2::{FnSig, Int},
+    Type,
 };
 use rustc_middle::{
     mir::{Place, PlaceElem},
@@ -158,7 +164,7 @@ fn place_elem_get<'a>(
                             Some(array_dotnet),
                             "get_Item".into(),
                             FnSig::new(
-                                [ctx.asm_mut().nref(array_type), Type::Int(Int::USize)],
+                                [ctx.asm_mut().nref(array_type), Type::Int(Int::USize)].into(),
                                 element
                             ),
                             false,
@@ -224,7 +230,7 @@ fn place_elem_get<'a>(
                                 Some(array_dotnet),
                                 "get_Item".into(),
                                 FnSig::new(
-                                    [ctx.asm_mut().nref(array_type), Type::Int(Int::USize)],
+                                    [ctx.asm_mut().nref(array_type), Type::Int(Int::USize)].into(),
                                     element
                                 ),
                                 false,

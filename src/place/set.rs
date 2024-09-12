@@ -10,9 +10,8 @@ use cilly::{
     cil_root::CILRoot,
     conv_usize,
     field_desc::FieldDescriptor,
-    fn_sig::FnSig,
     ld_field, ldc_u64, size_of,
-    v2::{ClassRef, Int},
+    v2::{ClassRef, FnSig, Int},
     Type,
 };
 use rustc_middle::{
@@ -117,7 +116,8 @@ pub fn place_elem_set<'a>(
                                     ctx.asm_mut().nref(array_type),
                                     Type::Int(Int::USize),
                                     element_type,
-                                ],
+                                ]
+                                .into(),
                                 Type::Void,
                             ),
                             false,
@@ -162,7 +162,7 @@ pub fn place_elem_set<'a>(
                                 None,
                                 "bounds_check".into(),
                                 FnSig::new(
-                                    [Type::Int(Int::USize), Type::Int(Int::USize)],
+                                    [Type::Int(Int::USize), Type::Int(Int::USize)].into(),
                                     Type::Int(Int::USize)
                                 ),
                                 true
@@ -186,7 +186,8 @@ pub fn place_elem_set<'a>(
                                     ctx.asm_mut().nref(array_type),
                                     Type::Int(Int::USize),
                                     element,
-                                ],
+                                ]
+                                .into(),
                                 Type::Void,
                             ),
                             false,

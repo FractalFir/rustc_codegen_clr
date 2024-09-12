@@ -7,9 +7,8 @@ use cilly::{
     call,
     call_site::CallSite,
     cil_node::CILNode,
-    fn_sig::FnSig,
     ldc_u32, ldc_u64,
-    v2::{Assembly, ClassRef, ClassRefIdx, Int},
+    v2::{Assembly, ClassRef, ClassRefIdx, FnSig, Int},
     Type,
 };
 use rustc_middle::ty::{AdtDef, ConstKind, GenericArg, ParamEnv, Ty, TyCtxt, TyKind};
@@ -28,7 +27,7 @@ pub fn max_value(tpe: &Type, asm: &mut Assembly) -> CILNode {
             CallSite::new_extern(
                 ClassRef::usize_type(asm),
                 "get_MaxValue".into(),
-                FnSig::new([], Type::Int(Int::USize)),
+                FnSig::new(Box::new([]), Type::Int(Int::USize)),
                 true
             ),
             []

@@ -5,10 +5,8 @@ use cilly::{
     cil_node::CILNode,
     cil_root::CILRoot,
     conv_i16, conv_i32, conv_i8, conv_isize, conv_u16, conv_u32, conv_u64, conv_u8, conv_usize,
-    div,
-    fn_sig::FnSig,
-    ldc_i32, ldc_u32, ldc_u64, rem_un, size_of, sub,
-    v2::{ClassRef, Int},
+    div, ldc_i32, ldc_u32, ldc_u64, rem_un, size_of, sub,
+    v2::{ClassRef, FnSig, Int},
     Type,
 };
 use rustc_middle::{
@@ -45,7 +43,7 @@ pub fn ctpop<'tcx>(
                 CallSite::boxed(
                     bit_operations,
                     "PopCount".into(),
-                    FnSig::new([Type::Int(Int::U64)], Type::Int(Int::I32)),
+                    FnSig::new([Type::Int(Int::U64)].into(), Type::Int(Int::I32)),
                     true,
                 ),
                 [operand]
@@ -54,7 +52,7 @@ pub fn ctpop<'tcx>(
                 CallSite::boxed(
                     bit_operations,
                     "PopCount".into(),
-                    FnSig::new([Type::Int(Int::U64)], Type::Int(Int::I32)),
+                    FnSig::new([Type::Int(Int::U64)].into(), Type::Int(Int::I32)),
                     true,
                 ),
                 [conv_u64!(operand)]
@@ -63,7 +61,7 @@ pub fn ctpop<'tcx>(
                 CallSite::boxed(
                     bit_operations,
                     "PopCount".into(),
-                    FnSig::new([Type::Int(Int::U32)], Type::Int(Int::I32)),
+                    FnSig::new([Type::Int(Int::U32)].into(), Type::Int(Int::I32)),
                     true,
                 ),
                 [operand]
@@ -74,7 +72,7 @@ pub fn ctpop<'tcx>(
                     CallSite::boxed(
                         bit_operations,
                         "PopCount".into(),
-                        FnSig::new([Type::Int(Int::U32)], Type::Int(Int::I32)),
+                        FnSig::new([Type::Int(Int::U32)].into(), Type::Int(Int::I32)),
                         true,
                     ),
                     [conv_u32!(operand)]
@@ -84,7 +82,7 @@ pub fn ctpop<'tcx>(
                 CallSite::boxed(
                     bit_operations,
                     "PopCount".into(),
-                    FnSig::new([Type::Int(Int::USize)], Type::Int(Int::I32)),
+                    FnSig::new([Type::Int(Int::USize)].into(), Type::Int(Int::I32)),
                     true,
                 ),
                 [operand]
@@ -93,7 +91,7 @@ pub fn ctpop<'tcx>(
                 CallSite::boxed(
                     bit_operations,
                     "PopCount".into(),
-                    FnSig::new([Type::Int(Int::USize)], Type::Int(Int::I32)),
+                    FnSig::new([Type::Int(Int::USize)].into(), Type::Int(Int::I32)),
                     true,
                 ),
                 [conv_isize!(operand)]
@@ -105,7 +103,7 @@ pub fn ctpop<'tcx>(
                     CallSite::new_extern(
                         ClassRef::uint_128(ctx.asm_mut()),
                         "PopCount".into(),
-                        FnSig::new([Type::Int(Int::U128)], Type::Int(Int::U128)),
+                        FnSig::new([Type::Int(Int::U128)].into(), Type::Int(Int::U128)),
                         true,
                     ),
                     [operand]
@@ -119,7 +117,7 @@ pub fn ctpop<'tcx>(
                     CallSite::new_extern(
                         ClassRef::int_128(ctx.asm_mut()),
                         "PopCount".into(),
-                        FnSig::new([Type::Int(Int::I128)], Type::Int(Int::I128)),
+                        FnSig::new([Type::Int(Int::I128)].into(), Type::Int(Int::I128)),
                         true,
                     ),
                     [operand]
@@ -167,7 +165,7 @@ pub fn ctlz<'tcx>(
                     CallSite::new_extern(
                         ClassRef::int_128(ctx.asm_mut()),
                         "LeadingZeroCount".into(),
-                        FnSig::new([Type::Int(Int::I128)], Type::Int(Int::I128)),
+                        FnSig::new([Type::Int(Int::I128)].into(), Type::Int(Int::I128)),
                         true
                     ),
                     [handle_operand(&args[0].node, ctx)]
@@ -182,7 +180,7 @@ pub fn ctlz<'tcx>(
                     CallSite::new_extern(
                         ClassRef::uint_128(ctx.asm_mut()),
                         "LeadingZeroCount".into(),
-                        FnSig::new([Type::Int(Int::U128)], Type::Int(Int::U128)),
+                        FnSig::new([Type::Int(Int::U128)].into(), Type::Int(Int::U128)),
                         true
                     ),
                     [handle_operand(&args[0].node, ctx)]
@@ -199,7 +197,7 @@ pub fn ctlz<'tcx>(
                 CallSite::boxed(
                     bit_operations,
                     "LeadingZeroCount".into(),
-                    FnSig::new([Type::Int(Int::U64)], Type::Int(Int::I32)),
+                    FnSig::new([Type::Int(Int::U64)].into(), Type::Int(Int::I32)),
                     true,
                 ),
                 [conv_u64!(handle_operand(&args[0].node, ctx))]
@@ -235,7 +233,7 @@ pub fn cttz<'tcx>(
                 CallSite::boxed(
                     bit_operations,
                     "TrailingZeroCount".into(),
-                    FnSig::new([Type::Int(Int::I32)], Type::Int(Int::I32)),
+                    FnSig::new([Type::Int(Int::I32)].into(), Type::Int(Int::I32)),
                     true,
                 ),
                 [conv_i32!(operand)]
@@ -247,7 +245,7 @@ pub fn cttz<'tcx>(
                         ClassRef::math(ctx.asm_mut()),
                         "Min".into(),
                         FnSig::new(
-                            [Type::Int(Int::U32), Type::Int(Int::U32)],
+                            [Type::Int(Int::U32), Type::Int(Int::U32)].into(),
                             Type::Int(Int::U32)
                         ),
                         true
@@ -262,7 +260,7 @@ pub fn cttz<'tcx>(
                 CallSite::boxed(
                     bit_operations,
                     "TrailingZeroCount".into(),
-                    FnSig::new([Type::Int(Int::I32)], Type::Int(Int::I32)),
+                    FnSig::new([Type::Int(Int::I32)].into(), Type::Int(Int::I32)),
                     true,
                 ),
                 [conv_i32!(operand)]
@@ -274,7 +272,7 @@ pub fn cttz<'tcx>(
                         ClassRef::math(ctx.asm_mut()),
                         "Min".into(),
                         FnSig::new(
-                            [Type::Int(Int::U32), Type::Int(Int::U32)],
+                            [Type::Int(Int::U32), Type::Int(Int::U32)].into(),
                             Type::Int(Int::U32)
                         ),
                         true
@@ -289,7 +287,7 @@ pub fn cttz<'tcx>(
                 CallSite::boxed(
                     bit_operations,
                     "TrailingZeroCount".into(),
-                    FnSig::new([Type::Int(Int::U32)], Type::Int(Int::I32)),
+                    FnSig::new([Type::Int(Int::U32)].into(), Type::Int(Int::I32)),
                     true,
                 ),
                 [conv_u32!(operand)]
@@ -301,7 +299,7 @@ pub fn cttz<'tcx>(
                         ClassRef::math(ctx.asm_mut()),
                         "Min".into(),
                         FnSig::new(
-                            [Type::Int(Int::U32), Type::Int(Int::U32)],
+                            [Type::Int(Int::U32), Type::Int(Int::U32)].into(),
                             Type::Int(Int::U32)
                         ),
                         true
@@ -316,7 +314,7 @@ pub fn cttz<'tcx>(
                 CallSite::boxed(
                     bit_operations,
                     "TrailingZeroCount".into(),
-                    FnSig::new([Type::Int(Int::U32)], Type::Int(Int::I32)),
+                    FnSig::new([Type::Int(Int::U32)].into(), Type::Int(Int::I32)),
                     true,
                 ),
                 [conv_u32!(operand)]
@@ -328,7 +326,7 @@ pub fn cttz<'tcx>(
                         ClassRef::math(ctx.asm_mut()),
                         "Min".into(),
                         FnSig::new(
-                            [Type::Int(Int::U32), Type::Int(Int::U32)],
+                            [Type::Int(Int::U32), Type::Int(Int::U32)].into(),
                             Type::Int(Int::U32)
                         ),
                         true
@@ -344,7 +342,7 @@ pub fn cttz<'tcx>(
                 CallSite::new_extern(
                     ClassRef::int_128(ctx.asm_mut()),
                     "TrailingZeroCount".into(),
-                    FnSig::new([Type::Int(Int::I128)], Type::Int(Int::I128)),
+                    FnSig::new([Type::Int(Int::I128)].into(), Type::Int(Int::I128)),
                     true
                 ),
                 [handle_operand(&args[0].node, ctx)]
@@ -357,7 +355,7 @@ pub fn cttz<'tcx>(
                 CallSite::new_extern(
                     ClassRef::uint_128(ctx.asm_mut()),
                     "TrailingZeroCount".into(),
-                    FnSig::new([Type::Int(Int::U128)], Type::Int(Int::U128)),
+                    FnSig::new([Type::Int(Int::U128)].into(), Type::Int(Int::U128)),
                     true
                 ),
                 [handle_operand(&args[0].node, ctx)]
@@ -370,7 +368,7 @@ pub fn cttz<'tcx>(
                 CallSite::boxed(
                     bit_operations,
                     "TrailingZeroCount".into(),
-                    FnSig::new([tpe], Type::Int(Int::I32)),
+                    FnSig::new([tpe].into(), Type::Int(Int::I32)),
                     true,
                 ),
                 [operand]
@@ -406,7 +404,7 @@ pub fn rotate_left<'tcx>(
                     ClassRef::byte(ctx.asm_mut()),
                     "RotateLeft".into(),
                     FnSig::new(
-                        [Type::Int(Int::U8), Type::Int(Int::I32)],
+                        [Type::Int(Int::U8), Type::Int(Int::I32)].into(),
                         Type::Int(Int::U8)
                     ),
                     true
@@ -422,7 +420,7 @@ pub fn rotate_left<'tcx>(
                     ClassRef::uint16(ctx.asm_mut()),
                     "RotateLeft".into(),
                     FnSig::new(
-                        [Type::Int(Int::U16), Type::Int(Int::I32)],
+                        [Type::Int(Int::U16), Type::Int(Int::I32)].into(),
                         Type::Int(Int::U16)
                     ),
                     true
@@ -438,7 +436,7 @@ pub fn rotate_left<'tcx>(
                     ClassRef::bit_operations(ctx.asm_mut()),
                     "RotateLeft".into(),
                     FnSig::new(
-                        [Type::Int(Int::U32), Type::Int(Int::I32)],
+                        [Type::Int(Int::U32), Type::Int(Int::I32)].into(),
                         Type::Int(Int::U32)
                     ),
                     true
@@ -454,7 +452,7 @@ pub fn rotate_left<'tcx>(
                     ClassRef::bit_operations(ctx.asm_mut()),
                     "RotateLeft".into(),
                     FnSig::new(
-                        [Type::Int(Int::U64), Type::Int(Int::I32)],
+                        [Type::Int(Int::U64), Type::Int(Int::I32)].into(),
                         Type::Int(Int::U64)
                     ),
                     true
@@ -470,7 +468,7 @@ pub fn rotate_left<'tcx>(
                     ClassRef::bit_operations(ctx.asm_mut()),
                     "RotateLeft".into(),
                     FnSig::new(
-                        [Type::Int(Int::USize), Type::Int(Int::I32)],
+                        [Type::Int(Int::USize), Type::Int(Int::I32)].into(),
                         Type::Int(Int::USize)
                     ),
                     true
@@ -486,7 +484,7 @@ pub fn rotate_left<'tcx>(
                     ClassRef::sbyte(ctx.asm_mut()),
                     "RotateLeft".into(),
                     FnSig::new(
-                        [Type::Int(Int::I8), Type::Int(Int::I32)],
+                        [Type::Int(Int::I8), Type::Int(Int::I32)].into(),
                         Type::Int(Int::I8)
                     ),
                     true
@@ -502,7 +500,7 @@ pub fn rotate_left<'tcx>(
                     ClassRef::int16(ctx.asm_mut()),
                     "RotateLeft".into(),
                     FnSig::new(
-                        [Type::Int(Int::I16), Type::Int(Int::I32)],
+                        [Type::Int(Int::I16), Type::Int(Int::I32)].into(),
                         Type::Int(Int::I16)
                     ),
                     true
@@ -518,7 +516,7 @@ pub fn rotate_left<'tcx>(
                     ClassRef::bit_operations(ctx.asm_mut()),
                     "RotateLeft".into(),
                     FnSig::new(
-                        [Type::Int(Int::U32), Type::Int(Int::I32)],
+                        [Type::Int(Int::U32), Type::Int(Int::I32)].into(),
                         Type::Int(Int::U32)
                     ),
                     true
@@ -534,7 +532,7 @@ pub fn rotate_left<'tcx>(
                     ClassRef::bit_operations(ctx.asm_mut()),
                     "RotateLeft".into(),
                     FnSig::new(
-                        [Type::Int(Int::U64), Type::Int(Int::I32)],
+                        [Type::Int(Int::U64), Type::Int(Int::I32)].into(),
                         Type::Int(Int::U32)
                     ),
                     true
@@ -550,7 +548,7 @@ pub fn rotate_left<'tcx>(
                     ClassRef::bit_operations(ctx.asm_mut()),
                     "RotateLeft".into(),
                     FnSig::new(
-                        [Type::Int(Int::USize), Type::Int(Int::I32)],
+                        [Type::Int(Int::USize), Type::Int(Int::I32)].into(),
                         Type::Int(Int::U32)
                     ),
                     true
@@ -566,7 +564,7 @@ pub fn rotate_left<'tcx>(
                     ClassRef::uint_128(ctx.asm_mut()),
                     "RotateLeft".into(),
                     FnSig::new(
-                        [Type::Int(Int::U128), Type::Int(Int::I32)],
+                        [Type::Int(Int::U128), Type::Int(Int::I32)].into(),
                         Type::Int(Int::U128)
                     ),
                     true
@@ -582,7 +580,7 @@ pub fn rotate_left<'tcx>(
                     ClassRef::int_128(ctx.asm_mut()),
                     "RotateLeft".into(),
                     FnSig::new(
-                        [Type::Int(Int::I128), Type::Int(Int::I32)],
+                        [Type::Int(Int::I128), Type::Int(Int::I32)].into(),
                         Type::Int(Int::I128)
                     ),
                     true
@@ -621,7 +619,7 @@ pub fn rotate_right<'tcx>(
                     ClassRef::uint16(ctx.asm_mut()),
                     "RotateRight".into(),
                     FnSig::new(
-                        [Type::Int(Int::U16), Type::Int(Int::I32)],
+                        [Type::Int(Int::U16), Type::Int(Int::I32)].into(),
                         Type::Int(Int::U16)
                     ),
                     true
@@ -637,7 +635,7 @@ pub fn rotate_right<'tcx>(
                     ClassRef::byte(ctx.asm_mut()),
                     "RotateRight".into(),
                     FnSig::new(
-                        [Type::Int(Int::U8), Type::Int(Int::I32)],
+                        [Type::Int(Int::U8), Type::Int(Int::I32)].into(),
                         Type::Int(Int::U8)
                     ),
                     true
@@ -653,7 +651,7 @@ pub fn rotate_right<'tcx>(
                     ClassRef::bit_operations(ctx.asm_mut()),
                     "RotateRight".into(),
                     FnSig::new(
-                        [Type::Int(Int::U32), Type::Int(Int::I32)],
+                        [Type::Int(Int::U32), Type::Int(Int::I32)].into(),
                         Type::Int(Int::U32)
                     ),
                     true
@@ -669,7 +667,7 @@ pub fn rotate_right<'tcx>(
                     ClassRef::bit_operations(ctx.asm_mut()),
                     "RotateRight".into(),
                     FnSig::new(
-                        [Type::Int(Int::U64), Type::Int(Int::I32)],
+                        [Type::Int(Int::U64), Type::Int(Int::I32)].into(),
                         Type::Int(Int::U64)
                     ),
                     true
@@ -685,7 +683,7 @@ pub fn rotate_right<'tcx>(
                     ClassRef::bit_operations(ctx.asm_mut()),
                     "RotateRight".into(),
                     FnSig::new(
-                        [Type::Int(Int::USize), Type::Int(Int::I32)],
+                        [Type::Int(Int::USize), Type::Int(Int::I32)].into(),
                         Type::Int(Int::USize)
                     ),
                     true
@@ -701,7 +699,7 @@ pub fn rotate_right<'tcx>(
                     ClassRef::sbyte(ctx.asm_mut()),
                     "RotateRight".into(),
                     FnSig::new(
-                        [Type::Int(Int::I8), Type::Int(Int::I32)],
+                        [Type::Int(Int::I8), Type::Int(Int::I32)].into(),
                         Type::Int(Int::I8)
                     ),
                     true
@@ -717,7 +715,7 @@ pub fn rotate_right<'tcx>(
                     ClassRef::int16(ctx.asm_mut()),
                     "RotateRight".into(),
                     FnSig::new(
-                        [Type::Int(Int::I16), Type::Int(Int::I32)],
+                        [Type::Int(Int::I16), Type::Int(Int::I32)].into(),
                         Type::Int(Int::I16)
                     ),
                     true
@@ -733,7 +731,7 @@ pub fn rotate_right<'tcx>(
                     ClassRef::bit_operations(ctx.asm_mut()),
                     "RotateRight".into(),
                     FnSig::new(
-                        [Type::Int(Int::U32), Type::Int(Int::I32)],
+                        [Type::Int(Int::U32), Type::Int(Int::I32)].into(),
                         Type::Int(Int::U32)
                     ),
                     true
@@ -749,7 +747,7 @@ pub fn rotate_right<'tcx>(
                     ClassRef::bit_operations(ctx.asm_mut()),
                     "RotateRight".into(),
                     FnSig::new(
-                        [Type::Int(Int::U64), Type::Int(Int::I32)],
+                        [Type::Int(Int::U64), Type::Int(Int::I32)].into(),
                         Type::Int(Int::U32)
                     ),
                     true
@@ -765,7 +763,7 @@ pub fn rotate_right<'tcx>(
                     ClassRef::bit_operations(ctx.asm_mut()),
                     "RotateRight".into(),
                     FnSig::new(
-                        [Type::Int(Int::USize), Type::Int(Int::I32)],
+                        [Type::Int(Int::USize), Type::Int(Int::I32)].into(),
                         Type::Int(Int::U32)
                     ),
                     true
@@ -781,7 +779,7 @@ pub fn rotate_right<'tcx>(
                     ClassRef::uint_128(ctx.asm_mut()),
                     "RotateRight".into(),
                     FnSig::new(
-                        [Type::Int(Int::U128), Type::Int(Int::I32)],
+                        [Type::Int(Int::U128), Type::Int(Int::I32)].into(),
                         Type::Int(Int::U128)
                     ),
                     true
@@ -797,7 +795,7 @@ pub fn rotate_right<'tcx>(
                     ClassRef::int_128(ctx.asm_mut()),
                     "RotateRight".into(),
                     FnSig::new(
-                        [Type::Int(Int::I128), Type::Int(Int::I32)],
+                        [Type::Int(Int::I128), Type::Int(Int::I32)].into(),
                         Type::Int(Int::I128)
                     ),
                     true
@@ -853,7 +851,7 @@ pub fn bitreverse<'tcx>(
             Type::Int(Int::U32) => call!(
                 CallSite::builtin(
                     "bitreverse_u32".into(),
-                    FnSig::new([Type::Int(Int::U32)], Type::Int(Int::U32)),
+                    FnSig::new([Type::Int(Int::U32)].into(), Type::Int(Int::U32)),
                     true
                 ),
                 [val]
@@ -864,7 +862,7 @@ pub fn bitreverse<'tcx>(
                 call!(
                     CallSite::builtin(
                         "bitreverse_u32".into(),
-                        FnSig::new([Type::Int(Int::U32)], Type::Int(Int::U32)),
+                        FnSig::new([Type::Int(Int::U32)].into(), Type::Int(Int::U32)),
                         true
                     ),
                     [crate::casts::int_to_int(
@@ -879,7 +877,7 @@ pub fn bitreverse<'tcx>(
             Type::Int(Int::U64) => call!(
                 CallSite::builtin(
                     "bitreverse_u64".into(),
-                    FnSig::new([Type::Int(Int::U64)], Type::Int(Int::U64)),
+                    FnSig::new([Type::Int(Int::U64)].into(), Type::Int(Int::U64)),
                     true
                 ),
                 [val]
@@ -890,7 +888,7 @@ pub fn bitreverse<'tcx>(
                 call!(
                     CallSite::builtin(
                         "bitreverse_u64".into(),
-                        FnSig::new([Type::Int(Int::U64)], Type::Int(Int::U64)),
+                        FnSig::new([Type::Int(Int::U64)].into(), Type::Int(Int::U64)),
                         true
                     ),
                     [crate::casts::int_to_int(
@@ -905,7 +903,7 @@ pub fn bitreverse<'tcx>(
             Type::Int(Int::U128) => call!(
                 CallSite::builtin(
                     "bitreverse_u128".into(),
-                    FnSig::new([Type::Int(Int::U128)], Type::Int(Int::U128),),
+                    FnSig::new([Type::Int(Int::U128)].into(), Type::Int(Int::U128),),
                     true
                 ),
                 [val]
@@ -916,7 +914,7 @@ pub fn bitreverse<'tcx>(
                 call!(
                     CallSite::builtin(
                         "bitreverse_u128".into(),
-                        FnSig::new([Type::Int(Int::U128)], Type::Int(Int::U128),),
+                        FnSig::new([Type::Int(Int::U128)].into(), Type::Int(Int::U128),),
                         true
                     ),
                     [crate::casts::int_to_int(

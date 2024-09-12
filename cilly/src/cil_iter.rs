@@ -542,8 +542,8 @@ impl<'a> IntoIterator for &'a CILRoot {
 fn iter() {
     use crate::{
         call_site::CallSite,
-        v2::{hashable::HashableF32, Float, Int},
-        FnSig, Type,
+        v2::{hashable::HashableF32, Float, FnSig, Int},
+        Type,
     };
     let node = CILNode::Add(
         Box::new(CILNode::Mul(
@@ -578,7 +578,10 @@ fn iter() {
         site: Box::new(CallSite::new(
             None,
             "bob".to_owned().into(),
-            FnSig::new([Type::Int(Int::I32), Type::Float(Float::F32)], Type::Void),
+            FnSig::new(
+                Box::new([Type::Int(Int::I32), Type::Float(Float::F32)]),
+                Type::Void,
+            ),
             true,
         )),
         args: [CILNode::LdcI32(-77), CILNode::LdcF32(HashableF32(3.119765))].into(),

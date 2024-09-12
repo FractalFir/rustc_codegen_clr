@@ -8,10 +8,9 @@ use cilly::{
     v2::{
         asm::{MissingMethodPatcher, ILASM_FLAVOUR},
         cilnode::MethodKind,
-        Assembly, BasicBlock, CILNode, CILRoot, ClassDef, ClassRef, Const, IlasmFlavour, Int,
-        MethodImpl, Type,
+        Assembly, BasicBlock, CILNode, CILRoot, ClassDef, ClassRef, Const, FnSig, IlasmFlavour,
+        Int, MethodImpl, Type,
     },
-    FnSig,
 };
 //use assembly::Assembly;
 use lazy_static::lazy_static;
@@ -267,7 +266,7 @@ fn main() {
                                             ))),
                                             ".ctor".into(),
                                             FnSig::new(
-                                                [
+                                                Box::new([
                                                     Type::ClassRef(asm.alloc_class_ref(
                                                         ClassRef::new(
                                                             rust_exception,
@@ -277,7 +276,7 @@ fn main() {
                                                         ),
                                                     )),
                                                     Type::Int(Int::USize),
-                                                ],
+                                                ]),
                                                 Type::Void,
                                             ),
                                             false,

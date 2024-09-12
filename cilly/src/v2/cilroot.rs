@@ -4,7 +4,7 @@ use super::{
     bimap::{BiMapIndex, IntoBiMapIndex},
     cilnode::MethodKind,
     field::FieldIdx,
-    Assembly, CILNode, FieldDesc, Float, FnSig, Int, MethodRef, MethodRefIdx, NodeIdx, SigIdx,
+    Assembly, CILNode, FieldDesc, Float, Int, MethodRef, MethodRefIdx, NodeIdx, SigIdx,
     StaticFieldDesc, StaticFieldIdx, StringIdx, Type, TypeIdx,
 };
 use crate::cil_root::CILRoot as V1Root;
@@ -256,8 +256,7 @@ impl CILRoot {
                         asm.alloc_node(node)
                     })
                     .collect();
-                let sig = FnSig::from_v1(site.signature());
-                let sig = asm.alloc_sig(sig);
+                let sig = asm.alloc_sig(site.signature().clone());
                 let generics: Box<[_]> = (site.generics()).into();
                 let class = site.class().unwrap_or_else(|| *asm.main_module());
                 let name = asm.alloc_string(site.name());
@@ -277,8 +276,7 @@ impl CILRoot {
                         asm.alloc_node(node)
                     })
                     .collect();
-                let sig = FnSig::from_v1(site.signature());
-                let sig = asm.alloc_sig(sig);
+                let sig = asm.alloc_sig(site.signature().clone());
                 let generics: Box<[_]> = (site.generics()).into();
                 let class = site.class().unwrap_or_else(|| *asm.main_module());
                 let name = asm.alloc_string(site.name());
@@ -389,8 +387,7 @@ impl CILRoot {
                 Self::CpBlk(Box::new((dst, src, len)))
             }
             V1Root::CallI { sig, fn_ptr, args } => {
-                let sig = FnSig::from_v1(sig);
-                let sig = asm.alloc_sig(sig);
+                let sig = asm.alloc_sig(*sig.clone());
                 let ptr = CILNode::from_v1(fn_ptr, asm);
                 let ptr = asm.alloc_node(ptr);
                 let args: Box<[_]> = args

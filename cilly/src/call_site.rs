@@ -1,6 +1,6 @@
 use crate::{
-    v2::{Assembly, ClassRef, ClassRefIdx, Int},
-    FnSig, Type,
+    v2::{Assembly, ClassRef, ClassRefIdx, FnSig, Int},
+    Type,
 };
 use serde::{Deserialize, Serialize};
 
@@ -22,7 +22,7 @@ impl CallSite {
         Self::new_extern(
             ClassRef::marshal(asm),
             "StringToCoTaskMemUTF8".into(),
-            FnSig::new([Type::PlatformString], Type::Int(Int::ISize)),
+            FnSig::new(Box::new([Type::PlatformString]), Type::Int(Int::ISize)),
             true,
         )
     }
@@ -32,7 +32,7 @@ impl CallSite {
             ClassRef::native_mem(asm),
             "AlignedAlloc".into(),
             FnSig::new(
-                [Type::Int(Int::USize), Type::Int(Int::USize)],
+                Box::new([Type::Int(Int::USize), Type::Int(Int::USize)]),
                 asm.nptr(Type::Void),
             ),
             true,
@@ -43,7 +43,7 @@ impl CallSite {
         Self::new_extern(
             ClassRef::marshal(asm),
             "AllocHGlobal".into(),
-            FnSig::new([Type::Int(Int::I32)], Type::Int(Int::ISize)),
+            FnSig::new(Box::new([Type::Int(Int::I32)]), Type::Int(Int::ISize)),
             true,
         )
     }
@@ -53,11 +53,11 @@ impl CallSite {
             Some(ClassRef::native_mem(asm)),
             "AlignedRealloc".into(),
             FnSig::new(
-                [
+                Box::new([
                     asm.nptr(Type::Void),
                     Type::Int(Int::USize),
                     Type::Int(Int::USize),
-                ],
+                ]),
                 asm.nptr(Type::Void),
             ),
             true,

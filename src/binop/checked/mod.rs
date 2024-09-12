@@ -7,8 +7,8 @@ use cilly::{
     conv_i16, conv_i32, conv_i64, conv_i8, conv_isize, conv_u64, conv_usize,
     field_desc::FieldDescriptor,
     gt, gt_un, ldc_i32, ldc_i64, ldc_u32, ldc_u64, lt, mul, or,
-    v2::{Assembly, ClassRef, Int},
-    FnSig, Type,
+    v2::{Assembly, ClassRef, FnSig, Int},
+    Type,
 };
 use rustc_middle::ty::{IntTy, Ty, TyKind, UintTy};
 
@@ -49,7 +49,7 @@ pub fn zero(ty: Ty, asm: &mut Assembly) -> CILNode {
             CallSite::new_extern(
                 ClassRef::uint_128(asm),
                 "op_Implicit".into(),
-                FnSig::new([Type::Int(Int::U32)], Type::Int(Int::U128)),
+                FnSig::new([Type::Int(Int::U32)].into(), Type::Int(Int::U128)),
                 true
             ),
             [ldc_u32!(0)]
@@ -58,7 +58,7 @@ pub fn zero(ty: Ty, asm: &mut Assembly) -> CILNode {
             CallSite::new_extern(
                 ClassRef::int_128(asm),
                 "op_Implicit".into(),
-                FnSig::new([Type::Int(Int::I32)], Type::Int(Int::I128)),
+                FnSig::new([Type::Int(Int::I32)].into(), Type::Int(Int::I128)),
                 true
             ),
             [ldc_u32!(0)]
@@ -80,7 +80,7 @@ fn min(ty: Ty, asm: &mut Assembly) -> CILNode {
             CallSite::new_extern(
                 ClassRef::usize_type(asm),
                 "get_MinValue".into(),
-                FnSig::new([], Type::Int(Int::USize)),
+                FnSig::new([].into(), Type::Int(Int::USize)),
                 true
             ),
             []
@@ -89,7 +89,7 @@ fn min(ty: Ty, asm: &mut Assembly) -> CILNode {
             CallSite::new_extern(
                 ClassRef::isize_type(asm),
                 "get_MinValue".into(),
-                FnSig::new([], Type::Int(Int::ISize)),
+                FnSig::new([].into(), Type::Int(Int::ISize)),
                 true
             ),
             []
@@ -98,7 +98,7 @@ fn min(ty: Ty, asm: &mut Assembly) -> CILNode {
             CallSite::new_extern(
                 ClassRef::uint_128(asm),
                 "get_MinValue".into(),
-                FnSig::new([], Type::Int(Int::U128)),
+                FnSig::new([].into(), Type::Int(Int::U128)),
                 true
             ),
             []
@@ -107,7 +107,7 @@ fn min(ty: Ty, asm: &mut Assembly) -> CILNode {
             CallSite::new_extern(
                 ClassRef::int_128(asm),
                 "get_MinValue".into(),
-                FnSig::new([], Type::Int(Int::I128)),
+                FnSig::new([].into(), Type::Int(Int::I128)),
                 true
             ),
             []
@@ -129,7 +129,7 @@ fn max(ty: Ty, asm: &mut Assembly) -> CILNode {
             CallSite::new_extern(
                 ClassRef::usize_type(asm),
                 "get_MaxValue".into(),
-                FnSig::new([], Type::Int(Int::USize)),
+                FnSig::new([].into(), Type::Int(Int::USize)),
                 true
             ),
             []
@@ -138,7 +138,7 @@ fn max(ty: Ty, asm: &mut Assembly) -> CILNode {
             CallSite::new_extern(
                 ClassRef::isize_type(asm),
                 "get_MaxValue".into(),
-                FnSig::new([], Type::Int(Int::ISize)),
+                FnSig::new([].into(), Type::Int(Int::ISize)),
                 true
             ),
             []
@@ -147,7 +147,7 @@ fn max(ty: Ty, asm: &mut Assembly) -> CILNode {
             CallSite::new_extern(
                 ClassRef::uint_128(asm),
                 "get_MaxValue".into(),
-                FnSig::new([], Type::Int(Int::U128)),
+                FnSig::new([].into(), Type::Int(Int::U128)),
                 true
             ),
             []
@@ -156,7 +156,7 @@ fn max(ty: Ty, asm: &mut Assembly) -> CILNode {
             CallSite::new_extern(
                 ClassRef::int_128(asm),
                 "get_MaxValue".into(),
-                FnSig::new([], Type::Int(Int::I128)),
+                FnSig::new([].into(), Type::Int(Int::I128)),
                 true
             ),
             []
@@ -202,7 +202,7 @@ pub fn mul<'tcx>(
                     ClassRef::uint_128(ctx.asm_mut()),
                     "op_Multiply".into(),
                     FnSig::new(
-                        [Type::Int(Int::U128), Type::Int(Int::U128)],
+                        [Type::Int(Int::U128), Type::Int(Int::U128)].into(),
                         Type::Int(Int::U128)
                     ),
                     true
@@ -226,7 +226,10 @@ pub fn mul<'tcx>(
                 CallSite::new_extern(
                     ClassRef::uint_128(ctx.asm_mut()),
                     "op_GreaterThan".into(),
-                    FnSig::new([Type::Int(Int::U128), Type::Int(Int::U128)], Type::Bool),
+                    FnSig::new(
+                        [Type::Int(Int::U128), Type::Int(Int::U128)].into(),
+                        Type::Bool
+                    ),
                     true
                 ),
                 [
@@ -246,7 +249,7 @@ pub fn mul<'tcx>(
                     ClassRef::int_128(ctx.asm_mut()),
                     "op_Multiply".into(),
                     FnSig::new(
-                        [Type::Int(Int::I128), Type::Int(Int::I128)],
+                        [Type::Int(Int::I128), Type::Int(Int::I128)].into(),
                         Type::Int(Int::I128)
                     ),
                     true
@@ -270,7 +273,10 @@ pub fn mul<'tcx>(
                 CallSite::new_extern(
                     ClassRef::int_128(ctx.asm_mut()),
                     "op_GreaterThan".into(),
-                    FnSig::new([Type::Int(Int::I128), Type::Int(Int::I128)], Type::Bool),
+                    FnSig::new(
+                        [Type::Int(Int::I128), Type::Int(Int::I128)].into(),
+                        Type::Bool
+                    ),
                     true
                 ),
                 [
@@ -287,7 +293,10 @@ pub fn mul<'tcx>(
                 CallSite::new_extern(
                     ClassRef::int_128(ctx.asm_mut()),
                     "op_LessThan".into(),
-                    FnSig::new([Type::Int(Int::I128), Type::Int(Int::I128)], Type::Bool),
+                    FnSig::new(
+                        [Type::Int(Int::I128), Type::Int(Int::I128)].into(),
+                        Type::Bool
+                    ),
                     true
                 ),
                 [
@@ -309,7 +318,7 @@ pub fn mul<'tcx>(
                     ClassRef::uint_128(ctx.asm_mut()),
                     "op_Multiply".into(),
                     FnSig::new(
-                        [Type::Int(Int::U128), Type::Int(Int::U128)],
+                        [Type::Int(Int::U128), Type::Int(Int::U128)].into(),
                         Type::Int(Int::U128)
                     ),
                     true
@@ -334,7 +343,10 @@ pub fn mul<'tcx>(
                 CallSite::new_extern(
                     ClassRef::uint_128(ctx.asm_mut()),
                     "op_GreaterThan".into(),
-                    FnSig::new([Type::Int(Int::U128), Type::Int(Int::U128)], Type::Bool),
+                    FnSig::new(
+                        [Type::Int(Int::U128), Type::Int(Int::U128)].into(),
+                        Type::Bool
+                    ),
                     true
                 ),
                 [
@@ -354,7 +366,7 @@ pub fn mul<'tcx>(
                     ClassRef::int_128(ctx.asm_mut()),
                     "op_Multiply".into(),
                     FnSig::new(
-                        [Type::Int(Int::I128), Type::Int(Int::I128)],
+                        [Type::Int(Int::I128), Type::Int(Int::I128)].into(),
                         Type::Int(Int::I128)
                     ),
                     true
@@ -378,7 +390,10 @@ pub fn mul<'tcx>(
                 CallSite::new_extern(
                     ClassRef::int_128(ctx.asm_mut()),
                     "op_GreaterThan".into(),
-                    FnSig::new([Type::Int(Int::I128), Type::Int(Int::I128)], Type::Bool),
+                    FnSig::new(
+                        [Type::Int(Int::I128), Type::Int(Int::I128)].into(),
+                        Type::Bool
+                    ),
                     true
                 ),
                 [
@@ -395,7 +410,10 @@ pub fn mul<'tcx>(
                 CallSite::new_extern(
                     ClassRef::int_128(ctx.asm_mut()),
                     "op_LessThan".into(),
-                    FnSig::new([Type::Int(Int::I128), Type::Int(Int::I128)], Type::Bool),
+                    FnSig::new(
+                        [Type::Int(Int::I128), Type::Int(Int::I128)].into(),
+                        Type::Bool
+                    ),
                     true
                 ),
                 [

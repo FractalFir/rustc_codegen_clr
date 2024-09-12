@@ -561,9 +561,8 @@ impl Assembly {
         v1.extern_fns()
             .iter()
             .for_each(|((fn_name, sig, preserve_errno), lib_name)| {
-                let v2_sig = FnSig::from_v1(sig);
                 let name = empty.alloc_string(fn_name.clone());
-                let sigidx = empty.alloc_sig(v2_sig);
+                let sigidx = empty.alloc_sig(sig.clone());
                 let lib = empty.alloc_string(lib_name.clone());
                 empty.new_method(MethodDef::new(
                     Access::Public,

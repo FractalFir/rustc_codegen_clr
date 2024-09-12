@@ -7,8 +7,15 @@ use crate::{
     r#type::fat_ptr_to,
 };
 use cilly::{
-    call, call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, conv_usize,
-    field_desc::FieldDescriptor, fn_sig::FnSig, ld_field, size_of, v2::Int, Type,
+    call,
+    call_site::CallSite,
+    cil_node::CILNode,
+    cil_root::CILRoot,
+    conv_usize,
+    field_desc::FieldDescriptor,
+    ld_field, size_of,
+    v2::{FnSig, Int},
+    Type,
 };
 use rustc_middle::mir::PlaceElem;
 use rustc_middle::ty::{Ty, TyKind};
@@ -182,7 +189,7 @@ pub fn place_elem_body<'tcx>(
                                 Some(array_dotnet),
                                 "get_Address".into(),
                                 FnSig::new(
-                                    [ctx.asm_mut().nref(array_type), Type::Int(Int::USize)],
+                                    [ctx.asm_mut().nref(array_type), Type::Int(Int::USize)].into(),
                                     ctx.asm_mut().nptr(element_type),
                                 ),
                                 false,
@@ -196,7 +203,7 @@ pub fn place_elem_body<'tcx>(
                                 Some(array_dotnet),
                                 "get_Item".into(),
                                 FnSig::new(
-                                    [ctx.asm_mut().nref(array_type), Type::Int(Int::USize)],
+                                    [ctx.asm_mut().nref(array_type), Type::Int(Int::USize)].into(),
                                     element_type,
                                 ),
                                 false,
@@ -255,7 +262,7 @@ pub fn place_elem_body<'tcx>(
                                 Some(array_dotnet),
                                 "get_Address".into(),
                                 FnSig::new(
-                                    [ctx.asm_mut().nref(array_type), Type::Int(Int::USize)],
+                                    [ctx.asm_mut().nref(array_type), Type::Int(Int::USize)].into(),
                                     ctx.asm_mut().nptr(element),
                                 ),
                                 false,
@@ -269,7 +276,7 @@ pub fn place_elem_body<'tcx>(
                                 Some(array_dotnet),
                                 "get_Item".into(),
                                 FnSig::new(
-                                    [ctx.asm_mut().nref(array_type), Type::Int(Int::USize)],
+                                    [ctx.asm_mut().nref(array_type), Type::Int(Int::USize)].into(),
                                     element
                                 ),
                                 false,

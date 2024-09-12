@@ -1,7 +1,7 @@
 use crate::codegen_error::CodegenError;
 use crate::fn_ctx::MethodCompileCtx;
 use crate::r#type::get_type;
-use cilly::{FnSig, Type};
+use cilly::{v2::FnSig, Type};
 use rustc_middle::ty::{Instance, List, ParamEnv, ParamEnvAnd, Ty, TyCtxt, TyKind};
 use rustc_target::abi::call::Conv;
 use rustc_target::spec::abi::Abi as TargetAbi;
@@ -66,7 +66,7 @@ pub fn sig_from_instance_<'tcx>(
         ))?,*/
         _ => todo!("Unsuported ABI:{internal_abi:?}"),
     }
-    Ok(FnSig::new(args, ret))
+    Ok(FnSig::new(args.into(), ret))
 }
 
 /// Checks if this function is variadic.

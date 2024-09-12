@@ -4,8 +4,8 @@ use cilly::{
     call_site::CallSite,
     cil_node::CILNode,
     or,
-    v2::{ClassRef, Int},
-    xor, FnSig, Type,
+    v2::{ClassRef, FnSig, Int},
+    xor, Type,
 };
 use rustc_middle::ty::{IntTy, Ty, TyKind, UintTy};
 
@@ -23,7 +23,7 @@ pub fn bit_and_unchecked<'tcx>(
                 ClassRef::uint_128(ctx.asm_mut()).into(),
                 "op_BitwiseAnd".into(),
                 FnSig::new(
-                    [Type::Int(Int::U128), Type::Int(Int::U128)],
+                    [Type::Int(Int::U128), Type::Int(Int::U128)].into(),
                     Type::Int(Int::U128)
                 ),
                 true,
@@ -38,7 +38,7 @@ pub fn bit_and_unchecked<'tcx>(
                 ClassRef::int_128(ctx.asm_mut()).into(),
                 "op_BitwiseAnd".into(),
                 FnSig::new(
-                    [Type::Int(Int::I128), Type::Int(Int::I128)],
+                    [Type::Int(Int::I128), Type::Int(Int::I128)].into(),
                     Type::Int(Int::I128)
                 ),
                 true,
@@ -66,7 +66,7 @@ pub fn bit_or_unchecked<'tcx>(
                 CallSite::new_extern(
                     ClassRef::int_128(ctx.asm_mut()),
                     "op_BitwiseOr".into(),
-                    FnSig::new([ty_a, ty_b], ty_a),
+                    FnSig::new([ty_a, ty_b].into(), ty_a),
                     true,
                 ),
                 [operand_a, operand_b]
@@ -79,7 +79,7 @@ pub fn bit_or_unchecked<'tcx>(
                 CallSite::new_extern(
                     ClassRef::uint_128(ctx.asm_mut()),
                     "op_BitwiseOr".into(),
-                    FnSig::new([ty_a, ty_b], ty_a),
+                    FnSig::new([ty_a, ty_b].into(), ty_a),
                     true,
                 ),
                 [operand_a, operand_b]
@@ -103,7 +103,7 @@ pub fn bit_xor_unchecked<'tcx>(
                 CallSite::new_extern(
                     ClassRef::int_128(ctx.asm_mut()),
                     "op_ExclusiveOr".into(),
-                    FnSig::new([ty_a, ty_b], ty_a),
+                    FnSig::new([ty_a, ty_b].into(), ty_a),
                     true,
                 ),
                 [ops_a, ops_b]
@@ -116,7 +116,7 @@ pub fn bit_xor_unchecked<'tcx>(
                 CallSite::new_extern(
                     ClassRef::uint_128(ctx.asm_mut()),
                     "op_ExclusiveOr".into(),
-                    FnSig::new([ty_a, ty_b], ty_a),
+                    FnSig::new([ty_a, ty_b].into(), ty_a),
                     true,
                 ),
                 [ops_a, ops_b]

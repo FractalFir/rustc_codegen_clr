@@ -5,8 +5,15 @@ use crate::{
     r#type::{fat_ptr_to, pointer_to_is_fat},
 };
 use cilly::{
-    call, call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, conv_usize,
-    field_desc::FieldDescriptor, fn_sig::FnSig, ld_field, ldc_u32, ldc_u64, size_of, v2::Int, Type,
+    call,
+    call_site::CallSite,
+    cil_node::CILNode,
+    cil_root::CILRoot,
+    conv_usize,
+    field_desc::FieldDescriptor,
+    ld_field, ldc_u32, ldc_u64, size_of,
+    v2::{FnSig, Int},
+    Type,
 };
 use rustc_middle::{
     mir::PlaceElem,
@@ -229,7 +236,7 @@ pub fn place_elem_adress<'tcx>(
                             Some(array_dotnet),
                             "get_Address".into(),
                             FnSig::new(
-                                [ctx.asm_mut().nref(array_type), Type::Int(Int::USize)],
+                                [ctx.asm_mut().nref(array_type), Type::Int(Int::USize)].into(),
                                 ctx.asm_mut().nptr(element_type),
                             ),
                             false,
@@ -358,7 +365,7 @@ pub fn place_elem_adress<'tcx>(
                                 Some(array_dotnet),
                                 "get_Address".into(),
                                 FnSig::new(
-                                    [ctx.asm_mut().nref(array_type), Type::Int(Int::USize)],
+                                    [ctx.asm_mut().nref(array_type), Type::Int(Int::USize)].into(),
                                     ctx.asm_mut().nptr(element),
                                 ),
                                 false,

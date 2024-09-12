@@ -30,51 +30,176 @@ impl CILNode {
         new_node: NodeIdx,
         fuel: &mut OptFuel,
     ) -> Self {
-        self.clone().map(asm, &mut |node, asm| {
-            match node {
-                CILNode::LdLoc(loc) => {
-                    if loc == idx {
-                        if !fuel.consume(1) {
-                            return self.clone();
-                        }
-                        match tpe {
-                            Type::Float(_)
-                            | Type::Bool
-                            | Type::FnPtr(_)
-                            | Type::Ptr(_)
-                            | Type::ClassRef(_)
-                            | Type::Int(
-                                Int::I128
-                                | Int::U128
-                                | Int::USize
-                                | Int::ISize
-                                | Int::I64
-                                | Int::U64
-                                | Int::U32
-                                | Int::I32,
-                            )
-                            | Type::Ref(_) => asm.get_node(new_node).clone(),
-                            Type::Int(int @ (Int::I8 | Int::U8 | Int::I16 | Int::U16)) => {
-                                CILNode::IntCast {
-                                    input: new_node,
-                                    target: int,
-                                    // Does not matter, since this does nothing for ints < 32 bits, which this arm handles.
-                                    extend: if int.is_signed() {
-                                        super::cilnode::ExtendKind::SignExtend
-                                    } else {
-                                        super::cilnode::ExtendKind::ZeroExtend
-                                    },
-                                }
-                            }
-                            _ => CILNode::LdLoc(loc),
-                        }
-                    } else {
-                        CILNode::LdLoc(loc)
-                    }
-                }
-                _ => node,
+        match self {
+            CILNode::BinOp(rhs, lhs, biop) => {
+                let rhs = asm.get_node(*rhs).clone();
+                let lhs = asm.get_node(*lhs).clone();
+                let rhs = rhs.propagate_locals(asm, idx, tpe, new_node, fuel);
+                let lhs = lhs.propagate_locals(asm, idx, tpe, new_node, fuel);
+                CILNode::BinOp(asm.alloc_node(rhs), asm.alloc_node(lhs), *biop)
             }
-        })
+            CILNode::UnOp(input, unop) => {
+                let input = asm.get_node(*input).clone();
+                let input = input.propagate_locals(asm, idx, tpe, new_node, fuel);
+                let input = asm.alloc_node(input);
+                CILNode::UnOp(input, unop.clone())
+            }
+            CILNode::LdLoc(loc) => {
+                if *loc == idx {
+                    if !fuel.consume(1) {
+                        return self.clone();
+                    }
+                    match tpe {
+                        Type::Float(_)
+                        | Type::Bool
+                        | Type::FnPtr(_)
+                        | Type::Ptr(_)
+                        | Type::ClassRef(_)
+                        | Type::Int(
+                            Int::I128
+                            | Int::U128
+                            | Int::USize
+                            | Int::ISize
+                            | Int::I64
+                            | Int::U64
+                            | Int::U32
+                            | Int::I32,
+                        )
+                        | Type::Ref(_) => asm.get_node(new_node).clone(),
+                        Type::Int(int @ (Int::I8 | Int::U8 | Int::I16 | Int::U16)) => {
+                            CILNode::IntCast {
+                                input: new_node,
+                                target: int,
+                                // Does not matter, since this does nothing for ints < 32 bits, which this arm handles.
+                                extend: if int.is_signed() {
+                                    super::cilnode::ExtendKind::SignExtend
+                                } else {
+                                    super::cilnode::ExtendKind::ZeroExtend
+                                },
+                            }
+                        }
+                        _ => CILNode::LdLoc(*loc),
+                    }
+                } else {
+                    CILNode::LdLoc(*loc)
+                }
+            }
+            CILNode::LdLocA(loc) => CILNode::LdLocA(*loc), // This takes an address, so we can't propagate it
+            CILNode::LdArg(arg) => CILNode::LdArg(*arg),
+            CILNode::LdArgA(arg) => CILNode::LdArgA(*arg),
+            CILNode::Call(_) => todo!(),
+            CILNode::IntCast {
+                input,
+                target,
+                extend,
+            } => {
+                let input = asm.get_node(*input).clone();
+                let input = input.propagate_locals(asm, idx, tpe, new_node, fuel);
+                let input = asm.alloc_node(input);
+                CILNode::IntCast {
+                    input,
+                    target: *target,
+                    extend: *extend,
+                }
+            }
+            CILNode::FloatCast {
+                input,
+                target,
+                is_signed,
+            } => {
+                let input = asm.get_node(*input).clone();
+                let input = input.propagate_locals(asm, idx, tpe, new_node, fuel);
+                let input = asm.alloc_node(input);
+                CILNode::FloatCast {
+                    input,
+                    target: *target,
+                    is_signed: *is_signed,
+                }
+            }
+            CILNode::RefToPtr(ptr) => {
+                let ptr = asm.get_node(*ptr).clone();
+                let ptr = ptr.propagate_locals(asm, idx, tpe, new_node, fuel);
+                let ptr = asm.alloc_node(ptr);
+                CILNode::RefToPtr(ptr)
+            }
+            CILNode::PtrCast(ptr, cast_res) => {
+                let ptr = asm.get_node(*ptr).clone();
+                let ptr = ptr.propagate_locals(asm, idx, tpe, new_node, fuel);
+                let ptr = asm.alloc_node(ptr);
+                CILNode::PtrCast(ptr, cast_res.clone())
+            }
+            CILNode::LdFieldAdress { addr, field } => {
+                let addr = asm.get_node(*addr).clone();
+                let addr = addr.propagate_locals(asm, idx, tpe, new_node, fuel);
+                let addr = asm.alloc_node(addr);
+                CILNode::LdFieldAdress {
+                    addr,
+                    field: *field,
+                }
+            }
+            CILNode::LdField { addr, field } => {
+                let addr = asm.get_node(*addr).clone();
+                let addr = addr.propagate_locals(asm, idx, tpe, new_node, fuel);
+                let addr = asm.alloc_node(addr);
+                CILNode::LdField {
+                    addr,
+                    field: *field,
+                }
+            }
+            CILNode::LdInd {
+                addr,
+                tpe: tpe2,
+                volitale,
+            } => {
+                let addr = asm.get_node(*addr).clone();
+                let addr = addr.propagate_locals(asm, idx, tpe, new_node, fuel);
+                let addr = asm.alloc_node(addr);
+                CILNode::LdInd {
+                    addr,
+                    tpe: *tpe2,
+                    volitale: *volitale,
+                }
+            }
+            CILNode::IsInst(_, _) => todo!(),
+            CILNode::CheckedCast(_, _) => todo!(),
+            CILNode::CallI(_) => todo!(),
+            CILNode::GetException
+            | CILNode::SizeOf(_)
+            | CILNode::LocAlloc { .. }
+            | CILNode::LdStaticField(_)
+            | CILNode::LdFtn(_)
+            | CILNode::LdTypeToken(_)
+            | CILNode::LocAllocAlgined { .. }
+            | CILNode::Const(_) => self.clone(),
+            CILNode::LdLen(arr) => {
+                let arr = asm.get_node(*arr).clone();
+                let arr = arr.propagate_locals(asm, idx, tpe, new_node, fuel);
+                let arr = asm.alloc_node(arr);
+                CILNode::LdLen(arr)
+            }
+
+            CILNode::LdElelemRef { array, index } => {
+                let array = asm.get_node(*array).clone();
+                let array = array.propagate_locals(asm, idx, tpe, new_node, fuel);
+                let array = asm.alloc_node(array);
+                CILNode::LdElelemRef {
+                    array,
+                    index: *index,
+                }
+            }
+            CILNode::UnboxAny {
+                object,
+                tpe: unboxtpe,
+            } => {
+                let object = asm.get_node(*object).clone();
+                let object = object.propagate_locals(asm, idx, tpe, new_node, fuel);
+                let object = asm.alloc_node(object);
+                CILNode::UnboxAny {
+                    object,
+                    tpe: *unboxtpe,
+                }
+            }
+        }
     }
 }
 impl BasicBlock {

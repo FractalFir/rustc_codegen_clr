@@ -7,8 +7,8 @@ use cilly::{
     conv_usize,
     field_desc::FieldDescriptor,
     ld_field, ldc_u32,
-    v2::{Assembly, Int},
-    FnSig, Type,
+    v2::{Assembly, FnSig, Int},
+    Type,
 };
 use rustc_middle::{
     mir::{BasicBlock, Operand, Place, SwitchTargets, Terminator, TerminatorKind},
@@ -217,7 +217,7 @@ pub fn handle_terminator<'tcx>(
                             }
                             .into(),
                             CILRoot::CallI {
-                                sig: Box::new(FnSig::new([void_ptr], Type::Void)),
+                                sig: Box::new(FnSig::new(Box::new([void_ptr]), Type::Void)),
                                 fn_ptr: Box::new(drop_fn_ptr),
                                 args: [obj_ptr].into(),
                             }

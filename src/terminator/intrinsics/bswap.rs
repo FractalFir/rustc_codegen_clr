@@ -1,6 +1,10 @@
 use crate::{assembly::MethodCompileCtx, operand::handle_operand, place::place_set};
 use cilly::{
-    call, call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, fn_sig::FnSig, v2::ClassRef,
+    call,
+    call_site::CallSite,
+    cil_node::CILNode,
+    cil_root::CILRoot,
+    v2::{ClassRef, FnSig},
 };
 use rustc_middle::{
     mir::{Operand, Place},
@@ -31,7 +35,7 @@ pub fn bswap<'tcx>(
                     CallSite::boxed(
                         Some(ClassRef::binary_primitives(ctx.asm_mut())),
                         "ReverseEndianness".into(),
-                        FnSig::new([tpe], tpe),
+                        FnSig::new([tpe].into(), tpe),
                         true,
                     ),
                     [operand]

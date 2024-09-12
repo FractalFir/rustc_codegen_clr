@@ -11,10 +11,8 @@ use cilly::{
     cil_node::CILNode,
     cil_root::CILRoot,
     conv_f32, conv_f64, conv_i16, conv_i32, conv_i64, conv_i8, conv_isize, conv_u16, conv_u32,
-    conv_u64, conv_u8, conv_usize, eq,
-    fn_sig::FnSig,
-    ld_field, ldc_i32, ldc_u32, ldc_u64, size_of, sub,
-    v2::{ClassRef, Float, Int},
+    conv_u64, conv_u8, conv_usize, eq, ld_field, ldc_i32, ldc_u32, ldc_u64, size_of, sub,
+    v2::{ClassRef, Float, FnSig, Int},
     Type,
 };
 use ints::{ctlz, rotate_left, rotate_right};
@@ -135,7 +133,8 @@ pub fn handle_intrinsic<'tcx>(
                             Type::Float(Float::F32),
                             Type::Float(Float::F32),
                             Type::Float(Float::F32)
-                        ],
+                        ]
+                        .into(),
                         Type::Float(Float::F32)
                     ),
                     true
@@ -159,7 +158,8 @@ pub fn handle_intrinsic<'tcx>(
                             Type::Float(Float::F64),
                             Type::Float(Float::F64),
                             Type::Float(Float::F64)
-                        ],
+                        ]
+                        .into(),
                         Type::Float(Float::F64)
                     ),
                     true
@@ -295,11 +295,11 @@ pub fn handle_intrinsic<'tcx>(
             );
             let tpe = ctx.type_from_cache(tpe);
             let sig = FnSig::new(
-                [ClassRef::runtime_type_hadle(ctx.asm_mut()).into()],
-                ClassRef::type_type(ctx.asm_mut()),
+                [ClassRef::runtime_type_hadle(ctx.asm_mut()).into()].into(),
+                ClassRef::type_type(ctx.asm_mut()).into(),
             );
             let gethash_sig = FnSig::new(
-                [ClassRef::type_type(ctx.asm_mut()).into()],
+                [ClassRef::type_type(ctx.asm_mut()).into()].into(),
                 Type::Int(Int::I32),
             );
             place_set(
@@ -308,7 +308,7 @@ pub fn handle_intrinsic<'tcx>(
                     CallSite::boxed(
                         Some(ClassRef::uint_128(ctx.asm_mut())),
                         "op_Implicit".into(),
-                        FnSig::new([Type::Int(Int::U32)], Type::Int(Int::U128)),
+                        FnSig::new([Type::Int(Int::U32)].into(), Type::Int(Int::U128)),
                         true,
                     ),
                     [conv_u32!(call_virt!(
@@ -450,7 +450,8 @@ pub fn handle_intrinsic<'tcx>(
                                 ctx.asm_mut().nref(Type::Int(Int::USize)),
                                 Type::Int(Int::USize),
                                 Type::Int(Int::USize),
-                            ],
+                            ]
+                            .into(),
                             Type::Int(Int::USize),
                         ),
                         true,
@@ -471,7 +472,10 @@ pub fn handle_intrinsic<'tcx>(
                     let call_site = CallSite::new(
                         Some(interlocked),
                         "CompareExchange".into(),
-                        FnSig::new([ctx.asm_mut().nref(src_type), src_type, src_type], src_type),
+                        FnSig::new(
+                            [ctx.asm_mut().nref(src_type), src_type, src_type].into(),
+                            src_type,
+                        ),
                         true,
                     );
                     call!(call_site, [dst, value, comaprand])
@@ -603,7 +607,7 @@ pub fn handle_intrinsic<'tcx>(
                 site: Box::new(CallSite::new(
                     Some(thread),
                     "MemoryBarrier".into(),
-                    FnSig::new([], Type::Void),
+                    FnSig::new([].into(), Type::Void),
                     true,
                 )),
                 args: [].into(),
@@ -705,7 +709,8 @@ pub fn handle_intrinsic<'tcx>(
                             CallSite::builtin(
                                 "atomic_xchng_u8".into(),
                                 FnSig::new(
-                                    [ctx.asm_mut().nref(Type::Int(Int::U8)), Type::Int(Int::U8)],
+                                    [ctx.asm_mut().nref(Type::Int(Int::U8)), Type::Int(Int::U8)]
+                                        .into(),
                                     Type::Int(Int::U8)
                                 ),
                                 true
@@ -723,7 +728,8 @@ pub fn handle_intrinsic<'tcx>(
                             [
                                 ctx.asm_mut().nref(Type::Int(Int::USize)),
                                 Type::Int(Int::USize),
-                            ],
+                            ]
+                            .into(),
                             Type::Int(Int::USize),
                         ),
                         true,
@@ -749,7 +755,7 @@ pub fn handle_intrinsic<'tcx>(
             let call_site = CallSite::new(
                 Some(interlocked),
                 "Exchange".into(),
-                FnSig::new([ctx.asm_mut().nref(src_type), src_type], src_type),
+                FnSig::new([ctx.asm_mut().nref(src_type), src_type].into(), src_type),
                 true,
             );
             // T
@@ -873,7 +879,7 @@ pub fn handle_intrinsic<'tcx>(
                     CallSite::boxed(
                         Some(ClassRef::mathf(ctx.asm_mut())),
                         "Sqrt".into(),
-                        FnSig::new([Type::Float(Float::F32)], Type::Float(Float::F32)),
+                        FnSig::new([Type::Float(Float::F32)].into(), Type::Float(Float::F32)),
                         true,
                     ),
                     [handle_operand(&args[0].node, ctx)]
@@ -896,7 +902,7 @@ pub fn handle_intrinsic<'tcx>(
                         Some(ClassRef::single(ctx.asm_mut())),
                         "Pow".into(),
                         FnSig::new(
-                            [Type::Float(Float::F32), Type::Float(Float::F32)],
+                            [Type::Float(Float::F32), Type::Float(Float::F32)].into(),
                             Type::Float(Float::F32)
                         ),
                         true,
@@ -923,7 +929,7 @@ pub fn handle_intrinsic<'tcx>(
                         Some(ClassRef::double(ctx.asm_mut())),
                         "Pow".into(),
                         FnSig::new(
-                            [Type::Float(Float::F64), Type::Float(Float::F64)],
+                            [Type::Float(Float::F64), Type::Float(Float::F64)].into(),
                             Type::Float(Float::F64)
                         ),
                         true,
@@ -953,7 +959,8 @@ pub fn handle_intrinsic<'tcx>(
                             ctx.asm_mut().nptr(Type::Void),
                             ctx.asm_mut().nptr(Type::Void),
                             Type::Int(Int::USize),
-                        ],
+                        ]
+                        .into(),
                         Type::Void,
                     ),
                     true,
@@ -1011,7 +1018,7 @@ pub fn handle_intrinsic<'tcx>(
                 CallSite::new_extern(
                     ClassRef::single(ctx.asm_mut()),
                     "Abs".into(),
-                    FnSig::new([Type::Float(Float::F32)], Type::Float(Float::F32)),
+                    FnSig::new([Type::Float(Float::F32)].into(), Type::Float(Float::F32)),
                     true
                 ),
                 [handle_operand(&args[0].node, ctx),]
@@ -1024,7 +1031,7 @@ pub fn handle_intrinsic<'tcx>(
                 CallSite::new_extern(
                     ClassRef::double(ctx.asm_mut()),
                     "Abs".into(),
-                    FnSig::new([Type::Float(Float::F64)], Type::Float(Float::F64)),
+                    FnSig::new([Type::Float(Float::F64)].into(), Type::Float(Float::F64)),
                     true
                 ),
                 [handle_operand(&args[0].node, ctx),]
@@ -1037,7 +1044,7 @@ pub fn handle_intrinsic<'tcx>(
                 CallSite::new_extern(
                     ClassRef::single(ctx.asm_mut()),
                     "Exp".into(),
-                    FnSig::new([Type::Float(Float::F32)], Type::Float(Float::F32)),
+                    FnSig::new([Type::Float(Float::F32)].into(), Type::Float(Float::F32)),
                     true
                 ),
                 [handle_operand(&args[0].node, ctx),]
@@ -1050,7 +1057,7 @@ pub fn handle_intrinsic<'tcx>(
                 CallSite::new_extern(
                     ClassRef::double(ctx.asm_mut()),
                     "Exp".into(),
-                    FnSig::new([Type::Float(Float::F64)], Type::Float(Float::F64)),
+                    FnSig::new([Type::Float(Float::F64)].into(), Type::Float(Float::F64)),
                     true
                 ),
                 [handle_operand(&args[0].node, ctx),]
@@ -1063,7 +1070,7 @@ pub fn handle_intrinsic<'tcx>(
                 CallSite::new_extern(
                     ClassRef::single(ctx.asm_mut()),
                     "Log".into(),
-                    FnSig::new([Type::Float(Float::F32)], Type::Float(Float::F32)),
+                    FnSig::new([Type::Float(Float::F32)].into(), Type::Float(Float::F32)),
                     true
                 ),
                 [handle_operand(&args[0].node, ctx),]
@@ -1076,7 +1083,7 @@ pub fn handle_intrinsic<'tcx>(
                 CallSite::new_extern(
                     ClassRef::double(ctx.asm_mut()),
                     "Log".into(),
-                    FnSig::new([Type::Float(Float::F64)], Type::Float(Float::F64)),
+                    FnSig::new([Type::Float(Float::F64)].into(), Type::Float(Float::F64)),
                     true
                 ),
                 [handle_operand(&args[0].node, ctx),]
@@ -1089,7 +1096,7 @@ pub fn handle_intrinsic<'tcx>(
                 CallSite::new_extern(
                     ClassRef::single(ctx.asm_mut()),
                     "Log2".into(),
-                    FnSig::new([Type::Float(Float::F32)], Type::Float(Float::F32)),
+                    FnSig::new([Type::Float(Float::F32)].into(), Type::Float(Float::F32)),
                     true
                 ),
                 [handle_operand(&args[0].node, ctx),]
@@ -1102,7 +1109,7 @@ pub fn handle_intrinsic<'tcx>(
                 CallSite::new_extern(
                     ClassRef::double(ctx.asm_mut()),
                     "Log2".into(),
-                    FnSig::new([Type::Float(Float::F64)], Type::Float(Float::F64)),
+                    FnSig::new([Type::Float(Float::F64)].into(), Type::Float(Float::F64)),
                     true
                 ),
                 [handle_operand(&args[0].node, ctx),]
@@ -1115,7 +1122,7 @@ pub fn handle_intrinsic<'tcx>(
                 CallSite::new_extern(
                     ClassRef::single(ctx.asm_mut()),
                     "Log10".into(),
-                    FnSig::new([Type::Float(Float::F32)], Type::Float(Float::F32)),
+                    FnSig::new([Type::Float(Float::F32)].into(), Type::Float(Float::F32)),
                     true
                 ),
                 [handle_operand(&args[0].node, ctx),]
@@ -1128,7 +1135,7 @@ pub fn handle_intrinsic<'tcx>(
                 CallSite::new_extern(
                     ClassRef::double(ctx.asm_mut()),
                     "Log10".into(),
-                    FnSig::new([Type::Float(Float::F64)], Type::Float(Float::F64)),
+                    FnSig::new([Type::Float(Float::F64)].into(), Type::Float(Float::F64)),
                     true
                 ),
                 [handle_operand(&args[0].node, ctx),]
@@ -1142,7 +1149,7 @@ pub fn handle_intrinsic<'tcx>(
                     ClassRef::single(ctx.asm_mut()),
                     "Pow".into(),
                     FnSig::new(
-                        [Type::Float(Float::F32), Type::Float(Float::F32)],
+                        [Type::Float(Float::F32), Type::Float(Float::F32)].into(),
                         Type::Float(Float::F32)
                     ),
                     true
@@ -1161,7 +1168,7 @@ pub fn handle_intrinsic<'tcx>(
                     ClassRef::double(ctx.asm_mut()),
                     "Pow".into(),
                     FnSig::new(
-                        [Type::Float(Float::F64), Type::Float(Float::F64)],
+                        [Type::Float(Float::F64), Type::Float(Float::F64)].into(),
                         Type::Float(Float::F64)
                     ),
                     true
@@ -1180,7 +1187,7 @@ pub fn handle_intrinsic<'tcx>(
                     ClassRef::single(ctx.asm_mut()),
                     "CopySign".into(),
                     FnSig::new(
-                        [Type::Float(Float::F32), Type::Float(Float::F32)],
+                        [Type::Float(Float::F32), Type::Float(Float::F32)].into(),
                         Type::Float(Float::F32)
                     ),
                     true
@@ -1199,7 +1206,7 @@ pub fn handle_intrinsic<'tcx>(
                     ClassRef::double(ctx.asm_mut()),
                     "CopySign".into(),
                     FnSig::new(
-                        [Type::Float(Float::F64), Type::Float(Float::F64)],
+                        [Type::Float(Float::F64), Type::Float(Float::F64)].into(),
                         Type::Float(Float::F64)
                     ),
                     true
@@ -1217,7 +1224,7 @@ pub fn handle_intrinsic<'tcx>(
                 CallSite::new_extern(
                     ClassRef::single(ctx.asm_mut()),
                     "Sin".into(),
-                    FnSig::new([Type::Float(Float::F32)], Type::Float(Float::F32)),
+                    FnSig::new([Type::Float(Float::F32)].into(), Type::Float(Float::F32)),
                     true
                 ),
                 [handle_operand(&args[0].node, ctx),]
@@ -1230,7 +1237,7 @@ pub fn handle_intrinsic<'tcx>(
                 CallSite::new_extern(
                     ClassRef::double(ctx.asm_mut()),
                     "Sin".into(),
-                    FnSig::new([Type::Float(Float::F64)], Type::Float(Float::F64)),
+                    FnSig::new([Type::Float(Float::F64)].into(), Type::Float(Float::F64)),
                     true
                 ),
                 [handle_operand(&args[0].node, ctx),]
@@ -1243,7 +1250,7 @@ pub fn handle_intrinsic<'tcx>(
                 CallSite::new_extern(
                     ClassRef::single(ctx.asm_mut()),
                     "Cos".into(),
-                    FnSig::new([Type::Float(Float::F32)], Type::Float(Float::F32)),
+                    FnSig::new([Type::Float(Float::F32)].into(), Type::Float(Float::F32)),
                     true
                 ),
                 [handle_operand(&args[0].node, ctx),]
@@ -1256,7 +1263,7 @@ pub fn handle_intrinsic<'tcx>(
                 CallSite::new_extern(
                     ClassRef::double(ctx.asm_mut()),
                     "Cos".into(),
-                    FnSig::new([Type::Float(Float::F64)], Type::Float(Float::F64)),
+                    FnSig::new([Type::Float(Float::F64)].into(), Type::Float(Float::F64)),
                     true
                 ),
                 [handle_operand(&args[0].node, ctx),]
@@ -1269,7 +1276,7 @@ pub fn handle_intrinsic<'tcx>(
                 CallSite::new_extern(
                     ClassRef::single(ctx.asm_mut()),
                     "Exp2".into(),
-                    FnSig::new([Type::Float(Float::F32)], Type::Float(Float::F32)),
+                    FnSig::new([Type::Float(Float::F32)].into(), Type::Float(Float::F32)),
                     true
                 ),
                 [handle_operand(&args[0].node, ctx),]
@@ -1282,7 +1289,7 @@ pub fn handle_intrinsic<'tcx>(
                 CallSite::new_extern(
                     ClassRef::double(ctx.asm_mut()),
                     "Exp2".into(),
-                    FnSig::new([Type::Float(Float::F64)], Type::Float(Float::F64)),
+                    FnSig::new([Type::Float(Float::F64)].into(), Type::Float(Float::F64)),
                     true
                 ),
                 [handle_operand(&args[0].node, ctx),]
@@ -1295,7 +1302,7 @@ pub fn handle_intrinsic<'tcx>(
                 CallSite::new_extern(
                     ClassRef::mathf(ctx.asm_mut()),
                     "Truncate".into(),
-                    FnSig::new([Type::Float(Float::F32)], Type::Float(Float::F32)),
+                    FnSig::new([Type::Float(Float::F32)].into(), Type::Float(Float::F32)),
                     true
                 ),
                 [handle_operand(&args[0].node, ctx),]
@@ -1308,7 +1315,7 @@ pub fn handle_intrinsic<'tcx>(
                 CallSite::new_extern(
                     ClassRef::math(ctx.asm_mut()),
                     "Truncate".into(),
-                    FnSig::new([Type::Float(Float::F64)], Type::Float(Float::F64)),
+                    FnSig::new([Type::Float(Float::F64)].into(), Type::Float(Float::F64)),
                     true
                 ),
                 [handle_operand(&args[0].node, ctx),]
@@ -1322,7 +1329,7 @@ pub fn handle_intrinsic<'tcx>(
                 CallSite::new_extern(
                     ClassRef::mathf(ctx.asm_mut()),
                     "Round".into(),
-                    FnSig::new([Type::Float(Float::F32)], Type::Float(Float::F32)),
+                    FnSig::new([Type::Float(Float::F32)].into(), Type::Float(Float::F32)),
                     true
                 ),
                 [handle_operand(&args[0].node, ctx),]
@@ -1339,7 +1346,8 @@ pub fn handle_intrinsic<'tcx>(
                         [
                             Type::Float(Float::F32),
                             Type::ClassRef(ClassRef::midpoint_rounding(ctx.asm_mut())),
-                        ],
+                        ]
+                        .into(),
                         Type::Float(Float::F32)
                     ),
                     true
@@ -1361,7 +1369,7 @@ pub fn handle_intrinsic<'tcx>(
                 CallSite::new_extern(
                     ClassRef::math(ctx.asm_mut()),
                     "Round".into(),
-                    FnSig::new([Type::Float(Float::F64)], Type::Float(Float::F64)),
+                    FnSig::new([Type::Float(Float::F64)].into(), Type::Float(Float::F64)),
                     true
                 ),
                 [handle_operand(&args[0].node, ctx),]
@@ -1378,7 +1386,8 @@ pub fn handle_intrinsic<'tcx>(
                         [
                             Type::Float(Float::F64),
                             Type::ClassRef(ClassRef::midpoint_rounding(ctx.asm_mut()))
-                        ],
+                        ]
+                        .into(),
                         Type::Float(Float::F64)
                     ),
                     true
@@ -1400,7 +1409,7 @@ pub fn handle_intrinsic<'tcx>(
                 CallSite::new_extern(
                     ClassRef::mathf(ctx.asm_mut()),
                     "Floor".into(),
-                    FnSig::new([Type::Float(Float::F32)], Type::Float(Float::F32)),
+                    FnSig::new([Type::Float(Float::F32)].into(), Type::Float(Float::F32)),
                     true
                 ),
                 [handle_operand(&args[0].node, ctx),]
@@ -1413,7 +1422,7 @@ pub fn handle_intrinsic<'tcx>(
                 CallSite::new_extern(
                     ClassRef::math(ctx.asm_mut()),
                     "Floor".into(),
-                    FnSig::new([Type::Float(Float::F64)], Type::Float(Float::F64)),
+                    FnSig::new([Type::Float(Float::F64)].into(), Type::Float(Float::F64)),
                     true
                 ),
                 [handle_operand(&args[0].node, ctx),]
@@ -1426,7 +1435,7 @@ pub fn handle_intrinsic<'tcx>(
                 CallSite::new_extern(
                     ClassRef::mathf(ctx.asm_mut()),
                     "Ceiling".into(),
-                    FnSig::new([Type::Float(Float::F32)], Type::Float(Float::F32)),
+                    FnSig::new([Type::Float(Float::F32)].into(), Type::Float(Float::F32)),
                     true
                 ),
                 [handle_operand(&args[0].node, ctx),]
@@ -1439,7 +1448,7 @@ pub fn handle_intrinsic<'tcx>(
                 CallSite::new_extern(
                     ClassRef::math(ctx.asm_mut()),
                     "Ceiling".into(),
-                    FnSig::new([Type::Float(Float::F64)], Type::Float(Float::F64)),
+                    FnSig::new([Type::Float(Float::F64)].into(), Type::Float(Float::F64)),
                     true
                 ),
                 [handle_operand(&args[0].node, ctx),]
@@ -1453,7 +1462,7 @@ pub fn handle_intrinsic<'tcx>(
                     ClassRef::double(ctx.asm_mut()),
                     "MaxNumber".into(),
                     FnSig::new(
-                        [Type::Float(Float::F64), Type::Float(Float::F64)],
+                        [Type::Float(Float::F64), Type::Float(Float::F64)].into(),
                         Type::Float(Float::F64)
                     ),
                     true
@@ -1472,7 +1481,7 @@ pub fn handle_intrinsic<'tcx>(
                     ClassRef::single(ctx.asm_mut()),
                     "MaxNumber".into(),
                     FnSig::new(
-                        [Type::Float(Float::F32), Type::Float(Float::F32)],
+                        [Type::Float(Float::F32), Type::Float(Float::F32)].into(),
                         Type::Float(Float::F32)
                     ),
                     true
@@ -1491,7 +1500,7 @@ pub fn handle_intrinsic<'tcx>(
                     ClassRef::double(ctx.asm_mut()),
                     "MinNumber".into(),
                     FnSig::new(
-                        [Type::Float(Float::F64), Type::Float(Float::F64)],
+                        [Type::Float(Float::F64), Type::Float(Float::F64)].into(),
                         Type::Float(Float::F64)
                     ),
                     true
@@ -1510,7 +1519,7 @@ pub fn handle_intrinsic<'tcx>(
                     ClassRef::single(ctx.asm_mut()),
                     "MinNumber".into(),
                     FnSig::new(
-                        [Type::Float(Float::F32), Type::Float(Float::F32)],
+                        [Type::Float(Float::F32), Type::Float(Float::F32)].into(),
                         Type::Float(Float::F32)
                     ),
                     true
@@ -1548,7 +1557,7 @@ pub fn handle_intrinsic<'tcx>(
                 CallSite::boxed(
                     Some(ClassRef::math(ctx.asm_mut())),
                     "Sqrt".into(),
-                    FnSig::new([Type::Float(Float::F64)], Type::Float(Float::F64)),
+                    FnSig::new([Type::Float(Float::F64)].into(), Type::Float(Float::F64)),
                     true,
                 ),
                 [handle_operand(&args[0].node, ctx)]
@@ -1576,7 +1585,8 @@ pub fn handle_intrinsic<'tcx>(
                                 Type::FnPtr(ctx.asm_mut().sig([uint8_ptr], Type::Void)),
                                 uint8_ptr,
                                 Type::FnPtr(ctx.asm_mut().sig([uint8_ptr, uint8_ptr], Type::Void)),
-                            ],
+                            ]
+                            .into(),
                             Type::Int(Int::I32),
                         ),
                         true
@@ -1645,11 +1655,11 @@ fn intrinsic_slow<'tcx>(
         );
         let tpe = ctx.type_from_cache(tpe);
         let sig = FnSig::new(
-            [ClassRef::runtime_type_hadle(ctx.asm_mut()).into()],
-            ClassRef::type_type(ctx.asm_mut()),
+            [ClassRef::runtime_type_hadle(ctx.asm_mut()).into()].into(),
+            ClassRef::type_type(ctx.asm_mut()).into(),
         );
         let gethash_sig = FnSig::new(
-            [ClassRef::type_type(ctx.asm_mut()).into()],
+            [ClassRef::type_type(ctx.asm_mut()).into()].into(),
             Type::Int(Int::I32),
         );
         place_set(
@@ -1658,7 +1668,7 @@ fn intrinsic_slow<'tcx>(
                 CallSite::boxed(
                     Some(ClassRef::uint_128(ctx.asm_mut())),
                     "op_Implicit".into(),
-                    FnSig::new([Type::Int(Int::U32)], Type::Int(Int::U128)),
+                    FnSig::new([Type::Int(Int::U32)].into(), Type::Int(Int::U128)),
                     true,
                 ),
                 [conv_u32!(call_virt!(
@@ -1717,7 +1727,8 @@ fn intrinsic_slow<'tcx>(
                         ctx.asm_mut().nptr(Type::Void),
                         ctx.asm_mut().nptr(Type::Void),
                         Type::Int(Int::USize),
-                    ],
+                    ]
+                    .into(),
                     Type::Void,
                 ),
                 true,

@@ -2,10 +2,8 @@ use cilly::{
     call,
     call_site::CallSite,
     cil_node::CILNode,
-    eq,
-    fn_sig::FnSig,
-    gt, gt_un, lt, lt_un,
-    v2::{Assembly, ClassRef, Float, Int},
+    eq, gt, gt_un, lt, lt_un,
+    v2::{Assembly, ClassRef, Float, FnSig, Int},
     Type,
 };
 use rustc_middle::ty::{FloatTy, IntTy, Ty, TyKind, UintTy};
@@ -35,7 +33,10 @@ pub fn eq_unchecked(
                 CallSite::new_extern(
                     ClassRef::uint_128(asm),
                     "op_Equality".into(),
-                    FnSig::new([Type::Int(Int::U128), Type::Int(Int::U128)], Type::Bool),
+                    FnSig::new(
+                        [Type::Int(Int::U128), Type::Int(Int::U128)].into(),
+                        Type::Bool
+                    ),
                     true,
                 ),
                 [operand_a, operand_b]
@@ -47,7 +48,10 @@ pub fn eq_unchecked(
                 CallSite::new_extern(
                     ClassRef::int_128(asm),
                     "op_Equality".into(),
-                    FnSig::new([Type::Int(Int::I128), Type::Int(Int::I128)], Type::Bool),
+                    FnSig::new(
+                        [Type::Int(Int::I128), Type::Int(Int::I128)].into(),
+                        Type::Bool
+                    ),
                     true,
                 ),
                 [operand_a, operand_b]
@@ -64,7 +68,7 @@ pub fn eq_unchecked(
             CallSite::builtin(
                 "__eqtf2".into(),
                 FnSig::new(
-                    [Type::Float(Float::F128), Type::Float(Float::F128)],
+                    [Type::Float(Float::F128), Type::Float(Float::F128)].into(),
                     Type::Bool
                 ),
                 true
@@ -88,7 +92,10 @@ pub fn lt_unchecked(
                 CallSite::new_extern(
                     ClassRef::uint_128(asm),
                     "op_LessThan".into(),
-                    FnSig::new([Type::Int(Int::U128), Type::Int(Int::U128)], Type::Bool),
+                    FnSig::new(
+                        [Type::Int(Int::U128), Type::Int(Int::U128)].into(),
+                        Type::Bool
+                    ),
                     true,
                 ),
                 [operand_a, operand_b]
@@ -100,7 +107,10 @@ pub fn lt_unchecked(
                 CallSite::new_extern(
                     ClassRef::int_128(asm),
                     "op_LessThan".into(),
-                    FnSig::new([Type::Int(Int::I128), Type::Int(Int::I128)], Type::Bool),
+                    FnSig::new(
+                        [Type::Int(Int::I128), Type::Int(Int::I128)].into(),
+                        Type::Bool
+                    ),
                     true,
                 ),
                 [operand_a, operand_b]
@@ -116,7 +126,7 @@ pub fn lt_unchecked(
             CallSite::builtin(
                 "__lttf2".into(),
                 FnSig::new(
-                    [Type::Float(Float::F128), Type::Float(Float::F128)],
+                    [Type::Float(Float::F128), Type::Float(Float::F128)].into(),
                     Type::Bool
                 ),
                 true
@@ -138,7 +148,10 @@ pub fn gt_unchecked(
                 CallSite::new_extern(
                     ClassRef::uint_128(asm),
                     "op_GreaterThan".into(),
-                    FnSig::new([Type::Int(Int::U128), Type::Int(Int::U128)], Type::Bool),
+                    FnSig::new(
+                        [Type::Int(Int::U128), Type::Int(Int::U128)].into(),
+                        Type::Bool
+                    ),
                     true,
                 ),
                 [operand_a, operand_b]
@@ -150,7 +163,10 @@ pub fn gt_unchecked(
                 CallSite::new_extern(
                     ClassRef::int_128(asm),
                     "op_GreaterThan".into(),
-                    FnSig::new([Type::Int(Int::I128), Type::Int(Int::I128)], Type::Bool),
+                    FnSig::new(
+                        [Type::Int(Int::I128), Type::Int(Int::I128)].into(),
+                        Type::Bool
+                    ),
                     true,
                 ),
                 [operand_a, operand_b]
@@ -165,7 +181,7 @@ pub fn gt_unchecked(
             CallSite::builtin(
                 "__gttf2".into(),
                 FnSig::new(
-                    [Type::Float(Float::F128), Type::Float(Float::F128)],
+                    [Type::Float(Float::F128), Type::Float(Float::F128)].into(),
                     Type::Bool
                 ),
                 true

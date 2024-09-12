@@ -9,8 +9,8 @@ use crate::{
     cil_root::CILRoot,
     conv_isize, conv_usize, ldc_u32,
     method::{Attribute, Method, MethodType},
-    v2::{Assembly, Int},
-    FnSig, Type,
+    v2::{Assembly, FnSig, Int},
+    Type,
 };
 
 /// Creates a wrapper method around entypoint represented by `CallSite`
@@ -21,10 +21,10 @@ pub fn wrapper(entrypoint: &CallSite, asm: &mut Assembly) -> Method {
         && entrypoint.signature().output() == &Type::Int(Int::ISize)
     {
         let sig = FnSig::new(
-            [Type::PlatformArray {
+            Box::new([Type::PlatformArray {
                 elem: asm.alloc_type(Type::PlatformString),
                 dims: NonZeroU8::new(1).unwrap(),
-            }],
+            }]),
             Type::Void,
         );
 
@@ -40,7 +40,7 @@ pub fn wrapper(entrypoint: &CallSite, asm: &mut Assembly) -> Method {
                         site: Box::new(CallSite::new(
                             None,
                             ".tcctor".into(),
-                            FnSig::new([], Type::Void),
+                            FnSig::new(Box::new([]), Type::Void),
                             true,
                         )),
                         args: [].into(),
@@ -50,7 +50,7 @@ pub fn wrapper(entrypoint: &CallSite, asm: &mut Assembly) -> Method {
                         site: Box::new(CallSite::new(
                             None,
                             "static_init".into(),
-                            FnSig::new([], Type::Void),
+                            FnSig::new(Box::new([]), Type::Void),
                             true,
                         )),
                         args: [].into(),
@@ -79,7 +79,7 @@ pub fn wrapper(entrypoint: &CallSite, asm: &mut Assembly) -> Method {
     } else if entrypoint.signature().inputs().is_empty()
         && entrypoint.signature().output() == &Type::Void
     {
-        let sig = FnSig::new([], Type::Void);
+        let sig = FnSig::new(Box::new([]), Type::Void);
         let mut method = Method::new(
             AccessModifer::Extern,
             MethodType::Static,
@@ -92,7 +92,7 @@ pub fn wrapper(entrypoint: &CallSite, asm: &mut Assembly) -> Method {
                         site: Box::new(CallSite::new(
                             None,
                             ".tcctor".into(),
-                            FnSig::new([], Type::Void),
+                            FnSig::new(Box::new([]), Type::Void),
                             true,
                         )),
                         args: [].into(),
@@ -102,7 +102,7 @@ pub fn wrapper(entrypoint: &CallSite, asm: &mut Assembly) -> Method {
                         site: Box::new(CallSite::new(
                             None,
                             "static_init".into(),
-                            FnSig::new([], Type::Void),
+                            FnSig::new(Box::new([]), Type::Void),
                             true,
                         )),
                         args: [].into(),

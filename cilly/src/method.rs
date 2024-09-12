@@ -15,8 +15,8 @@ use crate::{
     cil_root::CILRoot,
     cil_tree::CILTree,
     static_field_desc::StaticFieldDescriptor,
-    v2::Assembly,
-    FnSig, IString, Type,
+    v2::{Assembly, FnSig},
+    IString, Type,
 };
 
 /// Represenation of a CIL method.

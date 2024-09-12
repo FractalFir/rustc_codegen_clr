@@ -89,7 +89,7 @@ impl<'asm> Iterator for CILIter<'asm> {
                         continue;
                     }
                 },
-                CILIterElem::Root(CILRoot::CpObj { src, dst, tpe }) => match idx {
+                CILIterElem::Root(CILRoot::CpObj { src, dst, .. }) => match idx {
                     1 => {
                         *idx += 1;
                         let lhs = self.asm.get_node(*src);

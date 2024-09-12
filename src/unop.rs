@@ -3,8 +3,8 @@ use crate::r#type::get_type;
 use cilly::call_site::CallSite;
 use cilly::cil_node::CILNode;
 use cilly::field_desc::FieldDescriptor;
-use cilly::fn_sig::FnSig;
-use cilly::v2::{ClassRef, Int};
+
+use cilly::v2::{ClassRef, FnSig, Int};
 use cilly::{call, ld_field, Type};
 
 use rustc_middle::mir::{Operand, UnOp};
@@ -24,7 +24,7 @@ pub fn unop<'tcx>(
                 CallSite::boxed(
                     ClassRef::int_128(ctx.asm_mut()).into(),
                     "op_UnaryNegation".into(),
-                    FnSig::new([Type::Int(Int::I128)], Type::Int(Int::I128)),
+                    FnSig::new(Box::new([Type::Int(Int::I128)]), Type::Int(Int::I128)),
                     true,
                 ),
                 [parrent_node]
@@ -35,7 +35,7 @@ pub fn unop<'tcx>(
                 CallSite::boxed(
                     ClassRef::uint_128(ctx.asm_mut()).into(),
                     "op_UnaryNegation".into(),
-                    FnSig::new([Type::Int(Int::U128)], Type::Int(Int::U128)),
+                    FnSig::new(Box::new([Type::Int(Int::U128)]), Type::Int(Int::U128)),
                     true,
                 ),
                 [parrent_node]
@@ -48,7 +48,7 @@ pub fn unop<'tcx>(
                 CallSite::boxed(
                     ClassRef::uint_128(ctx.asm_mut()).into(),
                     "op_OnesComplement".into(),
-                    FnSig::new([Type::Int(Int::U128)], Type::Int(Int::U128)),
+                    FnSig::new(Box::new([Type::Int(Int::U128)]), Type::Int(Int::U128)),
                     true,
                 ),
                 [parrent_node]
@@ -57,7 +57,7 @@ pub fn unop<'tcx>(
                 CallSite::boxed(
                     ClassRef::int_128(ctx.asm_mut()).into(),
                     "op_OnesComplement".into(),
-                    FnSig::new([Type::Int(Int::I128)], Type::Int(Int::I128)),
+                    FnSig::new(Box::new([Type::Int(Int::I128)]), Type::Int(Int::I128)),
                     true,
                 ),
                 [parrent_node]

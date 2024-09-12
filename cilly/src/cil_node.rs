@@ -1,11 +1,10 @@
-use crate::v2::{Assembly, ClassRef, ClassRefIdx, Int, Type};
+use crate::v2::{Assembly, ClassRef, ClassRefIdx, FnSig, Int, Type};
 use crate::{
     call,
     call_site::CallSite,
     cil_iter::CILIterTrait,
     cil_root::CILRoot,
     field_desc::FieldDescriptor,
-    fn_sig::FnSig,
     static_field_desc::StaticFieldDescriptor,
     v2::hashable::{HashableF32, HashableF64},
     IString,
@@ -242,11 +241,11 @@ impl CILNode {
         let low = u128_low_u64(value);
         let high = (value >> 64) as u64;
         let ctor_sig = FnSig::new(
-            [
+            Box::new([
                 asm.nref(Type::Int(Int::U128)),
                 Type::Int(Int::U64),
                 Type::Int(Int::U64),
-            ],
+            ]),
             Type::Void,
         );
         CILNode::NewObj(Box::new(CallOpArgs {
@@ -270,11 +269,11 @@ impl CILNode {
         let low = u128_low_u64(value);
         let high = (value >> 64) as u64;
         let ctor_sig = FnSig::new(
-            [
+            Box::new([
                 asm.nref(Type::Int(Int::U128)),
                 Type::Int(Int::U64),
                 Type::Int(Int::U64),
-            ],
+            ]),
             Type::Void,
         );
         CILNode::NewObj(Box::new(CallOpArgs {
@@ -298,7 +297,7 @@ impl CILNode {
                 Some(ClassRef::gc_handle(asm)),
                 "Alloc".to_owned().into(),
                 FnSig::new(
-                    [Type::PlatformObject],
+                    Box::new([Type::PlatformObject]),
                     Type::ClassRef(ClassRef::gc_handle(asm))
                 ),
                 true
@@ -310,7 +309,7 @@ impl CILNode {
                 Some(ClassRef::gc_handle(asm)),
                 "op_Explicit".to_owned().into(),
                 FnSig::new(
-                    [Type::ClassRef(ClassRef::gc_handle(asm))],
+                    Box::new([Type::ClassRef(ClassRef::gc_handle(asm))]),
                     Type::Int(Int::ISize)
                 ),
                 true,
@@ -324,7 +323,7 @@ impl CILNode {
                 Some(ClassRef::gc_handle(asm)),
                 "FromIntPtr".to_owned().into(),
                 FnSig::new(
-                    [Type::Int(Int::ISize)],
+                    Box::new([Type::Int(Int::ISize)]),
                     Type::ClassRef(ClassRef::gc_handle(asm))
                 ),
                 true
@@ -341,7 +340,7 @@ impl CILNode {
             CallSite::new(
                 Some(ClassRef::gc_handle(asm)),
                 "get_Target".to_owned().into(),
-                FnSig::new([asm.nref(gc_handle_tpe)], Type::PlatformObject),
+                FnSig::new(Box::new([asm.nref(gc_handle_tpe)]), Type::PlatformObject),
                 false,
             ),
             [gc_handle]
@@ -355,7 +354,7 @@ impl CILNode {
                 CallSite::builtin(
                     "select_u128".to_owned().into(),
                     FnSig::new(
-                        [Type::Int(Int::U128), Type::Int(Int::U128), Type::Bool],
+                        Box::new([Type::Int(Int::U128), Type::Int(Int::U128), Type::Bool]),
                         Type::Int(Int::U128)
                     ),
                     true
@@ -366,7 +365,7 @@ impl CILNode {
                 CallSite::builtin(
                     "select_i128".to_owned().into(),
                     FnSig::new(
-                        [Type::Int(Int::I128), Type::Int(Int::I128), Type::Bool],
+                        Box::new([Type::Int(Int::I128), Type::Int(Int::I128), Type::Bool]),
                         Type::Int(Int::I128)
                     ),
                     true
@@ -377,7 +376,7 @@ impl CILNode {
                 CallSite::builtin(
                     "select_usize".to_owned().into(),
                     FnSig::new(
-                        [Type::Int(Int::USize), Type::Int(Int::USize), Type::Bool],
+                        Box::new([Type::Int(Int::USize), Type::Int(Int::USize), Type::Bool]),
                         Type::Int(Int::USize)
                     ),
                     true
@@ -388,7 +387,7 @@ impl CILNode {
                 CallSite::builtin(
                     "select_usize".to_owned().into(),
                     FnSig::new(
-                        [Type::Int(Int::USize), Type::Int(Int::USize), Type::Bool],
+                        Box::new([Type::Int(Int::USize), Type::Int(Int::USize), Type::Bool]),
                         Type::Int(Int::USize)
                     ),
                     true
@@ -404,7 +403,7 @@ impl CILNode {
                 CallSite::builtin(
                     "select_isize".to_owned().into(),
                     FnSig::new(
-                        [Type::Int(Int::ISize), Type::Int(Int::ISize), Type::Bool],
+                        Box::new([Type::Int(Int::ISize), Type::Int(Int::ISize), Type::Bool]),
                         Type::Int(Int::ISize)
                     ),
                     true
@@ -415,7 +414,7 @@ impl CILNode {
                 CallSite::builtin(
                     "select_u64".to_owned().into(),
                     FnSig::new(
-                        [Type::Int(Int::U64), Type::Int(Int::U64), Type::Bool],
+                        Box::new([Type::Int(Int::U64), Type::Int(Int::U64), Type::Bool]),
                         Type::Int(Int::U64)
                     ),
                     true
@@ -426,7 +425,7 @@ impl CILNode {
                 CallSite::builtin(
                     "select_i64".to_owned().into(),
                     FnSig::new(
-                        [Type::Int(Int::I64), Type::Int(Int::I64), Type::Bool],
+                        Box::new([Type::Int(Int::I64), Type::Int(Int::I64), Type::Bool]),
                         Type::Int(Int::I64)
                     ),
                     true
@@ -437,7 +436,7 @@ impl CILNode {
                 CallSite::builtin(
                     "select_u32".to_owned().into(),
                     FnSig::new(
-                        [Type::Int(Int::U32), Type::Int(Int::U32), Type::Bool],
+                        Box::new([Type::Int(Int::U32), Type::Int(Int::U32), Type::Bool]),
                         Type::Int(Int::U32)
                     ),
                     true
@@ -448,7 +447,7 @@ impl CILNode {
                 CallSite::builtin(
                     "select_i32".to_owned().into(),
                     FnSig::new(
-                        [Type::Int(Int::I32), Type::Int(Int::I32), Type::Bool],
+                        Box::new([Type::Int(Int::I32), Type::Int(Int::I32), Type::Bool]),
                         Type::Int(Int::I32)
                     ),
                     true
@@ -459,7 +458,7 @@ impl CILNode {
                 CallSite::builtin(
                     "select_u16".to_owned().into(),
                     FnSig::new(
-                        [Type::Int(Int::U16), Type::Int(Int::U16), Type::Bool],
+                        Box::new([Type::Int(Int::U16), Type::Int(Int::U16), Type::Bool]),
                         Type::Int(Int::U16)
                     ),
                     true
@@ -470,7 +469,7 @@ impl CILNode {
                 CallSite::builtin(
                     "select_i16".to_owned().into(),
                     FnSig::new(
-                        [Type::Int(Int::I16), Type::Int(Int::I16), Type::Bool],
+                        Box::new([Type::Int(Int::I16), Type::Int(Int::I16), Type::Bool]),
                         Type::Int(Int::I16)
                     ),
                     true
@@ -481,7 +480,7 @@ impl CILNode {
                 CallSite::builtin(
                     "select_u8".to_owned().into(),
                     FnSig::new(
-                        [Type::Int(Int::U8), Type::Int(Int::U8), Type::Bool],
+                        Box::new([Type::Int(Int::U8), Type::Int(Int::U8), Type::Bool]),
                         Type::Int(Int::U8)
                     ),
                     true
@@ -492,7 +491,7 @@ impl CILNode {
                 CallSite::builtin(
                     "select_i8".to_owned().into(),
                     FnSig::new(
-                        [Type::Int(Int::I8), Type::Int(Int::I8), Type::Bool],
+                        Box::new([Type::Int(Int::I8), Type::Int(Int::I8), Type::Bool]),
                         Type::Int(Int::I8)
                     ),
                     true

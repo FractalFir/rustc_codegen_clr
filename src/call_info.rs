@@ -1,4 +1,4 @@
-use cilly::FnSig;
+use cilly::v2::FnSig;
 use rustc_middle::ty::{Instance, List, ParamEnv, ParamEnvAnd, TyKind};
 use rustc_target::abi::call::Conv;
 use rustc_target::spec::abi::Abi as TargetAbi;
@@ -56,14 +56,14 @@ impl CallInfo {
             ))?,*/
             _ => todo!("Unsuported ABI:{internal_abi:?}"),
         };
-        let mut sig = FnSig::new(args, ret);
+        let mut sig = FnSig::new(args.into(), ret);
         if fn_abi.c_variadic {
             let remaining = fn_abi.args[(fn_abi.fixed_count as usize)..]
                 .iter()
                 .map(|ty| get_type(ctx.monomorphize(ty.layout.ty), ctx));
             let mut inputs = sig.inputs().to_vec();
             inputs.extend(remaining);
-            sig.set_inputs(inputs);
+            sig.set_inputs(inputs.into());
         }
         Self {
             sig,

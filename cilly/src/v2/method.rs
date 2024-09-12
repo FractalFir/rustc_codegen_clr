@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use super::{
     bimap::{BiMapIndex, IntoBiMapIndex},
     cilnode::MethodKind,
-    Access, Assembly, BasicBlock, CILIterElem, CILNode, ClassDefIdx, ClassRefIdx, FnSig, SigIdx,
+    Access, Assembly, BasicBlock, CILIterElem, CILNode, ClassDefIdx, ClassRefIdx, SigIdx,
     StringIdx, Type, TypeIdx,
 };
 use crate::v2::iter::TpeIter;
@@ -221,8 +221,7 @@ impl MethodDef {
         asm: &mut super::Assembly,
         class: ClassDefIdx,
     ) -> Self {
-        let sig = FnSig::from_v1(v1.call_site().signature());
-        let sig = asm.alloc_sig(sig);
+        let sig = asm.alloc_sig(v1.call_site().signature().clone());
         let acceess = match v1.access() {
             crate::access_modifier::AccessModifer::Private => Access::Private,
             crate::access_modifier::AccessModifer::Public => Access::Public,

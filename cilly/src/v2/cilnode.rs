@@ -6,7 +6,7 @@ use super::{bimap::IntoBiMapIndex, Assembly, Const, Int, MethodRefIdx, SigIdx, T
 use super::{ClassRef, FieldDesc, FieldIdx, Float, StringIdx};
 
 use crate::cil_node::CILNode as V1Node;
-use crate::v2::{FnSig, MethodRef, Type};
+use crate::v2::{MethodRef, Type};
 use crate::IString;
 #[derive(Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct NodeIdx(BiMapIndex);
@@ -655,8 +655,7 @@ impl CILNode {
                         asm.alloc_node(node)
                     })
                     .collect();
-                let sig = FnSig::from_v1(callargs.site.signature());
-                let sig = asm.alloc_sig(sig);
+                let sig = asm.alloc_sig(callargs.site.signature().clone());
                 let generics: Box<[_]> = (callargs.site.generics()).into();
                 let class = callargs.site.class().unwrap_or_else(|| *asm.main_module());
                 let name = asm.alloc_string(callargs.site.name());
@@ -677,8 +676,7 @@ impl CILNode {
                         asm.alloc_node(node)
                     })
                     .collect();
-                let sig = FnSig::from_v1(callargs.site.signature());
-                let sig = asm.alloc_sig(sig);
+                let sig = asm.alloc_sig(callargs.site.signature().clone());
                 let generics: Box<[_]> = (callargs.site.generics()).into();
                 let class = callargs.site.class().unwrap_or_else(|| *asm.main_module());
                 let name = asm.alloc_string(callargs.site.name());
@@ -696,8 +694,7 @@ impl CILNode {
                         asm.alloc_node(node)
                     })
                     .collect();
-                let sig = FnSig::from_v1(callargs.site.signature());
-                let sig = asm.alloc_sig(sig);
+                let sig = asm.alloc_sig(callargs.site.signature().clone());
                 let generics: Box<[_]> = (callargs.site.generics()).into();
                 let class = callargs.site.class().unwrap_or_else(|| *asm.main_module());
                 let name = asm.alloc_string(callargs.site.name());
@@ -749,8 +746,7 @@ impl CILNode {
                 Self::CheckedCast(asm.alloc_node(val), tpe)
             }
             V1Node::CallI(sig_ptr_args) => {
-                let sig = FnSig::from_v1(&sig_ptr_args.0);
-                let sig = asm.alloc_sig(sig);
+                let sig = asm.alloc_sig(sig_ptr_args.0.clone());
                 let ptr = Self::from_v1(&sig_ptr_args.1, asm);
                 let ptr = asm.alloc_node(ptr);
                 let args: Box<[_]> = sig_ptr_args
@@ -777,8 +773,7 @@ impl CILNode {
                 Self::LdStaticField(asm.alloc_sfld(sfld))
             }
             V1Node::LDFtn(site) => {
-                let sig = FnSig::from_v1(site.signature());
-                let sig = asm.alloc_sig(sig);
+                let sig = asm.alloc_sig(site.signature().clone());
                 let generics: Box<[_]> = (site.generics()).into();
                 let class = site.class().unwrap_or_else(|| *asm.main_module());
                 let name = asm.alloc_string(site.name());

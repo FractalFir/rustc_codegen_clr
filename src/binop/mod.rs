@@ -8,9 +8,8 @@ use cilly::{
     cil_root::CILRoot,
     conv_i8, conv_u16, conv_u32, conv_u64, conv_u8, div, eq,
     field_desc::FieldDescriptor,
-    fn_sig::FnSig,
     gt_un, ld_false, lt_un, rem, rem_un, size_of, sub,
-    v2::{ClassRef, Float, Int},
+    v2::{ClassRef, Float, FnSig, Int},
     Type,
 };
 use cmp::{eq_unchecked, gt_unchecked, lt_unchecked, ne_unchecked};
@@ -78,7 +77,7 @@ pub(crate) fn binop<'tcx>(
                 CallSite::builtin(
                     "__getf2".into(),
                     FnSig::new(
-                        [Type::Float(Float::F128), Type::Float(Float::F128)],
+                        [Type::Float(Float::F128), Type::Float(Float::F128)].into(),
                         Type::Bool
                     ),
                     true
@@ -94,7 +93,7 @@ pub(crate) fn binop<'tcx>(
                 CallSite::builtin(
                     "__letf2".into(),
                     FnSig::new(
-                        [Type::Float(Float::F128), Type::Float(Float::F128)],
+                        [Type::Float(Float::F128), Type::Float(Float::F128)].into(),
                         Type::Bool
                     ),
                     true
@@ -170,7 +169,7 @@ pub fn add_unchecked<'tcx>(
                     CallSite::new_extern(
                         ClassRef::int_128(ctx.asm_mut()),
                         "op_Addition".into(),
-                        FnSig::new([ty_a, ty_b], ty_a),
+                        FnSig::new([ty_a, ty_b].into(), ty_a),
                         true,
                     ),
                     [ops_a, ops_b]
@@ -187,7 +186,7 @@ pub fn add_unchecked<'tcx>(
                     CallSite::new_extern(
                         ClassRef::uint_128(ctx.asm_mut()),
                         "op_Addition".into(),
-                        FnSig::new([ty_a, ty_b], ty_a),
+                        FnSig::new([ty_a, ty_b].into(), ty_a),
                         true,
                     ),
                     [ops_a, ops_b]
@@ -207,7 +206,7 @@ pub fn add_unchecked<'tcx>(
             CallSite::builtin(
                 "__addtf3".into(),
                 FnSig::new(
-                    [Type::Float(Float::F128), Type::Float(Float::F128)],
+                    [Type::Float(Float::F128), Type::Float(Float::F128)].into(),
                     Type::Float(Float::F128)
                 ),
                 true
@@ -234,7 +233,7 @@ pub fn sub_unchecked<'tcx>(
                     CallSite::new_extern(
                         ClassRef::int_128(ctx.asm_mut()),
                         "op_Subtraction".into(),
-                        FnSig::new([ty_a, ty_b], ty_a),
+                        FnSig::new([ty_a, ty_b].into(), ty_a),
                         true,
                     ),
                     [ops_a, ops_b]
@@ -251,7 +250,7 @@ pub fn sub_unchecked<'tcx>(
                     CallSite::new_extern(
                         ClassRef::uint_128(ctx.asm_mut()),
                         "op_Subtraction".into(),
-                        FnSig::new([ty_a, ty_b], ty_a),
+                        FnSig::new([ty_a, ty_b].into(), ty_a),
                         true,
                     ),
                     [ops_a, ops_b]
@@ -265,7 +264,7 @@ pub fn sub_unchecked<'tcx>(
             CallSite::builtin(
                 "__subtf3".into(),
                 FnSig::new(
-                    [Type::Float(Float::F128), Type::Float(Float::F128)],
+                    [Type::Float(Float::F128), Type::Float(Float::F128)].into(),
                     Type::Float(Float::F128)
                 ),
                 true
@@ -291,7 +290,7 @@ fn rem_unchecked<'tcx>(
                 CallSite::new_extern(
                     ClassRef::int_128(ctx.asm_mut()),
                     "op_Modulus".into(),
-                    FnSig::new([ty_a, ty_b], ty_a),
+                    FnSig::new([ty_a, ty_b].into(), ty_a),
                     true,
                 ),
                 [ops_a, ops_b]
@@ -304,7 +303,7 @@ fn rem_unchecked<'tcx>(
                 CallSite::new_extern(
                     ClassRef::uint_128(ctx.asm_mut()),
                     "op_Modulus".into(),
-                    FnSig::new([ty_a, ty_b], ty_a),
+                    FnSig::new([ty_a, ty_b].into(), ty_a),
                     true,
                 ),
                 [ops_a, ops_b]
@@ -317,7 +316,7 @@ fn rem_unchecked<'tcx>(
             CallSite::builtin(
                 "fmodl".into(),
                 FnSig::new(
-                    [Type::Float(Float::F128), Type::Float(Float::F128)],
+                    [Type::Float(Float::F128), Type::Float(Float::F128)].into(),
                     Type::Float(Float::F128)
                 ),
                 true
@@ -345,7 +344,7 @@ fn mul_unchecked<'tcx>(
                 CallSite::new_extern(
                     ClassRef::int_128(ctx.asm_mut()),
                     "op_Multiply".into(),
-                    FnSig::new([ty_a, ty_b], ty_a),
+                    FnSig::new([ty_a, ty_b].into(), ty_a),
                     true,
                 ),
                 [operand_a, operand_b]
@@ -358,7 +357,7 @@ fn mul_unchecked<'tcx>(
                 CallSite::new_extern(
                     ClassRef::uint_128(ctx.asm_mut()),
                     "op_Multiply".into(),
-                    FnSig::new([ty_a, ty_b], ty_a),
+                    FnSig::new([ty_a, ty_b].into(), ty_a),
                     true,
                 ),
                 [operand_a, operand_b]
@@ -368,7 +367,7 @@ fn mul_unchecked<'tcx>(
             CallSite::builtin(
                 "__multf3".into(),
                 FnSig::new(
-                    [Type::Float(Float::F128), Type::Float(Float::F128)],
+                    [Type::Float(Float::F128), Type::Float(Float::F128)].into(),
                     Type::Float(Float::F128)
                 ),
                 true
@@ -393,7 +392,7 @@ fn div_unchecked<'tcx>(
                 CallSite::new_extern(
                     ClassRef::int_128(ctx.asm_mut()),
                     "op_Division".into(),
-                    FnSig::new([ty_a, ty_b], ty_a),
+                    FnSig::new([ty_a, ty_b].into(), ty_a),
                     true,
                 ),
                 [operand_a, operand_b]
@@ -406,7 +405,7 @@ fn div_unchecked<'tcx>(
                 CallSite::new_extern(
                     ClassRef::uint_128(ctx.asm_mut()),
                     "op_Division".into(),
-                    FnSig::new([ty_a, ty_b], ty_a),
+                    FnSig::new([ty_a, ty_b].into(), ty_a),
                     true,
                 ),
                 [operand_a, operand_b]
@@ -420,7 +419,7 @@ fn div_unchecked<'tcx>(
             CallSite::builtin(
                 "__divtf3".into(),
                 FnSig::new(
-                    [Type::Float(Float::F128), Type::Float(Float::F128)],
+                    [Type::Float(Float::F128), Type::Float(Float::F128)].into(),
                     Type::Float(Float::F128)
                 ),
                 true

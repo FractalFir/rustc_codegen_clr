@@ -42,10 +42,7 @@ pub fn calculate_hash<T: std::hash::Hash>(t: &T) -> u64 {
     t.hash(&mut s);
     s.finish()
 }
-//pub mod dotnet_type;
-//pub use dotnet_type::*;
-pub mod fn_sig;
-pub use fn_sig::*;
+
 pub mod access_modifier;
 pub mod asm;
 

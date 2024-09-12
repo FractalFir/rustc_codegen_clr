@@ -21,8 +21,8 @@ use cilly::{
     method::{Method, MethodType},
     static_field_desc::StaticFieldDescriptor,
     utilis::{self, encode},
-    v2::{Int, MethodDef, StaticFieldDesc},
-    FnSig, Type,
+    v2::{FnSig, Int, MethodDef, StaticFieldDesc},
+    Type,
 };
 use rustc_middle::{
     mir::{
@@ -247,7 +247,7 @@ fn allocation_initializer_method(
     Method::new(
         AccessModifer::Private,
         MethodType::Static,
-        FnSig::new([], asm.nptr(Type::Int(Int::U8))),
+        FnSig::new(Box::new([]), asm.nptr(Type::Int(Int::U8))),
         &format!("init_{name}"),
         vec![(Some("alloc_ptr".into()), asm.nptr(Type::Int(Int::U8)))],
         vec![BasicBlock::new(trees, 0, None)],
@@ -753,7 +753,7 @@ pub fn add_const_value(asm: &mut cilly::v2::Assembly, bytes: u128) -> StaticFiel
     let init_method = Method::new(
         AccessModifer::Public,
         MethodType::Static,
-        FnSig::new([], asm.nptr(Type::Int(Int::U8))),
+        FnSig::new(Box::new([]), asm.nptr(Type::Int(Int::U8))),
         &format!("init_a{bytes:x}"),
         vec![(Some("alloc_ptr".into()), asm.nptr(Type::Int(Int::U8)))],
         vec![block],

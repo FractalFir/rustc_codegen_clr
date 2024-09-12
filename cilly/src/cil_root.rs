@@ -1,10 +1,9 @@
-use crate::v2::{Assembly, ClassRef, Type};
+use crate::v2::{Assembly, ClassRef, FnSig, Type};
 use crate::{
     call,
     call_site::CallSite,
     cil_node::{CILNode, CallOpArgs},
     field_desc::FieldDescriptor,
-    fn_sig::FnSig,
     static_field_desc::StaticFieldDescriptor,
     AsmString, IString,
 };
@@ -417,7 +416,7 @@ impl CILRoot {
         let class = ClassRef::exception(asm);
 
         let name = ".ctor".to_owned().into();
-        let signature = FnSig::new([class.into(), Type::PlatformString], Type::Void);
+        let signature = FnSig::new(Box::new([class.into(), Type::PlatformString]), Type::Void);
         Self::Throw(CILNode::NewObj(Box::new(CallOpArgs {
             site: CallSite::boxed(Some(class), name, signature, false),
             args: [CILNode::LdStr(msg.into())].into(),
@@ -428,7 +427,7 @@ impl CILRoot {
         let class = ClassRef::console(asm);
 
         let name = "WriteLine".to_owned().into();
-        let signature = FnSig::new([Type::PlatformString], Type::Void);
+        let signature = FnSig::new(Box::new([Type::PlatformString]), Type::Void);
         let message = tiny_message(msg, asm);
         Self::Call {
             site: Box::new(CallSite::new_extern(class, name, signature, true)),
@@ -652,7 +651,7 @@ fn runtime_string(pieces: &[&str], asm: &mut Assembly) -> CILNode {
                 ClassRef::string(asm),
                 "Concat".to_owned().into(),
                 FnSig::new(
-                    [Type::PlatformString, Type::PlatformString,],
+                    Box::new([Type::PlatformString, Type::PlatformString,]),
                     Type::PlatformString,
                 ),
                 true
@@ -667,11 +666,11 @@ fn runtime_string(pieces: &[&str], asm: &mut Assembly) -> CILNode {
                 ClassRef::string(asm),
                 "Concat".to_owned().into(),
                 FnSig::new(
-                    [
+                    Box::new([
                         Type::PlatformString,
                         Type::PlatformString,
                         Type::PlatformString,
-                    ],
+                    ]),
                     Type::PlatformString,
                 ),
                 true
@@ -687,12 +686,12 @@ fn runtime_string(pieces: &[&str], asm: &mut Assembly) -> CILNode {
                 ClassRef::string(asm),
                 "Concat".to_owned().into(),
                 FnSig::new(
-                    [
+                    Box::new([
                         Type::PlatformString,
                         Type::PlatformString,
                         Type::PlatformString,
                         Type::PlatformString,
-                    ],
+                    ]),
                     Type::PlatformString,
                 ),
                 true
@@ -711,12 +710,12 @@ fn runtime_string(pieces: &[&str], asm: &mut Assembly) -> CILNode {
                     ClassRef::string(asm),
                     "Concat".to_owned().into(),
                     FnSig::new(
-                        [
+                        Box::new([
                             Type::PlatformString,
                             Type::PlatformString,
                             Type::PlatformString,
                             Type::PlatformString,
-                        ],
+                        ]),
                         Type::PlatformString,
                     ),
                     true

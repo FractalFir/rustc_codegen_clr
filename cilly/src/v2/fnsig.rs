@@ -39,16 +39,18 @@ impl FnSig {
         &self.output
     }
 
-    #[must_use]
-    pub fn from_v1(signature: &crate::FnSig) -> Self {
-        let input = signature.inputs().iter().copied().collect();
-        Self::new(input, *signature.output())
-    }
-
     pub fn iter_types(&self) -> impl Iterator<Item = Type> + '_ {
         self.inputs()
             .iter()
             .copied()
             .chain(std::iter::once(*self.output()))
+    }
+
+    pub fn inputs_mut(&mut self) -> &mut Box<[Type]> {
+        &mut self.inputs
+    }
+
+    pub fn set_inputs(&mut self, inputs: Box<[Type]>) {
+        self.inputs = inputs;
     }
 }

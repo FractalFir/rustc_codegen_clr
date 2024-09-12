@@ -10,8 +10,8 @@ use crate::{
     call_site::CallSite,
     cil_root::CILRoot,
     method::{Method, MethodType},
-    v2::{ClassDef, Int},
-    FnSig, IString, Type,
+    v2::{ClassDef, FnSig, Int},
+    IString, Type,
 };
 
 #[derive(Clone, Copy, Serialize, Deserialize, Debug)]
@@ -104,14 +104,14 @@ impl Assembly {
             .entry(CallSite::new(
                 None,
                 ".tcctor".into(),
-                FnSig::new([], Type::Void),
+                FnSig::new(Box::new([]), Type::Void),
                 true,
             ))
             .or_insert_with(|| {
                 Method::new(
                     AccessModifer::Extern,
                     MethodType::Static,
-                    FnSig::new([], Type::Void),
+                    FnSig::new(Box::new([]), Type::Void),
                     ".tcctor",
                     vec![
                         (None, self.inner.nptr(Type::Int(Int::U8))),
@@ -164,7 +164,7 @@ impl Assembly {
         self.functions.get_mut(&CallSite::new(
             None,
             ".cctor".into(),
-            FnSig::new([], Type::Void),
+            FnSig::new(Box::new([]), Type::Void),
             true,
         ))
     }

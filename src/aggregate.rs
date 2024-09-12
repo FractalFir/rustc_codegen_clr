@@ -12,7 +12,7 @@ use cilly::{
     conv_usize,
     field_desc::FieldDescriptor,
     ldc_u64,
-    v2::{ClassRef, Int},
+    v2::{ClassRef, FnSig, Int},
     Type,
 };
 use rustc_index::IndexVec;
@@ -76,12 +76,12 @@ pub fn handle_aggregate<'tcx>(
             let element = ctx.type_from_cache(element);
             let array_type = ClassRef::fixed_array(element, value_index.len(), ctx.asm_mut());
             let array_getter = super::place::place_adress(target_location, ctx);
-            let sig = cilly::fn_sig::FnSig::new(
-                [
+            let sig = FnSig::new(
+                Box::new([
                     ctx.asm_mut().nref(array_type.into()),
                     Type::Int(Int::USize),
                     element,
-                ],
+                ]),
                 Type::Void,
             );
             let site = CallSite::new(Some(array_type), "set_Item".into(), sig, false);

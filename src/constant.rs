@@ -13,9 +13,9 @@ use cilly::{
     static_field_desc::StaticFieldDescriptor,
     v2::{
         hashable::{HashableF32, HashableF64},
-        Assembly, ClassRef, Float, Int,
+        Assembly, ClassRef, Float, FnSig, Int,
     },
-    FnSig, Type,
+    Type,
 };
 
 use rustc_middle::{
@@ -158,7 +158,7 @@ fn load_scalar_ptr(
                             site: Box::new(CallSite::new(
                                 None,
                                 "get_environ".into(),
-                                FnSig::new([], ctx.asm_mut().nptr(u8_ptr)),
+                                FnSig::new(Box::new([]), ctx.asm_mut().nptr(u8_ptr)),
                                 true,
                             )),
                         })),
@@ -173,10 +173,7 @@ fn load_scalar_ptr(
                 // TODO: this could cause issues if the pointer to the static is not imediatly dereferenced.
                 let site = get_fn_from_static_name(&name, ctx);
                 return CILNode::TemporaryLocal(Box::new((
-                    Type::FnPtr(
-                        ctx.asm_mut()
-                            .alloc_sig(cilly::v2::FnSig::from_v1(site.signature())),
-                    ),
+                    Type::FnPtr(ctx.asm_mut().alloc_sig(site.signature().clone())),
                     [CILRoot::SetTMPLocal {
                         value: CILNode::LDFtn(Box::new(site)),
                     }]
@@ -310,7 +307,7 @@ fn load_const_float(value: u128, float_type: FloatTy, asm: &mut Assembly) -> CIL
                     CallSite::new_extern(
                         ClassRef::half(asm),
                         "op_Explicit".into(),
-                        FnSig::new([Type::Float(Float::F32)], Type::Float(Float::F16)),
+                        FnSig::new(Box::new([Type::Float(Float::F32)]), Type::Float(Float::F16)),
                         true
                     ),
                     [CILNode::LdcF32(HashableF32(
@@ -337,11 +334,11 @@ fn load_const_float(value: u128, float_type: FloatTy, asm: &mut Assembly) -> CIL
             let low = u128_low_u64(value);
             let high = (value >> 64) as u64;
             let ctor_sig = FnSig::new(
-                [
+                Box::new([
                     asm.nref(Type::Float(Float::F128)),
                     Type::Int(Int::U64),
                     Type::Int(Int::U64),
-                ],
+                ]),
                 Type::Void,
             );
             CILNode::TemporaryLocal(Box::new((
@@ -396,11 +393,11 @@ pub fn load_const_int(value: u128, int_type: IntTy, asm: &mut Assembly) -> CILNo
             let low = u128_low_u64(value);
             let high = (value >> 64) as u64;
             let ctor_sig = FnSig::new(
-                [
+                Box::new([
                     asm.nref(Type::Int(Int::I128)),
                     Type::Int(Int::U64),
                     Type::Int(Int::U64),
-                ],
+                ]),
                 Type::Void,
             );
             CILNode::NewObj(Box::new(CallOpArgs {
@@ -436,11 +433,11 @@ pub fn load_const_uint(value: u128, int_type: UintTy, asm: &mut Assembly) -> CIL
             let low = u128_low_u64(value);
             let high = (value >> 64) as u64;
             let ctor_sig = FnSig::new(
-                [
+                Box::new([
                     asm.nref(Type::Int(Int::U128)),
                     Type::Int(Int::U64),
                     Type::Int(Int::U64),
-                ],
+                ]),
                 Type::Void,
             );
             CILNode::NewObj(Box::new(CallOpArgs {
@@ -465,13 +462,13 @@ fn get_fn_from_static_name(name: &str, ctx: &mut MethodCompileCtx<'_, '_>) -> Ca
         "statx" => CallSite::builtin(
             "statx".into(),
             FnSig::new(
-                [
+                Box::new([
                     Type::Int(Int::I32),
                     ctx.asm_mut().nptr(Type::Int(Int::U8)),
                     Type::Int(Int::I32),
                     Type::Int(Int::U32),
                     void_ptr,
-                ],
+                ]),
                 Type::Int(Int::I32),
             ),
             true,
@@ -479,11 +476,11 @@ fn get_fn_from_static_name(name: &str, ctx: &mut MethodCompileCtx<'_, '_>) -> Ca
         "getrandom" => CallSite::builtin(
             "getrandom".into(),
             FnSig::new(
-                [
+                Box::new([
                     ctx.asm_mut().nptr(Type::Int(Int::U8)),
                     Type::Int(Int::USize),
                     Type::Int(Int::U32),
-                ],
+                ]),
                 Type::Int(Int::USize),
             ),
             true,
@@ -491,14 +488,14 @@ fn get_fn_from_static_name(name: &str, ctx: &mut MethodCompileCtx<'_, '_>) -> Ca
         "posix_spawn" => CallSite::builtin(
             "posix_spawn".into(),
             FnSig::new(
-                [
+                Box::new([
                     ctx.asm_mut().nptr(Type::Int(Int::U8)),
                     ctx.asm_mut().nptr(Type::Int(Int::U8)),
                     ctx.asm_mut().nptr(Type::Int(Int::U8)),
                     ctx.asm_mut().nptr(Type::Int(Int::U8)),
                     ctx.asm_mut().nptr(Type::Int(Int::U8)),
                     ctx.asm_mut().nptr(Type::Int(Int::U8)),
-                ],
+                ]),
                 Type::Int(Int::I32),
             ),
             true,
@@ -506,25 +503,27 @@ fn get_fn_from_static_name(name: &str, ctx: &mut MethodCompileCtx<'_, '_>) -> Ca
         "posix_spawn_file_actions_addchdir_np" => CallSite::builtin(
             "posix_spawn_file_actions_addchdir_np".into(),
             FnSig::new(
-                [
+                Box::new([
                     ctx.asm_mut().nptr(Type::Int(Int::U8)),
                     ctx.asm_mut().nptr(Type::Int(Int::U8)),
-                ],
+                ]),
                 Type::Int(Int::I32),
             ),
             true,
         ),
-        "__dso_handle" => {
-            CallSite::builtin("__dso_handle".into(), FnSig::new([], Type::Void), true)
-        }
+        "__dso_handle" => CallSite::builtin(
+            "__dso_handle".into(),
+            FnSig::new(Box::new([]), Type::Void),
+            true,
+        ),
         "__cxa_thread_atexit_impl" => CallSite::builtin(
             "__cxa_thread_atexit_impl".into(),
             FnSig::new(
-                [
+                Box::new([
                     Type::FnPtr(ctx.asm_mut().sig([void_ptr], Type::Void)),
                     void_ptr,
                     void_ptr,
-                ],
+                ]),
                 Type::Void,
             ),
             true,
@@ -532,14 +531,14 @@ fn get_fn_from_static_name(name: &str, ctx: &mut MethodCompileCtx<'_, '_>) -> Ca
         "copy_file_range" => CallSite::builtin(
             "copy_file_range".into(),
             FnSig::new(
-                [
+                Box::new([
                     Type::Int(Int::I32),
                     ctx.asm_mut().nptr(Type::Int(Int::I64)),
                     Type::Int(Int::I32),
                     ctx.asm_mut().nptr(Type::Int(Int::I64)),
                     Type::Int(Int::ISize),
                     Type::Int(Int::U32),
-                ],
+                ]),
                 Type::Int(Int::ISize),
             ),
             true,
@@ -547,21 +546,21 @@ fn get_fn_from_static_name(name: &str, ctx: &mut MethodCompileCtx<'_, '_>) -> Ca
         "pidfd_spawnp" => CallSite::builtin(
             "pidfd_spawnp".into(),
             FnSig::new(
-                [
+                Box::new([
                     ctx.asm_mut().nptr(Type::Int(Int::I32)),
                     ctx.asm_mut().nptr(Type::Int(Int::I8)),
                     void_ptr,
                     void_ptr,
                     ctx.asm_mut().nptr(int8_ptr),
                     ctx.asm_mut().nptr(int8_ptr),
-                ],
+                ]),
                 Type::Int(Int::I32),
             ),
             true,
         ),
         "pidfd_getpid" => CallSite::builtin(
             "pidfd_getpid".into(),
-            FnSig::new([Type::Int(Int::I32)], Type::Int(Int::I32)),
+            FnSig::new(Box::new([Type::Int(Int::I32)]), Type::Int(Int::I32)),
             true,
         ),
         _ => {

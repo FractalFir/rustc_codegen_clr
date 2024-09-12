@@ -14,9 +14,9 @@ use cilly::{
     cil_node::{CILNode, CallOpArgs},
     cil_root::CILRoot,
     conv_usize, ld_field, ldc_i32, size_of,
-    v2::{ClassRef, Int},
+    v2::{ClassRef, FnSig, Int},
 };
-use cilly::{call_site::CallSite, field_desc::FieldDescriptor, fn_sig::FnSig, Type};
+use cilly::{call_site::CallSite, field_desc::FieldDescriptor, Type};
 use rustc_middle::ty::InstanceKind;
 use rustc_middle::{
     mir::{Operand, Place},
@@ -59,7 +59,7 @@ fn call_managed<'tcx>(
         let call_site = CallSite::new(
             Some(ctx.asm_mut().alloc_class_ref(tpe)),
             managed_fn_name,
-            FnSig::new([], ret),
+            FnSig::new(Box::new([]), ret),
             true,
         );
         if *signature.output() == cilly::Type::Void {
@@ -125,7 +125,7 @@ fn callvirt_managed<'tcx>(
         let call = CallSite::new(
             Some(ctx.asm_mut().alloc_class_ref(tpe)),
             managed_fn_name,
-            FnSig::new([], ret),
+            FnSig::new(Box::new([]), ret),
             true,
         );
         if *signature.output() == cilly::Type::Void {
@@ -190,7 +190,7 @@ fn call_ctor<'tcx>(
                 site: CallSite::boxed(
                     Some(tpe),
                     ".ctor".into(),
-                    FnSig::new([Type::ClassRef(tpe)], Type::Void),
+                    FnSig::new(Box::new([Type::ClassRef(tpe)]), Type::Void),
                     false,
                 ),
                 args: [].into(),
@@ -209,7 +209,7 @@ fn call_ctor<'tcx>(
             })
             .collect();
         inputs.insert(0, Type::ClassRef(tpe));
-        let sig = FnSig::new(inputs, cilly::Type::Void);
+        let sig = FnSig::new(inputs.into(), cilly::Type::Void);
         let mut call = Vec::new();
         for arg in args {
             call.push(crate::operand::handle_operand(&arg.node, ctx));

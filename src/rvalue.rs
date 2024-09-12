@@ -10,9 +10,8 @@ use cilly::{
     cil_root::CILRoot,
     conv_usize,
     field_desc::FieldDescriptor,
-    fn_sig::FnSig,
     ld_field, ldc_i32, ldc_u64, size_of,
-    v2::{Float, Int},
+    v2::{Float, FnSig, Int},
     Type,
 };
 use rustc_middle::{
@@ -419,11 +418,11 @@ fn repeat<'tcx>(
                     Some(array_dotnet),
                     "set_Item".into(),
                     FnSig::new(
-                        [
+                        Box::new([
                             ctx.asm_mut().nref(array),
                             Type::Int(Int::USize),
                             element_type,
-                        ],
+                        ]),
                         Type::Void,
                     ),
                     false,
@@ -464,11 +463,11 @@ fn repeat<'tcx>(
                     Some(array_dotnet),
                     "set_Item".into(),
                     FnSig::new(
-                        [
+                        Box::new([
                             ctx.asm_mut().nref(array),
                             Type::Int(Int::USize),
                             element_type,
-                        ],
+                        ]),
                         Type::Void,
                     ),
                     false,
