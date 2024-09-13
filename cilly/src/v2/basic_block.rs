@@ -15,17 +15,19 @@ impl BasicBlock {
         asm: &'asm Assembly,
     ) -> impl Iterator<Item = u32> + 'block {
         self.roots().iter().filter_map(|root| {
-            if let CILRoot::Branch(info) = asm.get_root(*root) {
-                let (target, sub_target, _) = info.as_ref();
-                //Some(*sub_target)
-                //(eprintln!("{target} {sub_target}");
-                if *sub_target == 0 {
-                    Some(*target)
-                } else {
-                    Some(*sub_target)
+            match asm.get_root(*root) {
+                CILRoot::Branch(info) => {
+                    let (target, sub_target, _) = info.as_ref();
+                    //Some(*sub_target)
+                    //(eprintln!("{target} {sub_target}");
+                    if *sub_target == 0 {
+                        Some(*target)
+                    } else {
+                        Some(*sub_target)
+                    }
                 }
-            } else {
-                None
+                CILRoot::ExitSpecialRegion { target, .. } => Some(*target),
+                _ => None,
             }
         })
     }

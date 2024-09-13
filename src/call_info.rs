@@ -49,7 +49,8 @@ impl CallInfo {
             | TargetAbi::Cdecl { unwind: _ }
             | TargetAbi::RustIntrinsic
             | TargetAbi::Rust
-            | TargetAbi::RustCold => false,
+            | TargetAbi::RustCold
+            | TargetAbi::Unadjusted => false,
 
             TargetAbi::RustCall => true, /*Err(CodegenError::FunctionABIUnsuported(
             "\"rust_call\" ABI, used for things like clsoures, is not supported yet!",

@@ -2,6 +2,7 @@ use std::{
     collections::VecDeque,
     io::{stdin, Read},
     num::NonZeroU32,
+    time::Instant,
 };
 
 use cilly::v2::{
@@ -60,7 +61,7 @@ fn main() {
             }
             "deadcode" => asm.eliminate_dead_code(),
             "opt" => {
-                let mut fuel = asm.default_fuel();
+                let mut fuel = asm.fuel_from_env();
                 eprintln!("Preparing to optimize the assembly with {fuel:?}");
                 let start = std::time::Instant::now();
                 asm.opt(&mut fuel);
@@ -136,8 +137,13 @@ fn main() {
             "toil" => {
                 let path = body;
                 let path = path.trim().trim_matches('\'').trim();
+                let start = Instant::now();
                 println!("Preparing to export the assembly");
-                asm.export(path, ILExporter::new(cilly::v2::IlasmFlavour::Clasic, true))
+                asm.export(path, ILExporter::new(cilly::v2::IlasmFlavour::Clasic, true));
+                println!(
+                    "Exported the assembly in {} ms",
+                    start.elapsed().as_millis()
+                );
             }
             "tocillyir" => {
                 let path = body;

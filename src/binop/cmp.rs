@@ -75,7 +75,18 @@ pub fn eq_unchecked(
             ),
             [operand_a, operand_b]
         ),
-
+        TyKind::Float(FloatTy::F16) => call!(
+            CallSite::new_extern(
+                ClassRef::half(asm),
+                "op_Equality".into(),
+                FnSig::new(
+                    [Type::Float(Float::F16), Type::Float(Float::F16)].into(),
+                    Type::Bool
+                ),
+                true,
+            ),
+            [operand_a, operand_b]
+        ),
         _ => panic!("Can't eq type  {ty_a:?}"),
     }
 }

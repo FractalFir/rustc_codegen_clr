@@ -1,5 +1,4 @@
 use inline::inline_trivial_call_root;
-use simplify_handlers::simplify_bbs;
 
 #[cfg(test)]
 use super::Float;
@@ -835,7 +834,10 @@ impl MethodDef {
                     block.remove_handler();
                 }
             }
-            // simplify_bbs(Some(blocks), asm, fuel)
+            // If no jumps away, then this is the only alive block, then we can remove all other blocks
+            if blocks.len() > 1 && blocks[0].targets(asm).count() == 0 {
+                *blocks = vec![blocks[0].clone()];
+            }
         };
     }
 }
