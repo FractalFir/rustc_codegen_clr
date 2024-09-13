@@ -478,6 +478,22 @@ impl MethodDef {
             self.implementation_mut().realloc_locals(asm);
         }
         if fuel.consume(5) {
+            // Remove unneded SFI
+            if let Some(roots) = self.iter_roots_mut() {
+                let mut peekable = (roots).into_iter().peekable();
+                while let Some(curr) = peekable.next() {
+                    let Some(peek) = peekable.peek() else {
+                        continue;
+                    };
+                    if let (CILRoot::SourceFileInfo { .. }, CILRoot::SourceFileInfo { .. }) =
+                        (asm.get_root(*curr), asm.get_root(**peek))
+                    {
+                        *curr = nop;
+                    }
+                }
+            }
+        }
+        if fuel.consume(5) {
             if let Some(roots) = self.iter_roots_mut() {
                 let roots: Vec<_> = roots
                     .filter(|root| {
@@ -493,9 +509,6 @@ impl MethodDef {
                         continue;
                     };
                     match (asm.get_root(*curr), asm.get_root(**peek)) {
-                        (CILRoot::SourceFileInfo { .. }, CILRoot::SourceFileInfo { .. }) => {
-                            *curr = nop;
-                        }
                         // If a rethrow is followed by a rethrow, this is effectively just a single rethrow
                         (CILRoot::ReThrow, CILRoot::ReThrow) => *curr = nop,
                         /*// If SFI is followed by an uncodtional branch, then it has no effect, then it can be safely ommited.

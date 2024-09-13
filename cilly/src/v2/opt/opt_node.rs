@@ -1,4 +1,4 @@
-use crate::v2::{Assembly, CILNode, Const, Int, Type};
+use crate::v2::{cilnode::ExtendKind, Assembly, CILNode, Const, Int, Type};
 
 use super::OptFuel;
 pub fn opt_if_fuel(new: CILNode, original: CILNode, fuel: &mut OptFuel) -> CILNode {
@@ -10,6 +10,25 @@ pub fn opt_if_fuel(new: CILNode, original: CILNode, fuel: &mut OptFuel) -> CILNo
 }
 pub fn opt_node(original: CILNode, asm: &mut Assembly, fuel: &mut OptFuel) -> CILNode {
     match original {
+        CILNode::SizeOf(tpe) => match asm.get_type(tpe) {
+            Type::Int(
+                int @ (Int::I128
+                | Int::I64
+                | Int::I32
+                | Int::I16
+                | Int::I8
+                | Int::U128
+                | Int::U64
+                | Int::U32
+                | Int::U16
+                | Int::U8),
+            ) => opt_if_fuel(
+                Const::I32(int.size().unwrap() as i32).into(),
+                original,
+                fuel,
+            ),
+            _ => original,
+        },
         CILNode::IntCast {
             input,
             target,
@@ -32,6 +51,14 @@ pub fn opt_node(original: CILNode, asm: &mut Assembly, fuel: &mut OptFuel) -> CI
                 (Const::U64(val), Int::U8) => {
                     opt_if_fuel(Const::U8(*val as u8).into(), original, fuel)
                 }
+                (Const::I32(val), Int::USize) => match extend {
+                    ExtendKind::SignExtend => {
+                        opt_if_fuel(Const::USize(*val as i64 as u64).into(), original, fuel)
+                    }
+                    ExtendKind::ZeroExtend => {
+                        opt_if_fuel(Const::USize(*val as u32 as u64).into(), original, fuel)
+                    }
+                },
                 _ => original,
             },
             CILNode::IntCast {

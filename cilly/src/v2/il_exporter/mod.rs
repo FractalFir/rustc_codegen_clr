@@ -1057,6 +1057,9 @@ impl ILExporter {
                 let tpe = type_il(&sfld.tpe(), asm);
                 writeln!(out, "stsfld {tpe} {owner}::{name}")
             }
+            super::CILRoot::Unreachable(msg)=>{
+                writeln!(out, "ldstr {:?} newobj void [System.Runtime]System.Exception::.ctor(string) throw",asm.get_string(*msg))
+            }
         }
     }
 }

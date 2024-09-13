@@ -297,6 +297,10 @@ impl Assembly {
     #[allow(clippy::too_many_lines)]
     pub(crate) fn translate_root(&mut self, source: &Assembly, root: CILRoot) -> CILRoot {
         match root {
+            CILRoot::Unreachable(str) => {
+                let str = self.alloc_string(source.get_string(str).clone());
+                CILRoot::Unreachable(str)
+            }
             CILRoot::StLoc(loc, node) => {
                 let node = self.translate_node(source, source.get_node(node).clone());
                 let node = self.alloc_node(node);

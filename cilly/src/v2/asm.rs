@@ -35,6 +35,9 @@ pub struct Assembly {
     //cache: CachedAssemblyInfo<NodeIdx, NonMaxU32, StackUsage>,
 }
 impl Assembly {
+    /*
+    /// Optimizes the types in this assembly, converting them to a format that is much easier to optimize. This is a lossy optimization, which may only be done after the assembly is fully linked.
+    pub fn opt_types(&mut self) */
     #[must_use]
     pub fn class_defs(&self) -> &FxHashMap<ClassDefIdx, ClassDef> {
         &self.class_defs

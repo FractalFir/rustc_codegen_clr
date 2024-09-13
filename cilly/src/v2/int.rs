@@ -195,6 +195,17 @@ impl Int {
             Int::I8 | Int::I16 | Int::I32 | Int::I64 | Int::I128 | Int::ISize => true,
         }
     }
+    /// Returns the size of this int in byte, or None if the int is `isize` or `usize`
+    pub fn size(&self) -> Option<u8> {
+        match self {
+            Int::U8 | Int::I8 => Some(1),
+            Int::U16 | Int::I16 => Some(2),
+            Int::U32 | Int::I32 => Some(4),
+            Int::U64 | Int::I64 => Some(8),
+            Int::U128 | Int::I128 => Some(16),
+            Int::USize | Int::ISize => None,
+        }
+    }
 }
 #[test]
 fn is_signed() {

@@ -56,6 +56,8 @@ pub enum CILRoot {
         dst: NodeIdx,
         tpe: TypeIdx,
     },
+    /// Executing this root is instant UB.
+    Unreachable(StringIdx),
 }
 
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
@@ -104,6 +106,7 @@ impl CILRoot {
     /// Returns a mutable reference to all the arguments of this CIL root, in the order they are evaluated.
     pub fn nodes_mut(&mut self) -> Box<[&mut NodeIdx]> {
         match self {
+            CILRoot::Unreachable(_) => [].into(),
             CILRoot::StLoc(_, tree)
             | CILRoot::StArg(_, tree)
             | CILRoot::Ret(tree)
@@ -434,6 +437,7 @@ impl CILRoot {
         node_map: &mut impl FnMut(CILNode, &mut Assembly) -> CILNode,
     ) -> Self {
         match self {
+            CILRoot::Unreachable(_) => root_map(self, asm),
             CILRoot::StLoc(loc, val) => {
                 let val: CILNode = asm.get_node(val).clone().map(asm, node_map);
                 let root = CILRoot::StLoc(loc, asm.alloc_node(val));

@@ -214,7 +214,8 @@ impl<'asm> Iterator for CILIter<'asm> {
                     | CILRoot::SourceFileInfo { .. }
                     | CILRoot::ExitSpecialRegion { .. }
                     | CILRoot::Nop
-                    | CILRoot::ReThrow,
+                    | CILRoot::ReThrow
+                    | CILRoot::Unreachable(_),
                 ) => {
                     self.elems.pop();
                 }
@@ -516,7 +517,8 @@ impl<'this, T: Iterator<Item = CILIterElem> + 'this> TpeIter<'this> for T {
                     | CILRoot::ExitSpecialRegion { .. }
                     | CILRoot::InitBlk(_)
                     | CILRoot::CpBlk(_)
-                    | CILRoot::ReThrow => None,
+                    | CILRoot::ReThrow
+                    | CILRoot::Unreachable(_) => None,
                     CILRoot::SetStaticField { field, .. } => {
                         let field = asm.get_static_field(field);
                         let class = Type::ClassRef(field.owner());
