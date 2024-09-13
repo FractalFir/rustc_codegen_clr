@@ -698,7 +698,7 @@ pub fn f128_support_lib() -> Option<PathBuf> {
     None
 }
 #[cfg(not(all(target_os = "linux", target_env = "gnu")))]
-pub fn f128_support() -> Option<String> {
+pub fn f128_support_lib() -> Option<String> {
     None
 }
 /*

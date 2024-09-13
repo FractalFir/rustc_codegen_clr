@@ -394,7 +394,7 @@ fn main() {
         println!("Eliminating dead code");
         final_assembly.eliminate_dead_code();
     }
-    let mut fuel = final_assembly.fuel_from_env().fraction(0.1);
+    let mut fuel = final_assembly.fuel_from_env().fraction(0.5);
     final_assembly.opt(&mut fuel);
     final_assembly
         .save_tmp(&mut std::fs::File::create(path.with_extension("cilly2")).unwrap())

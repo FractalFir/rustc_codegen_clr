@@ -10,6 +10,25 @@ pub struct BasicBlock {
 }
 
 impl BasicBlock {
+    pub fn targets<'block, 'asm: 'block>(
+        &'block self,
+        asm: &'asm Assembly,
+    ) -> impl Iterator<Item = u32> + 'block {
+        self.roots().iter().filter_map(|root| {
+            if let CILRoot::Branch(info) = asm.get_root(*root) {
+                let (target, sub_target, _) = info.as_ref();
+                //Some(*sub_target)
+                //(eprintln!("{target} {sub_target}");
+                if *sub_target == 0 {
+                    Some(*target)
+                } else {
+                    Some(*sub_target)
+                }
+            } else {
+                None
+            }
+        })
+    }
     #[must_use]
     pub fn new(roots: Vec<RootIdx>, block_id: u32, handler: Option<Vec<Self>>) -> Self {
         Self {

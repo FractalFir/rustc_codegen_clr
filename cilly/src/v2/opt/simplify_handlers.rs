@@ -5,25 +5,6 @@ use crate::v2::{Assembly, BasicBlock, CILRoot};
 
 use super::{block_with_id, blockid_from_jump, OptFuel, SideEffectInfoCache};
 
-fn block_targets<'a, 'asm: 'a>(
-    block: &'a BasicBlock,
-    asm: &'asm Assembly,
-) -> impl Iterator<Item = u32> + 'a {
-    block.roots().iter().filter_map(|root| {
-        if let CILRoot::Branch(info) = asm.get_root(*root) {
-            let (target, sub_target, _) = info.as_ref();
-            //Some(*sub_target)
-            //(eprintln!("{target} {sub_target}");
-            if *sub_target == 0 {
-                Some(*target)
-            } else {
-                Some(*sub_target)
-            }
-        } else {
-            None
-        }
-    })
-}
 fn block_gc(blocks: &mut Vec<BasicBlock>, asm: &Assembly) {
     //debug_assert!(crate::utilis::is_sorted(bbs.iter(),|a,b|a.id + 1 == b.id));
     let mut alive: FxHashSet<u32> = FxHashSet::default();
@@ -38,7 +19,7 @@ fn block_gc(blocks: &mut Vec<BasicBlock>, asm: &Assembly) {
         for target in resurecting
             .iter()
             .filter_map(|bb| block_with_id(blocks, *bb))
-            .flat_map(|bb| block_targets(bb, asm).collect::<Vec<_>>())
+            .flat_map(|bb| bb.targets(asm).collect::<Vec<_>>())
         {
             //eprintln!("Block {target} is alive.");
             if !alive.contains(&target) && !resurecting.contains(&target) {
@@ -121,11 +102,11 @@ pub fn simplify_bbs(
 fn targets() {
     let mut asm = Assembly::default();
     let block = BasicBlock::new(vec![], 0, None);
-    assert_eq!(block_targets(&block, &asm).count(), 0);
+    assert_eq!(block.targets(&asm).count(), 0);
     let nop = asm.alloc_root(CILRoot::Nop);
     let block = BasicBlock::new(vec![nop], 0, None);
-    assert_eq!(block_targets(&block, &asm).count(), 0);
+    assert_eq!(block.targets(&asm).count(), 0);
     let goto = asm.alloc_root(CILRoot::Branch(Box::new((0, 0, None))));
     let block = BasicBlock::new(vec![nop, goto, nop], 0, None);
-    assert_eq!(block_targets(&block, &asm).count(), 1);
+    assert_eq!(block.targets(&asm).count(), 1);
 }

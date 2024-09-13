@@ -188,6 +188,8 @@ impl ILExporter {
                     if block.handler().is_some() && !is_in_multiblock_handler{
                         writeln!(out,".try{{")?;
                     }
+                    //DEBUG REMOVE THIS
+                    writeln!(out,"// targets:{}",block.targets(asm).count())?;
                     writeln!(out," bb{}:",block.block_id())?;
                     for root in block.roots(){
                         self.export_root(asm,out,*root,false)?;
@@ -202,8 +204,7 @@ impl ILExporter {
                             writeln!(out,"pop")?;
                         }
                         for hblock in handler{
-                            //DEBUG REMOVE THIS
-                            writeln!(out,"// is_only_rethrow:{}",hblock.is_only_rethrow(asm))?;
+                          
                             writeln!(out," h{}_{}:",block.block_id(),hblock.block_id())?;
                             for root in hblock.roots(){
                                 self.export_root(asm,out,*root,true)?;

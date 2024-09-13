@@ -352,33 +352,37 @@ impl MethodImpl {
         let mut local_reads = vec![false; locals.len()];
         let mut local_address_of = vec![false; locals.len()];
         /*
-        let blocks_copy = blocks.clone();
-        for block in blocks.iter_mut() {
-            let Some(root) = block.roots().last() else {
-                continue;
-            };
-            let CILRoot::Branch(info) = asm.get_root(*root) else {
-                continue;
-            };
-            let (target, sub_target, None) = info.as_ref() else {
-                continue;
-            };
-            let id = blockid_from_jump(*target, *sub_target);
-            if id == block.block_id() {
-                continue;
-            }
-            let Some(target_block) = block_with_id(&blocks_copy, id) else {
-                continue;
-            };
-            let (None, None) = (block.handler(), target_block.handler()) else {
-                continue;
-            };
-            if fuel.consume(4) {
-                block.roots_mut().pop();
-                block.roots_mut().extend(target_block.roots());
-            }
-        } */
-
+                let blocks_copy = blocks.clone();
+                for block in blocks.iter_mut() {
+                    let Some(root) = block.roots().last() else {
+                        continue;
+                    };
+                    let CILRoot::Branch(info) = asm.get_root(*root) else {
+                        continue;
+                    };
+                    let (target, sub_target, None) = info.as_ref() else {
+                        continue;
+                    };
+                    let id = blockid_from_jump(*target, *sub_target);
+                    if id == block.block_id() {
+                        continue;
+                    }
+                    let Some(target_block) = block_with_id(&blocks_copy, id) else {
+                        continue;
+                    };
+                    // If this block targets anyting, then it should not be appended to the old block. This is a trick to prevent cycles.
+                    if target_block.targets(asm).count() > 0 {
+                        continue;
+                    }
+                    let (None, None) = (block.handler(), target_block.handler()) else {
+                        continue;
+                    };
+                    if fuel.consume(4) {
+                        block.roots_mut().pop();
+                        block.roots_mut().extend(target_block.roots());
+                    }
+                }
+        */
         if !fuel.consume(8) {
             return;
         }
