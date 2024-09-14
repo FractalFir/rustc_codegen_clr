@@ -32,6 +32,13 @@ impl OptFuel {
     pub fn exchausted(&self) -> bool {
         self.0 == 0
     }
+
+    pub fn raw(&self) -> u32 {
+        self.0
+    }
+    pub fn from_raw(raw: u32) -> Self {
+        Self(raw)
+    }
 }
 #[test]
 fn opt_fuel() {

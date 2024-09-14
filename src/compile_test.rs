@@ -618,7 +618,7 @@ pub fn absolute_backend_path() -> PathBuf {
         if cfg!(target_os = "linux") {
             std::fs::canonicalize("target/debug/librustc_codegen_clr.so").unwrap()
         } else if cfg!(target_os = "windows") {
-            std::fs::canonicalize("target/debug/librustc_codegen_clr.dll").unwrap()
+            std::fs::canonicalize("target/debug/rustc_codegen_clr.dll").unwrap()
         } else if cfg!(target_os = "macos") {
             std::fs::canonicalize("target/debug/librustc_codegen_clr.dylib").unwrap()
         } else {
@@ -627,7 +627,7 @@ pub fn absolute_backend_path() -> PathBuf {
     } else if cfg!(target_os = "linux") {
         std::fs::canonicalize("target/release/librustc_codegen_clr.so").unwrap()
     } else if cfg!(target_os = "windows") {
-        std::fs::canonicalize("target/release/librustc_codegen_clr.dll").unwrap()
+        std::fs::canonicalize("target/release/rustc_codegen_clr.dll").unwrap()
     } else if cfg!(target_os = "macos") {
         std::fs::canonicalize("target/release/librustc_codegen_clr.dylib").unwrap()
     } else {
