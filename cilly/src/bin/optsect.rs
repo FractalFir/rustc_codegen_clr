@@ -1,7 +1,29 @@
-use std::io::{Read, Write};
+use std::{
+    io::{Read, Write},
+    path::Path,
+};
 
 use cilly::v2::{asm::ILASM_FLAVOUR, il_exporter::ILExporter, opt::OptFuel, Assembly};
-
+fn asm_with_fuel(asm: &Assembly, path: Path, fuel: u32) {
+    let mut asm = asm.clone();
+    let opt_time = std::time::Instant::now();
+    asm.opt(&mut OptFuel::from_raw(fuel_mid));
+    eprintln!(
+        "Optimization done in {} ms, preparing to export the assembly...",
+        opt_time.elapsed().as_millis()
+    );
+    let export_time = std::time::Instant::now();
+    eprintln!("Prepraing to export.");
+    asm.export(&path, ILExporter::new(*ILASM_FLAVOUR, false));
+    eprintln!("Exported in {} ms", export_time.elapsed().as_millis());
+    let mut config_path = path.to_owned();
+    config_path.set_extension("runtimeconfig.json");
+    let cfg = cilly::v2::il_exporter::get_runtime_config();
+    std::fs::File::create(config_path)
+        .unwrap()
+        .write_all(cfg.as_bytes())
+        .unwrap();
+}
 fn main() {
     let asm_path = std::env::args().nth(1).expect("no cilly path");
 
@@ -24,31 +46,14 @@ fn main() {
         .nth(5)
         .map(|s| s.parse::<u32>().unwrap())
         .unwrap_or(asm.default_fuel().raw());
-    while fuel_start < fuel_end {
+    while fuel_start < fuel_end - 1 {
         let fuel_mid = (fuel_start + fuel_end) / 2;
         eprintln!("Testing range {fuel_start} {fuel_end}, curr {fuel_mid}");
-        let mut asm = asm.clone();
-        let opt_time = std::time::Instant::now();
-        asm.opt(&mut OptFuel::from_raw(fuel_mid));
-        eprintln!(
-            "Optimization done in {} ms, preparing to export the assembly...",
-            opt_time.elapsed().as_millis()
-        );
-        let export_time = std::time::Instant::now();
-        eprintln!("Prepraing to export.");
+
         let mut path = std::env::temp_dir();
         path.push("asm");
         path.set_extension("exe");
-        asm.export(&path, ILExporter::new(*ILASM_FLAVOUR, false));
-        eprintln!("Exported in {} ms", export_time.elapsed().as_millis());
-        let mut config_path = std::env::temp_dir();
-        config_path.push("asm");
-        config_path.set_extension("runtimeconfig.json");
-        let cfg = cilly::v2::il_exporter::get_runtime_config();
-        std::fs::File::create(config_path)
-            .unwrap()
-            .write_all(cfg.as_bytes())
-            .unwrap();
+        asm_with_fuel(&asm, path, fuel_mid);
         let run_time = std::time::Instant::now();
         let out = std::process::Command::new("dotnet")
             .arg(path)
@@ -68,5 +73,14 @@ fn main() {
             run_time.elapsed().as_millis()
         );
     }
+    eprintln!("Done. Preparing for compare.");
+    let mut path = std::env::current_dir();
+    path.push("asm_ok");
+    path.set_extension("exe");
+    asm_with_fuel(&asm, path, fuel_start);
+    let mut path = std::env::current_dir();
+    path.push("asm_bad");
+    path.set_extension("exe");
+    asm_with_fuel(&asm, path, fuel_end);
     eprintln!("Done. fuel_start:{fuel_start} fuel_end:{fuel_end}");
 }
