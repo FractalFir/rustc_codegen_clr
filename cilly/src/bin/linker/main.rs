@@ -151,7 +151,7 @@ fn main() {
     let output_file_path = &args[1 + args
         .iter()
         .position(|arg| arg == "-o")
-        .expect("No output file!")];
+        .expect(&format!("No output file! {args:?}"))];
     // Configs
 
     let cargo_support = args.iter().any(|arg| arg.contains("--cargo-support"));
