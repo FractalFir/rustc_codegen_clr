@@ -140,7 +140,7 @@ fn get_out_path(args: &[String]) -> &str {
 #[cfg(target_os = "windows")]
 fn get_out_path<'a>(args: &'a [String]) -> &'a str {
     args.iter()
-        .filter_map(|arg| arg.strip_preffix("/OUT:"))
+        .filter_map(|arg| arg.strip_prefix("/OUT:"))
         .next()
         .expect(&format!("No output file! {args:?}"))
 }

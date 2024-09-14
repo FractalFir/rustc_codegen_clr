@@ -943,7 +943,7 @@ lazy_static! {
         if String::from_utf8_lossy(
             &std::process::Command::new(&*ILASM_PATH)
                 .output()
-                .unwrap()
+                .expect(&format!("Could not find the IL assembler(ilasm) at path {ILASM_PATH:?}. Is ilasm propely installed? If so, try specifying a precise path by seting the ILASM_PATH enviroment variable"))
                 .stdout,
         )
         .contains("PDB")
