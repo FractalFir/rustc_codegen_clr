@@ -39,11 +39,21 @@ pub fn test_dotnet_executable(file_path: &str, test_dir: &str) -> String {
         file.write_all(cilly::v2::il_exporter::get_runtime_config().as_bytes())
             .expect("Could not write runtime config");
         //RUNTIME_CONFIG
-        let mut cmd = std::process::Command::new("timeout");
-        cmd.arg("-v");
-        cmd.arg("5");
-        cmd.arg("dotnet");
+        #[cfg(any(target_os = "linux", target_os = "darwin"))]
+        let mut cmd = {
+            let mut cmd = std::process::Command::new("timeout");
+            cmd.arg("-v");
+            cmd.arg("5");
+            cmd.arg("dotnet");
+            cmd
+        };
+        #[cfg(target_os = "windows")]
+        let mut cmd = {
+            let cmd = std::process::Command::new("dotnet");
+            cmd
+        };
         cmd.current_dir(test_dir).arg(exec_path);
+
         #[cfg(target_family = "unix")]
         with_stack_size(&mut cmd, 1024 * 80);
         let out = cmd.output().expect("failed to run test assebmly!");
