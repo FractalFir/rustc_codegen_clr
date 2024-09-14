@@ -143,7 +143,7 @@ impl ILExporter {
                         .iter()
                         .flat_map(|block| block.roots().iter())
                         .map(|root| {
-                            crate::v2::CILIter::new(asm.get_root(*root).clone(), asm).count() + 4
+                            crate::v2::CILIter::new(asm.get_root(*root).clone(), asm).count() + 10
                         })
                         .max()
                         .unwrap_or(0),
@@ -151,9 +151,9 @@ impl ILExporter {
                     MethodImpl::AliasFor(_) => todo!(),
                     MethodImpl::Missing => 3,
                 };
-                if stack_size > 6 {
-                    writeln!(out, ".maxstack {stack_size}")?;
-                }
+     
+                writeln!(out, ".maxstack {stack_size}")?;
+            
                 if **name == *"entrypoint" {
                     writeln!(out, ".entrypoint")?;
                 }
