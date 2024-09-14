@@ -941,9 +941,9 @@ fn encoded_stats<T: Serialize + for<'a> Deserialize<'a>>(val: &T) -> (&'static s
 lazy_static! {
     pub static ref ILASM_FLAVOUR: IlasmFlavour = {
         if String::from_utf8_lossy(
-            &std::process::Command::new(&*ILASM_PATH)
+            &std::process::Command::new(&*ILASM_PATH).arg("--help")
                 .output()
-                .expect(&format!("Could not find the IL assembler(ilasm) at path {:?}. Is ilasm propely installed? If so, try specifying a precise path by seting the ILASM_PATH enviroment variable",*ILASM_PATH))
+                .expect(&format!("Could not run the IL assembler(ilasm) at path {:?}. Is ilasm propely installed? If so, try specifying a precise path by seting the ILASM_PATH enviroment variable",*ILASM_PATH))
                 .stdout,
         )
         .contains("PDB")

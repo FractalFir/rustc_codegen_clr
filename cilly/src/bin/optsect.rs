@@ -4,10 +4,10 @@ use std::{
 };
 
 use cilly::v2::{asm::ILASM_FLAVOUR, il_exporter::ILExporter, opt::OptFuel, Assembly};
-fn asm_with_fuel(asm: &Assembly, path: Path, fuel: u32) {
+fn asm_with_fuel(asm: &Assembly, path: &Path, fuel: u32) {
     let mut asm = asm.clone();
     let opt_time = std::time::Instant::now();
-    asm.opt(&mut OptFuel::from_raw(fuel_mid));
+    asm.opt(&mut OptFuel::from_raw(fuel));
     eprintln!(
         "Optimization done in {} ms, preparing to export the assembly...",
         opt_time.elapsed().as_millis()
@@ -53,7 +53,7 @@ fn main() {
         let mut path = std::env::temp_dir();
         path.push("asm");
         path.set_extension("exe");
-        asm_with_fuel(&asm, path, fuel_mid);
+        asm_with_fuel(&asm, &path, fuel_mid);
         let run_time = std::time::Instant::now();
         let out = std::process::Command::new("dotnet")
             .arg(path)
@@ -74,13 +74,13 @@ fn main() {
         );
     }
     eprintln!("Done. Preparing for compare.");
-    let mut path = std::env::current_dir();
+    let mut path = std::env::current_dir().unwrap();
     path.push("asm_ok");
     path.set_extension("exe");
-    asm_with_fuel(&asm, path, fuel_start);
-    let mut path = std::env::current_dir();
+    asm_with_fuel(&asm, &path, fuel_start);
+    let mut path = std::env::current_dir().unwrap();
     path.push("asm_bad");
     path.set_extension("exe");
-    asm_with_fuel(&asm, path, fuel_end);
+    asm_with_fuel(&asm, &path, fuel_end);
     eprintln!("Done. fuel_start:{fuel_start} fuel_end:{fuel_end}");
 }
