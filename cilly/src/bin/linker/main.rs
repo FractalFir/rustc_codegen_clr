@@ -131,14 +131,14 @@ fn file_stem(file: &str) -> String {
         .to_owned()
 }
 #[cfg(any(target_os = "linux", target_os = "darwin"))]
-fn get_out_path(args: &[&str]) -> &str {
+fn get_out_path(args: &[String]) -> &str {
     &args[1 + args
         .iter()
-        .position(|arg| arg == "-o")
+        .position(|arg| *arg == "-o")
         .expect(&format!("No output file! {args:?}"))]
 }
 #[cfg(target_os = "windows")]
-fn get_out_path<'a>(args: &'a [&str]) -> &'a str {
+fn get_out_path<'a>(args: &'a [String]) -> &'a str {
     args.iter()
         .filter_map(|arg| arg.strip_suffix("/OUT:"))
         .next()

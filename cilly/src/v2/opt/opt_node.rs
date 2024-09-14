@@ -1,13 +1,7 @@
 use crate::v2::{cilnode::ExtendKind, Assembly, CILNode, Const, Int, Type};
 
-use super::OptFuel;
-pub fn opt_if_fuel(new: CILNode, original: CILNode, fuel: &mut OptFuel) -> CILNode {
-    if fuel.consume(1) {
-        new
-    } else {
-        original
-    }
-}
+use super::{opt_if_fuel, OptFuel};
+
 pub fn opt_node(original: CILNode, asm: &mut Assembly, fuel: &mut OptFuel) -> CILNode {
     match original {
         CILNode::SizeOf(tpe) => match asm.get_type(tpe) {
