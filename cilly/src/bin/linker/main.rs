@@ -130,7 +130,20 @@ fn file_stem(file: &str) -> String {
         .unwrap()
         .to_owned()
 }
-
+#[cfg(any(target_os = "linux", target_os = "darwin"))]
+fn get_out_path(args: &[&str]) -> &str {
+    &args[1 + args
+        .iter()
+        .position(|arg| arg == "-o")
+        .expect(&format!("No output file! {args:?}"))]
+}
+#[cfg(target_os = "windows")]
+fn get_out_path<'a>(args: &'a [&str]) -> &'a str {
+    args.iter()
+        .filter_map(|arg| arg.strip_suffix("/OUT:"))
+        .next()
+        .expect(&format!("No output file! {args:?}"))
+}
 fn main() {
     // Parse command line arguments
 
@@ -148,10 +161,7 @@ fn main() {
         .collect();
 
     //ar_to_link.extend(link_dir_files(args));
-    let output_file_path = &args[1 + args
-        .iter()
-        .position(|arg| arg == "-o")
-        .expect(&format!("No output file! {args:?}"))];
+    let output_file_path = get_out_path(args);
     // Configs
 
     let cargo_support = args.iter().any(|arg| arg.contains("--cargo-support"));
