@@ -1,4 +1,4 @@
-use std::io::Read;
+use std::io::{Read, Write};
 
 use cilly::v2::{asm::ILASM_FLAVOUR, il_exporter::ILExporter, opt::OptFuel, Assembly};
 
@@ -41,6 +41,14 @@ fn main() {
         path.set_extension("exe");
         asm.export(&path, ILExporter::new(*ILASM_FLAVOUR, false));
         eprintln!("Exported in {} ms", export_time.elapsed().as_millis());
+        let mut config_path = std::env::temp_dir();
+        config_path.push("asm");
+        config_path.set_extension("runtimeconfig.json");
+        let cfg = cilly::v2::il_exporter::get_runtime_config();
+        std::fs::File::create(config_path)
+            .unwrap()
+            .write_all(cfg.as_bytes())
+            .unwrap();
         let run_time = std::time::Instant::now();
         let out = std::process::Command::new("dotnet")
             .arg(path)
@@ -55,7 +63,10 @@ fn main() {
         } else {
             fuel_start = fuel_mid;
         }
-        eprintln!("Run the result in in {} ms", run_time.elapsed().as_millis());
+        eprintln!(
+            "Run the result in in {} ms. fail:{fail}",
+            run_time.elapsed().as_millis()
+        );
     }
     eprintln!("Done. fuel_start:{fuel_start} fuel_end:{fuel_end}");
 }
