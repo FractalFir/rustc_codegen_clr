@@ -106,7 +106,7 @@ fn get_libm_() -> String {
 }
 #[cfg(target_os = "windows")]
 fn get_libc_() -> String {
-    "ucrtbase.dll".to_string()
+    "msvcrt.dll".to_string()
 }
 #[cfg(target_os = "windows")]
 fn get_libm_() -> String {
