@@ -132,9 +132,14 @@ pub(crate) fn binop<'tcx>(
                     .unwrap();
             let ordering_ty = ordering.ty(ctx.tcx(), ParamEnv::reveal_all());
             let ordering_type = ctx.type_from_cache(ordering_ty);
-            let lt = -lt_unchecked(ty_a, ops_a.clone(), ops_b.clone(), ctx.asm_mut());
-            let gt = gt_unchecked(ty_a, ops_a, ops_b, ctx.asm_mut());
-            let res = conv_i8!(lt | gt);
+            let lt = -conv_i8!(lt_unchecked(
+                ty_a,
+                ops_a.clone(),
+                ops_b.clone(),
+                ctx.asm_mut()
+            ));
+            let gt = conv_i8!(gt_unchecked(ty_a, ops_a, ops_b, ctx.asm_mut()));
+            let res = lt | gt;
             CILNode::TemporaryLocal(Box::new((
                 ordering_type,
                 [CILRoot::SetField {

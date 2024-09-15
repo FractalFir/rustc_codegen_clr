@@ -298,9 +298,13 @@ pub fn get_type<'tcx>(ty: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_>) -> Typ
                 let offset =
                     ctx.asm_mut()
                         .alloc_node(CILNode::BinOp(ldarg_1, elem_size, BinOp::Mul));
+                let first_elem_addr = ctx.asm_mut().alloc_node(CILNode::PtrCast(
+                    ldarg_0,
+                    Box::new(cilly::v2::cilnode::PtrCastRes::Ptr(elem_tpe_idx)),
+                ));
                 let elem_addr =
                     ctx.asm_mut()
-                        .alloc_node(CILNode::BinOp(ldarg_0, offset, BinOp::Add));
+                        .alloc_node(CILNode::BinOp(first_elem_addr, offset, BinOp::Add));
                 // Defintion of the set_Item method.
                 let set_item = ctx.asm_mut().alloc_string("set_Item");
                 let this_ref = ctx.asm_mut().nref(Type::ClassRef(cref));

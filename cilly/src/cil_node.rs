@@ -669,7 +669,7 @@ impl CILNode {
             CILNode::LoadAddresOfTMPLocal,
         )));
         Self::LdObj {
-            ptr: Box::new(crate::conv_usize!(tmp_loc).cast_ptr(asm.nptr(target))),
+            ptr: Box::new(CILNode::MRefToRawPtr(Box::new(tmp_loc)).cast_ptr(asm.nptr(target))),
             obj: Box::new(target),
         }
     }

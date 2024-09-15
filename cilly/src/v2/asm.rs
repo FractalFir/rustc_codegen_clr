@@ -35,9 +35,14 @@ pub struct Assembly {
     //cache: CachedAssemblyInfo<NodeIdx, NonMaxU32, StackUsage>,
 }
 impl Assembly {
-    /*
-    /// Optimizes the types in this assembly, converting them to a format that is much easier to optimize. This is a lossy optimization, which may only be done after the assembly is fully linked.
-    pub fn opt_types(&mut self) */
+    pub fn typecheck(&mut self) {
+        let method_def_idxs: Box<[_]> = self.method_defs.keys().copied().collect();
+        for method in method_def_idxs {
+            let mut tmp_method = self.borrow_methoddef(method);
+            tmp_method.typecheck(self);
+            self.return_methoddef(method, tmp_method);
+        }
+    }
     #[must_use]
     pub fn class_defs(&self) -> &FxHashMap<ClassDefIdx, ClassDef> {
         &self.class_defs

@@ -714,11 +714,8 @@ pub fn add_const_value(asm: &mut cilly::v2::Assembly, bytes: u128) -> StaticFiel
     asm.add_static(uint8_ptr, alloc_fld, false, main_module_id);
     let mut trees = vec![CILRoot::STLoc {
         local: 0,
-        tree: call!(
-            cilly::call_site::CallSite::alloc(asm),
-            [conv_usize!(ldc_u32!(16))]
-        )
-        .cast_ptr(asm.nptr(Type::Int(Int::U8))),
+        tree: call!(cilly::call_site::CallSite::alloc(asm), [ldc_i32!(16)])
+            .cast_ptr(asm.nptr(Type::Int(Int::U8))),
     }
     .into()];
     // This is an optimization if and only if there are enough zero-bytes to justify this.

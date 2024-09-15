@@ -334,11 +334,7 @@ pub fn call<'tcx>(
             ldc_i32!(i32::try_from(fn_idx).expect("More tahn 2^31 functions in a vtable!"));
         let vtable_offset = conv_usize!(vtable_index * size_of!(Type::Int(Int::USize)));
         // Get the address of the function ptr, and load it
-        let fn_ptr = CILNode::LDIndISize {
-            ptr: Box::new(
-                (vtable_ptr + vtable_offset).cast_ptr(ctx.asm_mut().nptr(Type::Int(Int::ISize))),
-            ),
-        };
+
         // Get the addres of the object
         let obj_ptr = ld_field!(
             fat_ptr_address,
@@ -403,6 +399,13 @@ pub fn call<'tcx>(
                 call_args.push(crate::operand::handle_operand(&arg.node, ctx));
             }
         }
+        let sig = ctx.asm_mut().alloc_sig(signature.clone());
+        let fn_ptr = CILNode::LDIndPtr {
+            ptr: Box::new(
+                (vtable_ptr + vtable_offset).cast_ptr(ctx.asm_mut().nptr(Type::FnPtr(sig))),
+            ),
+            loaded_ptr: Box::new(Type::FnPtr(sig)),
+        };
         assert_eq!(
             signature.inputs().len(),
             call_args.len(),

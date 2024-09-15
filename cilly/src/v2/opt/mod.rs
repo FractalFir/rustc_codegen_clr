@@ -4,8 +4,8 @@ use inline::inline_trivial_call_root;
 use super::Float;
 
 use super::{
-    cilroot::BranchCond, method::LocalDef, BasicBlock, BinOp, CILIter, CILIterElem, CILNode,
-    CILRoot, Const, Int, MethodImpl, NodeIdx, RootIdx, Type,
+    cilroot::BranchCond, method::LocalDef, typecheck::display_typecheck_err, BasicBlock, BinOp,
+    CILIter, CILIterElem, CILNode, CILRoot, Const, Int, MethodImpl, NodeIdx, RootIdx, Type,
 };
 use crate::v2::{Assembly, MethodDef};
 pub use opt_fuel::OptFuel;
@@ -473,6 +473,20 @@ impl MethodDef {
             });
         }
     }
+    pub fn typecheck(&mut self, asm: &mut Assembly) {
+        let sig = self.sig();
+        let locals = self.iter_locals(asm).cloned().collect::<Vec<_>>();
+        let name = self.name();
+        if let Some(roots) = self.iter_roots_mut() {
+            roots.for_each(|root| {
+                let check = asm.get_root(*root).clone().typecheck(sig, &locals, asm);
+                if check.is_err() {
+                    display_typecheck_err(asm.get_root(*root).clone(), asm, sig, &locals);
+                };
+                check.unwrap_or_else(|_| panic!("Could not verify method {}", asm.get_string(name)))
+            })
+        }
+    }
     pub fn optimize(
         &mut self,
         asm: &mut Assembly,
@@ -486,16 +500,7 @@ impl MethodDef {
         if fuel.consume(1) {
             self.implementation_mut().realloc_locals(asm);
         }
-        /* let sig = self.sig();
-        let locals = self.iter_locals(asm).cloned().collect::<Vec<_>>();
-        if let Some(roots) = self.iter_roots_mut() {
-            roots.for_each(|root| {
-                asm.get_root(*root)
-                    .clone()
-                    .typecheck(sig, &locals, asm)
-                    .unwrap()
-            })
-        } */
+
         if fuel.consume(1) {
             // Remove unneded SFI
             if let Some(roots) = self.iter_roots_mut() {

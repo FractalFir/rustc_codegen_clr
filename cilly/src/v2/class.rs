@@ -325,7 +325,12 @@ impl ClassRef {
         asm: &mut Assembly,
     ) -> MethodRefIdx {
         let this = asm.alloc_class_ref(self.clone());
-        let mut inputs = vec![Type::ClassRef(this)];
+        let mut inputs = if self.is_valuetype() {
+            vec![asm.nref(Type::ClassRef(this))]
+        } else {
+            vec![Type::ClassRef(this)]
+        };
+
         inputs.extend(explict_inputs);
         let sig = asm.sig(inputs, output);
         asm.alloc_methodref(MethodRef::new(

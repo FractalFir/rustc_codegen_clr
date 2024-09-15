@@ -157,6 +157,54 @@ pub enum BinOp {
     Div,
 }
 impl CILNode {
+    pub fn child_nodes(&self) -> Vec<NodeIdx> {
+        match self {
+            CILNode::Const(_)
+            | CILNode::LdLoc(_)
+            | CILNode::LdLocA(_)
+            | CILNode::LdArg(_)
+            | CILNode::LdArgA(_)
+            | CILNode::SizeOf(_)
+            | CILNode::LocAllocAlgined { .. }
+            | CILNode::LdFtn(_)
+            | CILNode::LdTypeToken(_)
+            | CILNode::LdStaticField(_)
+            | CILNode::GetException => vec![],
+            CILNode::UnOp(node_idx, _)
+            | CILNode::RefToPtr(node_idx)
+            | CILNode::PtrCast(node_idx, _)
+            | CILNode::LdLen(node_idx)
+            | CILNode::LdFieldAdress { addr: node_idx, .. }
+            | CILNode::LdField { addr: node_idx, .. }
+            | CILNode::LdInd { addr: node_idx, .. }
+            | CILNode::LocAlloc { size: node_idx }
+            | CILNode::IsInst(node_idx, _)
+            | CILNode::CheckedCast(node_idx, _)
+            | CILNode::IntCast {
+                input: node_idx, ..
+            }
+            | CILNode::FloatCast {
+                input: node_idx, ..
+            }
+            | CILNode::LdElelemRef {
+                array: node_idx, ..
+            }
+            | CILNode::UnboxAny {
+                object: node_idx, ..
+            } => vec![*node_idx],
+            CILNode::BinOp(lhs, rhs, _) => vec![*lhs, *rhs],
+            CILNode::Call(info) => {
+                let (_, args) = info.as_ref();
+                args.to_vec()
+            }
+            CILNode::CallI(info) => {
+                let (fnptr, _, args) = info.as_ref();
+                let mut res = vec![*fnptr];
+                res.extend(args);
+                res
+            }
+        }
+    }
     /// Turns a native object handle into a special handle of type [`Int::ISize`]
     #[must_use]
     pub fn ref_to_handle(&self, asm: &mut Assembly) -> Self {
@@ -179,8 +227,7 @@ impl CILNode {
         let alloc = asm.alloc_node(CILNode::Call(Box::new((alloc, [arg].into()))));
         CILNode::Call(Box::new((op_explict, [alloc].into())))
     }
-}
-impl CILNode {
+
     // This function has to be complex
     #[allow(clippy::too_many_lines)]
     pub fn from_v1(v1: &V1Node, asm: &mut Assembly) -> Self {

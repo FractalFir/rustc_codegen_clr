@@ -6,7 +6,10 @@ use super::{
     UNMANAGED_THREAD_START,
 };
 use crate::v2::{
-    cilnode::ExtendKind, cilroot::BranchCond, tpe::GenericKind, BinOp, StaticFieldDesc,
+    cilnode::{ExtendKind, PtrCastRes},
+    cilroot::BranchCond,
+    tpe::GenericKind,
+    BinOp, StaticFieldDesc,
 };
 fn handle_to_obj(asm: &mut Assembly, _: &mut MissingMethodPatcher) {
     let name = asm.alloc_string("handle_to_obj");
@@ -30,6 +33,7 @@ fn handle_to_obj(asm: &mut Assembly, _: &mut MissingMethodPatcher) {
             asm.class_ref(gc_handle)
                 .clone()
                 .instance(&[], Type::PlatformObject, target, asm);
+        //panic!("{:?}", asm.get_sig(asm.get_mref(target).sig()));
         let handle = asm.alloc_node(CILNode::LdLocA(0));
         let target = asm.alloc_node(CILNode::Call(Box::new((target, [handle].into()))));
         let ret = asm.alloc_root(CILRoot::Ret(target));
@@ -162,6 +166,11 @@ fn insert_pthread_join(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
             asm,
         );
         let thread = ClassRef::thread(asm);
+        let ldarg_0 = asm.alloc_node(CILNode::IntCast {
+            input: ldarg_0,
+            target: Int::ISize,
+            extend: ExtendKind::ZeroExtend,
+        });
         let obj = asm.alloc_node(CILNode::Call(Box::new((handle_to_obj, [ldarg_0].into()))));
         let thread_idx = asm.alloc_type(Type::ClassRef(thread));
         let obj = asm.alloc_node(CILNode::CheckedCast(obj, thread_idx));
@@ -235,24 +244,32 @@ fn insert_pthread_create(asm: &mut Assembly, patcher: &mut MissingMethodPatcher)
     let fn_name = asm.alloc_string("pthread_create");
     let generator = move |_, asm: &mut Assembly| {
         // Common
+        let void_ptr = asm.nptr(Type::Void);
+        let start_sig = asm.sig([void_ptr], void_ptr);
+        let start_fn_ptr_type = asm.alloc_type(Type::FnPtr(start_sig));
         let ldarg_0 = asm.alloc_node(CILNode::LdArg(0));
         // Thread info is ignored
         let _ldarg_1 = asm.alloc_node(CILNode::LdArg(1));
         let ldarg_3 = asm.alloc_node(CILNode::LdArg(3));
-        let isize_tpe = asm.alloc_type(Type::Int(Int::ISize));
+        let void = asm.alloc_type(Type::Void);
+        let ldarg_3 = asm.alloc_node(CILNode::PtrCast(ldarg_3, Box::new(PtrCastRes::Ptr(void))));
+
         let arg2_addr = asm.alloc_node(CILNode::LdArgA(2));
         let arg2_addr = asm.alloc_node(CILNode::RefToPtr(arg2_addr));
+
+        let arg2_addr = asm.alloc_node(CILNode::PtrCast(
+            arg2_addr,
+            Box::new(PtrCastRes::Ptr(start_fn_ptr_type)),
+        ));
         let transmute_arg_2 = asm.alloc_node(CILNode::LdInd {
             addr: arg2_addr,
-            tpe: isize_tpe,
+            tpe: start_fn_ptr_type,
             volitale: false,
         });
         let transmute_arg_2 = asm.alloc_root(CILRoot::StLoc(2, transmute_arg_2));
         // Arg2 needs to be transmuted, and the local 2 holds the transmuted value of arg2.
         let ldarg_2 = asm.alloc_node(CILNode::LdLoc(2));
-        // Common types
-        let void_ptr = asm.nptr(Type::Void);
-        let start_sig = asm.sig([void_ptr], void_ptr);
+
         let unmanaged_thread_start = asm.alloc_string(UNMANAGED_THREAD_START);
         let unmanaged_thread_start = ClassRef::new(unmanaged_thread_start, None, false, [].into());
         // UnmanagedThreadStart constructor
@@ -270,6 +287,10 @@ fn insert_pthread_create(asm: &mut Assembly, patcher: &mut MissingMethodPatcher)
 
         let unmanaged_thread_start_fn =
             asm.alloc_node(CILNode::LdFtn(unmanaged_thread_start_start));
+        let unmanaged_thread_start_fn = asm.alloc_node(CILNode::PtrCast(
+            unmanaged_thread_start_fn,
+            Box::new(PtrCastRes::ISize),
+        ));
         // Create a ThreadStart object
         let thread_start = ClassRef::thread_start(asm);
         let thread_start_ctor = asm
@@ -282,6 +303,9 @@ fn insert_pthread_create(asm: &mut Assembly, patcher: &mut MissingMethodPatcher)
         ))));
         let create_thread_start = asm.alloc_root(CILRoot::StLoc(1, thread_start_obj));
         let thread_start_obj = asm.alloc_node(CILNode::LdLoc(1));
+        let thread_start_type = asm.alloc_type(Type::ClassRef(thread_start));
+        let thread_start_obj =
+            asm.alloc_node(CILNode::CheckedCast(thread_start_obj, thread_start_type));
         let thread_type = ClassRef::thread(asm);
         let thread_ctor = asm
             .class_ref(thread_type)
@@ -326,7 +350,7 @@ fn insert_pthread_create(asm: &mut Assembly, patcher: &mut MissingMethodPatcher)
             locals: vec![
                 (None, thread_type),
                 (None, asm.alloc_type(Type::ClassRef(unmanaged_thread_start))),
-                (None, asm.alloc_type(Type::Int(Int::ISize))),
+                (None, start_fn_ptr_type),
             ],
         }
     };

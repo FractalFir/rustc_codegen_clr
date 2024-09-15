@@ -1,9 +1,11 @@
-use crate::IString;
+use fxhash::FxHashSet;
+
+use crate::{v2::bimap::IntoBiMapIndex, IString};
 
 use super::{
     cilnode::{PtrCastRes, UnOp},
     method::LocalDef,
-    Assembly, BinOp, CILNode, CILRoot, ClassRef, Int, SigIdx, Type,
+    Assembly, BinOp, CILNode, CILRoot, ClassRef, Int, NodeIdx, SigIdx, Type,
 };
 #[derive(Debug)]
 pub enum TypeCheckError {
@@ -64,6 +66,80 @@ pub enum TypeCheckError {
         tpe: Type,
         op: UnOp,
     },
+    IndirectCallArgcWrong {
+        expected: usize,
+        got: usize,
+    },
+    IndirectCallArgTypeWrong {
+        got: Type,
+        expected: Type,
+        idx: usize,
+    },
+    LdLenArgNotArray {
+        got: Type,
+    },
+    LdLenArrNot1D {
+        got: Type,
+    },
+    ArrIndexInvalidType {
+        index_tpe: Type,
+    },
+    IndirectCallInvalidFnPtrType {
+        fn_ptr: Type,
+    },
+    IndirectCallInvalidFnPtrSig {
+        expected: super::FnSig,
+        got: super::FnSig,
+    },
+}
+pub fn display_typecheck_err(root: CILRoot, asm: &mut Assembly, sig: SigIdx, locals: &[LocalDef]) {
+    let mut set = FxHashSet::default();
+    let nodes = root
+        .nodes()
+        .iter()
+        .map(|node| display_node(**node, asm, sig, locals, &mut set))
+        .collect::<String>();
+    eprintln!("digraph G{{edge [dir=\"back\"];\n{nodes}}}");
+}
+fn display_node(
+    nodeidx: NodeIdx,
+    asm: &mut Assembly,
+    sig: SigIdx,
+    locals: &[LocalDef],
+    set: &mut FxHashSet<NodeIdx>,
+) -> String {
+    let node = asm.get_node(nodeidx).clone();
+    set.insert(nodeidx);
+    let tpe = node.typecheck(sig, locals, asm);
+    let node_def = match tpe {
+        Ok(tpe) => format!(
+            "n{nodeidx} [label = {node:?} color = \"green\"]",
+            nodeidx = nodeidx.as_bimap_index(),
+            node = format!("{node:?}\n{}", tpe.mangle(asm))
+        ),
+        Err(err) => format!(
+            "n{nodeidx} [label = {node:?} color = \"red\"]",
+            nodeidx = nodeidx.as_bimap_index(),
+            node = format!("{node:?}\n{err:?}")
+        ),
+    };
+    let node_children = node.child_nodes();
+    let node_children_str: String = node_children
+        .iter()
+        .map(|node| format!(" n{nodeidx} ", nodeidx = node.as_bimap_index(),))
+        .collect();
+    if node_children.is_empty() {
+        format!("{node_def}\n")
+    } else {
+        let mut res = format!(
+            "{node_def}\n n{nodeidx}  -> {{{node_children_str}}}\n",
+            nodeidx = nodeidx.as_bimap_index(),
+        );
+        for nodeidx in node.child_nodes() {
+            res.push_str(&display_node(nodeidx, asm, sig, locals, set));
+        }
+        res
+    }
 }
 impl BinOp {
     fn typecheck(&self, lhs: Type, rhs: Type) -> Result<Type, TypeCheckError> {
@@ -109,10 +185,11 @@ impl BinOp {
                 }),
             },
             BinOp::LtUn | BinOp::GtUn => match (lhs, rhs) {
-                (Type::Int(lhs), Type::Int(rhs)) if rhs == lhs && !rhs.is_signed() => {
-                    Ok(Type::Bool)
-                }
+                (Type::Int(lhs), Type::Int(rhs)) if rhs == lhs => Ok(Type::Bool),
                 (Type::Float(lhs), Type::Float(rhs)) if rhs == lhs => Ok(Type::Bool),
+                (Type::Ptr(lhs), Type::Ptr(rhs)) if rhs == lhs => Ok(Type::Bool),
+                (Type::FnPtr(lhs), Type::FnPtr(rhs)) if rhs == lhs => Ok(Type::Bool),
+                (Type::Bool, Type::Bool) => Ok(Type::Bool),
                 _ => Err(TypeCheckError::WrongBinopArgs {
                     lhs,
                     rhs,
@@ -120,8 +197,9 @@ impl BinOp {
                 }),
             },
             BinOp::Lt | BinOp::Gt => match (lhs, rhs) {
-                (Type::Int(lhs), Type::Int(rhs)) if rhs == lhs && rhs.is_signed() => Ok(Type::Bool),
+                (Type::Int(lhs), Type::Int(rhs)) if rhs == lhs => Ok(Type::Bool),
                 (Type::Float(lhs), Type::Float(rhs)) if rhs == lhs => Ok(Type::Bool),
+                (Type::Bool, Type::Bool) => Ok(Type::Bool),
                 _ => Err(TypeCheckError::WrongBinopArgs {
                     lhs,
                     rhs,
@@ -252,8 +330,48 @@ impl BinOp {
                     op: *self,
                 }),
             },
-            BinOp::DivUn => todo!(),
-            BinOp::Div => todo!(),
+            BinOp::DivUn => match (lhs, rhs) {
+                (
+                    Type::Int(lhs @ (Int::U64 | Int::USize | Int::U32 | Int::U16 | Int::U8)),
+                    Type::Int(rhs @ (Int::U64 | Int::USize | Int::U32 | Int::U16 | Int::U8)),
+                ) if lhs == rhs => Ok(Type::Int(lhs)),
+                _ => Err(TypeCheckError::WrongBinopArgs {
+                    lhs,
+                    rhs,
+                    op: *self,
+                }),
+            },
+            BinOp::Div => match (lhs, rhs) {
+                (
+                    Type::Int(
+                        lhs @ (Int::U64
+                        | Int::USize
+                        | Int::ISize
+                        | Int::I32
+                        | Int::U32
+                        | Int::I16
+                        | Int::U16
+                        | Int::U8
+                        | Int::I8),
+                    ),
+                    Type::Int(
+                        rhs @ (Int::USize
+                        | Int::ISize
+                        | Int::I32
+                        | Int::U32
+                        | Int::I16
+                        | Int::U16
+                        | Int::U8
+                        | Int::I8),
+                    ),
+                ) if lhs.is_signed() && lhs == rhs => Ok(Type::Int(lhs)),
+                (Type::Float(lhs), Type::Float(rhs)) if rhs == lhs => Ok(Type::Bool),
+                _ => Err(TypeCheckError::WrongBinopArgs {
+                    lhs,
+                    rhs,
+                    op: *self,
+                }),
+            },
         }
     }
 }
@@ -317,6 +435,43 @@ impl CILNode {
                 }
                 Ok(mref.output(asm))
             }
+            CILNode::CallI(info) => {
+                let (fn_ptr, called_sig, args) = info.as_ref();
+                let fn_ptr = asm.get_node(*fn_ptr).clone();
+                let fn_ptr = fn_ptr.typecheck(sig, locals, asm)?;
+                let called_sig = asm.get_sig(*called_sig).clone();
+                if args.len() != called_sig.inputs().len() {
+                    return Err(TypeCheckError::IndirectCallArgcWrong {
+                        expected: called_sig.inputs().len(),
+                        got: args.len(),
+                    });
+                }
+
+                for (idx, (arg, input_type)) in
+                    args.iter().zip(called_sig.inputs().iter()).enumerate()
+                {
+                    let arg = asm.get_node(*arg).clone();
+                    let arg_type = arg.typecheck(sig, locals, asm)?;
+                    if !arg_type.is_assignable_to(*input_type, asm) {
+                        return Err(TypeCheckError::IndirectCallArgTypeWrong {
+                            got: arg_type,
+                            expected: *input_type,
+                            idx,
+                        });
+                    }
+                }
+                let Type::FnPtr(ptr_sig) = fn_ptr else {
+                    return Err(TypeCheckError::IndirectCallInvalidFnPtrType { fn_ptr });
+                };
+                let ptr_sig = asm.get_sig(ptr_sig);
+                if *ptr_sig != called_sig {
+                    return Err(TypeCheckError::IndirectCallInvalidFnPtrSig {
+                        expected: called_sig,
+                        got: ptr_sig.clone(),
+                    });
+                }
+                Ok(*called_sig.output())
+            }
             CILNode::IntCast {
                 input,
                 target,
@@ -325,7 +480,7 @@ impl CILNode {
                 let input = asm.get_node(*input).clone();
                 let input = input.typecheck(sig, locals, asm)?;
                 match input {
-                    Type::Float(_) | Type::Int(_) | Type::Ptr(_) | Type::FnPtr(_) => {
+                    Type::Float(_) | Type::Int(_) | Type::Ptr(_) | Type::FnPtr(_) | Type::Bool => {
                         Ok(Type::Int(*target))
                     }
                     _ => Err(TypeCheckError::IntCastInvalidInput {
@@ -453,20 +608,54 @@ impl CILNode {
                 }
             }
             CILNode::SizeOf(_) => Ok(Type::Int(Int::I32)),
-            CILNode::GetException => todo!(),
+            CILNode::GetException => Ok(Type::ClassRef(ClassRef::exception(asm))),
             CILNode::IsInst(_, _) => todo!(),
-            CILNode::CheckedCast(_, _) => todo!(),
-            CILNode::CallI(_) => todo!(),
+            CILNode::CheckedCast(obj, cast_res) => {
+                let obj = asm.get_node(*obj).clone();
+                let _obj = obj.typecheck(sig, locals, asm)?;
+                // TODO: check obj
+                Ok(*asm.get_type(*cast_res))
+            }
+
             CILNode::LocAlloc { size } => todo!(),
             CILNode::LdStaticField(sfld) => {
                 let sfld = *asm.get_static_field(*sfld);
                 Ok(sfld.tpe())
             }
-            CILNode::LdFtn(_) => todo!(),
-            CILNode::LdTypeToken(_) => todo!(),
-            CILNode::LdLen(_) => todo!(),
+            CILNode::LdFtn(mref) => {
+                let mref = asm.get_mref(*mref);
+                Ok(Type::FnPtr(mref.sig()))
+            }
+            CILNode::LdTypeToken(_) => Ok(Type::ClassRef(ClassRef::runtime_type_hadle(asm))),
+            CILNode::LdLen(arr) => {
+                let arr = asm.get_node(*arr).clone();
+                let arr_tpe = arr.typecheck(sig, locals, asm)?;
+                let Type::PlatformArray { elem: _, dims } = arr_tpe else {
+                    return Err(TypeCheckError::LdLenArgNotArray { got: arr_tpe });
+                };
+                if dims.get() != 1 {
+                    return Err(TypeCheckError::LdLenArrNot1D { got: arr_tpe });
+                }
+                Ok(Type::Int(Int::I32))
+            }
             CILNode::LocAllocAlgined { tpe, align } => Ok(Type::Ptr(*tpe)),
-            CILNode::LdElelemRef { array, index } => todo!(),
+            CILNode::LdElelemRef { array, index } => {
+                let arr = asm.get_node(*array).clone();
+                let arr_tpe = arr.typecheck(sig, locals, asm)?;
+                let index = asm.get_node(*index).clone();
+                let index_tpe = index.typecheck(sig, locals, asm)?;
+                let Type::PlatformArray { elem, dims } = arr_tpe else {
+                    return Err(TypeCheckError::LdLenArgNotArray { got: arr_tpe });
+                };
+                if dims.get() != 1 {
+                    return Err(TypeCheckError::LdLenArrNot1D { got: arr_tpe });
+                }
+                match index_tpe {
+                    Type::Int(Int::I32 | Int::U32 | Int::I64 | Int::USize | Int::ISize) => (),
+                    _ => return Err(TypeCheckError::ArrIndexInvalidType { index_tpe }),
+                }
+                Ok(*asm.get_type(elem))
+            }
             CILNode::UnboxAny { object, tpe } => {
                 let object = asm.get_node(*object).clone();
                 let object = object.typecheck(sig, locals, asm)?;
@@ -499,4 +688,15 @@ impl CILRoot {
         }
         Ok(())
     }
+}
+#[test]
+fn test() {
+    let mut asm = Assembly::default();
+    let lhs = super::Const::I64(0);
+    let rhs = super::Const::F64(super::hashable::HashableF64(0.0));
+    let sum = asm.biop(lhs, rhs, BinOp::Add);
+    let sum = asm.alloc_node(sum);
+    let sig = asm.sig([], Type::Void);
+    let mut set = FxHashSet::default();
+    panic!("{}", display_node(sum, &mut asm, sig, &[], &mut set));
 }

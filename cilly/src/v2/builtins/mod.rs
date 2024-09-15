@@ -153,6 +153,16 @@ fn insert_rust_realloc(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
         let ptr = asm.alloc_node(CILNode::LdArg(0));
         let align = asm.alloc_node(CILNode::LdArg(2));
         let new_size = asm.alloc_node(CILNode::LdArg(3));
+        let align = asm.alloc_node(CILNode::IntCast {
+            input: align,
+            target: Int::USize,
+            extend: super::cilnode::ExtendKind::ZeroExtend,
+        });
+        let new_size = asm.alloc_node(CILNode::IntCast {
+            input: new_size,
+            target: Int::USize,
+            extend: super::cilnode::ExtendKind::ZeroExtend,
+        });
         let void_ptr = asm.nptr(Type::Void);
         let sig = asm.sig(
             [void_ptr, Type::Int(Int::USize), Type::Int(Int::USize)],
