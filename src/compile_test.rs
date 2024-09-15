@@ -170,7 +170,10 @@ macro_rules! compare_tests {
                     if *crate::config::DRY_RUN {
                         return;
                     }
+                    #[cfg(not(target_os = "windows"))]
                     let exec_path = concat!("./", stringify!($test_name));
+                    #[cfg(target_os = "windows")]
+                    let exec_path = concat!(".\\", stringify!($test_name));
                     drop(lock);
                     //super::peverify(exec_path, test_dir);
                     eprintln!("Prepating to test with .NET");
@@ -238,7 +241,10 @@ macro_rules! compare_tests {
                             should_panic = true;
                         }
                     }
+                    #[cfg(not(target_os = "windows"))]
                     let exec_path = concat!("./", stringify!($test_name));
+                    #[cfg(target_os = "windows")]
+                    let exec_path = concat!(".\\", stringify!($test_name));
                     drop(lock);
                     //super::peverify(exec_path, test_dir);
                     eprintln!("Prepating to test with .NET");
@@ -398,7 +404,10 @@ macro_rules! run_test {
                         panic!("stdout:\n{stdout}\nstderr:\n{stderr}");
                     }
 
+                    #[cfg(not(target_os = "windows"))]
                     let exec_path = concat!("./", stringify!($test_name));
+                    #[cfg(target_os = "windows")]
+                    let exec_path = concat!(".\\", stringify!($test_name));
                     drop(lock);
                     let _ = super::super::test_dotnet_executable(exec_path, test_dir);
                 }
@@ -425,7 +434,11 @@ macro_rules! run_test {
                             .expect("rustc error contained non-UTF8 characters.");
                         panic!("stdout:\n{stdout}\nstderr:\n{stderr}");
                     }
+                    #[cfg(not(target_os = "windows"))]
                     let exec_path = format!("./{test_name}");
+                    #[cfg(target_os = "windows")]
+                    let exec_path = format!(".\\{test_name}");
+
                     drop(lock);
 
                     let _ = super::super::test_dotnet_executable(&exec_path, test_dir);
