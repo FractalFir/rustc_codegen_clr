@@ -154,6 +154,56 @@ impl CILRoot {
             CILRoot::CpObj { src, dst, .. } => [src, dst].into(),
         }
     }
+    pub fn nodes(&self) -> Box<[&NodeIdx]> {
+        match self {
+            CILRoot::Unreachable(_) => [].into(),
+            CILRoot::StLoc(_, tree)
+            | CILRoot::StArg(_, tree)
+            | CILRoot::Ret(tree)
+            | CILRoot::Pop(tree)
+            | CILRoot::Throw(tree)
+            | CILRoot::SetStaticField { val: tree, .. } => [tree].into(),
+            CILRoot::SourceFileInfo { .. }
+            | CILRoot::ExitSpecialRegion { .. }
+            | CILRoot::VoidRet
+            | CILRoot::Break
+            | CILRoot::Nop
+            | CILRoot::ReThrow => [].into(),
+            CILRoot::Branch(info) => {
+                let (_, _, cond) = info.as_ref();
+                let Some(cond) = cond else { return [].into() };
+                match cond {
+                    BranchCond::True(cond) | BranchCond::False(cond) => [cond].into(),
+                    BranchCond::Eq(lhs, rhs)
+                    | BranchCond::Ne(lhs, rhs)
+                    | BranchCond::Lt(lhs, rhs, _)
+                    | BranchCond::Gt(lhs, rhs, _)
+                    | BranchCond::Le(lhs, rhs, _)
+                    | BranchCond::Ge(lhs, rhs, _) => [lhs, rhs].into(),
+                }
+            }
+            CILRoot::SetField(info) => {
+                let (_, addr, val) = info.as_ref();
+                [addr, val].into()
+            }
+            CILRoot::Call(info) => many_ref(&info.1).into(),
+            CILRoot::StInd(info) => {
+                let (addr, val, _, _) = info.as_ref();
+                [addr, val].into()
+            }
+            CILRoot::InitBlk(info) | CILRoot::CpBlk(info) => {
+                let (addr, val, len) = info.as_ref();
+                [addr, val, len].into()
+            }
+            CILRoot::CallI(info) => {
+                let (ptr, _, args) = info.as_ref();
+                let mut args = many_ref(args);
+                args.push(ptr);
+                args.into()
+            }
+            CILRoot::CpObj { src, dst, .. } => [src, dst].into(),
+        }
+    }
     #[allow(clippy::too_many_lines)]
     pub fn from_v1(v1: &V1Root, asm: &mut Assembly) -> Self {
         match v1 {
@@ -654,6 +704,10 @@ fn many_mut<T>(input: &mut [T]) -> Vec<&mut T> {
     };
     assert_eq!(res.len(), input_len);
     res
+}
+/// Changes a mutable reference to a slice to an vec of mutable references to the elements.
+fn many_ref<T>(inputs: &[T]) -> Vec<&T> {
+    inputs.iter().collect()
 }
 #[test]
 fn test_many_mut() {

@@ -486,6 +486,16 @@ impl MethodDef {
         if fuel.consume(1) {
             self.implementation_mut().realloc_locals(asm);
         }
+        /* let sig = self.sig();
+        let locals = self.iter_locals(asm).cloned().collect::<Vec<_>>();
+        if let Some(roots) = self.iter_roots_mut() {
+            roots.for_each(|root| {
+                asm.get_root(*root)
+                    .clone()
+                    .typecheck(sig, &locals, asm)
+                    .unwrap()
+            })
+        } */
         if fuel.consume(1) {
             // Remove unneded SFI
             if let Some(roots) = self.iter_roots_mut() {
@@ -562,7 +572,7 @@ impl MethodDef {
         }
         if fuel.consume(1) {
             // TODO: this is a hack, which makes root inlining optimizations not consume fuel.
-            let mut fuel = std::sync::Mutex::new(&mut *fuel);
+            let fuel = std::sync::Mutex::new(&mut *fuel);
             self.map_roots(
                 asm,
                 &mut |root, asm| {

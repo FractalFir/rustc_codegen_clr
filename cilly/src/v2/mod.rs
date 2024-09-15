@@ -47,6 +47,7 @@ pub mod method;
 pub mod opt;
 pub mod strings;
 pub mod tpe;
+pub mod typecheck;
 #[test]
 fn types() {
     let mut asm = Assembly::default();
@@ -105,7 +106,7 @@ fn test_binops() {
         for _ in 0..10 {
             curr = std::hint::black_box(asm.biop(curr.clone(), curr, op));
         }
-        curr.get_type(asm.sig(vec![], Type::Void), &[], asm)
+        curr.typecheck(asm.sig(vec![], Type::Void), &[], asm)
             .unwrap();
         curr
     }

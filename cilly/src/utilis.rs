@@ -331,7 +331,7 @@ pub fn get_environ(asm: &mut Assembly) -> CallSite {
         .into(),
     );
     let element_count = CILNode::LDLoc(envc) + ldc_i32!(1);
-    let arr_size = conv_usize!(element_count * size_of!(uint8_ptr_ptr));
+    let arr_size = conv_usize!(element_count) * conv_usize!(size_of!(uint8_ptr_ptr));
     let arr_align = conv_usize!(size_of!(uint8_ptr_ptr));
     init.trees_mut().push(
         CILRoot::STLoc {

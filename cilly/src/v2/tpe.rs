@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{
     bimap::{BiMapIndex, IntoBiMapIndex},
+    typecheck::TypeCheckError,
     Assembly, ClassRefIdx, Float, Int, SigIdx,
 };
 
@@ -206,6 +207,46 @@ impl Type {
             Some(*v)
         } else {
             None
+        }
+    }
+
+    pub fn pointed_to(&self) -> Option<TypeIdx> {
+        match self {
+            Type::Ptr(type_idx) | Type::Ref(type_idx) => Some(*type_idx),
+            _ => None,
+        }
+    }
+    pub fn is_assignable_to(&self, to: Type, asm: &Assembly) -> bool {
+        if *self == to {
+            return true;
+        }
+        match (*self, to) {
+            (Type::PlatformString, Type::PlatformObject) => true,
+            (Type::ClassRef(cref), Type::PlatformObject) => {
+                let cref = asm.class_ref(cref);
+                !cref.is_valuetype()
+            }
+            (Type::ClassRef(cref), Type::PlatformString) => {
+                let cref = asm.class_ref(cref);
+                !cref.is_valuetype()
+                    && cref.asm().map(|s| asm.get_string(s).as_ref()) == Some("System.Runtime")
+                    && asm.get_string(cref.name()).as_ref() == "System.String"
+            }
+            (Type::ClassRef(cref), Type::Int(Int::I128))
+            | (Type::Int(Int::I128), Type::ClassRef(cref)) => {
+                let cref = asm.class_ref(cref);
+                cref.is_valuetype()
+                    && cref.asm().map(|s| asm.get_string(s).as_ref()) == Some("System.Runtime")
+                    && asm.get_string(cref.name()).as_ref() == "System.Int128"
+            }
+            (Type::ClassRef(cref), Type::Int(Int::U128))
+            | (Type::Int(Int::U128), Type::ClassRef(cref)) => {
+                let cref = asm.class_ref(cref);
+                cref.is_valuetype()
+                    && cref.asm().map(|s| asm.get_string(s).as_ref()) == Some("System.Runtime")
+                    && asm.get_string(cref.name()).as_ref() == "System.UInt128"
+            }
+            _ => false,
         }
     }
 }

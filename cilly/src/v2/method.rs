@@ -81,6 +81,26 @@ impl MethodRef {
     pub fn generics(&self) -> &[Type] {
         &self.generics
     }
+    /// Returns the inputs of this methods, excluding this for constructors.
+    pub fn stack_inputs<'s, 'asm: 's>(&'s self, asm: &'asm Assembly) -> &'s [Type] {
+        let sig = asm.get_sig(self.sig);
+        match self.kind() {
+            MethodKind::Static => sig.inputs(),
+            MethodKind::Instance => sig.inputs(),
+            MethodKind::Virtual => sig.inputs(),
+            MethodKind::Constructor => &sig.inputs()[1..],
+        }
+    }
+    /// Returns the output of this method.
+    pub fn output(&self, asm: &Assembly) -> Type {
+        let sig = asm.get_sig(self.sig);
+        match self.kind() {
+            MethodKind::Static => *sig.output(),
+            MethodKind::Instance => *sig.output(),
+            MethodKind::Virtual => *sig.output(),
+            MethodKind::Constructor => Type::ClassRef(self.class()),
+        }
+    }
 }
 
 #[derive(Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize)]

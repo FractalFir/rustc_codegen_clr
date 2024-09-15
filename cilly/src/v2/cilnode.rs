@@ -2,12 +2,13 @@ use serde::{Deserialize, Serialize};
 
 use super::bimap::BiMapIndex;
 use super::field::{StaticFieldDesc, StaticFieldIdx};
+
 use super::{bimap::IntoBiMapIndex, Assembly, Const, Int, MethodRefIdx, SigIdx, TypeIdx};
-use super::{ClassRef, FieldDesc, FieldIdx, Float, StringIdx};
+use super::{ClassRef, FieldDesc, FieldIdx, Float};
 
 use crate::cil_node::CILNode as V1Node;
 use crate::v2::{MethodRef, Type};
-use crate::IString;
+
 #[derive(Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct NodeIdx(BiMapIndex);
 impl IntoBiMapIndex for NodeIdx {
@@ -104,6 +105,17 @@ pub enum PtrCastRes {
     USize,
     ISize,
 }
+impl PtrCastRes {
+    pub fn as_type(&self) -> Type {
+        match self {
+            PtrCastRes::Ptr(type_idx) => Type::Ptr(*type_idx),
+            PtrCastRes::Ref(type_idx) => Type::Ref(*type_idx),
+            PtrCastRes::FnPtr(sig_idx) => Type::FnPtr(*sig_idx),
+            PtrCastRes::USize => Type::Int(Int::USize),
+            PtrCastRes::ISize => Type::Int(Int::ISize),
+        }
+    }
+}
 #[derive(Hash, PartialEq, Eq, Copy, Clone, Debug, Serialize, Deserialize)]
 
 pub enum ExtendKind {
@@ -166,86 +178,6 @@ impl CILNode {
         let arg = asm.alloc_node(self.clone());
         let alloc = asm.alloc_node(CILNode::Call(Box::new((alloc, [arg].into()))));
         CILNode::Call(Box::new((op_explict, [alloc].into())))
-    }
-    // WIP
-    #[allow(unused_variables)]
-    /// Typechecks this node, and returns its type if its valid.
-    /// # Errors
-    /// Returns an error if this node can't pass type checks.
-    pub fn get_type(
-        &self,
-        sig: SigIdx,
-        locals: &[(Option<StringIdx>, TypeIdx)],
-        asm: &mut Assembly,
-    ) -> Result<Type, IString> {
-        match self {
-            CILNode::Const(cst) => Ok(cst.as_ref().get_type()),
-            CILNode::BinOp(
-                lhs,
-                rhs,
-                BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Rem | BinOp::RemUn,
-            ) => {
-                let lhs = asm.get_node(*lhs).clone();
-                let rhs = asm.get_node(*rhs).clone();
-                let lhs = lhs.get_type(sig, locals, asm)?;
-                let rhs = rhs.get_type(sig, locals, asm)?;
-                if lhs == rhs {
-                    Ok(lhs)
-                } else {
-                    match (rhs, lhs) {
-                        (Type::Int(Int::USize | Int::ISize), Type::Ptr(_)) => Ok(rhs),
-                        (Type::Ptr(_), Type::Int(Int::USize | Int::ISize)) => Ok(lhs),
-                        _ => Err(format!("mismatched binop args. {lhs:?} != {rhs:?}").into()),
-                    }
-                }
-            }
-            CILNode::BinOp(lhs, rhs, op) => todo!("op:{op:?}"),
-            CILNode::UnOp(_, _) => todo!(),
-            CILNode::LdLoc(loc) => Ok(*asm.get_type(locals[*loc as usize].1)),
-            CILNode::LdLocA(loc) => Ok(asm.nref(*asm.get_type(locals[*loc as usize].1))),
-            CILNode::LdArg(arg) => Ok(asm.get_sig(sig).inputs()[*arg as usize]),
-            CILNode::LdArgA(arg) => Ok(asm.nref(asm.get_sig(sig).inputs()[*arg as usize])),
-            CILNode::Call(_) => todo!(),
-            CILNode::IntCast {
-                input,
-                target,
-                extend,
-            } => todo!(),
-            CILNode::FloatCast {
-                input,
-                target,
-                is_signed,
-            } => todo!(),
-            CILNode::RefToPtr(refn) => {
-                let refn = asm.get_node(*refn).clone();
-                let tpe = refn.get_type(sig, locals, asm)?;
-                match tpe {
-                    Type::Ref(inner) => Ok(asm.nptr(*asm.get_type(inner))),
-                    _ => Err(format!("Invalid RefToPtr input {refn:?}").into()),
-                }
-            }
-            CILNode::PtrCast(_, _) => todo!(),
-            CILNode::LdFieldAdress { addr, field } => todo!(),
-            CILNode::LdField { addr, field } => todo!(),
-            CILNode::LdInd {
-                addr,
-                tpe,
-                volitale,
-            } => todo!(),
-            CILNode::SizeOf(_) => todo!(),
-            CILNode::GetException => todo!(),
-            CILNode::IsInst(_, _) => todo!(),
-            CILNode::CheckedCast(_, _) => todo!(),
-            CILNode::CallI(_) => todo!(),
-            CILNode::LocAlloc { size } => todo!(),
-            CILNode::LdStaticField(_) => todo!(),
-            CILNode::LdFtn(_) => todo!(),
-            CILNode::LdTypeToken(_) => todo!(),
-            CILNode::LdLen(_) => todo!(),
-            CILNode::LocAllocAlgined { tpe, align } => todo!(),
-            CILNode::LdElelemRef { array, index } => todo!(),
-            CILNode::UnboxAny { object, tpe } => todo!(),
-        }
     }
 }
 impl CILNode {
