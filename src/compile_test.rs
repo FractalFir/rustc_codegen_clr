@@ -12,6 +12,8 @@ pub fn test_dotnet_executable(file_path: &str, test_dir: &str) -> String {
         "You must have the dotnet runtime installed to run tests."
     );
     let exec_path = &format!("{file_path}.exe");
+    #[cfg(target_os = "windows")]
+    let exec_path = &std::fs::canonicalize(format!("{test_dir}//{exec_path}")).unwrap();
     let mut stdout = String::new();
     if *crate::config::C_MODE {
         let out = std::process::Command::new("timeout")
