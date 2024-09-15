@@ -1313,6 +1313,7 @@ compile_test::aligned::stable::debug
 pub fn get_runtime_config() -> &'static str {
     RUNTIME_CONFIG.as_ref()
 }
+#[cfg(not(target_os = "windows"))]
 lazy_static! {
   /// Cached runtime configuration file, obtained from calling the .NET runtime.
   static ref RUNTIME_CONFIG: String = {
@@ -1347,3 +1348,5 @@ lazy_static! {
     )
     };
 }
+#[cfg(target_os = "windows")]
+static RUNTIME_CONFIG: &String = &String::new();
