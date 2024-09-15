@@ -1162,7 +1162,6 @@ impl Exporter for ILExporter {
         il_out.flush().unwrap();
         drop(il_out);
         let exe_out = std::path::absolute(target.with_extension("exe")).unwrap();
-        assemble_file(&exe_out,&il_path,self.is_lib);
         if let Err(err) = std::fs::remove_file(&exe_out) {
             match err.kind() {
                 std::io::ErrorKind::NotFound => (),
@@ -1171,6 +1170,8 @@ impl Exporter for ILExporter {
                 }
             }
         };
+        assemble_file(&exe_out,&il_path,self.is_lib);
+     
 
 
       
