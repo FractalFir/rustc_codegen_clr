@@ -918,7 +918,7 @@ cargo_test! {fastrand_test,stable}
 
 use lazy_static::lazy_static;
 #[cfg(target_os = "windows")]
-const IS_DOTNET_PRESENT: bool = true;
+const IS_DOTNET_PRESENT: &bool = &true;
 #[cfg(not(target_os = "windows"))]
 lazy_static! {
   /// Cached information about the presence of the `dotnet` .NET runtime.
