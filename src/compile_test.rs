@@ -6,7 +6,11 @@ pub fn test_dotnet_executable(file_path: &str, test_dir: &str) -> String {
     if *crate::config::DRY_RUN {
         return String::new();
     }
-
+    #[cfg(not(target_os = "windows"))]
+    assert!(
+        (*IS_DOTNET_PRESENT || *IS_MONO_PRESENT),
+        "You must have the dotnet runtime installed to run tests."
+    );
     let exec_path = &format!("{file_path}.exe");
     let mut stdout = String::new();
     if *crate::config::C_MODE {
@@ -39,20 +43,21 @@ pub fn test_dotnet_executable(file_path: &str, test_dir: &str) -> String {
         file.write_all(cilly::v2::il_exporter::get_runtime_config().as_bytes())
             .expect("Could not write runtime config");
         //RUNTIME_CONFIG
-        #[cfg(any(target_os = "linux", target_os = "darwin"))]
+        #[cfg(any(target_os = "linux", target_os = "macos"))]
         let mut cmd = {
             let mut cmd = std::process::Command::new("timeout");
             cmd.arg("-v");
             cmd.arg("5");
             cmd.arg("dotnet");
+            cmd.arg(exec_path);
             cmd
         };
         #[cfg(target_os = "windows")]
         let mut cmd = {
-            let cmd = std::process::Command::new("dotnet");
+            let cmd = std::process::Command::new(exec_path);
             cmd
         };
-        cmd.current_dir(test_dir).arg(exec_path);
+        cmd.current_dir(test_dir);
 
         #[cfg(target_family = "unix")]
         with_stack_size(&mut cmd, 1024 * 80);
@@ -78,13 +83,10 @@ pub fn test_dotnet_executable(file_path: &str, test_dir: &str) -> String {
             "Test program failed with message {stderr:}"
         );
     } else {
+        #[cfg(not(target_os = "windows"))]
         assert!(*IS_DOTNET_PRESENT, "Only mono runtime present. Mono does not support all the features required to get Rust code working.");
     }
 
-    assert!(
-        (*IS_DOTNET_PRESENT || *IS_MONO_PRESENT),
-        "You must have the dotnet runtime installed to run tests."
-    );
     stdout
 }
 #[cfg(test)]
@@ -915,15 +917,21 @@ cargo_test! {glam_test,unstable}
 cargo_test! {fastrand_test,stable}
 
 use lazy_static::lazy_static;
-
+#[cfg(target_os = "windows")]
+const IS_DOTNET_PRESENT: bool = true;
+#[cfg(not(target_os = "windows"))]
+lazy_static! {
+  /// Cached information about the presence of the `dotnet` .NET runtime.
+  static ref IS_DOTNET_PRESENT: bool = std::process::Command::new("dotnet").output().is_ok();
+}
 lazy_static! {
 
     /// Cached information about the presence of the `mono` .NET runtime.
     static ref IS_MONO_PRESENT: bool = std::process::Command::new("mono").output().is_ok();
     /// Cached information about the presence of the peverify tool.
     static ref IS_PEVERIFY_PRESENT: bool = std::process::Command::new("peverify").output().is_ok();
-    /// Cached information about the presence of the `dotnet` .NET runtime.
-    static ref IS_DOTNET_PRESENT: bool = std::process::Command::new("dotnet").output().is_ok();
+
+
     /// Cached information about the result of building the backend.
     pub static ref RUSTC_BUILD_STATUS: Result<(), String> = build_backend();
     /// Cached path to the bulit-in linker.
