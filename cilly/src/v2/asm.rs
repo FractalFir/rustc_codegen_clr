@@ -11,7 +11,7 @@ use crate::{asm::Assembly as V1Asm, v2::MethodImpl};
 use fxhash::{FxHashMap, FxHashSet};
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
-use std::any::type_name;
+use std::{any::type_name, path::PathBuf};
 
 pub type MissingMethodPatcher =
     FxHashMap<StringIdx, Box<dyn Fn(MethodRefIdx, &mut Assembly) -> MethodImpl>>;
@@ -971,10 +971,41 @@ pub fn ilasm_path() -> &'static str {
 lazy_static! {
     #[doc = "Specifies the path to the IL assembler."]
     pub static ref ILASM_PATH:String = {
-        std::env::vars().find_map(|(key,value)|if key == "ILASM_PATH"{Some(value)}else{None}).unwrap_or("ilasm".into())
+        std::env::vars().find_map(|(key,value)|if key == "ILASM_PATH"{Some(value)}else{None}).unwrap_or(get_default_ilasm())
     };
 }
-
+#[cfg(not(target_os = "windows"))]
+fn get_default_ilasm() -> String {
+    "ilasm".into()
+}
+#[cfg(target_os = "windows")]
+fn get_default_ilasm() -> String {
+    if std::process::Command::new("ilasm")
+        .arg("--help")
+        .output()
+        .is_ok()
+    {
+        return "ilasm".into();
+    }
+    // Framework Path
+    let framework_path = PathBuf::from("C:\\Windows\\Microsoft.NET\\Framework");
+    let framework_dir = std::fs::read_dir(&framework_path).unwrap_or_else(|_| panic!("Could not find the .NET framework directory at {framework_path:?}, when searching for ilasm."));
+    for entry in framework_dir {
+        let entry = entry.unwrap();
+        // TODO: find the most recent framework
+        if entry.metadata().unwrap().is_dir() {
+            let mut ilasm_path = entry.path();
+            ilasm_path.push("ilasm");
+            ilasm_path.set_extension("exe");
+            if !std::fs::exists(&ilasm_path).unwrap_or(false) {
+                eprintln!("Could not find ilasm at:{ilasm_path:?}");
+                continue;
+            }
+            return ilasm_path.display().to_string();
+        }
+    }
+    panic!("Could not find a .NET framework in directory {framework_path:?}, when searching for ilasm.")
+}
 #[test]
 fn user_init() {
     let mut asm = Assembly::default();
