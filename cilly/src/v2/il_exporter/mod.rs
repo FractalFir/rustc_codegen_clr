@@ -1,6 +1,6 @@
 use crate::v2::MethodImpl;
 use lazy_static::lazy_static;
-use std::io::Write;
+use std::{io::Write, path::Path};
 
 use super::{
     asm::{IlasmFlavour, ILASM_FLAVOUR, ILASM_PATH},
@@ -1064,7 +1064,83 @@ impl ILExporter {
         }
     }
 }
-
+#[cfg(not(target_os = "windows"))]
+fn assemble_file(exe_out:&Path,il_path:&Path,is_lib:bool){
+    let asm_type = if is_lib { "-dll" } else { "-exe" };
+    let mut cmd = std::process::Command::new(ILASM_PATH.clone());
+    cmd.arg(il_path)
+    .arg(format!("-output:{exe_out}", exe_out = exe_out.clone().to_string_lossy()))
+    .arg("-debug")
+    .arg("-OPTIMIZE")
+    .arg(asm_type)
+    // .arg("-FOLD") saves up on space, consider enabling.
+    ;
+    if *ILASM_FLAVOUR == IlasmFlavour::Clasic {
+        // Limit the memory usage of mono
+        cmd.env("MONO_GC_PARAMS", "soft-heap-limit=500m");
+    }
+    let out = cmd.output().unwrap();
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        !(stderr.contains("\nError\n")
+            || stderr.contains("FAILURE")
+            || stdout.contains("FAILURE")),
+        "stdout:{} stderr:{} cmd:{cmd:?}",
+        stdout,
+        String::from_utf8_lossy(&out.stderr)
+    );
+}
+#[cfg(target_os = "windows")]
+fn assemble_file(exe_out:&Path,il_path:&Path,is_lib:bool){
+    let asm_type = if is_lib { "-dll" } else { "-exe" };
+    let mut cmd = std::process::Command::new(ILASM_PATH.clone());
+    cmd.arg(il_path)
+    .arg(format!("-output:{exe_out}", exe_out = exe_out.to_string_lossy()))
+    .arg("-OPTIMIZE")
+    .arg(asm_type)
+    // .arg("-FOLD") saves up on space, consider enabling.
+    ;
+    if *ILASM_FLAVOUR == IlasmFlavour::Clasic {
+        // Limit the memory usage of mono
+        cmd.env("MONO_GC_PARAMS", "soft-heap-limit=500m");
+    }
+    let out = cmd.output().unwrap();
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        !(stderr.contains("\nError\n")
+            || stderr.contains("FAILURE")
+            || stdout.contains("FAILURE")),
+        "stdout:{} stderr:{} cmd:{cmd:?}",
+        stdout,
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let asm_type = if is_lib { "-dll" } else { "-exe" };
+    let mut cmd = std::process::Command::new(ILASM_PATH.clone());
+    cmd.arg(il_path)
+    .arg(format!("-output:{exe_out}", exe_out = exe_out.to_string_lossy()))
+    .arg("-debug")
+    .arg("-OPTIMIZE")
+    .arg(asm_type)
+    // .arg("-FOLD") saves up on space, consider enabling.
+    ;
+    if *ILASM_FLAVOUR == IlasmFlavour::Clasic {
+        // Limit the memory usage of mono
+        cmd.env("MONO_GC_PARAMS", "soft-heap-limit=500m");
+    }
+    let out = cmd.output().unwrap();
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        !(stderr.contains("\nError\n")
+            || stderr.contains("FAILURE")
+            || stdout.contains("FAILURE")),
+        "stdout:{} stderr:{} cmd:{cmd:?}",
+        stdout,
+        String::from_utf8_lossy(&out.stderr)
+    );
+}
 impl Exporter for ILExporter {
     type Error = std::io::Error;
 
@@ -1086,7 +1162,7 @@ impl Exporter for ILExporter {
         il_out.flush().unwrap();
         drop(il_out);
         let exe_out = std::path::absolute(target.with_extension("exe")).unwrap();
-
+        assemble_file(&exe_out,&il_path,self.is_lib);
         if let Err(err) = std::fs::remove_file(&exe_out) {
             match err.kind() {
                 std::io::ErrorKind::NotFound => (),
@@ -1095,30 +1171,9 @@ impl Exporter for ILExporter {
                 }
             }
         };
-        let asm_type = if self.is_lib { "-dll" } else { "-exe" };
-        let mut cmd = std::process::Command::new(ILASM_PATH.clone());
-        cmd.arg(il_path)
-        .arg(format!("-output:{exe_out}", exe_out = exe_out.clone().to_string_lossy()))
-        .arg("-debug")
-        .arg("-OPTIMIZE")
-        .arg(asm_type)
-        // .arg("-FOLD") saves up on space, consider enabling.
-        ;
-        if *ILASM_FLAVOUR == IlasmFlavour::Clasic {
-            // Limit the memory usage of mono
-            cmd.env("MONO_GC_PARAMS", "soft-heap-limit=500m");
-        }
-        let out = cmd.output().unwrap();
-        let stdout = String::from_utf8_lossy(&out.stdout);
-        let stderr = String::from_utf8_lossy(&out.stderr);
-        assert!(
-            !(stderr.contains("\nError\n")
-                || stderr.contains("FAILURE")
-                || stdout.contains("FAILURE")),
-            "stdout:{} stderr:{} cmd:{cmd:?}",
-            stdout,
-            String::from_utf8_lossy(&out.stderr)
-        );
+
+
+      
 
         Ok(())
     }
