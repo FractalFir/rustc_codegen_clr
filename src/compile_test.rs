@@ -140,7 +140,6 @@ fn test_lib(args: &[&str], test_name: &str) {
 }
 macro_rules! compare_tests {
     ($prefix:ident,$test_name:ident,$is_stable:ident) => {
-        #[cfg(target_os = "linux")]
         mod $test_name {
             mod $is_stable {
                 #[cfg(test)]
