@@ -33,6 +33,8 @@ pub fn test_dotnet_executable(file_path: &str, test_dir: &str) -> String {
     if *IS_DOTNET_PRESENT {
         let config_path = if file_path.contains(test_dir) {
             format!("{file_path}.runtimeconfig.json")
+        } else if cfg!(target_os = "windows") {
+            format!("{test_dir}\\{file_path}.runtimeconfig.json")
         } else {
             format!("{test_dir}/{file_path}.runtimeconfig.json")
         };
@@ -146,6 +148,9 @@ macro_rules! compare_tests {
                 fn release() {
                     let lock = COMPILE_LOCK.lock();
                     let mut should_panic = false;
+                    #[cfg(target_os = "windows")]
+                    let test_dir = concat!(".\\test\\", stringify!($prefix), "\\");
+                    #[cfg(not(target_os = "windows"))]
                     let test_dir = concat!("./test/", stringify!($prefix), "/");
                     // Ensures the test directory is present
                     std::fs::create_dir_all(test_dir).expect("Could not setup the test env");
@@ -221,6 +226,9 @@ macro_rules! compare_tests {
                 fn debug() {
                     let lock = COMPILE_LOCK.lock();
                     let mut should_panic = false;
+                    #[cfg(target_os = "windows")]
+                    let test_dir = concat!(".\\test\\", stringify!($prefix), "\\");
+                    #[cfg(not(target_os = "windows"))]
                     let test_dir = concat!("./test/", stringify!($prefix), "/");
                     // Ensures the test directory is present
                     std::fs::create_dir_all(test_dir).expect("Could not setup the test env");
@@ -384,6 +392,9 @@ macro_rules! run_test {
                 #[test]
                 fn release() {
                     let lock = COMPILE_LOCK.lock();
+                    #[cfg(target_os = "windows")]
+                    let test_dir = concat!(".\\test\\", stringify!($prefix), "\\");
+                    #[cfg(not(target_os = "windows"))]
                     let test_dir = concat!("./test/", stringify!($prefix), "/");
                     // Ensures the test directory is present
                     std::fs::create_dir_all(test_dir).expect("Could not setup the test env");
@@ -414,6 +425,9 @@ macro_rules! run_test {
                 #[test]
                 fn debug() {
                     let lock = COMPILE_LOCK.lock();
+                    #[cfg(target_os = "windows")]
+                    let test_dir = concat!(".\\test\\", stringify!($prefix), "\\");
+                    #[cfg(not(target_os = "windows"))]
                     let test_dir = concat!("./test/", stringify!($prefix), "/");
                     // Ensures the test directory is present
                     std::fs::create_dir_all(test_dir).expect("Could not setup the test env");
@@ -456,7 +470,11 @@ macro_rules! cargo_test {
             #[test]
             fn cargo_debug() {
                 let lock = COMPILE_LOCK.lock();
+                #[cfg(target_os = "windows")]
+                let test_dir = concat!(".\\cargo_tests\\", stringify!($prefix), "\\");
+                #[cfg(not(target_os = "windows"))]
                 let test_dir = concat!("./cargo_tests/", stringify!($test_name), "/");
+
                 // Ensures the test directory is present
                 std::fs::create_dir_all(test_dir).expect("Could not setup the test env");
                 // Builds the backend if neceasry
@@ -489,6 +507,9 @@ macro_rules! cargo_test {
             #[test]
             fn cargo_release() {
                 let lock = COMPILE_LOCK.lock();
+                #[cfg(target_os = "windows")]
+                let test_dir = concat!(".\\cargo_tests\\", stringify!($prefix), "\\");
+                #[cfg(not(target_os = "windows"))]
                 let test_dir = concat!("./cargo_tests/", stringify!($test_name), "/");
                 // Ensures the test directory is present
                 std::fs::create_dir_all(test_dir).expect("Could not setup the test env");
@@ -534,7 +555,10 @@ macro_rules! cargo_test_ignored {
             #[test]
             fn cargo_debug() {
                 let lock = COMPILE_LOCK.lock();
-                let test_dir = concat!("./cargo_tests/", stringify!($test_name), "/");
+                #[cfg(target_os = "windows")]
+                let test_dir = concat!(".\\cargo_tests\\", stringify!($prefix), "\\");
+                #[cfg(not(target_os = "windows"))]
+                let test_dir = concat!("./cargo_tests/", stringify!($prefix), "/");
                 // Ensures the test directory is present
                 std::fs::create_dir_all(test_dir).expect("Could not setup the test env");
 
@@ -568,7 +592,10 @@ macro_rules! cargo_test_ignored {
             #[test]
             fn cargo_release() {
                 let lock = COMPILE_LOCK.lock();
-                let test_dir = concat!("./cargo_tests/", stringify!($test_name), "/");
+                #[cfg(target_os = "windows")]
+                let test_dir = concat!(".\\cargo_tests\\", stringify!($prefix), "\\");
+                #[cfg(not(target_os = "windows"))]
+                let test_dir = concat!("./cargo_tests/", stringify!($prefix), "/");
                 // Ensures the test directory is present
                 std::fs::create_dir_all(test_dir).expect("Could not setup the test env");
 
