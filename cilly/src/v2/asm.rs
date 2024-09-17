@@ -11,16 +11,18 @@ use crate::{asm::Assembly as V1Asm, v2::MethodImpl};
 use fxhash::{FxHashMap, FxHashSet};
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
-use std::{any::type_name, path::PathBuf};
+use std::{any::type_name, ops::Index, path::PathBuf};
 
 pub type MissingMethodPatcher =
     FxHashMap<StringIdx, Box<dyn Fn(MethodRefIdx, &mut Assembly) -> MethodImpl>>;
+type StringMap = BiMap<StringIdx, IString>;
+type TypeMap = BiMap<TypeIdx, Type>;
 #[derive(Default, Serialize, Deserialize, Clone)]
 pub struct Assembly {
     /// A list of strings used in this assembly
-    strings: BiMap<StringIdx, IString>,
+    strings: StringMap,
     /// A list of all types in this assembly
-    types: BiMap<TypeIdx, Type>,
+    types: TypeMap,
     class_refs: BiMap<ClassRefIdx, ClassRef>,
     class_defs: FxHashMap<ClassDefIdx, ClassDef>,
     nodes: BiMap<NodeIdx, CILNode>,
@@ -34,13 +36,89 @@ pub struct Assembly {
     //#[serde(skip)]
     //cache: CachedAssemblyInfo<NodeIdx, NonMaxU32, StackUsage>,
 }
+impl Index<StringIdx> for Assembly {
+    type Output = str;
+
+    fn index(&self, index: StringIdx) -> &Self::Output {
+        &self.strings[index]
+    }
+}
+impl Index<ClassDefIdx> for Assembly {
+    type Output = ClassDef;
+
+    fn index(&self, index: ClassDefIdx) -> &Self::Output {
+        &self.class_defs[&index]
+    }
+}
+impl Index<MethodRefIdx> for Assembly {
+    type Output = MethodRef;
+
+    fn index(&self, index: MethodRefIdx) -> &Self::Output {
+        &self.method_refs[index]
+    }
+}
+impl Index<MethodDefIdx> for Assembly {
+    type Output = MethodDef;
+
+    fn index(&self, index: MethodDefIdx) -> &Self::Output {
+        &self.method_defs[&index]
+    }
+}
+impl Index<ClassRefIdx> for Assembly {
+    type Output = ClassRef;
+
+    fn index(&self, index: ClassRefIdx) -> &Self::Output {
+        &self.class_refs[index]
+    }
+}
+impl Index<TypeIdx> for Assembly {
+    type Output = Type;
+
+    fn index(&self, index: TypeIdx) -> &Self::Output {
+        &self.types[index]
+    }
+}
+impl Index<SigIdx> for Assembly {
+    type Output = FnSig;
+
+    fn index(&self, index: SigIdx) -> &Self::Output {
+        &self.sigs[index]
+    }
+}
+impl Index<RootIdx> for Assembly {
+    type Output = CILRoot;
+
+    fn index(&self, index: RootIdx) -> &Self::Output {
+        &self.roots[index]
+    }
+}
+impl Index<NodeIdx> for Assembly {
+    type Output = CILNode;
+
+    fn index(&self, index: NodeIdx) -> &Self::Output {
+        &self.nodes[index]
+    }
+}
+impl Index<StaticFieldIdx> for Assembly {
+    type Output = StaticFieldDesc;
+
+    fn index(&self, index: StaticFieldIdx) -> &Self::Output {
+        &self.statics[index]
+    }
+}
+impl Index<FieldIdx> for Assembly {
+    type Output = FieldDesc;
+
+    fn index(&self, index: FieldIdx) -> &Self::Output {
+        &self.fields[index]
+    }
+}
 impl Assembly {
     pub fn typecheck(&mut self) {
         let method_def_idxs: Box<[_]> = self.method_defs.keys().copied().collect();
         for method in method_def_idxs {
-            let mut tmp_method = self.borrow_methoddef(method);
+            let mut tmp_method = self.method_def(method).clone();
             tmp_method.typecheck(self);
-            self.return_methoddef(method, tmp_method);
         }
     }
     #[must_use]

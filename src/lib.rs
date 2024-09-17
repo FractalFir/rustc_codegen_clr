@@ -263,6 +263,7 @@ impl CodegenBackend for MyBackend {
             );
             let mut v2 = cilly::v2::Assembly::from_v1(&asm);
             v2.opt(&mut v2.fuel_from_env());
+            v2.typecheck();
             asm_out
                 .write_all(
                     &postcard::to_stdvec(&v2).expect("Could not serialize the tmp assembly file!"),

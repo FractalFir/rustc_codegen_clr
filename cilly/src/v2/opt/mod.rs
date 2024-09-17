@@ -483,7 +483,9 @@ impl MethodDef {
                 if check.is_err() {
                     display_typecheck_err(asm.get_root(*root).clone(), asm, sig, &locals);
                 };
-                check.unwrap_or_else(|_| panic!("Could not verify method {}", asm.get_string(name)))
+                check.unwrap_or_else(|_| {
+                    eprintln!("Could not verify method {}", asm.get_string(name))
+                })
             })
         }
     }

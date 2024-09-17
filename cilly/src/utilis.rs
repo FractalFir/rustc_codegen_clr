@@ -245,6 +245,7 @@ pub fn get_environ(asm: &mut Assembly) -> CallSite {
     if asm.contains_fn(&init_cs) {
         return init_cs;
     }
+
     let mut get_environ = Method::new(
         crate::access_modifier::AccessModifer::Extern,
         crate::method::MethodType::Static,

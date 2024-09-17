@@ -61,7 +61,7 @@ pub fn zero(ty: Ty, asm: &mut Assembly) -> CILNode {
                 FnSig::new([Type::Int(Int::I32)].into(), Type::Int(Int::I128)),
                 true
             ),
-            [ldc_u32!(0)]
+            [ldc_i32!(0)]
         ),
         _ => todo!("Can't get zero of {ty:?}"),
     }

@@ -332,6 +332,27 @@ impl MethodDef {
     pub fn set_access(&mut self, access: Access) {
         self.access = access;
     }
+
+    pub fn stack_inputs(&self, asm: &mut Assembly) -> Vec<(Type, Option<StringIdx>)> {
+        let mut arg_names = self.arg_names().to_vec();
+        let sig = asm[self.sig()].clone();
+        arg_names.extend(
+            (arg_names.len()..(sig.inputs().len()))
+                .into_iter()
+                .map(|_| None),
+        );
+        sig.inputs()
+            .iter()
+            .copied()
+            .zip(arg_names.iter().copied())
+            .collect::<Vec<_>>()
+    }
+
+    pub fn blocks<'s, 'asm: 's>(&'s self, asm: &'asm Assembly) -> Option<&'s [BasicBlock]> {
+        self.resolved_implementation(asm)
+            .blocks()
+            .map(|vec| vec.as_ref())
+    }
 }
 pub type LocalDef = (Option<StringIdx>, TypeIdx);
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
@@ -349,6 +370,12 @@ pub enum MethodImpl {
 }
 impl MethodImpl {
     pub fn blocks_mut(&mut self) -> Option<&mut Vec<BasicBlock>> {
+        match self {
+            Self::MethodBody { blocks, .. } => Some(blocks),
+            _ => None,
+        }
+    }
+    pub fn blocks(&self) -> Option<&Vec<BasicBlock>> {
         match self {
             Self::MethodBody { blocks, .. } => Some(blocks),
             _ => None,

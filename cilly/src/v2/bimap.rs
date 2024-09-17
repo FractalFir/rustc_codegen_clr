@@ -1,6 +1,6 @@
 use fxhash::FxHashMap;
 use serde::{Deserialize, Serialize};
-use std::{collections::hash_map::Entry, fmt::Debug, hash::Hash, num::NonZeroU32};
+use std::{collections::hash_map::Entry, fmt::Debug, hash::Hash, num::NonZeroU32, ops::Index};
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct BiMap<Key, Value: Eq + Hash>(pub Vec<Value>, pub FxHashMap<Value, Key>);
@@ -11,6 +11,16 @@ impl<Key: IntoBiMapIndex + Eq + Hash + Clone, Value: Eq + Hash + Clone> Default
         Self(Vec::default(), FxHashMap::default())
     }
 }
+impl<Key: IntoBiMapIndex + Eq + Hash + Clone + Debug, Value: Eq + Hash + Clone + Debug> Index<Key>
+    for BiMap<Key, Value>
+{
+    type Output = Value;
+
+    fn index(&self, index: Key) -> &Self::Output {
+        self.get(index)
+    }
+}
+
 impl<Key: IntoBiMapIndex + Eq + Hash + Clone + Debug, Value: Eq + Hash + Clone + Debug>
     BiMap<Key, Value>
 {

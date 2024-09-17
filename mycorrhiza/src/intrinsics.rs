@@ -1,11 +1,23 @@
 use std::ptr::null;
 
+use crate::ManagedSafe;
+
 #[derive(Clone, Copy)]
 #[repr(C)]
 pub struct RustcCLRInteropManagedClass<const ASSEMBLY: &'static str, const CLASS_PATH: &'static str>
 {
     size_hint: usize,
 }
+#[derive(Clone, Copy)]
+#[repr(C)]
+pub struct RustcCLRInteropManagedStruct<
+    const ASSEMBLY: &'static str,
+    const CLASS_PATH: &'static str,
+    const SIZE: usize,
+> {
+    size_hint: [u8; SIZE],
+}
+
 impl<const ASSEMBLY: &'static str, const CLASS_PATH: &'static str>
     RustcCLRInteropManagedClass<ASSEMBLY, CLASS_PATH>
 {
@@ -67,6 +79,24 @@ impl<const ASSEMBLY: &'static str, const CLASS_PATH: &'static str>
             Self,
             Arg1,
         >(self, arg1)
+    }
+    #[inline(always)]
+    pub fn instance2<const METHOD: &'static str, Arg1, Arg2, Ret>(
+        self,
+        arg1: Arg1,
+        arg2: Arg2,
+    ) -> Ret {
+        rustc_clr_interop_managed_call3_::<
+            ASSEMBLY,
+            CLASS_PATH,
+            false,
+            METHOD,
+            false,
+            Ret,
+            Self,
+            Arg1,
+            Arg2,
+        >(self, arg1, arg2)
     }
     #[inline(always)]
     pub fn to_mstring(self) -> crate::system::MString {
@@ -153,6 +183,25 @@ pub fn rustc_clr_interop_managed_call2_<
 >(
     arg1: Arg1,
     arg2: Arg2,
+) -> Ret {
+    core::intrinsics::abort();
+}
+#[allow(unused_variables)]
+#[inline(never)]
+pub fn rustc_clr_interop_managed_call3_<
+    const ASSEMBLY: &'static str,
+    const CLASS_PATH: &'static str,
+    const IS_VALUETYPE: bool,
+    const METHOD: &'static str,
+    const IS_STATIC: bool,
+    Ret,
+    Arg1,
+    Arg2,
+    Arg3,
+>(
+    arg1: Arg1,
+    arg2: Arg2,
+    arg3: Arg3,
 ) -> Ret {
     core::intrinsics::abort();
 }
@@ -318,5 +367,29 @@ impl<const ASSEMBLY: &'static str, const CLASS_PATH: &'static str>
 {
     pub fn index(self, index: i32) -> RustcCLRInteropManagedClass<ASSEMBLY, CLASS_PATH> {
         rustc_clr_interop_managed_ld_elem_ref(self, index)
+    }
+}
+unsafe impl<const ASSEMBLY: &'static str, const CLASS_PATH: &'static str> ManagedSafe
+    for RustcCLRInteropManagedClass<ASSEMBLY, CLASS_PATH>
+{
+}
+unsafe impl<const ASSEMBLY: &'static str, const CLASS_PATH: &'static str, const SIZE: usize>
+    ManagedSafe for RustcCLRInteropManagedStruct<ASSEMBLY, CLASS_PATH, SIZE>
+{
+}
+impl<const ASSEMBLY: &'static str, const CLASS_PATH: &'static str, const SIZE: usize>
+    RustcCLRInteropManagedStruct<ASSEMBLY, CLASS_PATH, SIZE>
+{
+    #[inline(always)]
+    pub fn instance0<const METHOD: &'static str, Ret>(self) -> Ret {
+        rustc_clr_interop_managed_call1_::<ASSEMBLY, CLASS_PATH, false, METHOD, false, Ret, &Self>(
+            &self,
+        )
+    }
+    #[inline(always)]
+    pub fn static1<const METHOD: &'static str, Arg1, Ret>(arg1: Arg1) -> Ret {
+        rustc_clr_interop_managed_call1_::<ASSEMBLY, CLASS_PATH, false, METHOD, true, Ret, Arg1>(
+            arg1,
+        )
     }
 }

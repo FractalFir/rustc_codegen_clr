@@ -674,7 +674,7 @@ impl ILExporter {
                 writeln!(out, "ldlen")
             }
             super::CILNode::LocAllocAlgined { tpe, align } => {
-                writeln!(out, "sizeof {tpe} ldc.i8 {align} conv.i add localloc dup ldc.i8 {align} add ldc.i8 {align} rem sub ldc.i8 {align} add", tpe = type_il(asm.get_type(*tpe), asm))
+                writeln!(out, "sizeof {tpe} ldc.i8 {align} conv.i add localloc dup ldc.i8 {align} add ldc.i8 {align} rem sub ldc.i8 {align} add conv.u", tpe = type_il(asm.get_type(*tpe), asm))
             }
             super::CILNode::LdElelemRef { array, index } => {
                 self.export_node(asm, out, *array)?;

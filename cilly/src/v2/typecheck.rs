@@ -355,7 +355,8 @@ impl BinOp {
                         | Int::I8),
                     ),
                     Type::Int(
-                        rhs @ (Int::USize
+                        rhs @ (Int::U64
+                        | Int::USize
                         | Int::ISize
                         | Int::I32
                         | Int::U32
@@ -365,7 +366,7 @@ impl BinOp {
                         | Int::I8),
                     ),
                 ) if lhs.is_signed() && lhs == rhs => Ok(Type::Int(lhs)),
-                (Type::Float(lhs), Type::Float(rhs)) if rhs == lhs => Ok(Type::Bool),
+                (Type::Float(lhs), Type::Float(rhs)) if rhs == lhs => Ok(Type::Float(lhs)),
                 _ => Err(TypeCheckError::WrongBinopArgs {
                     lhs,
                     rhs,
@@ -609,7 +610,12 @@ impl CILNode {
             }
             CILNode::SizeOf(_) => Ok(Type::Int(Int::I32)),
             CILNode::GetException => Ok(Type::ClassRef(ClassRef::exception(asm))),
-            CILNode::IsInst(_, _) => todo!(),
+            CILNode::IsInst(obj, _) => {
+                let obj = asm.get_node(*obj).clone();
+                let _obj = obj.typecheck(sig, locals, asm)?;
+                // TODO: check obj
+                Ok(Type::Bool)
+            }
             CILNode::CheckedCast(obj, cast_res) => {
                 let obj = asm.get_node(*obj).clone();
                 let _obj = obj.typecheck(sig, locals, asm)?;

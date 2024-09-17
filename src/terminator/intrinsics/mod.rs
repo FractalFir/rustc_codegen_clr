@@ -1796,6 +1796,10 @@ fn intrinsic_slow<'tcx>(
             },
             ctx,
         )
+    } else if fn_name.contains("ptr_guaranteed_cmp") {
+        let lhs = handle_operand(&args[0].node, ctx);
+        let rhs = handle_operand(&args[0].node, ctx);
+        place_set(destination, conv_u8!(eq!(lhs, rhs)), ctx)
     } else {
         todo!("Unhandled intrinsic {fn_name}.")
     }

@@ -135,7 +135,7 @@ fn get_out_path(args: &[String]) -> &str {
     &args[1 + args
         .iter()
         .position(|arg| *arg == "-o")
-        .expect(&format!("No output file! {args:?}"))]
+        .unwrap_or_else(|| panic!("No output file! {args:?}"))]
 }
 #[cfg(target_os = "windows")]
 fn get_out_path<'a>(args: &'a [String]) -> &'a str {
@@ -374,14 +374,17 @@ fn main() {
             }
         }),
     );
-    cilly::v2::builtins::atomics::generate_all_atomics(&mut final_assembly, &mut overrides);
-    cilly::v2::builtins::casts::insert_casts(&mut final_assembly, &mut overrides);
     cilly::v2::builtins::select::generate_int_selects(&mut final_assembly, &mut overrides);
-    cilly::v2::builtins::insert_heap(&mut final_assembly, &mut overrides);
-    cilly::v2::builtins::instert_threading(&mut final_assembly, &mut overrides);
     cilly::v2::builtins::insert_swap_at_generic(&mut final_assembly, &mut overrides);
     cilly::v2::builtins::insert_bounds_check(&mut final_assembly, &mut overrides);
-    cilly::v2::builtins::math::math(&mut final_assembly, &mut overrides);
+    if !*C_MODE {
+        cilly::v2::builtins::atomics::generate_all_atomics(&mut final_assembly, &mut overrides);
+        cilly::v2::builtins::casts::insert_casts(&mut final_assembly, &mut overrides);
+        cilly::v2::builtins::insert_heap(&mut final_assembly, &mut overrides);
+        cilly::v2::builtins::instert_threading(&mut final_assembly, &mut overrides);
+
+        cilly::v2::builtins::math::math(&mut final_assembly, &mut overrides);
+    }
     // Ensure the cctor and tcctor exist!
     let _ = final_assembly.tcctor();
     let _ = final_assembly.cctor();
@@ -407,15 +410,12 @@ fn main() {
     let mut fuel = final_assembly.fuel_from_env().fraction(0.5);
     final_assembly.opt(&mut fuel);
     final_assembly.eliminate_dead_code();
-    //final_assembly.typecheck();
+
     final_assembly
         .save_tmp(&mut std::fs::File::create(path.with_extension("cilly2")).unwrap())
         .unwrap();
     if *C_MODE {
-        final_assembly.export(
-            &path,
-            cilly::v2::il_exporter::ILExporter::new(*ILASM_FLAVOUR, is_lib),
-        );
+        final_assembly.export(&path, cilly::v2::c_exporter::CExporter::new(is_lib));
     } else if *JS_MODE {
         todo!();
     } else if *JAVA_MODE {

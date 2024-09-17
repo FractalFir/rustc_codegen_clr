@@ -84,8 +84,8 @@ pub fn magic_type<'tcx>(
         Type::ClassRef(dotnet_tpe)
     } else if name.contains(INTEROP_STRUCT_TPE_NAME) {
         assert!(
-            subst.len() == 2,
-            "Managed struct reference must have exactly 2 generic arguments!"
+            subst.len() == 3,
+            "Managed struct reference must have exactly 3 generic arguments!"
         );
         let assembly = garg_to_string(subst[0], ctx.tcx());
         let assembly = Some(assembly)
