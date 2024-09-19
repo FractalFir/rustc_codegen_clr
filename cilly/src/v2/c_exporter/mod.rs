@@ -11,6 +11,7 @@ use crate::{
 
 use super::{
     asm::MAIN_MODULE,
+    bimap::IntoBiMapIndex,
     cilnode::{ExtendKind, PtrCastRes},
     cilroot::BranchCond,
     int,
@@ -41,7 +42,7 @@ fn c_tpe(field_tpe: Type, asm: &Assembly) -> String {
             Int::U16 => "uint16_t".into(),
             Int::U32 => "uint32_t".into(),
             Int::U64 => "uint64_t".into(),
-            Int::U128 => "unsigned __int128".into(),
+            Int::U128 => "__uint128_t".into(),
             Int::USize => "uintptr_t".into(),
             Int::I8 => "int8_t".into(),
             Int::I16 => "int16_t".into(),
@@ -50,7 +51,9 @@ fn c_tpe(field_tpe: Type, asm: &Assembly) -> String {
             Int::I128 => "__int128".into(),
             Int::ISize => "intptr_t".into(),
         },
-        Type::ClassRef(class_ref_idx) => escape_ident(&asm[asm[class_ref_idx].name()]),
+        Type::ClassRef(class_ref_idx) => {
+            format!("union {}", escape_ident(&asm[asm[class_ref_idx].name()]))
+        }
         Type::Float(float) => match float {
             super::Float::F16 => todo!(),
             super::Float::F32 => "float".into(),
@@ -72,7 +75,25 @@ fn c_tpe(field_tpe: Type, asm: &Assembly) -> String {
         Type::FnPtr(_) => "void*".into(),
     }
 }
-fn method_name(class_name: &str, method_name: &str) -> String {
+fn mref_to_name(mref: &MethodRef, asm: &Assembly) -> String {
+    let class = &asm[mref.class()];
+    let class_name = escape_ident(&asm[class.name()]);
+    let mname = escape_ident(&asm[mref.name()]);
+    if class.asm().is_some() {
+        let mangled = escape_ident(
+            &asm[mref.sig()]
+                .iter_types()
+                .map(|tpe| tpe.mangle(asm))
+                .collect::<String>(),
+        );
+
+        let stem = class_member_name(&class_name, &mname);
+        format!("{stem}{mangled}")
+    } else {
+        class_member_name(&class_name, &mname)
+    }
+}
+fn class_member_name(class_name: &str, method_name: &str) -> String {
     if class_name == MAIN_MODULE {
         method_name.into()
     } else {
@@ -92,10 +113,7 @@ impl CExporter {
         mref: &MethodRef,
         method_decls: &mut impl Write,
     ) -> std::io::Result<()> {
-        let class = &asm[mref.class()];
-        let class_name = escape_ident(&asm[class.name()]);
-        let mname = escape_ident(&asm[mref.name()]);
-        let method_name = method_name(&class_name, &mname);
+        let method_name = mref_to_name(mref, asm);
         let output = c_tpe(mref.output(asm), asm);
         let inputs = mref
             .stack_inputs(asm)
@@ -126,7 +144,11 @@ impl CExporter {
                     tpe = c_tpe(asm[type_idx], asm)
                 ),
                 Type::FnPtr(_) => format!("({lhs}) + ({rhs})"),
-                Type::Float(_) | Type::Int(_) => format!("({lhs}) + ({rhs})"),
+                Type::Float(_) => format!("({lhs}) + ({rhs})"),
+                Type::Int(int) => match int {
+                    Int::I128 => format!("(__int128)((__uint128_t)({lhs}) + (__uint128_t)({rhs}))"),
+                    _ => format!("({lhs}) + ({rhs})"),
+                },
                 _ => todo!(),
             },
             BinOp::Eq => match tpe {
@@ -152,7 +174,17 @@ impl CExporter {
                     tpe = c_tpe(asm[type_idx], asm)
                 ),
                 Type::FnPtr(_) => format!("({lhs}) * ({rhs})"),
-                Type::Float(_) | Type::Int(_) => format!("({lhs}) * ({rhs})"),
+                Type::Float(_) => format!("({lhs}) * ({rhs})"),
+                Type::Int(int) => match int {
+                    // Signed multiply is seemingly equivalent to unsigned multiply, looking at the assembly: TODO: check this.
+                    Int::I8 => format!("(int8_t)((uint8_t)({lhs}) * (uint8_t)({rhs}))"),
+                    Int::I16 => format!("(int16_t)((uint16_t)({lhs}) * (uint16_t)({rhs}))"),
+                    Int::I32 => format!("(int32_t)((uint32_t)({lhs}) * (uint32_t)({rhs}))"),
+                    Int::I64 => format!("(int64_t)((uint64_t)({lhs}) * (uint64_t)({rhs}))"),
+                    Int::I128 => format!("(__int128)((__uint128_t)({lhs}) * (__uint128_t)({rhs}))"),
+                    Int::ISize => format!("(intptr_t)((uintptr_t)({lhs}) * (uintptr_t)({rhs}))"),
+                    _ => format!("({lhs}) * ({rhs})"),
+                },
                 _ => todo!(),
             },
             BinOp::LtUn | BinOp::Lt => match tpe {
@@ -198,11 +230,32 @@ impl CExporter {
                 Type::Bool => format!("({lhs}) && ({rhs})"),
                 _ => todo!(),
             },
-            BinOp::Rem => todo!(),
-            BinOp::RemUn => todo!(),
-            BinOp::Shl => todo!(),
-            BinOp::Shr => todo!(),
-            BinOp::ShrUn => todo!(),
+            BinOp::Rem | BinOp::RemUn => match tpe {
+                Type::Ptr(type_idx) | Type::Ref(type_idx) => format!(
+                    "({tpe}*)((void*)({lhs}) % (uintptr_t)({rhs}))",
+                    tpe = c_tpe(asm[type_idx], asm)
+                ),
+                Type::FnPtr(_) => format!("({lhs}) % ({rhs})"),
+                Type::Int(_) => format!("({lhs}) % ({rhs})"),
+                Type::Float(flt) => match flt {
+                    super::Float::F16 => todo!(),
+                    super::Float::F32 => format!("(float)fmod((double)({lhs}),((double)({rhs}))"),
+                    super::Float::F64 => format!("fmod(({lhs}),({rhs}))"),
+                    super::Float::F128 => todo!(),
+                },
+                // TODO: reminder of a bool can only be false or a segfault. Is this a valid operation?
+                Type::Bool => "false".into(),
+
+                _ => todo!("can't rem {tpe:?}"),
+            },
+            BinOp::Shl => match tpe {
+                Type::Int(_) => format!("({lhs}) << ({rhs})"),
+                _ => todo!("can't shl {tpe:?}"),
+            },
+            BinOp::Shr | BinOp::ShrUn => match tpe {
+                Type::Int(_) => format!("({lhs}) >> ({rhs})"),
+                _ => todo!("can't shr {tpe:?}"),
+            },
             BinOp::DivUn | BinOp::Div => match tpe {
                 Type::Ptr(type_idx) | Type::Ref(type_idx) => format!(
                     "({tpe}*)((void*)({lhs}) / (uintptr_t)({rhs}))",
@@ -223,16 +276,16 @@ impl CExporter {
     ) -> String {
         match node {
             CILNode::Const(cst) => match cst.as_ref() {
-                Const::I8(v) => format!("(int8_t){v}"),
-                Const::I16(v) => format!("(int16_t){v}"),
-                Const::I32(v) => format!("{v}"),
-                Const::I64(v) => format!("{v}L"),
-                Const::ISize(v) => format!("(intptr_t){v}L"),
-                Const::U8(v) => format!("(uint8_t){v}"),
-                Const::U16(v) => format!("(uint16_t){v}"),
-                Const::U32(v) => format!("{v}u"),
-                Const::U64(v) => format!("{v}uL"),
-                Const::USize(v) => format!("(uintptr_t){v}uL"),
+                Const::I8(v) => format!("(int8_t)0x{v:x}"),
+                Const::I16(v) => format!("(int16_t)0x{v:x}"),
+                Const::I32(v) => format!("0x{v:x}"),
+                Const::I64(v) => format!("0x{v:x}L"),
+                Const::ISize(v) => format!("(intptr_t)0x{v:x}L"),
+                Const::U8(v) => format!("(uint8_t)0x{v:x}"),
+                Const::U16(v) => format!("(uint16_t)0x{v:x}"),
+                Const::U32(v) => format!("0x{v:x}u"),
+                Const::U64(v) => format!("0x{v:x}uL"),
+                Const::USize(v) => format!("(uintptr_t)0x{v:x}uL"),
                 Const::PlatformString(string_idx) => format!("{:?}", &asm[*string_idx]),
                 Const::Bool(val) => {
                     if *val {
@@ -260,11 +313,11 @@ impl CExporter {
             }
             CILNode::UnOp(node_idx, un_op) => match un_op {
                 super::cilnode::UnOp::Not => format!(
-                    "-({})",
+                    "~({})",
                     Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig)
                 ),
                 super::cilnode::UnOp::Neg => format!(
-                    "~({})",
+                    "-({})",
                     Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig)
                 ),
             },
@@ -300,7 +353,7 @@ impl CExporter {
                 let class = &asm[method.class()];
                 let class_name = escape_ident(&asm[class.name()]);
                 let mname = escape_ident(&asm[method.name()]);
-                let method_name = method_name(&class_name, &mname);
+                let method_name = mref_to_name(&method, asm);
                 format!("{method_name}({call_args})")
             }
             CILNode::IntCast {
@@ -315,20 +368,22 @@ impl CExporter {
                     (Int::U16, ExtendKind::ZeroExtend) => format!("(uint16_t)({input})"),
                     (Int::U16, ExtendKind::SignExtend) => todo!(),
                     (Int::U32, ExtendKind::ZeroExtend) => format!("(uint32_t)({input})"),
-                    (Int::U32, ExtendKind::SignExtend) => todo!(),
+                    (Int::U32, ExtendKind::SignExtend) => format!("(uint32_t)(int32_t)({input})"),
                     (Int::U64, ExtendKind::ZeroExtend) => format!("(uint64_t)({input})"),
                     (Int::U64, ExtendKind::SignExtend) => format!("(uint64_t)(int64_t)({input})"),
-                    (Int::U128, ExtendKind::ZeroExtend) => format!("(unsigned __int128)({input})"),
+                    (Int::U128, ExtendKind::ZeroExtend) => format!("(__uint128_t)({input})"),
                     (Int::U128, ExtendKind::SignExtend) => todo!(),
                     (Int::USize, ExtendKind::ZeroExtend) => format!("(uintptr_t)({input})"),
-                    (Int::USize, ExtendKind::SignExtend) => todo!(),
+                    (Int::USize, ExtendKind::SignExtend) => {
+                        format!("(uintptr_t)(intptr_t)({input})")
+                    }
                     (Int::I8, ExtendKind::ZeroExtend) => todo!(),
                     (Int::I8, ExtendKind::SignExtend) => format!("(int8_t)({input})"),
                     (Int::I16, ExtendKind::ZeroExtend) => todo!(),
                     (Int::I16, ExtendKind::SignExtend) => format!("(int16_t)({input})"),
                     (Int::I32, ExtendKind::ZeroExtend) => format!("(int32_t)(uint32_t)({input})"),
                     (Int::I32, ExtendKind::SignExtend) => format!("(int32_t)({input})"),
-                    (Int::I64, ExtendKind::ZeroExtend) => todo!(),
+                    (Int::I64, ExtendKind::ZeroExtend) => format!("(int64_t)(uint64_t)({input})"),
                     (Int::I64, ExtendKind::SignExtend) => format!("(int64_t)({input})"),
                     (Int::I128, ExtendKind::ZeroExtend) => todo!(),
                     (Int::I128, ExtendKind::SignExtend) => todo!(),
@@ -406,28 +461,57 @@ impl CExporter {
             CILNode::GetException => todo!(),
             CILNode::IsInst(node_idx, type_idx) => todo!(),
             CILNode::CheckedCast(node_idx, type_idx) => todo!(),
-            CILNode::CallI(_) => todo!(),
-            CILNode::LocAlloc { size } => todo!(),
+            CILNode::CallI(info) => {
+                let (fn_ptr, fn_ptr_sig, args) = info.as_ref();
+                let fn_ptr_sig = asm[*fn_ptr_sig].clone();
+                let call_args = args
+                    .iter()
+                    .map(|arg| {
+                        format!(
+                            "({})",
+                            Self::node_to_string(asm[*arg].clone(), asm, locals, inputs, sig)
+                        )
+                    })
+                    .intersperse(",".into())
+                    .collect::<String>();
+                let ret = c_tpe(*fn_ptr_sig.output(), asm);
+                let args = fn_ptr_sig
+                    .inputs()
+                    .iter()
+                    .map(|i| nonvoid_c_type(*i, asm))
+                    .intersperse(",".into())
+                    .collect::<String>();
+                let fn_ptr = Self::node_to_string(asm[*fn_ptr].clone(), asm, locals, inputs, sig);
+                format!("((*({ret}(*)({args}))({fn_ptr})))({call_args})")
+            }
+            CILNode::LocAlloc { size } => format!(
+                "alloca({})",
+                Self::node_to_string(asm[size].clone(), asm, locals, inputs, sig)
+            ),
             CILNode::LdStaticField(static_field_idx) => {
                 let field = asm[static_field_idx];
                 let class = asm[field.owner()].clone();
-                let fname = method_name(&asm[class.name()], &asm[field.name()]);
+                let fname = class_member_name(&asm[class.name()], &asm[field.name()]);
                 fname.to_string()
             }
-            CILNode::LdFtn(method) => {
-                let method = asm[method].clone();
-                let class = &asm[method.class()];
-                let class_name = escape_ident(&asm[class.name()]);
-                let mname = escape_ident(&asm[method.name()]);
-                method_name(&class_name, &mname)
-            }
-            CILNode::LdTypeToken(type_idx) => todo!(),
-            CILNode::LdLen(node_idx) => todo!(),
+            CILNode::LdFtn(method) => mref_to_name(&asm[method], asm),
+            CILNode::LdTypeToken(type_idx) => format!("{}", type_idx.as_bimap_index()),
+            //TODO: ld len is not really supported in C, and is only there due to the argc emulation.
+            CILNode::LdLen(node_idx) => format!(
+                "ld_len({arr})",
+                arr = Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig)
+            ),
             // TODO: loc alloc aligned does not respect the aligement ATM.
             CILNode::LocAllocAlgined { tpe, align } => {
                 format!("alloca(sizeof({tpe}))", tpe = c_tpe(asm[tpe], asm))
             }
-            CILNode::LdElelemRef { array, index } => todo!(),
+            //TODO: ld elem ref is not really supported in C, and is only there due to the argc emulation.
+            CILNode::LdElelemRef { array, index } => {
+                let tpe = node.typecheck(sig, locals, asm).unwrap();
+                let array = Self::node_to_string(asm[array].clone(), asm, locals, inputs, sig);
+                let index = Self::node_to_string(asm[index].clone(), asm, locals, inputs, sig);
+                format!("({array})[{index}]")
+            }
             CILNode::UnboxAny { object, tpe } => format!(
                 "({object})",
                 object = Self::node_to_string(asm[object].clone(), asm, locals, inputs, sig)
@@ -527,7 +611,7 @@ impl CExporter {
                     ),
                 }
             }
-            CILRoot::SourceFileInfo { .. } => "".into(),
+            CILRoot::SourceFileInfo { line_start, line_len, col_start, col_len, file  } => format!("#line {line_start} {file:?}", file = &asm[file]).into(),
             CILRoot::SetField(info) =>{
                 let (field,addr,value) = info.as_ref();
                 let addr = Self::node_to_string(asm[*addr].clone(), asm, locals, inputs, sig);
@@ -549,10 +633,7 @@ impl CExporter {
                     })
                     .intersperse(",".into())
                     .collect::<String>();
-                let class = &asm[method.class()];
-                let class_name = escape_ident(&asm[class.name()]);
-                let mname = escape_ident(&asm[method.name()]);
-                let method_name = method_name(&class_name, &mname);
+                let method_name = mref_to_name(&method, asm);
                 format!("{method_name}({call_args});")
             }
             CILRoot::StInd(info) => {
@@ -582,13 +663,35 @@ impl CExporter {
                 let len = Self::node_to_string(asm[*len].clone(), asm, locals, inputs, sig);
                 format!("memset(({dst}),({src}),({len}));")
             }
-            CILRoot::CallI(_) => todo!(),
+            CILRoot::CallI(info) => {
+                let (fn_ptr, fn_ptr_sig, args) = info.as_ref();
+                let fn_ptr_sig = asm[*fn_ptr_sig].clone();
+                let call_args = args
+                    .iter()
+                    .map(|arg| {
+                        format!(
+                            "({})",
+                            Self::node_to_string(asm[*arg].clone(), asm, locals, inputs, sig)
+                        )
+                    })
+                    .intersperse(",".into())
+                    .collect::<String>();
+                let ret = c_tpe(*fn_ptr_sig.output(), asm);
+                let args = fn_ptr_sig
+                    .inputs()
+                    .iter()
+                    .map(|i| nonvoid_c_type(*i, asm))
+                    .intersperse(",".into())
+                    .collect::<String>();
+                let fn_ptr = Self::node_to_string(asm[*fn_ptr].clone(), asm, locals, inputs, sig);
+                format!("((*({ret}(*)({args}))({fn_ptr})))({call_args});")
+            }
             CILRoot::ExitSpecialRegion { target, source } => format!("goto bb{target};"),
             CILRoot::ReThrow => todo!(),
             CILRoot::SetStaticField { field, val } => {
                 let field = asm[field];
                 let class = asm[field.owner()].clone();
-                let fname = method_name(&asm[class.name()], &asm[field.name()]);
+                let fname = class_member_name(&asm[class.name()], &asm[field.name()]);
                 let val = Self::node_to_string(asm[val].clone(), asm, locals, inputs, sig);
                 format!("{fname} = {val};")
             }
@@ -604,7 +707,7 @@ impl CExporter {
         let class = &asm[def.class()];
         let class_name = escape_ident(&asm[class.name()]);
         let mname = escape_ident(&asm[def.name()]);
-        let method_name = method_name(&class_name, &mname);
+        let method_name = class_member_name(&class_name, &mname);
         let output = c_tpe(def.ref_to().output(asm), asm);
         match def.resolved_implementation(asm) {
             MethodImpl::MethodBody { blocks, locals } => (),
@@ -715,11 +818,14 @@ impl CExporter {
                 "struct {{char pad[{offset}]; {field_tpe} f;}}{fname};"
             )?;
         }
+        if let Some(size) = class.explict_size() {
+            writeln!(type_defs, "char force_size[{size}];", size = size.get())?;
+        }
         writeln!(type_defs, "}} {class_name};")?;
         for (sfield_tpe, sfname, is_thread_local) in class.static_fields() {
             let fname = escape_ident(&asm[*sfname]);
             let field_tpe = c_tpe(*sfield_tpe, asm);
-            let fname = method_name(&class_name, &fname);
+            let fname = class_member_name(&class_name, &fname);
             if *is_thread_local {
                 writeln!(type_defs, "static thread_local {field_tpe} {fname};")?;
             } else {
@@ -765,7 +871,11 @@ impl CExporter {
         out.write_all(b"\n")?;
         out.write_all(&type_defs)?;
         out.write_all(&method_decls)?;
-        out.write_all(&method_defs)
+        out.write_all(&method_defs)?;
+        if !self.is_lib {
+            out.write_all(b"void main(){_cctor();entrypoint((void *)0);}")?;
+        }
+        Ok(())
     }
 }
 
