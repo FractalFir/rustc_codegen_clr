@@ -39,7 +39,7 @@ impl SideEffectInfoCache {
             }
             CILNode::CallI(_) => true, // Indidrect calls may have side effects
             CILNode::LocAllocAlgined { .. } | CILNode::LocAlloc { .. } => true, // Allocation has side effects
-            CILNode::LdStaticField(_) => false, // Loading static fields has no side effects.
+            CILNode::LdStaticField(_) | CILNode::LdStaticFieldAdress(_) => false, // Loading static fields has no side effects.
             CILNode::LdLen(arr) => self.has_side_effects(*arr, asm), // Loading a length only has side effects if the index has array.
             CILNode::LdElelemRef { array, index } => {
                 self.has_side_effects(*array, asm) || self.has_side_effects(*index, asm)

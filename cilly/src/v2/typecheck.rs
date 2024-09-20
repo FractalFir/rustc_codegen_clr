@@ -560,6 +560,7 @@ impl CILNode {
                     _ => panic!("impossible. Type not a pointer or ref, but got dereferned during typechecks. {addr_tpe:?}"),
                 }
             }
+
             CILNode::LdField { addr, field } => {
                 let field = *asm.get_field(*field);
                 let addr = asm.get_node(*addr).clone();
@@ -627,6 +628,10 @@ impl CILNode {
             CILNode::LdStaticField(sfld) => {
                 let sfld = *asm.get_static_field(*sfld);
                 Ok(sfld.tpe())
+            }
+            CILNode::LdStaticFieldAdress(sfld) => {
+                let sfld = *asm.get_static_field(*sfld);
+                Ok(asm.nptr(sfld.tpe()))
             }
             CILNode::LdFtn(mref) => {
                 let mref = asm.get_mref(*mref);

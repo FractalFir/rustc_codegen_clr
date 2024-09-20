@@ -75,6 +75,8 @@ pub enum CILNode {
     },
     /// Loads a static field at descr
     LdStaticField(StaticFieldIdx),
+    /// Loads a static field at descr
+    LdStaticFieldAdress(StaticFieldIdx),
     /// Loads a pointer to a function
     LdFtn(MethodRefIdx),
     /// Loads a "type token"
@@ -169,6 +171,7 @@ impl CILNode {
             | CILNode::LdFtn(_)
             | CILNode::LdTypeToken(_)
             | CILNode::LdStaticField(_)
+            | CILNode::LdStaticFieldAdress(_)
             | CILNode::GetException => vec![],
             CILNode::UnOp(node_idx, _)
             | CILNode::RefToPtr(node_idx)
@@ -751,6 +754,10 @@ impl CILNode {
                 let sfld = StaticFieldDesc::from_v1(sfld, asm);
                 Self::LdStaticField(asm.alloc_sfld(sfld))
             }
+            V1Node::AddressOfStaticField(sfld) => {
+                let sfld = StaticFieldDesc::from_v1(sfld, asm);
+                Self::LdStaticFieldAdress(asm.alloc_sfld(sfld))
+            }
             V1Node::LDFtn(site) => {
                 let sig = asm.alloc_sig(site.signature().clone());
                 let generics: Box<[_]> = (site.generics()).into();
@@ -817,6 +824,7 @@ impl CILNode {
             | CILNode::GetException
             | CILNode::LocAllocAlgined { .. }
             | CILNode::LdStaticField(_)
+            | CILNode::LdStaticFieldAdress(_)
             | CILNode::LdFtn(_)
             | CILNode::LdTypeToken(_) => map(self, asm),
             CILNode::BinOp(lhs, rhs, op) => {

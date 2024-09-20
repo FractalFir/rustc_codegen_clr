@@ -31,6 +31,7 @@ pub enum CILNode {
     BlackBox(Box<Self>),
     /// Loads the value of a static variable described by the descripstor.
     LDStaticField(Box<StaticFieldDescriptor>),
+
     /// Converts the signed inner value to a 32 bit floating-point number.
     ConvF32(Box<Self>),
     /// Converts the signed inner value to a 64 bit floating-point number.
@@ -501,115 +502,7 @@ impl CILNode {
             _ => todo!("Can't select type {tpe:?}"),
         }
     }
-    fn opt_children(&mut self, opt_count: &mut usize) {
-        match self {
-            Self::LdNull(_)=>(),
-            Self::UnboxAny(val,_tpe )=>val.opt(opt_count),
-            Self::CheckedCast(inner)=>inner.0.opt(opt_count),
-            Self::Volatile(inner)=>inner.opt(opt_count),
-            Self::IsInst(inner)=>inner.0.opt(opt_count),
-            Self::GetException=>(),
-            Self::LocAlloc{size}=>size.opt(opt_count),
-            Self::LocAllocAligned { .. }=>(),
-            Self::LdFalse | Self::LdTrue=>(),
-            Self::CastPtr { val, new_ptr: _ }=>val.opt(opt_count),
-            Self::LDLoc(_)| Self::LDArg(_) | Self::LDLocA(_) | Self::LDArgA(_)=> (),
-            Self::BlackBox(inner)
-            | Self::ConvF32(inner)
-            | Self::ConvF64(inner)
-            | Self::ConvF64Un(inner) => inner.opt(opt_count),
-            Self::SizeOf(_) => (),
-            Self::LDIndI8 { ptr }
-            | Self::LDIndBool { ptr }
-            | Self::LDIndI16 { ptr }
-            | Self::LDIndI32 { ptr }
-            | Self::LDIndI64 { ptr }
-            | Self::LDIndU8 { ptr }
-            | Self::LDIndU16 { ptr }
-            | Self::LDIndU32 { ptr }
-            | Self::LDIndU64 { ptr }
-            | Self::LDIndPtr{ ptr, .. }
-            | Self::LDIndISize { ptr }
-            | Self::LDIndUSize { ptr }
-            | Self::LdObj { ptr, .. }
-            | Self::LDIndF32 { ptr }
-            | Self::LDIndF64 { ptr } => ptr.opt(opt_count),
-            Self::LDFieldAdress { addr, field: _ } | Self::LDField { addr, field: _ } => addr.opt(opt_count),
-            Self::Add(a, b)
-            | Self::And(a, b)
-            | Self::Sub(a, b)
-            | Self::Mul(a, b)
-            | Self::Div(a, b)
-            | Self::DivUn(a, b)
-            | Self::Rem(a, b)
-            | Self::RemUn(a, b)
-            | Self::Or(a, b)
-            | Self::XOr(a, b)
-            | Self::Shr(a, b)
-            | Self::Shl(a, b)
-            | Self::ShrUn(a, b)
-            | Self::Eq(a, b)
-            | Self::Lt(a, b)
-            | Self::LtUn(a, b)
-            | Self::Gt(a, b)
-            | Self::GtUn(a, b) => {
-                a.opt(opt_count);
-                b.opt(opt_count);
-            }
-            Self::Call (call_op_args) | Self::NewObj(call_op_args) | Self::CallVirt(call_op_args)=> call_op_args.args.iter_mut().for_each(|arg|arg.opt(opt_count)),
-            Self::LdcI64(_)
-            | Self::LdcU64(_)
-            | Self::LdcI32(_)
-            | Self::LdcI8(_)
-            | Self::LdcU8(_)
-            | Self::LdcI16(_)
-            | Self::LdcU32(_)
-            | Self::LdcU16(_)
-            | Self::LdcF64(_)
-            | Self::LdcF32(_)
-            | Self::LoadGlobalAllocPtr { .. }
-            | Self::PointerToConstValue(_)=> (),
-            Self::ConvU8(inner)
-            | Self::ConvU16(inner)
-            | Self::ConvU32(inner)
-            | Self::ZeroExtendToU64(inner)
-            | Self::ZeroExtendToUSize(inner)
-            | Self::ZeroExtendToISize(inner)
-            | Self::MRefToRawPtr(inner)
-            | Self::ConvI8(inner)
-            | Self::ConvI16(inner)
-            | Self::ConvI32(inner)
-            | Self::SignExtendToI64(inner)
-            | Self::SignExtendToU64(inner)
-            | Self::SignExtendToISize(inner)
-            | Self::SignExtendToUSize(inner)
-            //| Self::Volatile(inner)
-            | Self::Neg(inner)
-            | Self::Not(inner) => inner.opt(opt_count),
-            Self::TemporaryLocal(_inner) => (),
-            Self::SubTrees(sub_trees) => {
-                let (a,b) = sub_trees.as_mut();
-                a.iter_mut().for_each(|root|root.opt(opt_count));
-                b.opt(opt_count);
-            }
-            Self::LoadAddresOfTMPLocal => (),
-            Self::LoadTMPLocal => (),
-            Self::LDFtn(_) => (),
-            Self::LDTypeToken(_) => (),
-            Self::LdStr(_) => (),
-            Self::CallI (ptr_sig_arg ) => {
-                ptr_sig_arg.2.iter_mut().for_each(|arg|arg.opt(opt_count));
-                ptr_sig_arg.1.opt(opt_count);
-            }
-            Self::LDStaticField(_static_field) => (),
-            Self::AddressOfStaticField(_static_field) => (),
-            Self::LDLen { arr } => arr.opt(opt_count),
-            Self::LDElelemRef { arr, idx } =>{
-                idx.opt(opt_count);
-                arr.opt(opt_count);
-            },
-        }
-    }
+
     /// Checks if this node may have side effects. `false` means that the node can't have side effects, `true` means that the node *may* have side effects, but it does not have to.
     pub fn has_side_effects(&self) -> bool {
         let contains_calls = self.into_iter().call_sites().next().is_some();
@@ -625,43 +518,7 @@ impl CILNode {
             )
         })
     }
-    // This fucntion will get expanded, so a single match is a non-issue.
-    #[allow(clippy::single_match)]
-    // This clippy lint is wrong
-    #[allow(clippy::assigning_clones)]
-    /// Optimizes this `CILNode`.
-    pub fn opt(&mut self, opt_count: &mut usize) {
-        self.opt_children(opt_count);
-        match self {
-            Self::LDField { addr: fld_addr, .. } => match fld_addr.as_mut() {
-                Self::MRefToRawPtr(addr) => match addr.as_mut() {
-                    Self::LDLocA(_) | Self::LDFieldAdress { .. } => {
-                        *fld_addr = addr.clone();
-                        *opt_count += 1;
-                    }
-                    _ => (),
-                },
-                _ => (),
-            },
-            Self::LDFieldAdress {
-                addr: fld_addr,
-                field,
-            } => match fld_addr.as_mut() {
-                Self::MRefToRawPtr(addr) => match addr.as_mut() {
-                    Self::LDLocA(_) | Self::LDFieldAdress { .. } => {
-                        *self = Self::MRefToRawPtr(Box::new(Self::LDFieldAdress {
-                            addr: addr.clone(),
-                            field: field.clone(),
-                        }));
-                        *opt_count += 1;
-                    }
-                    _ => (),
-                },
-                _ => (),
-            },
-            _ => (),
-        }
-    }
+
     pub fn transmute_on_stack(self, src: Type, target: Type, asm: &mut Assembly) -> Self {
         let tmp_loc = Self::TemporaryLocal(Box::new((
             src,
@@ -697,6 +554,7 @@ impl CILNode {
         locals: &mut Vec<(Option<IString>, Type)>,
     ) {
         match self {
+            Self::AddressOfStaticField(_)=>(),
             Self::LdNull(_tpe)=>(),
             Self::UnboxAny(val,_tpe )=>val.allocate_tmps(curr_loc, locals),
             Self::Volatile(inner)=>inner.allocate_tmps(curr_loc, locals),

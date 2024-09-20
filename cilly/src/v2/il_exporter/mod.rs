@@ -4,6 +4,7 @@ use std::{io::Write, path::Path};
 
 use super::{
     asm::{IlasmFlavour, ILASM_FLAVOUR, ILASM_PATH},
+    cilnode::{ExtendKind, UnOp},
     cilroot::BranchCond,
     int,
     method::LocalDef,
@@ -244,7 +245,7 @@ impl ILExporter {
     ) -> std::io::Result<()> {
         let node = asm.get_node(node).clone();
         match node {
-            super::CILNode::Const(cst) => match cst.as_ref() {
+            CILNode::Const(cst) => match cst.as_ref() {
                 super::Const::Null(_) => writeln!(out, "ldnull"),
                 super::Const::I8(val) => match val {
                     -1 => writeln!(out, "ldc.i4.m1"),
@@ -343,16 +344,16 @@ impl ILExporter {
                     )
                 }
             },
-            super::CILNode::BinOp(lhs, rhs, op) => {
+            CILNode::BinOp(lhs, rhs, op) => {
                 self.export_node(asm, out, lhs, sig, locals)?;
                 self.export_node(asm, out, rhs, sig, locals)?;
-                let tpe = node.typecheck(sig, locals, asm).unwrap();
+                let tpe = Type::Int(Int::I32); //node.typecheck(sig, locals, asm).unwrap();
                 match op {
-                    BinOp::Add => match tpe{
-                        Type::Int(Int::I128)=>writeln!(out, "call valuetype [System.Runtime]System.Int128 [System.Runtime]System.Int128::op_Addition(valuetype [System.Runtime]System.Int128, valuetype [System.Runtime]System.Int128)"),
-                        Type::Int(Int::U128)=>writeln!(out, "call valuetype [System.Runtime]System.UInt128 [System.Runtime]System.UInt128::op_Addition(valuetype [System.Runtime]System.UInt128, valuetype [System.Runtime]System.UInt128)"),
-                        Type::ClassRef(_)=>panic!("Adding class refs is not valid. tpe:{}",tpe.mangle(asm)),
-                        _=>writeln!(out, "add"),
+                    BinOp::Add => match tpe {
+                        //Type::Int(Int::I128)=>writeln!(out, "call valuetype [System.Runtime]System.Int128 [System.Runtime]System.Int128::op_Addition(valuetype [System.Runtime]System.Int128, valuetype [System.Runtime]System.Int128)"),
+                        //Type::Int(Int::U128)=>writeln!(out, "call valuetype [System.Runtime]System.UInt128 [System.Runtime]System.UInt128::op_Addition(valuetype [System.Runtime]System.UInt128, valuetype [System.Runtime]System.UInt128)"),
+                        //Type::ClassRef(_)=>panic!("Adding class refs is not valid. tpe:{}",tpe.mangle(asm)),
+                        _ => writeln!(out, "add"),
                     },
                     BinOp::Eq => writeln!(out, "ceq"),
                     BinOp::Sub => writeln!(out, "sub"),
@@ -373,32 +374,32 @@ impl ILExporter {
                     BinOp::Div => writeln!(out, "div"),
                 }
             }
-            super::CILNode::UnOp(arg, un) => {
+            CILNode::UnOp(arg, un) => {
                 self.export_node(asm, out, arg, sig, locals)?;
                 match un {
-                    super::cilnode::UnOp::Not => writeln!(out, "not"),
-                    super::cilnode::UnOp::Neg => writeln!(out, "neg"),
+                    UnOp::Not => writeln!(out, "not"),
+                    UnOp::Neg => writeln!(out, "neg"),
                 }
             }
-            super::CILNode::LdLoc(loc) => match loc {
+            CILNode::LdLoc(loc) => match loc {
                 0..=3 => writeln!(out, "ldloc.{loc}"),
                 4..=255 => writeln!(out, "ldloc.s {loc}"),
                 _ => writeln!(out, "ldloc {loc}"),
             },
-            super::CILNode::LdLocA(arg) => match arg {
+            CILNode::LdLocA(arg) => match arg {
                 0..=255 => writeln!(out, "ldloca.s {arg}"),
                 _ => writeln!(out, "ldloca {arg}"),
             },
-            super::CILNode::LdArg(arg) => match arg {
+            CILNode::LdArg(arg) => match arg {
                 0..=3 => writeln!(out, "ldarg.{arg}"),
                 4..=255 => writeln!(out, "ldarg.s {arg}"),
                 _ => writeln!(out, "ldarg {arg}"),
             },
-            super::CILNode::LdArgA(arg) => match arg {
+            CILNode::LdArgA(arg) => match arg {
                 0..=255 => writeln!(out, "ldarga.s {arg}"),
                 _ => writeln!(out, "ldarga {arg}"),
             },
-            super::CILNode::Call(call) => {
+            CILNode::Call(call) => {
                 for arg in &call.1 {
                     self.export_node(asm, out, *arg, sig, locals)?;
                 }
@@ -434,57 +435,51 @@ impl ILExporter {
                 let class = class_ref(mref.class(), asm);
                 writeln!(out, "{call_op} {output} {class}::'{name}'({inputs})")
             }
-            super::CILNode::IntCast {
+            CILNode::IntCast {
                 input,
                 target,
                 extend,
             } => {
                 self.export_node(asm, out, input, sig, locals)?;
                 match (target, extend) {
-                    (super::Int::U8 | super::Int::I8, super::cilnode::ExtendKind::ZeroExtend) => {
+                    (super::Int::U8 | super::Int::I8, ExtendKind::ZeroExtend) => {
                         writeln!(out, "conv.u1")
                     }
-                    (super::Int::U8 | super::Int::I8, super::cilnode::ExtendKind::SignExtend) => {
+                    (super::Int::U8 | super::Int::I8, ExtendKind::SignExtend) => {
                         writeln!(out, "conv.i1")
                     }
-                    (super::Int::U16 | super::Int::I16, super::cilnode::ExtendKind::ZeroExtend) => {
+                    (super::Int::U16 | super::Int::I16, ExtendKind::ZeroExtend) => {
                         writeln!(out, "conv.u2")
                     }
-                    (super::Int::U16 | super::Int::I16, super::cilnode::ExtendKind::SignExtend) => {
+                    (super::Int::U16 | super::Int::I16, ExtendKind::SignExtend) => {
                         writeln!(out, "conv.i2")
                     }
-                    (super::Int::U32 | super::Int::I32, super::cilnode::ExtendKind::ZeroExtend) => {
+                    (super::Int::U32 | super::Int::I32, ExtendKind::ZeroExtend) => {
                         writeln!(out, "conv.u4")
                     }
-                    (super::Int::U32 | super::Int::I32, super::cilnode::ExtendKind::SignExtend) => {
+                    (super::Int::U32 | super::Int::I32, ExtendKind::SignExtend) => {
                         writeln!(out, "conv.i4")
                     }
 
-                    (super::Int::U64 | super::Int::I64, super::cilnode::ExtendKind::ZeroExtend) => {
+                    (super::Int::U64 | super::Int::I64, ExtendKind::ZeroExtend) => {
                         writeln!(out, "conv.u8")
                     }
-                    (super::Int::U64 | super::Int::I64, super::cilnode::ExtendKind::SignExtend) => {
+                    (super::Int::U64 | super::Int::I64, ExtendKind::SignExtend) => {
                         writeln!(out, "conv.i8")
                     }
-                    (
-                        super::Int::USize | super::Int::ISize,
-                        super::cilnode::ExtendKind::SignExtend,
-                    ) => {
+                    (super::Int::USize | super::Int::ISize, ExtendKind::SignExtend) => {
                         writeln!(out, "conv.i")
                     }
-                    (
-                        super::Int::USize | super::Int::ISize,
-                        super::cilnode::ExtendKind::ZeroExtend,
-                    ) => {
+                    (super::Int::USize | super::Int::ISize, ExtendKind::ZeroExtend) => {
                         writeln!(out, "conv.u")
                     }
-                    (super::Int::U128, super::cilnode::ExtendKind::ZeroExtend) => todo!(),
-                    (super::Int::U128, super::cilnode::ExtendKind::SignExtend) => todo!(),
-                    (super::Int::I128, super::cilnode::ExtendKind::ZeroExtend) => todo!(),
-                    (super::Int::I128, super::cilnode::ExtendKind::SignExtend) => todo!(),
+                    (super::Int::U128, ExtendKind::ZeroExtend) => todo!(),
+                    (super::Int::U128, ExtendKind::SignExtend) => todo!(),
+                    (super::Int::I128, ExtendKind::ZeroExtend) => todo!(),
+                    (super::Int::I128, ExtendKind::SignExtend) => todo!(),
                 }
             }
-            super::CILNode::FloatCast {
+            CILNode::FloatCast {
                 input,
                 target,
                 is_signed,
@@ -501,12 +496,12 @@ impl ILExporter {
                     (super::Float::F128, false) => todo!(),
                 }
             }
-            super::CILNode::RefToPtr(inner) => {
+            CILNode::RefToPtr(inner) => {
                 self.export_node(asm, out, inner, sig, locals)?;
                 writeln!(out, "conv.u//rtp")
             }
-            super::CILNode::PtrCast(val, _) => self.export_node(asm, out, val, sig, locals),
-            super::CILNode::LdFieldAdress { addr, field } => {
+            CILNode::PtrCast(val, _) => self.export_node(asm, out, val, sig, locals),
+            CILNode::LdFieldAdress { addr, field } => {
                 self.export_node(asm, out, addr, sig, locals)?;
                 let fld = asm.get_field(field);
                 let owner = class_ref(fld.owner(), asm);
@@ -514,7 +509,7 @@ impl ILExporter {
                 let tpe = type_il(&fld.tpe(), asm);
                 writeln!(out, "ldflda {tpe} {owner}::'{name}'")
             }
-            super::CILNode::LdField { addr, field } => {
+            CILNode::LdField { addr, field } => {
                 self.export_node(asm, out, addr, sig, locals)?;
                 let fld = asm.get_field(field);
                 let owner = class_ref(fld.owner(), asm);
@@ -522,7 +517,7 @@ impl ILExporter {
                 let tpe = type_il(&fld.tpe(), asm);
                 writeln!(out, "ldfld {tpe} {owner}::'{name}'")
             }
-            super::CILNode::LdInd {
+            CILNode::LdInd {
                 addr,
                 tpe,
                 volitale,
@@ -615,19 +610,19 @@ impl ILExporter {
                     (Type::FnPtr(_), false) => writeln!(out, "ldind.i"),
                 }
             }
-            super::CILNode::SizeOf(tpe) => {
+            CILNode::SizeOf(tpe) => {
                 writeln!(out, "sizeof {}", type_il(&asm[tpe], asm))
             }
-            super::CILNode::GetException => Ok(()),
-            super::CILNode::IsInst(val, tpe) => {
+            CILNode::GetException => Ok(()),
+            CILNode::IsInst(val, tpe) => {
                 self.export_node(asm, out, val, sig, locals)?;
                 writeln!(out, "isinst {tpe}", tpe = type_il(&asm[tpe], asm))
             }
-            super::CILNode::CheckedCast(val, tpe) => {
+            CILNode::CheckedCast(val, tpe) => {
                 self.export_node(asm, out, val, sig, locals)?;
                 writeln!(out, "castclass {tpe}", tpe = type_il(&asm[tpe], asm))
             }
-            super::CILNode::CallI(calli) => {
+            CILNode::CallI(calli) => {
                 let (fn_ptr, fn_sig, args) = calli.as_ref();
                 for arg in args {
                     self.export_node(asm, out, *arg, sig, locals)?;
@@ -643,18 +638,25 @@ impl ILExporter {
                     .collect();
                 writeln!(out, "calli {output} ({inputs})")
             }
-            super::CILNode::LocAlloc { size } => {
+            CILNode::LocAlloc { size } => {
                 self.export_node(asm, out, size, sig, locals)?;
                 writeln!(out, "localloc")
             }
-            super::CILNode::LdStaticField(sfld) => {
+            CILNode::LdStaticField(sfld) => {
                 let sfld = asm.get_static_field(sfld);
                 let owner = class_ref(sfld.owner(), asm);
                 let name = asm.get_string(sfld.name());
                 let tpe = type_il(&sfld.tpe(), asm);
                 writeln!(out, "ldsfld {tpe} {owner}::{name}")
             }
-            super::CILNode::LdFtn(ftn) => {
+            CILNode::LdStaticFieldAdress(sfld) => {
+                let sfld = asm.get_static_field(sfld);
+                let owner = class_ref(sfld.owner(), asm);
+                let name = asm.get_string(sfld.name());
+                let tpe = type_il(&sfld.tpe(), asm);
+                writeln!(out, "ldsflda {tpe} {owner}::{name}")
+            }
+            CILNode::LdFtn(ftn) => {
                 let mref = asm.get_mref(ftn);
                 let sig = asm.get_sig(mref.sig());
                 let output = type_il(sig.output(), asm);
@@ -682,22 +684,22 @@ impl ILExporter {
                     "{ldftn_op} {output} {class}::'{name}'({inputs}) //{ftn:?}"
                 )
             }
-            super::CILNode::LdTypeToken(tok) => {
+            CILNode::LdTypeToken(tok) => {
                 writeln!(out, "ldtoken {tok}", tok = type_il(asm.get_type(tok), asm))
             }
-            super::CILNode::LdLen(array) => {
+            CILNode::LdLen(array) => {
                 self.export_node(asm, out, array, sig, locals)?;
                 writeln!(out, "ldlen")
             }
-            super::CILNode::LocAllocAlgined { tpe, align } => {
+            CILNode::LocAllocAlgined { tpe, align } => {
                 writeln!(out, "sizeof {tpe} ldc.i8 {align} conv.i add localloc dup ldc.i8 {align} add ldc.i8 {align} rem sub ldc.i8 {align} add conv.u", tpe = type_il(&asm[tpe], asm))
             }
-            super::CILNode::LdElelemRef { array, index } => {
+            CILNode::LdElelemRef { array, index } => {
                 self.export_node(asm, out, array, sig, locals)?;
                 self.export_node(asm, out, index, sig, locals)?;
                 writeln!(out, "ldelem.ref")
             }
-            super::CILNode::UnboxAny { object, tpe } => {
+            CILNode::UnboxAny { object, tpe } => {
                 self.export_node(asm, out, object, sig, locals)?;
                 writeln!(out, "unbox.any {object}", object = type_il(&asm[tpe], asm))
             }

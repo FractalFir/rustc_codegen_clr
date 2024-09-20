@@ -353,6 +353,7 @@ fn layout_round_up_to_align_edge_cases() {
         test!(Layout::from_size_align(low, align).is_ok());
         test!(Layout::from_size_align(high, align).is_err());
         for size in low..=high {
+            unsafe { printf(c"size:%d align:%d\n".as_ptr(), size, align) };
             test_eq!(
                 Layout::from_size_align(size, align).is_ok(),
                 size.next_multiple_of(align) <= MAX_SIZE

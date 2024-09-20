@@ -257,6 +257,11 @@ impl Assembly {
                 let sfld = self.alloc_sfld(sfld);
                 CILNode::LdStaticField(sfld)
             }
+            CILNode::LdStaticFieldAdress(sfld) => {
+                let sfld = self.translate_static_field(source, *source.get_static_field(*sfld));
+                let sfld = self.alloc_sfld(sfld);
+                CILNode::LdStaticFieldAdress(sfld)
+            }
             CILNode::LdFtn(mref) => {
                 let method_ref = self.translate_method_ref(source, &source.get_mref(*mref).clone());
                 let mref = self.alloc_methodref(method_ref);

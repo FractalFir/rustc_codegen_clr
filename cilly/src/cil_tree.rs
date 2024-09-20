@@ -44,10 +44,7 @@ impl CILTree {
         &self.tree
     }
     /// Optimizes this tree
-    pub fn opt(&mut self, opt_count: &mut usize) {
-        // self.tree.borrow_mut().opt(opt_count);
-        self.tree.opt(opt_count);
-    }
+    pub fn opt(&mut self, opt_count: &mut usize) {}
     /// Allocates the temporary variables this tree uses.
     pub fn allocate_tmps(&mut self, locals: &mut Vec<(Option<IString>, Type)>) {
         // self.tree.borrow_mut().allocate_tmps(None, locals);

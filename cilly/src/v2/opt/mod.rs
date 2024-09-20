@@ -172,6 +172,7 @@ impl CILNode {
             | CILNode::SizeOf(_)
             | CILNode::LocAlloc { .. }
             | CILNode::LdStaticField(_)
+            | CILNode::LdStaticFieldAdress(_)
             | CILNode::LdFtn(_)
             | CILNode::LdTypeToken(_)
             | CILNode::LocAllocAlgined { .. }

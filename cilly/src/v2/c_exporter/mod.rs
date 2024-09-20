@@ -21,7 +21,10 @@ use super::{
 };
 
 fn escape_ident(ident: &str) -> String {
-    let escaped = ident.replace('.', "_");
+    let mut escaped = ident.replace('.', "_");
+    if escaped.chars().next().unwrap().is_numeric() {
+        escaped = format!("p{escaped}");
+    }
     // Check if reserved.
     match escaped.as_str() {
         "int" => encode(hash64(&escaped)),
@@ -200,7 +203,7 @@ impl CExporter {
                     format!("(void*)({lhs}) > (void*)({rhs})",)
                 }
                 Type::FnPtr(_) => format!("({lhs}) > ({rhs})"),
-                Type::Bool | Type::Float(_) | Type::Int(_) => format!("({lhs}) < ({rhs})"),
+                Type::Bool | Type::Float(_) | Type::Int(_) => format!("({lhs}) > ({rhs})"),
                 _ => todo!(),
             },
             BinOp::Or => match tpe {
@@ -294,8 +297,20 @@ impl CExporter {
                         "false".into()
                     }
                 }
-                Const::F32(hashable_f32) => format!("{:?}f", hashable_f32.0),
-                Const::F64(hashable_f64) => format!("{:?}", hashable_f64.0),
+                Const::F32(hashable_f32) => {
+                    if !hashable_f32.0.is_nan() {
+                        format!("{:?}f", hashable_f32.0)
+                    } else {
+                        "NAN".into()
+                    }
+                }
+                Const::F64(hashable_f64) => {
+                    if !hashable_f64.0.is_nan() {
+                        format!("{:?}", hashable_f64.0)
+                    } else {
+                        "NAN".into()
+                    }
+                }
                 Const::Null(class_ref_idx) => todo!(),
             },
             CILNode::BinOp(lhs, rhs, bin_op) => {
@@ -494,6 +509,12 @@ impl CExporter {
                 let fname = class_member_name(&asm[class.name()], &asm[field.name()]);
                 fname.to_string()
             }
+            CILNode::LdStaticFieldAdress(static_field_idx) => {
+                let field = asm[static_field_idx];
+                let class = asm[field.owner()].clone();
+                let fname = class_member_name(&asm[class.name()], &asm[field.name()]);
+                format!("&{}", fname)
+            }
             CILNode::LdFtn(method) => mref_to_name(&asm[method], asm),
             CILNode::LdTypeToken(type_idx) => format!("{}", type_idx.as_bimap_index()),
             //TODO: ld len is not really supported in C, and is only there due to the argc emulation.
@@ -564,7 +585,10 @@ impl CExporter {
             CILRoot::Break => "".into(),
             CILRoot::Nop => todo!(),
             CILRoot::Branch(binfo) => {
-                let (target, _, cond) = binfo.as_ref();
+                let (target, sub_target, cond) = binfo.as_ref();
+                let target = if *sub_target != 0{
+                    sub_target
+                }else {target};
                 let Some(cond) = cond else {
                     return format!("goto bb{target};");
                 };
@@ -661,7 +685,7 @@ impl CExporter {
                 let dst = Self::node_to_string(asm[*dst].clone(), asm, locals, inputs, sig);
                 let src = Self::node_to_string(asm[*src].clone(), asm, locals, inputs, sig);
                 let len = Self::node_to_string(asm[*len].clone(), asm, locals, inputs, sig);
-                format!("memset(({dst}),({src}),({len}));")
+                format!("memcpy(({dst}),({src}),({len}));")
             }
             CILRoot::CallI(info) => {
                 let (fn_ptr, fn_ptr_sig, args) = info.as_ref();
@@ -900,6 +924,9 @@ impl Exporter for CExporter {
         .arg("-Ofast")
         // .arg("-FOLD") saves up on space, consider enabling.
         ;
+        if self.is_lib {
+            cmd.arg("-c");
+        }
         let out = cmd.output().unwrap();
         let stdout = String::from_utf8_lossy(&out.stdout);
         let stderr = String::from_utf8_lossy(&out.stderr);

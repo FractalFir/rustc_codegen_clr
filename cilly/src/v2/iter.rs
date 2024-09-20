@@ -203,6 +203,7 @@ impl<'asm> Iterator for CILIter<'asm> {
                     | CILNode::LdLocA(_)
                     | CILNode::SizeOf(_)
                     | CILNode::LdStaticField(_)
+                    | CILNode::LdStaticFieldAdress(_)
                     | CILNode::LdFtn(_)
                     | CILNode::LdTypeToken(_)
                     | CILNode::LocAllocAlgined { .. }
@@ -497,6 +498,12 @@ impl<'this, T: Iterator<Item = CILIterElem> + 'this> TpeIter<'this> for T {
                     }
                     CILNode::CallI(info) => Some(Box::new(asm.get_sig(info.1).iter_types())),
                     CILNode::LdStaticField(sfld) => {
+                        let field = asm.get_static_field(sfld);
+                        let class = Type::ClassRef(field.owner());
+                        let tpe = field.tpe();
+                        Some(Box::new([class, tpe].into_iter()))
+                    }
+                    CILNode::LdStaticFieldAdress(sfld) => {
                         let field = asm.get_static_field(sfld);
                         let class = Type::ClassRef(field.owner());
                         let tpe = field.tpe();
