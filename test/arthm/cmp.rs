@@ -26,9 +26,9 @@ pub fn min<T: Ord>(a: T, b: T) -> T {
     //min_by(a,b,|a,b|a.cmp(b))
 }
 pub fn min_by<T, F: FnOnce(&T, &T) -> Ordering>(v1: T, v2: T, compare: F) -> T {
-    unsafe { printf("Preparing to call the closure!\n\0".as_ptr() as *const i8) };
+    unsafe { printf("Preparing to call the closure!\n\0".as_ptr() as *const core::ffi::c_char) };
     let res = compare(&v1, &v2);
-    unsafe { printf("Called the closure!\n\0".as_ptr() as *const i8) };
+    unsafe { printf("Called the closure!\n\0".as_ptr() as *const core::ffi::c_char) };
     match res {
         Ordering::Less | Ordering::Equal => v1,
         Ordering::Greater => v2,

@@ -3,7 +3,7 @@ use core::intrinsics::sqrtf32;
 use core::panic::PanicInfo;
 #[allow(dead_code)]
 extern "C" {
-    fn puts(msg: *const u8);
+    fn puts(msg: *const core::ffi::c_char);
     fn malloc(size: usize) -> *mut core::ffi::c_void;
     fn free(ptr: *mut core::ffi::c_void);
     fn realloc(ptr: *mut core::ffi::c_void, size: usize) -> *mut core::ffi::c_void;
@@ -20,7 +20,7 @@ fn panic(_panic: &PanicInfo<'_>) -> ! {
     core::intrinsics::abort();
 }
 #[start]
-fn start(_argc: isize, _argv: *const *const u8) -> isize {
+fn start(_argc: isize, _argv: *const *const core::ffi::c_char) -> isize {
     main();
     // 'All OK!' message
     let msg = 0x00_21_4B_4F_20_6C_6C_41_i64;
@@ -243,13 +243,13 @@ impl Put for f32 {}
 impl Put for f64 {}
 fn println(msg: &str) {
     unsafe {
-        let tmp = malloc(msg.len() + 1) as *mut u8;
-        let tmp_slice: &mut [u8] = core::slice::from_raw_parts_mut(tmp, msg.len() + 1);
+        let tmp = malloc(msg.len() + 1) as *mut core::ffi::c_char;
+        let tmp_slice: &mut [core::ffi::c_char] = core::slice::from_raw_parts_mut(tmp, msg.len() + 1);
         tmp_slice[..msg.len()].clone_from_slice(msg.as_bytes());
         tmp_slice[msg.len()] = b'\0';
         printf(
-            "%s\n\0".as_ptr() as *const i8,
-            tmp_slice.as_ptr() as *const i8,
+            "%s\n\0".as_ptr() as *const core::ffi::c_char,
+            tmp_slice.as_ptr() as *const core::ffi::c_char,
         );
         free(tmp as *mut core::ffi::c_void);
     }

@@ -25,7 +25,7 @@ static ARGC: AtomicIsize = AtomicIsize::new(0);
 static ARGV: AtomicPtr<*const u8> = AtomicPtr::new(ptr::null_mut());
 extern "C" {
     fn fork() -> i32;
-    static mut environ: *mut *mut i8;
+    static mut environ: *mut *mut core::ffi::c_char;
 }
 unsafe fn really_init(argc: isize, argv: *const *const u8) {
     // These don't need to be ordered with each other or other stores,
@@ -62,7 +62,7 @@ static ARGV_INIT_ARRAY: extern "C" fn(core::ffi::c_int, *const *const u8, *const
 };
 
 #[no_mangle]
-fn load_environ() -> *mut *mut i8 {
+fn load_environ() -> *mut *mut core::ffi::c_char {
     unsafe { environ }
 }
 fn main() {
@@ -76,7 +76,7 @@ fn main() {
             let fresh0 = i;
             i = i + 1;
             printf(
-                b"%s\n\0" as *const u8 as *const i8,
+                b"%s\n\0" as *const u8 as *const core::ffi::c_char,
                 *environ.offset(fresh0 as isize),
             );
         }

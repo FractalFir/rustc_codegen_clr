@@ -28,7 +28,7 @@ impl TestTrait for TestObject {
         unsafe {
             printf(
                 "TestObject is a funny thing. It has the following fields: %d %d %d \n\0".as_ptr()
-                    as *const i8,
+                    as *const core::ffi::c_char,
                 self.0,
                 self.1,
                 self.2,
@@ -50,10 +50,10 @@ pub fn test(fun: Option<&dyn TestTrait>) {
             test_ne!(ptrs.0, core::ptr::null_mut());
             test_ne!(ptrs.1, core::ptr::null_mut());
             let vtable = unsafe { *ptrs.1 };
-            unsafe { printf("Obj size:%p \n\0".as_ptr() as *const i8, vtable.size) };
+            unsafe { printf("Obj size:%p \n\0".as_ptr() as *const core::ffi::c_char, vtable.size) };
             unsafe {
                 printf(
-                    "Obj alignment:%p \n\0".as_ptr() as *const i8,
+                    "Obj alignment:%p \n\0".as_ptr() as *const core::ffi::c_char,
                     vtable.alignment,
                 )
             };
