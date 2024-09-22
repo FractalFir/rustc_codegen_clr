@@ -5,10 +5,11 @@ use cilly::{
     cil_node::CILNode,
     cil_root::CILRoot,
     conv_i16, conv_i32, conv_i8, conv_isize, conv_u16, conv_u32, conv_u64, conv_u8, conv_usize,
-    div, ldc_i32, ldc_u32, ldc_u64, rem_un, size_of, sub,
+    ldc_i32, ldc_u32, ldc_u64, or, rem_un, size_of, sub, shr_un, shl,
     v2::{ClassRef, FnSig, Int},
     Type,
 };
+use cilly::cil_node::CallOpArgs;
 use rustc_middle::{
     mir::{Operand, Place},
     ty::Instance,
@@ -817,12 +818,61 @@ pub fn bitreverse_u8(byte: CILNode) -> CILNode {
     ))
 }
 fn bitreverse_u16(ushort: CILNode) -> CILNode {
-    conv_u16!(bitreverse_u8(conv_u8!(ushort.clone()))) * conv_u16!(ldc_u32!(256))
-        + conv_u16!(bitreverse_u8(conv_u8!(div!(
-            ushort,
-            conv_u16!(ldc_u32!(256))
-        ))))
+    let lower = bitreverse_u8(conv_u8!(ushort.clone()));
+    let upper = bitreverse_u8(conv_u8!(shr_un!(ushort, ldc_u32!(8))));
+    or!(shl!(conv_u16!(lower), ldc_u32!(8)), conv_u16!(upper))
 }
+fn bitreverse_u32(uint: CILNode) -> CILNode {
+    let lower = bitreverse_u16(conv_u16!(uint.clone()));
+    let upper = bitreverse_u16(conv_u16!(shr_un!(uint, ldc_u32!(16))));
+    or!(shl!(conv_u32!(lower), ldc_u32!(16)), conv_u32!(upper))
+}
+fn bitreverse_u64(ulong: CILNode) -> CILNode {
+    let lower = bitreverse_u32(conv_u32!(ulong.clone()));
+    let upper = bitreverse_u32(conv_u32!(shr_un!(ulong, ldc_u32!(32))));
+    or!(shl!(conv_u64!(lower), ldc_u32!(32)), conv_u64!(upper))
+}
+
+fn bitreverse_u128<'tcx>(ullong: CILNode, ctx: &mut MethodCompileCtx<'tcx, '_>) -> CILNode {
+    let lower = crate::casts::int_to_int(
+        Type::Int(Int::U128),
+        Type::Int(Int::U64),
+        ullong.clone(),
+        ctx.asm_mut(),
+    );
+    let shifted = call!(
+        CallSite::new_extern(
+            ClassRef::uint_128(ctx.asm_mut()),
+            "op_UnsignedRightShift".into(),
+            FnSig::new(
+                [Type::Int(Int::U128), Type::Int(Int::I32)].into(),
+                Type::Int(Int::U128)
+            ),
+            true
+        ),
+        [ullong, ldc_i32!(64)]
+    );
+    let upper = crate::casts::int_to_int(
+        Type::Int(Int::U128),
+        Type::Int(Int::U64),
+        shifted,
+        ctx.asm_mut(),
+    );
+
+    CILNode::NewObj(Box::new(CallOpArgs {
+        site: CallSite::boxed(
+            Some(ClassRef::uint_128(ctx.asm_mut())),
+            ".ctor".into(),
+            FnSig::new(
+                [Type::Int(Int::U128), Type::Int(Int::U64), Type::Int(Int::U64)].into(),
+                Type::Void
+            ),
+            false,
+        ),
+        args: [bitreverse_u64(lower), bitreverse_u64(upper)].into(),
+    }))
+}
+
 pub fn bitreverse<'tcx>(
     args: &[Spanned<Operand<'tcx>>],
     destination: &Place<'tcx>,
@@ -848,82 +898,40 @@ pub fn bitreverse<'tcx>(
             Type::Int(Int::I8) => conv_i8!(bitreverse_u8(val)),
             Type::Int(Int::U16) => bitreverse_u16(val),
             Type::Int(Int::I16) => conv_i16!(bitreverse_u16(conv_u16!(val))),
-            Type::Int(Int::U32) => call!(
-                CallSite::builtin(
-                    "bitreverse_u32".into(),
-                    FnSig::new([Type::Int(Int::U32)].into(), Type::Int(Int::U32)),
-                    true
-                ),
-                [val]
-            ),
+            Type::Int(Int::U32) => bitreverse_u32(val),
             Type::Int(Int::I32) => crate::casts::int_to_int(
                 Type::Int(Int::U32),
                 Type::Int(Int::I32),
-                call!(
-                    CallSite::builtin(
-                        "bitreverse_u32".into(),
-                        FnSig::new([Type::Int(Int::U32)].into(), Type::Int(Int::U32)),
-                        true
-                    ),
-                    [crate::casts::int_to_int(
-                        Type::Int(Int::I32),
-                        Type::Int(Int::U32),
-                        val,
-                        ctx.asm_mut()
-                    )]
-                ),
+                bitreverse_u32(crate::casts::int_to_int(
+                    Type::Int(Int::I32),
+                    Type::Int(Int::U32),
+                    val,
+                    ctx.asm_mut(),
+                )),
                 ctx.asm_mut(),
             ),
-            Type::Int(Int::U64) => call!(
-                CallSite::builtin(
-                    "bitreverse_u64".into(),
-                    FnSig::new([Type::Int(Int::U64)].into(), Type::Int(Int::U64)),
-                    true
-                ),
-                [val]
-            ),
+            Type::Int(Int::U64) => bitreverse_u64(val),
             Type::Int(Int::I64) => crate::casts::int_to_int(
                 Type::Int(Int::U64),
                 Type::Int(Int::I64),
-                call!(
-                    CallSite::builtin(
-                        "bitreverse_u64".into(),
-                        FnSig::new([Type::Int(Int::U64)].into(), Type::Int(Int::U64)),
-                        true
-                    ),
-                    [crate::casts::int_to_int(
-                        Type::Int(Int::I64),
-                        Type::Int(Int::U64),
-                        val,
-                        ctx.asm_mut()
-                    )]
-                ),
+                bitreverse_u64(crate::casts::int_to_int(
+                    Type::Int(Int::I64),
+                    Type::Int(Int::U64),
+                    val,
+                    ctx.asm_mut(),
+                )),
                 ctx.asm_mut(),
             ),
-            Type::Int(Int::U128) => call!(
-                CallSite::builtin(
-                    "bitreverse_u128".into(),
-                    FnSig::new([Type::Int(Int::U128)].into(), Type::Int(Int::U128),),
-                    true
-                ),
-                [val]
-            ),
+            Type::Int(Int::U128) => bitreverse_u128(val, ctx),
             Type::Int(Int::I128) => crate::casts::int_to_int(
                 Type::Int(Int::U128),
                 Type::Int(Int::I128),
-                call!(
-                    CallSite::builtin(
-                        "bitreverse_u128".into(),
-                        FnSig::new([Type::Int(Int::U128)].into(), Type::Int(Int::U128),),
-                        true
-                    ),
-                    [crate::casts::int_to_int(
-                        Type::Int(Int::I128),
-                        Type::Int(Int::U128),
-                        val,
-                        ctx.asm_mut()
-                    )]
-                ),
+                bitreverse_u128(crate::casts::int_to_int(
+                    Type::Int(Int::I128),
+                    Type::Int(Int::U128),
+                    val,
+                    ctx.asm_mut(),
+                ), ctx),
                 ctx.asm_mut(),
             ),
 
