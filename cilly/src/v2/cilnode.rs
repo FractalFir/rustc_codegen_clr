@@ -158,6 +158,100 @@ pub enum BinOp {
     DivUn,
     Div,
 }
+impl BinOp {
+    /// All binary operations, including signed and unsinged varaiants. For only one varaint, use  [`Self::ALL_DISTINCT_OPS`]
+    pub const ALL_OPS: [Self; 18] = [
+        BinOp::Add,
+        BinOp::Eq,
+        BinOp::Sub,
+        BinOp::Mul,
+        BinOp::LtUn,
+        BinOp::Lt,
+        BinOp::GtUn,
+        BinOp::Gt,
+        BinOp::Or,
+        BinOp::XOr,
+        BinOp::And,
+        BinOp::Rem,
+        BinOp::RemUn,
+        BinOp::Shl,
+        BinOp::Shr,
+        BinOp::ShrUn,
+        BinOp::DivUn,
+        BinOp::Div,
+    ];
+    /// [`Self::ALL_OPS`], not including the unsinged variants.
+    pub const ALL_DISTINCT_OPS: [Self; 13] = [
+        BinOp::Add,
+        BinOp::Eq,
+        BinOp::Sub,
+        BinOp::Mul,
+        BinOp::Lt,
+        BinOp::Gt,
+        BinOp::Or,
+        BinOp::XOr,
+        BinOp::And,
+        BinOp::Rem,
+        BinOp::Shl,
+        BinOp::Shr,
+        BinOp::Div,
+    ];
+    /// Returns a short name descirbing this operation.
+    /// WARNING: this function will return the same name for signed and unsinged variants!
+    /// ```
+    /// # use cilly::v2::BinOp;
+    /// assert_eq!(BinOp::Eq.name(),"eq");
+    /// assert_eq!(BinOp::Add.name(),"add");
+    /// // Signed and unsinged variant have the same name!
+    /// assert_eq!(BinOp::Lt.name(),BinOp::LtUn.name());
+    /// assert_eq!(BinOp::Lt.name(),"lt");
+    /// assert_eq!(BinOp::LtUn.name(),"lt");
+    /// ```
+    pub fn name(&self) -> &'static str {
+        match self {
+            BinOp::Add => "add",
+            BinOp::Eq => "eq",
+            BinOp::Sub => "sub",
+            BinOp::Mul => "mul",
+            BinOp::LtUn | BinOp::Lt => "lt",
+            BinOp::GtUn | BinOp::Gt => "gt",
+            BinOp::Or => "or",
+            BinOp::XOr => "xor",
+            BinOp::And => "and",
+            BinOp::Rem | BinOp::RemUn => "mod",
+            BinOp::Shl => "shl",
+            BinOp::Shr | BinOp::ShrUn => "shr",
+            BinOp::DivUn | BinOp::Div => "div",
+        }
+    }
+    /// Returns the name of the .NET operation this binop corresponds to.
+    /// ```
+    /// # use cilly::v2::BinOp;
+    /// assert_eq!(BinOp::Eq.dotnet_name(),"op_Equality");
+    /// assert_eq!(BinOp::Add.dotnet_name(),"op_Addition");
+    /// // Signed and unsinged variant have the same name!
+    /// assert_eq!(BinOp::Lt.dotnet_name(),BinOp::LtUn.dotnet_name());
+    /// assert_eq!(BinOp::Lt.dotnet_name(),"op_LessThan");
+    /// assert_eq!(BinOp::LtUn.dotnet_name(),"op_LessThan");
+    /// ```
+    pub fn dotnet_name(&self) -> &str {
+        match self {
+            BinOp::Add => "op_Addition",
+            BinOp::Eq => "op_Equality",
+            BinOp::Sub => "op_Subtraction",
+            BinOp::Mul => "op_Multiply",
+            BinOp::LtUn | BinOp::Lt => "op_LessThan",
+            BinOp::GtUn | BinOp::Gt => "op_GreaterThan",
+            BinOp::Or => "op_BitwiseOr",
+            BinOp::XOr => "op_ExclusiveOr",
+            BinOp::And => "op_BitwiseAnd",
+            BinOp::Rem | BinOp::RemUn => "op_Modulus",
+            BinOp::Shl => "op_LeftShift",
+            BinOp::Shr | BinOp::ShrUn => "op_RightShift",
+            BinOp::DivUn | BinOp::Div => "op_Division",
+        }
+    }
+}
 impl CILNode {
     pub fn child_nodes(&self) -> Vec<NodeIdx> {
         match self {

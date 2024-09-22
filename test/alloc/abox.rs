@@ -252,6 +252,11 @@ where {
         }
     }
 }
+impl<T> Drop for Box<T> {
+    fn drop(&mut self) {
+        unsafe { free(self.0.as_ptr() as *mut core::ffi::c_void) };
+    }
+}
 pub fn handle_alloc_error(layout: Layout) -> ! {
     core::intrinsics::abort()
 }

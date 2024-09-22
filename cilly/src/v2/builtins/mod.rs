@@ -10,6 +10,8 @@ pub mod math;
 pub mod select;
 pub mod thread;
 pub use thread::*;
+pub mod int128;
+pub use int128::*;
 pub fn insert_swap_at_generic(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
     let name = asm.alloc_string("swap_at_generic");
     let generator = move |_, asm: &mut Assembly| {

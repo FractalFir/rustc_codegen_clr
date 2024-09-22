@@ -142,7 +142,7 @@ fn display_node(
     }
 }
 impl BinOp {
-    fn typecheck(&self, lhs: Type, rhs: Type) -> Result<Type, TypeCheckError> {
+    fn typecheck(&self, lhs: Type, rhs: Type, asm: &Assembly) -> Result<Type, TypeCheckError> {
         match self {
             BinOp::Add | BinOp::Sub => match (lhs, rhs) {
                 (Type::Int(lhs), Type::Int(rhs)) if rhs == lhs => Ok(Type::Int(lhs)),
@@ -153,14 +153,22 @@ impl BinOp {
                 (Type::Int(Int::ISize | Int::USize), Type::Ptr(_) | Type::FnPtr(_)) => Ok(rhs),
                 // TODO: investigate the cause of this issue. Changing a reference is not valid.
                 (Type::Ref(_), Type::Int(Int::ISize | Int::USize)) => Ok(lhs),
-                _ => Err(TypeCheckError::WrongBinopArgs {
-                    lhs,
-                    rhs,
-                    op: *self,
-                }),
+                _ => {
+                    if lhs.is_assignable_to(rhs, asm)
+                        && (lhs.as_int().is_some() || rhs.as_int().is_some())
+                    {
+                        Ok(Type::Int(*lhs.as_int().or(rhs.as_int()).unwrap()))
+                    } else {
+                        Err(TypeCheckError::WrongBinopArgs {
+                            lhs,
+                            rhs,
+                            op: *self,
+                        })
+                    }
+                }
             },
             BinOp::Eq => {
-                if lhs == rhs {
+                if lhs == rhs || lhs.is_assignable_to(rhs, asm) {
                     Ok(Type::Bool)
                 } else {
                     Err(TypeCheckError::WrongBinopArgs {
@@ -178,11 +186,19 @@ impl BinOp {
                 // Relaxes the rules to prevent some wierd issue with sizeof
                 (Type::Int(Int::ISize), Type::Int(Int::I32)) => Ok(Type::Int(Int::ISize)),
                 (Type::Int(Int::USize), Type::Int(Int::I32)) => Ok(Type::Int(Int::USize)),
-                _ => Err(TypeCheckError::WrongBinopArgs {
-                    lhs,
-                    rhs,
-                    op: *self,
-                }),
+                _ => {
+                    if lhs.is_assignable_to(rhs, asm) {
+                        Ok(rhs)
+                    } else if rhs.is_assignable_to(lhs, asm) {
+                        Ok(lhs)
+                    } else {
+                        Err(TypeCheckError::WrongBinopArgs {
+                            lhs,
+                            rhs,
+                            op: *self,
+                        })
+                    }
+                }
             },
             BinOp::LtUn | BinOp::GtUn => match (lhs, rhs) {
                 (Type::Int(lhs), Type::Int(rhs)) if rhs == lhs => Ok(Type::Bool),
@@ -190,57 +206,95 @@ impl BinOp {
                 (Type::Ptr(lhs), Type::Ptr(rhs)) if rhs == lhs => Ok(Type::Bool),
                 (Type::FnPtr(lhs), Type::FnPtr(rhs)) if rhs == lhs => Ok(Type::Bool),
                 (Type::Bool, Type::Bool) => Ok(Type::Bool),
-                _ => Err(TypeCheckError::WrongBinopArgs {
-                    lhs,
-                    rhs,
-                    op: *self,
-                }),
+                _ => {
+                    if lhs == rhs || lhs.is_assignable_to(rhs, asm) {
+                        Ok(Type::Bool)
+                    } else {
+                        Err(TypeCheckError::WrongBinopArgs {
+                            lhs,
+                            rhs,
+                            op: *self,
+                        })
+                    }
+                }
             },
             BinOp::Lt | BinOp::Gt => match (lhs, rhs) {
                 (Type::Int(lhs), Type::Int(rhs)) if rhs == lhs => Ok(Type::Bool),
                 (Type::Float(lhs), Type::Float(rhs)) if rhs == lhs => Ok(Type::Bool),
                 (Type::Bool, Type::Bool) => Ok(Type::Bool),
-                _ => Err(TypeCheckError::WrongBinopArgs {
-                    lhs,
-                    rhs,
-                    op: *self,
-                }),
+                _ => {
+                    if lhs == rhs || lhs.is_assignable_to(rhs, asm) {
+                        Ok(Type::Bool)
+                    } else {
+                        Err(TypeCheckError::WrongBinopArgs {
+                            lhs,
+                            rhs,
+                            op: *self,
+                        })
+                    }
+                }
             },
             BinOp::Or | BinOp::XOr | BinOp::And => match (lhs, rhs) {
                 (Type::Int(lhs), Type::Int(rhs)) if rhs == lhs => Ok(Type::Int(lhs)),
                 (Type::Bool, Type::Bool) => Ok(Type::Bool),
-                _ => Err(TypeCheckError::WrongBinopArgs {
-                    lhs,
-                    rhs,
-                    op: *self,
-                }),
+                _ => {
+                    if lhs.is_assignable_to(rhs, asm)
+                        && (lhs.as_int().is_some() || rhs.as_int().is_some())
+                    {
+                        Ok(Type::Int(*lhs.as_int().or(rhs.as_int()).unwrap()))
+                    } else {
+                        Err(TypeCheckError::WrongBinopArgs {
+                            lhs,
+                            rhs,
+                            op: *self,
+                        })
+                    }
+                }
             },
             BinOp::Rem => match (lhs, rhs) {
                 (Type::Int(lhs), Type::Int(rhs)) if rhs == lhs && rhs.is_signed() => {
                     Ok(Type::Int(lhs))
                 }
                 (Type::Float(lhs), Type::Float(rhs)) if rhs == lhs => Ok(Type::Bool),
-                _ => Err(TypeCheckError::WrongBinopArgs {
-                    lhs,
-                    rhs,
-                    op: *self,
-                }),
+                _ => {
+                    if lhs.is_assignable_to(rhs, asm)
+                        && (lhs.as_int().is_some() || rhs.as_int().is_some())
+                    {
+                        Ok(Type::Int(*lhs.as_int().or(rhs.as_int()).unwrap()))
+                    } else {
+                        Err(TypeCheckError::WrongBinopArgs {
+                            lhs,
+                            rhs,
+                            op: *self,
+                        })
+                    }
+                }
             },
             BinOp::RemUn => match (lhs, rhs) {
                 (Type::Int(lhs), Type::Int(rhs)) if rhs == lhs && !rhs.is_signed() => {
                     Ok(Type::Int(lhs))
                 }
                 (Type::Float(lhs), Type::Float(rhs)) if rhs == lhs => Ok(Type::Bool),
-                _ => Err(TypeCheckError::WrongBinopArgs {
-                    lhs,
-                    rhs,
-                    op: *self,
-                }),
+                _ => {
+                    if lhs.is_assignable_to(rhs, asm)
+                        && (lhs.as_int().is_some() || rhs.as_int().is_some())
+                    {
+                        Ok(Type::Int(*lhs.as_int().or(rhs.as_int()).unwrap()))
+                    } else {
+                        Err(TypeCheckError::WrongBinopArgs {
+                            lhs,
+                            rhs,
+                            op: *self,
+                        })
+                    }
+                }
             },
             BinOp::Shl => match (lhs, rhs) {
                 (
                     Type::Int(
-                        lhs @ (Int::I64
+                        lhs @ (Int::I128
+                        | Int::U128
+                        | Int::I64
                         | Int::U64
                         | Int::USize
                         | Int::ISize
@@ -262,16 +316,26 @@ impl BinOp {
                         | Int::I8,
                     ),
                 ) => Ok(Type::Int(lhs)),
-                _ => Err(TypeCheckError::WrongBinopArgs {
-                    lhs,
-                    rhs,
-                    op: *self,
-                }),
+                _ => {
+                    if lhs.is_assignable_to(rhs, asm)
+                        && (lhs.as_int().is_some() || rhs.as_int().is_some())
+                    {
+                        Ok(Type::Int(*lhs.as_int().or(rhs.as_int()).unwrap()))
+                    } else {
+                        Err(TypeCheckError::WrongBinopArgs {
+                            lhs,
+                            rhs,
+                            op: *self,
+                        })
+                    }
+                }
             },
             BinOp::Shr => match (lhs, rhs) {
                 (
                     Type::Int(
-                        lhs @ (Int::I64
+                        lhs @ (Int::I128
+                        | Int::U128
+                        | Int::I64
                         | Int::U64
                         | Int::USize
                         | Int::ISize
@@ -293,16 +357,26 @@ impl BinOp {
                         | Int::I8,
                     ),
                 ) if lhs.is_signed() => Ok(Type::Int(lhs)),
-                _ => Err(TypeCheckError::WrongBinopArgs {
-                    lhs,
-                    rhs,
-                    op: *self,
-                }),
+                _ => {
+                    if lhs.is_assignable_to(rhs, asm)
+                        && (lhs.as_int().is_some() || rhs.as_int().is_some())
+                    {
+                        Ok(Type::Int(*lhs.as_int().or(rhs.as_int()).unwrap()))
+                    } else {
+                        Err(TypeCheckError::WrongBinopArgs {
+                            lhs,
+                            rhs,
+                            op: *self,
+                        })
+                    }
+                }
             },
             BinOp::ShrUn => match (lhs, rhs) {
                 (
                     Type::Int(
-                        lhs @ (Int::I64
+                        lhs @ (Int::I128
+                        | Int::U128
+                        | Int::I64
                         | Int::U64
                         | Int::USize
                         | Int::ISize
@@ -324,22 +398,38 @@ impl BinOp {
                         | Int::I8,
                     ),
                 ) if !lhs.is_signed() => Ok(Type::Int(lhs)),
-                _ => Err(TypeCheckError::WrongBinopArgs {
-                    lhs,
-                    rhs,
-                    op: *self,
-                }),
+                _ => {
+                    if lhs.is_assignable_to(rhs, asm)
+                        && (lhs.as_int().is_some() || rhs.as_int().is_some())
+                    {
+                        Ok(Type::Int(*lhs.as_int().or(rhs.as_int()).unwrap()))
+                    } else {
+                        Err(TypeCheckError::WrongBinopArgs {
+                            lhs,
+                            rhs,
+                            op: *self,
+                        })
+                    }
+                }
             },
             BinOp::DivUn => match (lhs, rhs) {
                 (
                     Type::Int(lhs @ (Int::U64 | Int::USize | Int::U32 | Int::U16 | Int::U8)),
                     Type::Int(rhs @ (Int::U64 | Int::USize | Int::U32 | Int::U16 | Int::U8)),
                 ) if lhs == rhs => Ok(Type::Int(lhs)),
-                _ => Err(TypeCheckError::WrongBinopArgs {
-                    lhs,
-                    rhs,
-                    op: *self,
-                }),
+                _ => {
+                    if lhs.is_assignable_to(rhs, asm)
+                        && (lhs.as_int().is_some() || rhs.as_int().is_some())
+                    {
+                        Ok(Type::Int(*lhs.as_int().or(rhs.as_int()).unwrap()))
+                    } else {
+                        Err(TypeCheckError::WrongBinopArgs {
+                            lhs,
+                            rhs,
+                            op: *self,
+                        })
+                    }
+                }
             },
             BinOp::Div => match (lhs, rhs) {
                 (
@@ -367,11 +457,19 @@ impl BinOp {
                     ),
                 ) if lhs.is_signed() && lhs == rhs => Ok(Type::Int(lhs)),
                 (Type::Float(lhs), Type::Float(rhs)) if rhs == lhs => Ok(Type::Float(lhs)),
-                _ => Err(TypeCheckError::WrongBinopArgs {
-                    lhs,
-                    rhs,
-                    op: *self,
-                }),
+                _ => {
+                    if lhs.is_assignable_to(rhs, asm)
+                        && (lhs.as_int().is_some() || rhs.as_int().is_some())
+                    {
+                        Ok(Type::Int(*lhs.as_int().or(rhs.as_int()).unwrap()))
+                    } else {
+                        Err(TypeCheckError::WrongBinopArgs {
+                            lhs,
+                            rhs,
+                            op: *self,
+                        })
+                    }
+                }
             },
         }
     }
@@ -394,7 +492,7 @@ impl CILNode {
                 let rhs = asm.get_node(*rhs).clone();
                 let lhs = lhs.typecheck(sig, locals, asm)?;
                 let rhs = rhs.typecheck(sig, locals, asm)?;
-                op.typecheck(lhs, rhs)
+                op.typecheck(lhs, rhs, asm)
             }
             CILNode::UnOp(arg, op) => {
                 let arg = asm.get_node(*arg).clone();
@@ -708,6 +806,4 @@ fn test() {
     let sum = asm.biop(lhs, rhs, BinOp::Add);
     let sum = asm.alloc_node(sum);
     let sig = asm.sig([], Type::Void);
-    let mut set = FxHashSet::default();
-    panic!("{}", display_node(sum, &mut asm, sig, &[], &mut set));
 }

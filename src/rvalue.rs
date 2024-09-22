@@ -444,7 +444,7 @@ fn repeat<'tcx>(
             branches.push(CILRoot::CpBlk {
                 dst: Box::new(
                     CILNode::MRefToRawPtr(Box::new(CILNode::LoadAddresOfTMPLocal))
-                        + conv_usize!(ldc_u64!(curr_len)),
+                        + conv_usize!(ldc_u64!(curr_len)) * conv_usize!(size_of!(element_type)),
                 ),
                 src: Box::new(CILNode::LoadAddresOfTMPLocal),
                 len: Box::new(

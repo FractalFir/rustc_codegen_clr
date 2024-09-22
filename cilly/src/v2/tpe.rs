@@ -252,4 +252,12 @@ impl Type {
             _ => false,
         }
     }
+
+    pub fn as_int(&self) -> Option<&Int> {
+        if let Self::Int(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
 }

@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 
-use super::{cilnode::MethodKind, Assembly, CILNode, ClassRef, Const, MethodRef, Type};
+use super::{
+    cilnode::MethodKind, Assembly, CILNode, ClassRef, ClassRefIdx, Const, MethodRef, Type,
+};
 
 #[derive(Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize)]
 pub enum Int {
@@ -204,6 +206,23 @@ impl Int {
             Int::U64 | Int::I64 => Some(8),
             Int::U128 | Int::I128 => Some(16),
             Int::USize | Int::ISize => None,
+        }
+    }
+    /// Returns a class representing this intiger.
+    pub fn class(&self, asm: &mut Assembly) -> ClassRefIdx {
+        match self {
+            Int::U8 => todo!(),
+            Int::U16 => todo!(),
+            Int::U32 => todo!(),
+            Int::U64 => todo!(),
+            Int::U128 => ClassRef::uint_128(asm),
+            Int::USize => ClassRef::usize_type(asm),
+            Int::I8 => todo!(),
+            Int::I16 => todo!(),
+            Int::I32 => todo!(),
+            Int::I64 => todo!(),
+            Int::I128 => ClassRef::int_128(asm),
+            Int::ISize => ClassRef::isize_type(asm),
         }
     }
 }

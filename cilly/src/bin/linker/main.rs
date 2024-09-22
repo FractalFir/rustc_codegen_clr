@@ -379,11 +379,10 @@ fn main() {
     cilly::v2::builtins::insert_bounds_check(&mut final_assembly, &mut overrides);
     cilly::v2::builtins::casts::insert_casts(&mut final_assembly, &mut overrides);
     cilly::v2::builtins::insert_heap(&mut final_assembly, &mut overrides);
+    cilly::v2::builtins::generate_int128_ops(&mut final_assembly, &mut overrides, *C_MODE);
     if !*C_MODE {
         cilly::v2::builtins::atomics::generate_all_atomics(&mut final_assembly, &mut overrides);
-
         cilly::v2::builtins::instert_threading(&mut final_assembly, &mut overrides);
-
         cilly::v2::builtins::math::math(&mut final_assembly, &mut overrides);
     }
     // Ensure the cctor and tcctor exist!

@@ -1,7 +1,7 @@
 // This exporter is WIP.
 #![allow(dead_code, unused_imports, unused_variables, clippy::let_unit_value)]
 use std::{collections::HashSet, io::Write};
-
+// Strips debuginfo: `#line [0-9]+ "[a-z/.\-0-9_]+"`
 use fxhash::{hash64, FxHashSet, FxHasher};
 
 use crate::{
@@ -19,7 +19,20 @@ use super::{
     Assembly, BinOp, CILIter, CILIterElem, CILNode, CILRoot, ClassDefIdx, ClassRef, ClassRefIdx,
     Const, Exporter, Int, MethodDef, MethodRef, NodeIdx, RootIdx, SigIdx, Type,
 };
-
+fn local_name(locals: &[LocalDef], asm: &Assembly, loc: u32) -> String {
+    if locals
+        .iter()
+        .filter(|(name, _)| *name == locals[loc as usize].0)
+        .count()
+        > 1
+    {
+        return format!("L{loc}");
+    }
+    match locals[loc as usize].0 {
+        Some(local_name) => escape_ident(&asm[local_name]),
+        None => format!("L{loc}"),
+    }
+}
 fn escape_ident(ident: &str) -> String {
     let mut escaped = ident.replace('.', "_");
     if escaped.chars().next().unwrap().is_numeric() {
@@ -117,6 +130,9 @@ impl CExporter {
         method_decls: &mut impl Write,
     ) -> std::io::Result<()> {
         let method_name = mref_to_name(mref, asm);
+        if method_name == "malloc" || method_name == "realloc" || method_name == "free" {
+            return Ok(());
+        }
         let output = c_tpe(mref.output(asm), asm);
         let inputs = mref
             .stack_inputs(asm)
@@ -148,11 +164,19 @@ impl CExporter {
                 ),
                 Type::FnPtr(_) => format!("({lhs}) + ({rhs})"),
                 Type::Float(_) => format!("({lhs}) + ({rhs})"),
-                Type::Int(int) => match int {
-                    Int::I128 => format!("(__int128)((__uint128_t)({lhs}) + (__uint128_t)({rhs}))"),
-                    _ => format!("({lhs}) + ({rhs})"),
-                },
-                _ => todo!(),
+                Type::Int(Int::ISize) => {
+                    format!("(intptr_t)((uintptr_t)({lhs}) + (uintptr_t)({rhs}))")
+                }
+                Type::Int(Int::I128) => {
+                    format!("(__int128)((__uint128_t)({lhs}) + (__uint128_t)({rhs}))")
+                }
+                Type::Int(Int::I64) => format!("(int64_t)((uint64_t)({lhs}) + (uint64_t)({rhs}))"),
+                Type::Int(Int::I32) => format!("(int32_t)((uint32_t)({lhs}) + (uint32_t)({rhs}))"),
+                Type::Int(Int::I16) => format!("(int16_t)((uint16_t)({lhs}) + (uint16_t)({rhs}))"),
+                Type::Int(Int::I8) => format!("(int8_t)((uint8_t)({lhs}) + (uint8_t)({rhs}))"),
+
+                Type::Int(_) => format!("({lhs}) + ({rhs})"),
+                _ => todo!("can't add {}", tpe.mangle(asm)),
             },
             BinOp::Eq => match tpe {
                 Type::Ptr(type_idx) | Type::Ref(type_idx) => {
@@ -168,6 +192,24 @@ impl CExporter {
                     tpe = c_tpe(asm[type_idx], asm)
                 ),
                 Type::FnPtr(_) => format!("({lhs}) - ({rhs})"),
+                Type::Int(Int::I128) => {
+                    format!("(__int128)((__uint128_t)({lhs}) - (__uint128_t)({rhs}))")
+                }
+                Type::Int(Int::I64) => {
+                    format!("(int64_t)((uint64_t)({lhs}) - (uint64_t)({rhs}))")
+                }
+                Type::Int(Int::I32) => {
+                    format!("(int32_t)((uint32_t)({lhs}) - (uint32_t)({rhs}))")
+                }
+                Type::Int(Int::I16) => {
+                    format!("(int16_t)((uint16_t)({lhs}) - (uint16_t)({rhs}))")
+                }
+                Type::Int(Int::I8) => {
+                    format!("(int8_t)((uint8_t)({lhs}) - (uint8_t)({rhs}))")
+                }
+                Type::Int(Int::ISize) => {
+                    format!("(intptr_t)((uintptr_t)({lhs}) - (uintptr_t)({rhs}))")
+                }
                 Type::Float(_) | Type::Int(_) => format!("({lhs}) - ({rhs})"),
                 _ => todo!(),
             },
@@ -181,11 +223,14 @@ impl CExporter {
                 Type::Int(int) => match int {
                     // Signed multiply is seemingly equivalent to unsigned multiply, looking at the assembly: TODO: check this.
                     Int::I8 => format!("(int8_t)((uint8_t)({lhs}) * (uint8_t)({rhs}))"),
-                    Int::I16 => format!("(int16_t)((uint16_t)({lhs}) * (uint16_t)({rhs}))"),
+                    Int::I16 => {
+                        format!("(int16_t)(uint16_t)(((uint32_t)({lhs})) * ((uint32_t)({rhs})))")
+                    }
                     Int::I32 => format!("(int32_t)((uint32_t)({lhs}) * (uint32_t)({rhs}))"),
                     Int::I64 => format!("(int64_t)((uint64_t)({lhs}) * (uint64_t)({rhs}))"),
                     Int::I128 => format!("(__int128)((__uint128_t)({lhs}) * (__uint128_t)({rhs}))"),
                     Int::ISize => format!("(intptr_t)((uintptr_t)({lhs}) * (uintptr_t)({rhs}))"),
+                    Int::U16 => format!("(uint16_t)(((uint32_t)({lhs})) * ((uint32_t)({rhs})))"),
                     _ => format!("({lhs}) * ({rhs})"),
                 },
                 _ => todo!(),
@@ -252,6 +297,13 @@ impl CExporter {
                 _ => todo!("can't rem {tpe:?}"),
             },
             BinOp::Shl => match tpe {
+                // Signed shift is equivalent to Rust unsinged shift, but it is well defined in C
+                Type::Int(Int::I8) => format!("(int8_t)((uint8_t)({lhs}) << ({rhs}))"),
+                Type::Int(Int::I16) => format!("(int16_t)((uint16_t)({lhs}) << ({rhs}))"),
+                Type::Int(Int::I32) => format!("(int32_t)((uint32_t)({lhs}) << ({rhs}))"),
+                Type::Int(Int::I64) => format!("(int64_t)((uint64_t)({lhs}) << ({rhs}))"),
+                Type::Int(Int::I128) => format!("(__int128)((__uint128_t)({lhs}) << ({rhs}))"),
+                Type::Int(Int::ISize) => format!("(intptr_t)((uintptr_t)({lhs}) << ({rhs}))"),
                 Type::Int(_) => format!("({lhs}) << ({rhs})"),
                 _ => todo!("can't shl {tpe:?}"),
             },
@@ -281,7 +333,7 @@ impl CExporter {
             CILNode::Const(cst) => match cst.as_ref() {
                 Const::I8(v) => format!("(int8_t)0x{v:x}"),
                 Const::I16(v) => format!("(int16_t)0x{v:x}"),
-                Const::I32(v) => format!("0x{v:x}"),
+                Const::I32(v) => format!("((int32_t)0x{v:x})"),
                 Const::I64(v) => format!("0x{v:x}L"),
                 Const::ISize(v) => format!("(intptr_t)0x{v:x}L"),
                 Const::U8(v) => format!("(uint8_t)0x{v:x}"),
@@ -326,20 +378,59 @@ impl CExporter {
                     sig,
                 )
             }
-            CILNode::UnOp(node_idx, un_op) => match un_op {
+            CILNode::UnOp(node_idx, ref un_op) => match un_op {
                 super::cilnode::UnOp::Not => format!(
                     "~({})",
                     Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig)
                 ),
-                super::cilnode::UnOp::Neg => format!(
-                    "-({})",
-                    Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig)
-                ),
+                super::cilnode::UnOp::Neg => {
+                    let tpe = node.typecheck(sig, locals, asm).unwrap();
+                    match tpe {
+                        Type::Ptr(_) | Type::Ref(_) => format!(
+                            "-({})",
+                            Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig)
+                        ),
+                        Type::FnPtr(_) => format!(
+                            "-({})",
+                            Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig)
+                        ),
+                        Type::Float(_) => format!(
+                            "-({})",
+                            Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig)
+                        ),
+                        Type::Int(Int::I8) => format!(
+                            "(int8_t)(0 - ((uint8_t)({})))",
+                            Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig)
+                        ),
+                        Type::Int(Int::I16) => format!(
+                            "(int16_t)(0 - ((uint16_t)({})))",
+                            Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig)
+                        ),
+                        Type::Int(Int::I32) => format!(
+                            "(int32_t)(0 - ((uint32_t)({})))",
+                            Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig)
+                        ),
+                        Type::Int(Int::I64) => format!(
+                            "(int64_t)(0 - ((uint64_t)({})))",
+                            Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig)
+                        ),
+                        Type::Int(Int::I128) => format!(
+                            "(__int128_t)(0 - ((__uint128_t)({})))",
+                            Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig)
+                        ),
+                        Type::Int(Int::ISize) => format!(
+                            "(intptr_t)(0 - ((uintptr_t)({})))",
+                            Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig)
+                        ),
+                        Type::Int(_) => format!(
+                            "-({})",
+                            Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig)
+                        ),
+                        _ => todo!("can't neg {}", tpe.mangle(asm)),
+                    }
+                }
             },
-            CILNode::LdLoc(loc) => match locals[loc as usize].0 {
-                Some(local_name) => escape_ident(&asm[local_name]),
-                None => format!("L{loc}",),
-            },
+            CILNode::LdLoc(loc) => local_name(locals, asm, loc),
             CILNode::LdArg(arg) => match inputs[arg as usize].1 {
                 Some(arg_name) => escape_ident(&asm[arg_name]),
                 None => format!("A{arg}",),
@@ -348,10 +439,7 @@ impl CExporter {
                 Some(arg_name) => format!("&{}", escape_ident(&asm[arg_name])),
                 None => format!("&A{arg}",),
             },
-            CILNode::LdLocA(loc) => match locals[loc as usize].0 {
-                Some(local_name) => format!("&{}", escape_ident(&asm[local_name])),
-                None => format!("&L{loc}",),
-            },
+            CILNode::LdLocA(loc) => format!("&{}", local_name(locals, asm, loc),),
             CILNode::Call(info) => {
                 let (method, args) = info.as_ref();
                 let method = asm[*method].clone();
@@ -547,7 +635,16 @@ impl CExporter {
         sig: SigIdx,
     ) -> String {
         match root {
-            CILRoot::StLoc(id, node_idx) => match locals[id as usize].0 {
+            CILRoot::StLoc(id, node_idx) => {
+                if locals
+                .iter()
+                .filter(|(name, _)| *name == locals[id as usize].0)
+                .count()
+                > 1
+            {
+                return format!("L{id} = {node};", node = Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig),);
+            }
+                match locals[id as usize].0 {
                 Some(name) => format!(
                     "{name} = {node};",
                     node = Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig),
@@ -557,7 +654,7 @@ impl CExporter {
                     "L{id} = {node};",
                     node = Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig),
                 ),
-            },
+            }},
             CILRoot::StArg(arg, node_idx) =>match inputs[arg as usize].1 {
                 Some(name) => format!(
                     "{name} = {node};",
@@ -583,7 +680,7 @@ impl CExporter {
             ),
             CILRoot::VoidRet => "return;".into(),
             CILRoot::Break => "".into(),
-            CILRoot::Nop => todo!(),
+            CILRoot::Nop => "".into(),
             CILRoot::Branch(binfo) => {
                 let (target, sub_target, cond) = binfo.as_ref();
                 let target = if *sub_target != 0{
@@ -731,6 +828,10 @@ impl CExporter {
         let class = &asm[def.class()];
         let class_name = escape_ident(&asm[class.name()]);
         let mname = escape_ident(&asm[def.name()]);
+        // Workaround for `get_environ` - a .NET specific function, irrelevant to our use case.
+        if mname == "get_environ" || mname == "malloc" || mname == "realloc" || mname == "free" {
+            return Ok(());
+        }
         let method_name = class_member_name(&class_name, &mname);
         let output = c_tpe(def.ref_to().output(asm), asm);
         match def.resolved_implementation(asm) {
@@ -773,6 +874,15 @@ impl CExporter {
         writeln!(method_defs, "{output} {method_name}({inputs}){{")?;
         let locals: Vec<_> = def.iter_locals(asm).copied().collect();
         for (idx, (local_name, local_type)) in locals.iter().enumerate() {
+            // If the name of this local is found multiple times, use the L form.
+            if locals.iter().filter(|(name, _)| name == local_name).count() > 1 {
+                writeln!(
+                    method_defs,
+                    "{local_type} L{idx};",
+                    local_type = nonvoid_c_type(asm[*local_type], asm),
+                )?;
+                continue;
+            }
             match local_name {
                 Some(local_name) => writeln!(
                     method_defs,
@@ -921,6 +1031,7 @@ impl Exporter for CExporter {
         .arg("-o")
         .arg(exe_out)
         .arg("-g")
+        .args(["-fsanitize=undefined"])
         .arg("-Ofast")
         // .arg("-FOLD") saves up on space, consider enabling.
         ;

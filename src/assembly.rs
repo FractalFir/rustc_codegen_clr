@@ -712,32 +712,14 @@ pub fn add_const_value(asm: &mut cilly::v2::Assembly, bytes: u128) -> StaticFiel
     }
     asm.add_static(uint8_ptr, alloc_fld, false, main_module_id);
     let cst = CILNode::const_u128(bytes, asm);
-    let trees = vec![
-        CILRoot::SetStaticField {
-            descr: Box::new(field_desc.clone()),
-            value: cst,
-        }
-        .into(),
-        CILRoot::VoidRet.into(),
-    ];
-    let block = BasicBlock::new(trees, 0, None);
-    let init_method = Method::new(
-        AccessModifer::Public,
-        MethodType::Static,
-        FnSig::new(Box::new([]), Type::Void),
-        &format!("init_a{bytes:x}"),
-        vec![(Some("alloc_ptr".into()), asm.nptr(Type::Int(Int::U8)))],
-        vec![block],
-        vec![],
-    );
-    let init_method = MethodDef::from_v1(&init_method, asm, main_module_id);
-    let initialzer = asm.new_method(init_method);
 
     let field = StaticFieldDesc::from_v1(&field_desc, asm);
+    let field = asm.alloc_sfld(field);
+    let val = cilly::v2::CILNode::from_v1(&cst, asm);
+    let val = asm.alloc_node(val);
+    let set = asm.alloc_root(cilly::v2::CILRoot::SetStaticField { field, val });
 
-    let root = asm.alloc_root(cilly::v2::CILRoot::Call(Box::new((*initialzer, [].into()))));
-
-    asm.add_cctor(&[root]);
+    asm.add_cctor(&[set]);
 
     field_desc
 }

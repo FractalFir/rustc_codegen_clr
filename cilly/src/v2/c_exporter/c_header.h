@@ -5,6 +5,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <unistd.h>
+#include <sys/uio.h>
+#include <poll.h>
+#include <sched.h>
 #ifdef __STDC_VERSION__
 
 #else
@@ -24,6 +28,7 @@ union System_Collections_DictionaryEntry
 union System_String
 {
 };
+
 #define System_Runtime_InteropServices_Marshal_AllocHGlobali4is(size) malloc(size)
 #define System_Runtime_InteropServices_Marshal_AllocHGlobalisis(size) malloc(size)
 #define System_Runtime_InteropServices_Marshal_ReAllocHGlobalisisis(ptr, new_size) realloc(ptr, new_size)
@@ -63,7 +68,7 @@ void *System_Runtime_InteropServices_NativeMemory_AlignedReallocpvususpv(void *p
 
 #define System_UInt128_op_Divisionu16u16u16(lhs, rhs) (lhs / rhs)
 
-#define System_Int128_op_UnaryNegationi16i16(val) -(val)
+#define System_Int128_op_UnaryNegationi16i16(val) (__int128_t)(0 - ((__uint128_t)(val)))
 
 #define System_Int128_op_BitwiseOri16i16i16(lhs, rhs) (lhs | rhs)
 #define System_UInt128_op_BitwiseOru16u16u16(lhs, rhs) (lhs | rhs)
@@ -144,6 +149,7 @@ void *System_Runtime_InteropServices_NativeMemory_AlignedReallocpvususpv(void *p
 #define System_UInt128_op_OnesComplementu16u16(val) ~val
 
 #define System_Buffers_Binary_BinaryPrimitives_ReverseEndiannessi16i16(val) (__int128_t) __builtin_bswap128((__uint128_t)val)
+#define System_Buffers_Binary_BinaryPrimitives_ReverseEndiannessu16u16 __builtin_bswap128
 #define System_Buffers_Binary_BinaryPrimitives_ReverseEndiannessi1i1(val) val
 
 #define System_Buffers_Binary_BinaryPrimitives_ReverseEndiannessu8u8 __builtin_bswap64
@@ -209,7 +215,8 @@ void System_Console_WriteLinei4v(int arg)
 #define System_IntPtr_get_MaxValueis() INTPTR_MAX
 #define System_IntPtr_get_MinValueis() INTPTR_MIN
 
-#define System_Exception__ctor14System_Runtime16System_Exceptionsv(arg) arg
+#define System_Exception__ctor14System_Runtime16System_Exceptionsv
+#define System_Exception__ctorp14System_Runtime16System_Exceptionsv
 float System_Single_Clampf4f4f4f4(float d, float min, float max)
 {
     const float t = d < min ? min : d;
@@ -225,7 +232,9 @@ double System_Double_FusedMultiplyAddf8f8f8f8(double left, double right, double 
     return left * right + addend;
 }
 #define System_Type_GetTypeFromHandle14System_Runtime24System_RuntimeTypeHandle14System_Runtime11System_Type
+#define System_Type_GetTypeFromHandlep14System_Runtime24System_RuntimeTypeHandle14System_Runtime11System_Type
 #define System_Object_GetHashCode14System_Runtime11System_Typei4
+#define System_Object_GetHashCodep14System_Runtime11System_Typei4
 float System_Single_MaxNumberf4f4f4(float a, float b)
 {
     if (a > b)
@@ -272,3 +281,13 @@ double System_Double_CopySignf8f8f8(double mag, double sign)
     else
         return -fabs(mag);
 }
+#define System_Single_Cosf4f4(x) ((float)cos(x))
+#define System_Single_Cosf8f8 cos
+#define System_Single_Sinf4f4(x) ((float)sin(x))
+#define System_Single_Sinf8f8 sin
+#define System_Double_Absf8f8 fabsf64
+#define System_Double_Absf4f4 fabsf32
+#define System_MathF_Sqrtf4f4(x) (float)sqrt((double)x)
+#define System_MathF_Sqrtf8f8 sqrt
+#define System_Single_Powf4f4f4(a, b) (float)pow(a, b)
+#define System_Single_Powf8f8f8 pow

@@ -183,14 +183,13 @@ pub fn shl_checked<'tcx>(
     match value_type.kind() {
         TyKind::Uint(UintTy::U128) => {
             call!(
-                CallSite::boxed(
-                    ClassRef::uint_128(ctx.asm_mut()).into(),
-                    "op_LeftShift".into(),
+                CallSite::builtin(
+                    "shl_u128".into(),
                     FnSig::new(
                         [Type::Int(Int::U128), Type::Int(Int::I32)].into(),
                         Type::Int(Int::U128)
                     ),
-                    true,
+                    true
                 ),
                 [
                     ops_a,
@@ -208,14 +207,13 @@ pub fn shl_checked<'tcx>(
         }
         TyKind::Int(IntTy::I128) => {
             call!(
-                CallSite::boxed(
-                    ClassRef::int_128(ctx.asm_mut()).into(),
-                    "op_LeftShift".into(),
+                CallSite::builtin(
+                    "shl_i128".into(),
                     FnSig::new(
                         [Type::Int(Int::I128), Type::Int(Int::I32)].into(),
                         Type::Int(Int::I128)
                     ),
-                    true,
+                    true
                 ),
                 [
                     ops_a,

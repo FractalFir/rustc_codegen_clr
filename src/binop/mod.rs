@@ -168,14 +168,14 @@ pub fn add_unchecked<'tcx>(
     match ty_a.kind() {
         TyKind::Int(int_ty) => {
             if let IntTy::I128 = int_ty {
-                let ty_a = ctx.type_from_cache(ty_a);
-                let ty_b = ctx.type_from_cache(ty_b);
                 call!(
-                    CallSite::new_extern(
-                        ClassRef::int_128(ctx.asm_mut()),
-                        "op_Addition".into(),
-                        FnSig::new([ty_a, ty_b].into(), ty_a),
-                        true,
+                    CallSite::builtin(
+                        "add_i128".into(),
+                        FnSig::new(
+                            [Type::Int(Int::I128), Type::Int(Int::I128)].into(),
+                            Type::Int(Int::I128)
+                        ),
+                        true
                     ),
                     [ops_a, ops_b]
                 )
@@ -185,14 +185,14 @@ pub fn add_unchecked<'tcx>(
         }
         TyKind::Uint(uint_ty) => {
             if let UintTy::U128 = uint_ty {
-                let ty_a = ctx.type_from_cache(ty_a);
-                let ty_b = ctx.type_from_cache(ty_b);
                 call!(
-                    CallSite::new_extern(
-                        ClassRef::uint_128(ctx.asm_mut()),
-                        "op_Addition".into(),
-                        FnSig::new([ty_a, ty_b].into(), ty_a),
-                        true,
+                    CallSite::builtin(
+                        "add_u128".into(),
+                        FnSig::new(
+                            [Type::Int(Int::U128), Type::Int(Int::U128)].into(),
+                            Type::Int(Int::U128)
+                        ),
+                        true
                     ),
                     [ops_a, ops_b]
                 )
@@ -218,6 +218,17 @@ pub fn add_unchecked<'tcx>(
             ),
             [ops_a, ops_b,]
         ),
+        TyKind::Float(FloatTy::F16) => call!(
+            CallSite::builtin(
+                "add_f16".into(),
+                FnSig::new(
+                    [Type::Float(Float::F128), Type::Float(Float::F128)].into(),
+                    Type::Float(Float::F128)
+                ),
+                true
+            ),
+            [ops_a, ops_b,]
+        ),
         _ => todo!("can't add numbers of types {ty_a} and {ty_b}"),
     }
 }
@@ -232,14 +243,14 @@ pub fn sub_unchecked<'tcx>(
     match ty_a.kind() {
         TyKind::Int(int_ty) => {
             if let IntTy::I128 = int_ty {
-                let ty_a = ctx.type_from_cache(ty_a);
-                let ty_b = ctx.type_from_cache(ty_b);
                 call!(
-                    CallSite::new_extern(
-                        ClassRef::int_128(ctx.asm_mut()),
-                        "op_Subtraction".into(),
-                        FnSig::new([ty_a, ty_b].into(), ty_a),
-                        true,
+                    CallSite::builtin(
+                        "sub_i128".into(),
+                        FnSig::new(
+                            [Type::Int(Int::I128), Type::Int(Int::I128)].into(),
+                            Type::Int(Int::I128)
+                        ),
+                        true
                     ),
                     [ops_a, ops_b]
                 )
@@ -249,14 +260,14 @@ pub fn sub_unchecked<'tcx>(
         }
         TyKind::Uint(uint_ty) => {
             if let UintTy::U128 = uint_ty {
-                let ty_a = ctx.type_from_cache(ty_a);
-                let ty_b = ctx.type_from_cache(ty_b);
                 call!(
-                    CallSite::new_extern(
-                        ClassRef::uint_128(ctx.asm_mut()),
-                        "op_Subtraction".into(),
-                        FnSig::new([ty_a, ty_b].into(), ty_a),
-                        true,
+                    CallSite::builtin(
+                        "sub_u128".into(),
+                        FnSig::new(
+                            [Type::Int(Int::U128), Type::Int(Int::U128)].into(),
+                            Type::Int(Int::U128)
+                        ),
+                        true
                     ),
                     [ops_a, ops_b]
                 )
@@ -289,27 +300,27 @@ fn rem_unchecked<'tcx>(
 ) -> CILNode {
     match ty_a.kind() {
         TyKind::Int(IntTy::I128) => {
-            let ty_a = ctx.type_from_cache(ty_a);
-            let ty_b = ctx.type_from_cache(ty_b);
             call!(
-                CallSite::new_extern(
-                    ClassRef::int_128(ctx.asm_mut()),
-                    "op_Modulus".into(),
-                    FnSig::new([ty_a, ty_b].into(), ty_a),
-                    true,
+                CallSite::builtin(
+                    "mod_i128".into(),
+                    FnSig::new(
+                        [Type::Int(Int::I128), Type::Int(Int::I128)].into(),
+                        Type::Int(Int::I128)
+                    ),
+                    true
                 ),
                 [ops_a, ops_b]
             )
         }
         TyKind::Uint(UintTy::U128) => {
-            let ty_a = ctx.type_from_cache(ty_a);
-            let ty_b = ctx.type_from_cache(ty_b);
             call!(
-                CallSite::new_extern(
-                    ClassRef::uint_128(ctx.asm_mut()),
-                    "op_Modulus".into(),
-                    FnSig::new([ty_a, ty_b].into(), ty_a),
-                    true,
+                CallSite::builtin(
+                    "mod_u128".into(),
+                    FnSig::new(
+                        [Type::Int(Int::U128), Type::Int(Int::U128)].into(),
+                        Type::Int(Int::U128)
+                    ),
+                    true
                 ),
                 [ops_a, ops_b]
             )
@@ -343,27 +354,27 @@ fn mul_unchecked<'tcx>(
 ) -> CILNode {
     match ty_a.kind() {
         TyKind::Int(IntTy::I128) => {
-            let ty_a = ctx.type_from_cache(ty_a);
-            let ty_b = ctx.type_from_cache(ty_b);
             call!(
-                CallSite::new_extern(
-                    ClassRef::int_128(ctx.asm_mut()),
-                    "op_Multiply".into(),
-                    FnSig::new([ty_a, ty_b].into(), ty_a),
-                    true,
+                CallSite::builtin(
+                    "mul_i128".into(),
+                    FnSig::new(
+                        [Type::Int(Int::I128), Type::Int(Int::I128)].into(),
+                        Type::Int(Int::I128)
+                    ),
+                    true
                 ),
                 [operand_a, operand_b]
             )
         }
         TyKind::Uint(UintTy::U128) => {
-            let ty_a = ctx.type_from_cache(ty_a);
-            let ty_b = ctx.type_from_cache(ty_b);
             call!(
-                CallSite::new_extern(
-                    ClassRef::uint_128(ctx.asm_mut()),
-                    "op_Multiply".into(),
-                    FnSig::new([ty_a, ty_b].into(), ty_a),
-                    true,
+                CallSite::builtin(
+                    "mul_u128".into(),
+                    FnSig::new(
+                        [Type::Int(Int::U128), Type::Int(Int::U128)].into(),
+                        Type::Int(Int::U128)
+                    ),
+                    true
                 ),
                 [operand_a, operand_b]
             )
@@ -391,27 +402,27 @@ fn div_unchecked<'tcx>(
 ) -> CILNode {
     match ty_a.kind() {
         TyKind::Int(IntTy::I128) => {
-            let ty_a = ctx.type_from_cache(ty_a);
-            let ty_b = ctx.type_from_cache(ty_b);
             call!(
-                CallSite::new_extern(
-                    ClassRef::int_128(ctx.asm_mut()),
-                    "op_Division".into(),
-                    FnSig::new([ty_a, ty_b].into(), ty_a),
-                    true,
+                CallSite::builtin(
+                    "div_i128".into(),
+                    FnSig::new(
+                        [Type::Int(Int::I128), Type::Int(Int::I128)].into(),
+                        Type::Int(Int::I128)
+                    ),
+                    true
                 ),
                 [operand_a, operand_b]
             )
         }
         TyKind::Uint(UintTy::U128) => {
-            let ty_a = ctx.type_from_cache(ty_a);
-            let ty_b = ctx.type_from_cache(ty_b);
             call!(
-                CallSite::new_extern(
-                    ClassRef::uint_128(ctx.asm_mut()),
-                    "op_Division".into(),
-                    FnSig::new([ty_a, ty_b].into(), ty_a),
-                    true,
+                CallSite::builtin(
+                    "div_u128".into(),
+                    FnSig::new(
+                        [Type::Int(Int::U128), Type::Int(Int::U128)].into(),
+                        Type::Int(Int::U128)
+                    ),
+                    true
                 ),
                 [operand_a, operand_b]
             )

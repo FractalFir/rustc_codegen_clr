@@ -576,8 +576,12 @@ impl ILExporter {
                         writeln!(out, "ldobj {cref}", cref = class_ref(cref, asm))
                     }
                     (Type::Float(float), volitale) => match (float, volitale) {
-                        (super::Float::F16, true) => todo!(),
-                        (super::Float::F16, false) => todo!(),
+                        (super::Float::F16, true) => {
+                            writeln!(out, "volatile. ldobj [System.Runtime]System.Half")
+                        }
+                        (super::Float::F16, false) => {
+                            writeln!(out, "ldobj [System.Runtime]System.Half")
+                        }
                         (super::Float::F32, true) => writeln!(out, "volatile. ldind.r4"),
                         (super::Float::F32, false) => writeln!(out, "ldind.r4"),
                         (super::Float::F64, true) => writeln!(out, "volatile. ldind.r8"),

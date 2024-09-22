@@ -13,15 +13,7 @@ fn main() {
     let mut i = black_box(0);
     for _ in 0..1234 {
         i += 1;
-        rustc_clr_interop_managed_call1_::<
-            "System.Console",
-            "System.Console",
-            false,
-            "WriteLine",
-            true,
-            (),
-            i32,
-        >(i);
+        unsafe { printf(c"i:%i\n".as_ptr(), i) };
     }
     test_eq!(black_box(i), 1234);
 }
