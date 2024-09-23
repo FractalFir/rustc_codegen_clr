@@ -20,53 +20,32 @@ fn main(){
 ```
 The project will also include support for defining .NET classes from Rust. This is currently heavily WIP, and any feedback is appreciated.
 ```
-#[dotnet_typedef]
-struct Test{
-    inherits:System::Object,
-    count:i32,
-    #[fnimpl(Test_ToString)]
-    ToString: fn(Self)->System::String,
-    #[fnimpl(Test_GetCount)]
-    GetCount: fn(Self)->System::String,
-    #[fnimpl(Test_SayHello)]
-    SayHello: fn(),
+// Early WIP syntax, subject to change.
+dotnet_typedef! {
+  class MyClass inherits [Some::External::Assebmly]SomeNamespace::SomeClass{
+    virtual fn ToString(_this:MyClass)->MString{
+      "I am a class defined in Rust!".into_managed()
+    },
+  }
 }
 ```
 ## Current state of the project
 
-The project currently supports most Rust features (except async), but it is not bug-free. It can compile a partially working version of Rust std, but the many minor bugs make such `std` highly unstable.
+The project currently supports most Rust features (except async and proc macros), but it is not bug-free. It can compile a mostly working version of Rust std, but there are many minor bugs make such `std` not 100% functional.
+
+Most compoenets of `std` are about 95% working.
 
 So, you *can* compile a lot of existing Rust code, but it may not necessarily *work*.
-## Basic benchmarks
+### core, std, and alloc uint tests.
 
-> [!NOTE]
-> Those are benchmarks which put Rust on the worst footing, since they involve no allocations/GC at all. They serve as a baseline to determine the best possible performance.
->
-> All tests were run in CoreCLR .NET runtime, version `7.0.11` The host system was `Linux fedora 6.5.5-200.fc38.x86_64`, and the CPU was `13th Gen Intel(R) Core(TM) i5-13500HX`.
-
-`Codegen Optimizations Disabled` means that the code was compiled in release mode, but post-MIR, codegen-internal optimizations were disabled.
-
-### Fibonacci of 10, recursive
-
-| Test Method                                | Avg of 10K runs |
-| ------------------------------------------ | --------------- |
-| Rust native (release)                      | 100 ns          |
-| Rust native (debug)                        | 360 ns          |
-| Rust .NET (default optimizations)          | 240 ns          |
-| Rust .NET (codegen optimizations disabled) | 330 ns          |
-| C# release (pure IL)                       | 230 ns          |
-| C# debug (pure IL)                         | 370 ns          |
-
-As you can see, the difference between optimized C# and optimized .NET Rust code is not all that big. It is noticeable(~10%), but I would say it is a pretty good result considering how few optimizations are done right now. With a couple of bigger changes coming further down the line, the gap could become non-existent in the future. Since this benchmark is meant to show the worst case scenario, Rust could already outperform C# in a wide range of more memory-intensive scenarios.
-
-**However**, you should take all of those results with a pinch of salt. Since there is currently no way to use "proper" .NET benchmarking tools, I am relying on the `Stopwatch` class for time measurements and have no way to control the behavior of the JIT. 
-
-| Test Method                       | Avg of 100M runs |
-| --------------------------------- | ---------------- |
-| Rust native (release)             | 107 ns           |
-| Rust .NET (default optimizations) | 240 ns           |
-| C# release (pure IL)              | 220 ns           |
-
+| Name | Pass	| Faliure	| Crash \ Timeout| OK precentage
+|--------------------|--------|-------|-------|------|
+| Core tests |	1635	| 38	| 41	| 95.39% |
+| Alloc tests | 	616	|8 |	40 |	92.77% |
+| Alloc benches	| 464	| 0	| 0 |	100.00% |
+| Test Harness tests |	57 |	0	| 100.00% |
+| std tests	| 955| 33 | 17 |	95.02% |
+| Core benches	| 490 | 2| | 98.39% |
 ## FAQ
 
 ### Q: What is it?
@@ -79,7 +58,7 @@ As you can see, the difference between optimized C# and optimized .NET Rust code
 
 ### Q: Is this useless since I can already load shared libraries from C#?
 
-**A**: *The Rust APIs this codegen exposes to C#/F# code are only slightly easier to use than those exposed by a .so or .dll Rust library. Interop still requires some effort, but the Rust code is bundled with everything else. Types used from C# are guaranteed to be the same as those in C#, preventing mismatch issues. All types can be safely sent between Rust and C#, with exactly the same layout. Additionally, since all Rust code compiled with this codegen can be bundled with C#/F# code, you no longer need to ship different versions of the library for different architectures. Any architecture supported by CLR works out of the box, without the exact same binary.*
+**A**: *The Rust APIs this codegen exposes to C#/F# code are only slightly easier to use than those exposed by a .so or .dll Rust library. Interop still requires some effort, but the Rust code is bundled with everything else. Types used from C# are guaranteed to be the same as those in C#, preventing mismatch issues. All types can be safely sent between Rust and C#, with exactly the same layout. Additionally, since all Rust code compiled with this codegen can be bundled with C#/F# code, you no longer need to ship different versions of the library for different architectures. Any architecture supported by CLR works out of the box, using the exact same assembly.*
 
 *You can also avoid the cost of switching between code running within and outside the runtime. This cost is not unbearable, but it is not easily eliminated, and reducing it can have safety penalties. In this case, all code runs within the runtime, meaning there is no transition between code running inside and outside the runtime.*
 
@@ -87,9 +66,11 @@ As you can see, the difference between optimized C# and optimized .NET Rust code
 
 ### Q: Compatibility?
 
-**A**: *`rustc_codegen_clr` is only tested on Linux x86_64, with the Mono and CoreCLR (more commonly known as simply the .NET runtime). It should work on other platforms, but it is not guaranteed.
+**A**: *`rustc_codegen_clr` is only tested on Linux x86_64, with the CoreCLR runtime (more commonly known as simply the .NET runtime), on .NET 8. It should work on other platforms, but it is not guaranteed.*
 
-**A** The support for the Mono runtime is not as good as it could be. Due to not supported features and differences, 128-bit integers and checked 64-bit integer arithmetic are not supported on Mono.
+### Q: Whata about Mono?
+**A** *The support for the Mono runtime is not as good as it could be. Due to not supported features and differences, 128-bit integers and checked 64-bit integer arithmetic are not supported on Mono.*
+*Aligned allocators(__rust_alloc) and certain intrinsics are also not supported. I plan to expand support for Mono, but my resources are limited.*
 
 ### Q: Are there any issues?
 
