@@ -91,4 +91,19 @@ fn ptr_bitops_tagging() {
         ptr.map_addr(|a| a | 0b1001)
     );
     test_eq!(atom.load(SeqCst), ptr);
+    //add_data();
+}
+fn add_data() {
+    let atom = AtomicPtr::<i64>::new(core::ptr::null_mut());
+    test_eq!(atom.fetch_ptr_add(1, SeqCst).addr(), 0);
+    test_eq!(atom.load(SeqCst).addr(), 8);
+
+    test_eq!(atom.fetch_byte_add(1, SeqCst).addr(), 8);
+    test_eq!(atom.load(SeqCst).addr(), 9);
+
+    test_eq!(atom.fetch_ptr_sub(1, SeqCst).addr(), 9);
+    test_eq!(atom.load(SeqCst).addr(), 1);
+
+    test_eq!(atom.fetch_byte_sub(1, SeqCst).addr(), 1);
+    test_eq!(atom.load(SeqCst).addr(), 0);
 }

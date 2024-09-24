@@ -498,7 +498,7 @@ impl CILNode {
                 let arg = asm.get_node(*arg).clone();
                 let arg_type = arg.typecheck(sig, locals, asm)?;
                 match arg_type {
-                    Type::Int(_) | Type::Float(_) => Ok(arg_type),
+                    Type::Int(_) | Type::Float(_) | Type::Ptr(_) => Ok(arg_type),
                     _ => Err(TypeCheckError::WrongUnOpArgs {
                         tpe: arg_type,
                         op: op.clone(),

@@ -19,7 +19,7 @@ pub fn atomic_add(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly)
                     ),
                     true
                 ),
-                [addr, addend.clone()]
+                [addr, addend]
             )
         }
         Type::Int(Int::U32 | Int::I32) => {
@@ -33,7 +33,7 @@ pub fn atomic_add(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly)
                     ),
                     true
                 ),
-                [addr, addend.clone()]
+                [addr, addend]
             )
         }
         Type::Int(Int::USize | Int::ISize) | Type::Ptr(_) => call!(
@@ -45,7 +45,10 @@ pub fn atomic_add(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly)
                 ),
                 true
             ),
-            [addr, addend.clone()]
+            [
+                addr.cast_ptr(asm.nptr(Type::Int(Int::USize))),
+                addend.cast_ptr(Type::Int(Int::USize))
+            ]
         ),
 
         _ => todo!(),

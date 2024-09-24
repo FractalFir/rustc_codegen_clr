@@ -205,7 +205,7 @@ impl ILExporter {
                     writeln!(out,"// targets:{}",block.targets(asm).count())?;
                     writeln!(out," bb{}:",block.block_id())?;
                     for root in block.roots(){
-                        self.export_root(asm,out,*root,false,sig,locals)?;
+                        self.export_root(asm,out,*root,false, block.handler().is_some(),sig,locals)?;
                     }
                     if let Some(handler) = block.handler(){
                         if Some(handler) == blocks_iter.peek().and_then(|block|block.handler()){
@@ -219,7 +219,7 @@ impl ILExporter {
                         for hblock in handler{
                             writeln!(out," h{}_{}:",block.block_id(),hblock.block_id())?;
                             for root in hblock.roots(){
-                                self.export_root(asm,out,*root,true,sig,locals)?;
+                                self.export_root(asm,out,*root,true,false,sig,locals)?;
                             }
                         }
                         writeln!(out,"}}")?;
@@ -709,12 +709,14 @@ impl ILExporter {
             }
         }
     }
+    #[allow(clippy::too_many_arguments)]
     fn export_root(
         &self,
         asm: &mut super::Assembly,
         out: &mut impl Write,
         root: RootIdx,
         is_handler: bool,
+        has_handler: bool,
         sig: SigIdx,
         locals: &[LocalDef],
     ) -> std::io::Result<()> {
@@ -764,8 +766,12 @@ impl ILExporter {
                         writeln!(out, "beq bb{}", branch.0)
                     } else if is_handler {
                         writeln!(out, "beq h{}_{}", branch.0, branch.1)
-                    } else {
+                    } else if has_handler {
                         writeln!(out, "beq jp{}_{}", branch.0, branch.1)
+                    }
+                    // If the handler was removed, we can just blt.un
+                    else {
+                        writeln!(out, "beq bb{}", branch.1)
                     }
                 }
                 Some(BranchCond::Ne(a, b)) => {
@@ -775,8 +781,12 @@ impl ILExporter {
                         writeln!(out, "bne.un bb{}", branch.0)
                     } else if is_handler {
                         writeln!(out, "bne.un h{}_{}", branch.0, branch.1)
-                    } else {
+                    } else if has_handler {
                         writeln!(out, "bne.un jp{}_{}", branch.0, branch.1)
+                    }
+                    // If the handler was removed, we can just blt.un
+                    else {
+                        writeln!(out, "bne.un bb{}", branch.1)
                     }
                 }
                 Some(BranchCond::Lt(a, b, kind)) => {
@@ -788,8 +798,12 @@ impl ILExporter {
                                 writeln!(out, "blt bb{}", branch.0)
                             } else if is_handler {
                                 writeln!(out, "blt h{}_{}", branch.0, branch.1)
-                            } else {
+                            } else if has_handler {
                                 writeln!(out, "blt jp{}_{}", branch.0, branch.1)
+                            }
+                            // If the handler was removed, we can just blt
+                            else {
+                                writeln!(out, "blt bb{}", branch.1)
                             }
                         }
                         super::cilroot::CmpKind::Unordered | super::cilroot::CmpKind::Unsigned => {
@@ -797,8 +811,12 @@ impl ILExporter {
                                 writeln!(out, "blt.un bb{}", branch.0)
                             } else if is_handler {
                                 writeln!(out, "blt.un h{}_{}", branch.0, branch.1)
-                            } else {
+                            } else if has_handler {
                                 writeln!(out, "blt.un jp{}_{}", branch.0, branch.1)
+                            }
+                            // If the handler was removed, we can just blt.un
+                            else {
+                                writeln!(out, "blt.un bb{}", branch.1)
                             }
                         }
                     }
@@ -812,8 +830,12 @@ impl ILExporter {
                                 writeln!(out, "bgt bb{}", branch.0)
                             } else if is_handler {
                                 writeln!(out, "bgt h{}_{}", branch.0, branch.1)
-                            } else {
+                            } else if has_handler {
                                 writeln!(out, "bgt jp{}_{}", branch.0, branch.1)
+                            }
+                            // If the handler was removed, we can just bgt
+                            else {
+                                writeln!(out, "bgt bb{}", branch.1)
                             }
                         }
                         super::cilroot::CmpKind::Unordered | super::cilroot::CmpKind::Unsigned => {
@@ -821,8 +843,12 @@ impl ILExporter {
                                 writeln!(out, "bgt.un bb{}", branch.0)
                             } else if is_handler {
                                 writeln!(out, "bgt.un h{}_{}", branch.0, branch.1)
-                            } else {
+                            } else if has_handler {
                                 writeln!(out, "bgt.un jp{}_{}", branch.0, branch.1)
+                            }
+                            // If the handler was removed, we can just bgt.un
+                            else {
+                                writeln!(out, "bgt.un bb{}", branch.1)
                             }
                         }
                     }
@@ -836,8 +862,12 @@ impl ILExporter {
                                 writeln!(out, "ble bb{}", branch.0)
                             } else if is_handler {
                                 writeln!(out, "ble h{}_{}", branch.0, branch.1)
-                            } else {
+                            } else if has_handler {
                                 writeln!(out, "ble jp{}_{}", branch.0, branch.1)
+                            }
+                            // If the handler was removed, we can just ble
+                            else {
+                                writeln!(out, "ble bb{}", branch.1)
                             }
                         }
                         super::cilroot::CmpKind::Unordered | super::cilroot::CmpKind::Unsigned => {
@@ -845,8 +875,12 @@ impl ILExporter {
                                 writeln!(out, "ble.un bb{}", branch.0)
                             } else if is_handler {
                                 writeln!(out, "ble.un h{}_{}", branch.0, branch.1)
-                            } else {
+                            } else if has_handler {
                                 writeln!(out, "ble.un jp{}_{}", branch.0, branch.1)
+                            }
+                            // If the handler was removed, we can just ble.un
+                            else {
+                                writeln!(out, "ble.un bb{}", branch.1)
                             }
                         }
                     }
@@ -860,8 +894,12 @@ impl ILExporter {
                                 writeln!(out, "bge bb{}", branch.0)
                             } else if is_handler {
                                 writeln!(out, "bge h{}_{}", branch.0, branch.1)
-                            } else {
+                            } else if has_handler {
                                 writeln!(out, "bge jp{}_{}", branch.0, branch.1)
+                            }
+                            // If the handler was removed, we can just bge
+                            else {
+                                writeln!(out, "bge bb{}", branch.1)
                             }
                         }
                         super::cilroot::CmpKind::Unordered | super::cilroot::CmpKind::Unsigned => {
@@ -869,8 +907,12 @@ impl ILExporter {
                                 writeln!(out, "bge.un bb{}", branch.0)
                             } else if is_handler {
                                 writeln!(out, "bge.un h{}_{}", branch.0, branch.1)
-                            } else {
+                            } else if has_handler {
                                 writeln!(out, "bge.un jp{}_{}", branch.0, branch.1)
+                            }
+                            // If the handler was removed, we can just bge.un
+                            else {
+                                writeln!(out, "bge.un bb{}", branch.1)
                             }
                         }
                     }
@@ -881,8 +923,12 @@ impl ILExporter {
                         writeln!(out, "brtrue bb{}", branch.0)
                     } else if is_handler {
                         writeln!(out, "brtrue h{}_{}", branch.0, branch.1)
-                    } else {
+                    } else if has_handler {
                         writeln!(out, "brtrue jp{}_{}", branch.0, branch.1)
+                    }
+                    // If the handler was removed, we can just brtrue
+                    else {
+                        writeln!(out, "brtrue bb{}", branch.1)
                     }
                 }
                 Some(BranchCond::False(cond)) => {
@@ -891,8 +937,12 @@ impl ILExporter {
                         writeln!(out, "brfalse bb{}", branch.0)
                     } else if is_handler {
                         writeln!(out, "brfalse h{}_{}", branch.0, branch.1)
-                    } else {
+                    } else if has_handler {
                         writeln!(out, "brfalse jp{}_{}", branch.0, branch.1)
+                    }
+                    // If the handler was removed, we can just brfalse
+                    else {
+                        writeln!(out, "brfalse bb{}", branch.1)
                     }
                 }
                 None => {
@@ -902,8 +952,12 @@ impl ILExporter {
                         writeln!(out, "br h{}_{}", branch.0, branch.1)
                     }
                     // If it is not a handler, then this is the only block in this try, then all jumps are extern, then we can just use leave
-                    else {
+                    else if has_handler {
                         writeln!(out, "leave bb{}", branch.1)
+                    }
+                    // If the handler was removed, we can just br
+                    else {
+                        writeln!(out, "br bb{}", branch.1)
                     }
                 }
             },
@@ -1063,8 +1117,10 @@ impl ILExporter {
             super::CILRoot::ExitSpecialRegion { target, source } => {
                 if is_handler {
                     writeln!(out, "h{source}_{target}: leave bb{target}")
-                } else {
+                } else if has_handler {
                     writeln!(out, "jp{source}_{target}: leave bb{target}")
+                } else {
+                    Ok(())
                 }
             }
             super::CILRoot::ReThrow => {
