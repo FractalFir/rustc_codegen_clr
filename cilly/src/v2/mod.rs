@@ -9,7 +9,7 @@ pub use asm::{Assembly, IlasmFlavour};
 pub use basic_block::BasicBlock;
 pub use bimap::BiMap;
 pub use cilnode::{BinOp, CILNode, NodeIdx};
-pub use cilroot::{CILRoot, RootIdx};
+pub use cilroot::{BranchCond, CILRoot, RootIdx};
 pub use class::{ClassDef, ClassDefIdx, ClassRef, ClassRefIdx};
 pub use cst::Const;
 pub use field::{FieldDesc, FieldIdx, StaticFieldDesc, StaticFieldIdx};

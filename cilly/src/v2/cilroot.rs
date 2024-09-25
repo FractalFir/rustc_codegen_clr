@@ -72,7 +72,20 @@ pub enum BranchCond {
     Ge(NodeIdx, NodeIdx, CmpKind),
 }
 impl BranchCond {
-    pub(crate) fn nodes(&self) -> Vec<NodeIdx> {
+    /// Returns all the nodes used by this branch cond.
+    /// ```
+    /// # use cilly::v2::*;
+    /// # let mut asm = Assembly::default();
+    /// let ldarg_0 = asm.alloc_node(CILNode::LdArg(0));
+    /// let ldloc_1 = asm.alloc_node(CILNode::LdLoc(1));
+    /// let eq = BranchCond::Eq(ldarg_0,ldloc_1);
+    /// // Two child nodes - ldarg_0 and ldloc_1
+    /// assert_eq!(eq.nodes(),vec![ldarg_0,ldloc_1]);
+    /// let cond_true = BranchCond::True(ldarg_0);
+    /// // One child node - ldarg_0
+    /// assert_eq!(cond_true.nodes(),vec![ldarg_0]);
+    /// ```
+    pub fn nodes(&self) -> Vec<NodeIdx> {
         match self {
             BranchCond::True(cond) | BranchCond::False(cond) => vec![*cond],
             BranchCond::Eq(lhs, rhs)

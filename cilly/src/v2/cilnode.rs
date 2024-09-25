@@ -253,6 +253,16 @@ impl BinOp {
     }
 }
 impl CILNode {
+    /// Returns all the nodes this node references.
+    /// ```
+    /// # use cilly::v2::*;
+    /// # let mut asm = Assembly::default();
+    /// let ldarg_0 = asm.alloc_node(CILNode::LdArg(0));
+    /// let ldloc_1 = asm.alloc_node(CILNode::LdLoc(1));
+    /// let binop = CILNode::BinOp(ldarg_0,ldloc_1,BinOp::Add);
+    /// // Two child nodes - ldarg_0 and ldloc_1
+    /// assert_eq!(binop.child_nodes(),vec![ldarg_0,ldloc_1]);
+    /// ```
     pub fn child_nodes(&self) -> Vec<NodeIdx> {
         match self {
             CILNode::Const(_)
