@@ -157,7 +157,7 @@ impl BinOp {
                     if lhs.is_assignable_to(rhs, asm)
                         && (lhs.as_int().is_some() || rhs.as_int().is_some())
                     {
-                        Ok(Type::Int(*lhs.as_int().or(rhs.as_int()).unwrap()))
+                        Ok(Type::Int(lhs.as_int().or(rhs.as_int()).unwrap()))
                     } else {
                         Err(TypeCheckError::WrongBinopArgs {
                             lhs,
@@ -241,7 +241,7 @@ impl BinOp {
                     if lhs.is_assignable_to(rhs, asm)
                         && (lhs.as_int().is_some() || rhs.as_int().is_some())
                     {
-                        Ok(Type::Int(*lhs.as_int().or(rhs.as_int()).unwrap()))
+                        Ok(Type::Int(lhs.as_int().or(rhs.as_int()).unwrap()))
                     } else {
                         Err(TypeCheckError::WrongBinopArgs {
                             lhs,
@@ -260,7 +260,7 @@ impl BinOp {
                     if lhs.is_assignable_to(rhs, asm)
                         && (lhs.as_int().is_some() || rhs.as_int().is_some())
                     {
-                        Ok(Type::Int(*lhs.as_int().or(rhs.as_int()).unwrap()))
+                        Ok(Type::Int(lhs.as_int().or(rhs.as_int()).unwrap()))
                     } else {
                         Err(TypeCheckError::WrongBinopArgs {
                             lhs,
@@ -279,7 +279,7 @@ impl BinOp {
                     if lhs.is_assignable_to(rhs, asm)
                         && (lhs.as_int().is_some() || rhs.as_int().is_some())
                     {
-                        Ok(Type::Int(*lhs.as_int().or(rhs.as_int()).unwrap()))
+                        Ok(Type::Int(lhs.as_int().or(rhs.as_int()).unwrap()))
                     } else {
                         Err(TypeCheckError::WrongBinopArgs {
                             lhs,
@@ -320,7 +320,7 @@ impl BinOp {
                     if lhs.is_assignable_to(rhs, asm)
                         && (lhs.as_int().is_some() || rhs.as_int().is_some())
                     {
-                        Ok(Type::Int(*lhs.as_int().or(rhs.as_int()).unwrap()))
+                        Ok(Type::Int(lhs.as_int().or(rhs.as_int()).unwrap()))
                     } else {
                         Err(TypeCheckError::WrongBinopArgs {
                             lhs,
@@ -361,7 +361,7 @@ impl BinOp {
                     if lhs.is_assignable_to(rhs, asm)
                         && (lhs.as_int().is_some() || rhs.as_int().is_some())
                     {
-                        Ok(Type::Int(*lhs.as_int().or(rhs.as_int()).unwrap()))
+                        Ok(Type::Int(lhs.as_int().or(rhs.as_int()).unwrap()))
                     } else {
                         Err(TypeCheckError::WrongBinopArgs {
                             lhs,
@@ -402,7 +402,7 @@ impl BinOp {
                     if lhs.is_assignable_to(rhs, asm)
                         && (lhs.as_int().is_some() || rhs.as_int().is_some())
                     {
-                        Ok(Type::Int(*lhs.as_int().or(rhs.as_int()).unwrap()))
+                        Ok(Type::Int(lhs.as_int().or(rhs.as_int()).unwrap()))
                     } else {
                         Err(TypeCheckError::WrongBinopArgs {
                             lhs,
@@ -421,7 +421,7 @@ impl BinOp {
                     if lhs.is_assignable_to(rhs, asm)
                         && (lhs.as_int().is_some() || rhs.as_int().is_some())
                     {
-                        Ok(Type::Int(*lhs.as_int().or(rhs.as_int()).unwrap()))
+                        Ok(Type::Int(lhs.as_int().or(rhs.as_int()).unwrap()))
                     } else {
                         Err(TypeCheckError::WrongBinopArgs {
                             lhs,
@@ -461,7 +461,7 @@ impl BinOp {
                     if lhs.is_assignable_to(rhs, asm)
                         && (lhs.as_int().is_some() || rhs.as_int().is_some())
                     {
-                        Ok(Type::Int(*lhs.as_int().or(rhs.as_int()).unwrap()))
+                        Ok(Type::Int(lhs.as_int().or(rhs.as_int()).unwrap()))
                     } else {
                         Err(TypeCheckError::WrongBinopArgs {
                             lhs,

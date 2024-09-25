@@ -74,71 +74,14 @@ impl Type {
             _ => panic!(),
         }
     }
-    /*
-        pub fn from_v1(tpe: &crate::Type, asm: &mut Assembly) -> Type {
-            match tpe {
-                // We turn Foregin into void.
-                crate::Type::Void | crate::Type::Foreign => Self::Void,
-                crate::Type::Bool => Self::Bool,
-                crate::Type::F16 => Float::F16.into(),
-                crate::Type::Float(Float::F32) => Float::F32.into(),
-                crate::Type::Float(Float::F64) => Float::F64.into(),
-                crate::Type::Float(Float::F128) => Float::F128.into(),
-                crate::Type::Int(Int::U8) => Int::U8.into(),
-                crate::Type::Int(Int::U16) => Int::U16.into(),
-                crate::Type::Int(Int::U32) => Int::U32.into(),
-                crate::Type::Int(Int::U64) => Int::U64.into(),
-                crate::Type::Int(Int::U128) => Int::U128.into(),
-                crate::Type::Int(Int::USize) => Int::USize.into(),
-                crate::Type::Int(Int::I8) => Int::I8.into(),
-                crate::Type::Int(Int::I16) => Int::I16.into(),
-                crate::Type::Int(Int::I32) => Int::I32.into(),
-                crate::Type::Int(Int::I64) => Int::I64.into(),
-                crate::Type::Int(Int::I128) => Int::I128.into(),
-                crate::Type::Int(Int::ISize) => Int::ISize.into(),
-                crate::Type::ClassRef(dotnet_type) => {
-                    #[allow(clippy::single_match)]
-                    if dotnet_type.asm() == Some("System.Runtime") {
-                        match dotnet_type.name_path() {
-                            "System.String" => return Type::PlatformString,
-                            "System.Object" => return Type::PlatformObject,
-                            _ => (),
-                        }
-                    }
-                    let cref = ClassRef::from_v1(dotnet_type, asm);
-                    let cref = asm.alloc_class_ref(cref);
-                    cref.into()
-                }
-                crate::Type::Ptr(inner) => {
-                    let inner = Self::from_v1(inner, asm);
-                    asm.nptr(inner)
-                }
-                crate::Type::Ref(inner) => {
-                    let inner = Self::from_v1(inner, asm);
-                    asm.nref(inner)
-                }
-
-                crate::Type::GenericArg(arg) => Self::PlatformGeneric(*arg, GenericKind::TypeGeneric),
-                crate::Type::CallGenericArg(arg) => {
-                    Self::PlatformGeneric(*arg, GenericKind::CallGeneric)
-                }
-                crate::Type::DotnetChar => Self::PlatformChar,
-                crate::Type::FnPtr(sig) => {
-                    let sig = FnSig::from_v1(sig, asm);
-                    Self::FnPtr(asm.alloc_sig(sig))
-                }
-                crate::Type::MethodGenericArg(_) => todo!(),
-                crate::Type::ManagedArray { element, dims } => {
-                    let element = Type::from_v1(element, asm);
-                    let element = asm.alloc_type(element);
-                    Self::PlatformArray {
-                        elem: element,
-                        dims: *dims,
-                    }
-                }
-            }
-        }
-    */
+    /// Returns a mangled ASCI representation of this type.
+    /// ```
+    /// # use cilly::*;
+    /// # use cilly::v2::Int;
+    /// # let asm = cilly::v2::Assembly::default();
+    /// assert_eq!(Type::PlatformString.mangle(&asm),"s");
+    /// assert_eq!(Type::Int(Int::I128).mangle(&asm),"i16");
+    /// ```
     #[must_use]
     pub fn mangle(&self, asm: &Assembly) -> String {
         match self {
@@ -216,6 +159,24 @@ impl Type {
             _ => None,
         }
     }
+    /// Checks if this can be assigned to another type.
+    /// ```
+    /// # use cilly::*;
+    /// # use cilly::v2::{ClassRef,Int};
+    /// # let mut asm = cilly::v2::Assembly::default();
+    /// // You can assign a string to an object.
+    /// let ps = Type::PlatformString;
+    /// let obj = Type::PlatformObject;
+    /// assert!(ps.is_assignable_to(obj,&asm));
+    /// // But you can't assign an object to a string.
+    /// assert!(!obj.is_assignable_to(ps,&asm));
+    /// // Types are always assignable to themselves.
+    /// assert!(Type::Bool.is_assignable_to(Type::Bool,&asm));
+    /// // A class ref to int_128 is assignable to Int::I128
+    /// assert!(Type::Int(Int::I128).is_assignable_to(Type::ClassRef(ClassRef::int_128(&mut asm)),&asm));
+    /// // A class ref to uint_128 is assignable to Int::U128
+    /// assert!(Type::Int(Int::U128).is_assignable_to(Type::ClassRef(ClassRef::uint_128(&mut asm)),&asm));
+    /// ```
     pub fn is_assignable_to(&self, to: Type, asm: &Assembly) -> bool {
         if *self == to {
             return true;
@@ -252,10 +213,20 @@ impl Type {
             _ => false,
         }
     }
-
-    pub fn as_int(&self) -> Option<&Int> {
+    /// If this type is an int, return that int.
+    /// ```
+    /// # use cilly::v2::Int;
+    /// # use cilly::*;
+    /// let tpe = Type::PlatformString;
+    /// // Not an int, so this returns none.
+    /// assert_eq!(tpe.as_int(),None);
+    /// let tpe = Type::Int(Int::ISize);
+    /// // An int, so this returns Some.
+    /// assert_eq!(tpe.as_int(),Some(Int::ISize));
+    /// ```
+    pub fn as_int(&self) -> Option<Int> {
         if let Self::Int(v) = self {
-            Some(v)
+            Some(*v)
         } else {
             None
         }

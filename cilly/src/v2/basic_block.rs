@@ -79,9 +79,24 @@ impl BasicBlock {
         });
     }
     #[must_use]
+    /// Returns an immutable reference to this blocks handler.
+    /// ```
+    /// # use cilly::v2::BasicBlock;
+    /// let block = BasicBlock::new(vec![],0,Some(vec![BasicBlock::new(vec![],1,None)]));
+    /// assert_eq!(block.handler().unwrap().len(),1);
+    /// ```
     pub fn handler(&self) -> Option<&[BasicBlock]> {
         self.handler.as_ref().map(std::convert::AsRef::as_ref)
     }
+    /// Returns a mutable reference to this blocks handler.
+    /// ```
+    /// # use cilly::v2::BasicBlock;
+    /// let mut block = BasicBlock::new(vec![],0,Some(vec![BasicBlock::new(vec![],1,None)]));
+    /// assert_eq!(block.handler_mut().unwrap().len(),1);
+    /// // Add another block to this handler
+    /// block.handler_mut().unwrap().push(BasicBlock::new(vec![],2,None));
+    /// assert_eq!(block.handler_mut().unwrap().len(),2);
+    /// ```
     pub fn handler_mut(&mut self) -> Option<&mut Vec<BasicBlock>> {
         self.handler.as_mut()
     }
@@ -129,7 +144,15 @@ impl BasicBlock {
             )
         })
     }
-
+    /// Removes this blocks handler.
+    /// ```
+    /// # use cilly::v2::BasicBlock;
+    /// let mut block = BasicBlock::new(vec![],0,Some(vec![BasicBlock::new(vec![],1,None)]));
+    /// assert!(block.handler().is_some());
+    /// // Add another block to this handler
+    /// block.remove_handler();
+    /// assert!(block.handler().is_none());
+    /// ```
     pub fn remove_handler(&mut self) {
         self.handler = None;
     }

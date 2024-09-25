@@ -10,6 +10,7 @@
 )]
 #![allow(internal_features, incomplete_features, unused_variables, dead_code)]
 include!("../common.rs");
+use core::error::Request;
 #[repr(transparent)]
 pub struct Slice {
     pub inner: [u8],
@@ -63,6 +64,56 @@ fn main() {
 }
 #[derive(Debug)]
 struct Parent(Option<u8>);
+impl core::fmt::Display for Parent {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "a parent failed")
+    }
+}
+impl core::error::Error for Parent {
+    fn provide<'a>(&'a self, request: &mut Request<'a>) {
+        println("Provide inner");
+        if let Some(v) = self.0 {
+            println("Calling provide_value");
+            request.provide_value::<u8>(v);
+            println("Called provide_value");
+        }
+        println("Provide inner end");
+    }
+}
+
+impl Child {
+    // Pretend that this takes a lot of resources to evaluate.
+    fn an_expensive_computation(&self) -> Option<u8> {
+        Some(99)
+    }
+}
+impl core::fmt::Display for Child {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "child failed: \n  because of parent: {}", self.parent)
+    }
+}
+
+impl core::error::Error for Child {
+    fn provide<'a>(&'a self, request: &mut Request<'a>) {
+        // In general, we don't know if this call will provide
+        // an `u8` value or not...
+        println("Pareparing to call provide");
+        self.parent.provide(request);
+        println("Called provide");
+        // ...so we check to see if the `u8` is needed before
+        // we run our expensive computation.
+        println("Pareparing to call would_be_satisfied_by_value_of");
+        if request.would_be_satisfied_by_value_of::<u8>() {
+            if let Some(v) = self.an_expensive_computation() {
+                request.provide_value::<u8>(v);
+            }
+        }
+        println("Called would_be_satisfied_by_value_of");
+        // The request will be satisfied now, regardless of if
+        // the parent provided the value or we did.
+        assert!(!request.would_be_satisfied_by_value_of::<u8>());
+    }
+}
 #[derive(Debug)]
 struct Child {
     parent: Parent,
@@ -70,58 +121,6 @@ struct Child {
 
 fn test10fn() -> impl Sized {
     use core::error::request_value;
-    use core::error::Request;
-
-    impl core::fmt::Display for Parent {
-        fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-            write!(f, "a parent failed")
-        }
-    }
-    impl core::error::Error for Parent {
-        fn provide<'a>(&'a self, request: &mut Request<'a>) {
-            println("Provide inner");
-            if let Some(v) = self.0 {
-                println("Calling provide_value");
-                request.provide_value::<u8>(v);
-                println("Called provide_value");
-            }
-            println("Provide inner end");
-        }
-    }
-
-    impl Child {
-        // Pretend that this takes a lot of resources to evaluate.
-        fn an_expensive_computation(&self) -> Option<u8> {
-            Some(99)
-        }
-    }
-    impl core::fmt::Display for Child {
-        fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-            write!(f, "child failed: \n  because of parent: {}", self.parent)
-        }
-    }
-
-    impl core::error::Error for Child {
-        fn provide<'a>(&'a self, request: &mut Request<'a>) {
-            // In general, we don't know if this call will provide
-            // an `u8` value or not...
-            println("Pareparing to call provide");
-            self.parent.provide(request);
-            println("Called provide");
-            // ...so we check to see if the `u8` is needed before
-            // we run our expensive computation.
-            println("Pareparing to call would_be_satisfied_by_value_of");
-            if request.would_be_satisfied_by_value_of::<u8>() {
-                if let Some(v) = self.an_expensive_computation() {
-                    request.provide_value::<u8>(v);
-                }
-            }
-            println("Called would_be_satisfied_by_value_of");
-            // The request will be satisfied now, regardless of if
-            // the parent provided the value or we did.
-            assert!(!request.would_be_satisfied_by_value_of::<u8>());
-        }
-    }
     let parent = Parent(Some(42));
     let child = Child { parent };
     assert_eq!(Some(42), request_value::<u8>(&child));
