@@ -1055,10 +1055,10 @@ impl Exporter for CExporter {
 #[must_use]
 pub fn class_to_mangled(class: &super::ClassRef, asm: &Assembly) -> String {
     let assembly = match class.asm() {
-        Some(asm_idx) => asm.get_string(asm_idx).as_ref(),
+        Some(asm_idx) => &asm[asm_idx],
         None => "",
     };
-    format!("{assembly}{name}", name = asm.get_string(class.name()))
+    format!("{assembly}{name}", name = &asm[class.name()])
 }
 #[must_use]
 pub fn name_sig_class_to_mangled(

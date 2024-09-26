@@ -33,7 +33,6 @@ fn handle_to_obj(asm: &mut Assembly, _: &mut MissingMethodPatcher) {
             asm.class_ref(gc_handle)
                 .clone()
                 .instance(&[], Type::PlatformObject, target, asm);
-        //panic!("{:?}", asm.get_sig(asm.get_mref(target).sig()));
         let handle = asm.alloc_node(CILNode::LdLocA(0));
         let target = asm.alloc_node(CILNode::Call(Box::new((target, [handle].into()))));
         let ret = asm.alloc_root(CILRoot::Ret(target));

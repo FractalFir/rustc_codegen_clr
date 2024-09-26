@@ -505,19 +505,19 @@ impl CILNode {
                     }),
                 }
             }
-            CILNode::LdLoc(loc) => Ok(*asm.get_type(locals[*loc as usize].1)),
-            CILNode::LdLocA(loc) => Ok(asm.nref(*asm.get_type(locals[*loc as usize].1))),
-            CILNode::LdArg(arg) => Ok(asm.get_sig(sig).inputs()[*arg as usize]),
-            CILNode::LdArgA(arg) => Ok(asm.nref(asm.get_sig(sig).inputs()[*arg as usize])),
+            CILNode::LdLoc(loc) => Ok(asm[locals[*loc as usize].1]),
+            CILNode::LdLocA(loc) => Ok(asm.nref(asm[locals[*loc as usize].1])),
+            CILNode::LdArg(arg) => Ok(asm[sig].inputs()[*arg as usize]),
+            CILNode::LdArgA(arg) => Ok(asm.nref(asm[sig].inputs()[*arg as usize])),
             CILNode::Call(call_info) => {
                 let (mref, args) = call_info.as_ref();
-                let mref = asm.get_mref(*mref).clone();
+                let mref = asm[*mref].clone();
                 let inputs: Box<[_]> = mref.stack_inputs(asm).into();
                 if args.len() != inputs.len() {
                     return Err(TypeCheckError::CallArgcWrong {
                         expected: inputs.len(),
                         got: args.len(),
-                        mname: asm.get_string(mref.name()).clone(),
+                        mname: asm[mref.name()].into(),
                     });
                 }
                 for (idx, (arg, input_type)) in args.iter().zip(inputs.iter()).enumerate() {
@@ -528,7 +528,7 @@ impl CILNode {
                             got: arg_type,
                             expected: *input_type,
                             idx,
-                            mname: asm.get_string(mref.name()).clone(),
+                            mname: asm[mref.name()].into(),
                         });
                     }
                 }
@@ -538,7 +538,7 @@ impl CILNode {
                 let (fn_ptr, called_sig, args) = info.as_ref();
                 let fn_ptr = asm.get_node(*fn_ptr).clone();
                 let fn_ptr = fn_ptr.typecheck(sig, locals, asm)?;
-                let called_sig = asm.get_sig(*called_sig).clone();
+                let called_sig = asm[*called_sig].clone();
                 if args.len() != called_sig.inputs().len() {
                     return Err(TypeCheckError::IndirectCallArgcWrong {
                         expected: called_sig.inputs().len(),
@@ -562,7 +562,7 @@ impl CILNode {
                 let Type::FnPtr(ptr_sig) = fn_ptr else {
                     return Err(TypeCheckError::IndirectCallInvalidFnPtrType { fn_ptr });
                 };
-                let ptr_sig = asm.get_sig(ptr_sig);
+                let ptr_sig = &asm[ptr_sig];
                 if *ptr_sig != called_sig {
                     return Err(TypeCheckError::IndirectCallInvalidFnPtrSig {
                         expected: called_sig,
@@ -607,7 +607,7 @@ impl CILNode {
                 let refn = asm.get_node(*refn).clone();
                 let tpe = refn.typecheck(sig, locals, asm)?;
                 match tpe {
-                    Type::Ref(inner) | Type::Ptr(inner) => Ok(asm.nptr(*asm.get_type(inner))),
+                    Type::Ref(inner) | Type::Ptr(inner) => Ok(asm.nptr(asm[inner])),
                     _ => Err(TypeCheckError::RefToPtrArgNotRef { arg: tpe }),
                 }
             }
@@ -632,7 +632,7 @@ impl CILNode {
                 let addr_tpe = addr.typecheck(sig, locals, asm)?;
                 let pointed_tpe = {
                     match addr_tpe {
-                        Type::Ptr(type_idx) | Type::Ref(type_idx) => Some(*asm.get_type(type_idx)),
+                        Type::Ptr(type_idx) | Type::Ref(type_idx) => Some(asm[type_idx]),
                         Type::ClassRef(_) => Some(addr_tpe),
                         _ => None,
                     }
@@ -665,7 +665,7 @@ impl CILNode {
                 let addr_tpe = addr.typecheck(sig, locals, asm)?;
                 let pointed_tpe = {
                     match addr_tpe {
-                        Type::Ptr(type_idx) | Type::Ref(type_idx) => Some(*asm.get_type(type_idx)),
+                        Type::Ptr(type_idx) | Type::Ref(type_idx) => Some(asm[type_idx]),
                         Type::ClassRef(_) => Some(addr_tpe),
                         _ => None,
                     }
@@ -696,8 +696,8 @@ impl CILNode {
                 let pointed_tpe = addr_tpe
                     .pointed_to()
                     .ok_or(TypeCheckError::TypeNotPtr { tpe: addr_tpe })?;
-                let pointed_tpe = *asm.get_type(pointed_tpe);
-                let tpe = *asm.get_type(*tpe);
+                let pointed_tpe = asm[pointed_tpe];
+                let tpe = asm[*tpe];
                 if !pointed_tpe.is_assignable_to(tpe, asm) {
                     Err(TypeCheckError::DerfWrongPtr {
                         expected: tpe,
@@ -719,7 +719,7 @@ impl CILNode {
                 let obj = asm.get_node(*obj).clone();
                 let _obj = obj.typecheck(sig, locals, asm)?;
                 // TODO: check obj
-                Ok(*asm.get_type(*cast_res))
+                Ok(asm[*cast_res])
             }
 
             CILNode::LocAlloc { size } => todo!(),
@@ -732,7 +732,7 @@ impl CILNode {
                 Ok(asm.nptr(sfld.tpe()))
             }
             CILNode::LdFtn(mref) => {
-                let mref = asm.get_mref(*mref);
+                let mref = &asm[*mref];
                 Ok(Type::FnPtr(mref.sig()))
             }
             CILNode::LdTypeToken(_) => Ok(Type::ClassRef(ClassRef::runtime_type_hadle(asm))),
@@ -763,7 +763,7 @@ impl CILNode {
                     Type::Int(Int::I32 | Int::U32 | Int::I64 | Int::USize | Int::ISize) => (),
                     _ => return Err(TypeCheckError::ArrIndexInvalidType { index_tpe }),
                 }
-                Ok(*asm.get_type(elem))
+                Ok(asm[elem])
             }
             CILNode::UnboxAny { object, tpe } => {
                 let object = asm.get_node(*object).clone();
@@ -780,7 +780,7 @@ impl CILNode {
                     Type::PlatformObject | Type::PlatformGeneric(_, _) | Type::PlatformString => (),
                     _ => return Err(TypeCheckError::TypeNotClass { object }),
                 };
-                Ok(*asm.get_type(*tpe))
+                Ok(asm[*tpe])
             }
         }
     }

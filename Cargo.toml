@@ -35,6 +35,4 @@ members = [ "cilly", "dotnet_aot",
 exclude = ["rust/src/bootstrap"]
 [profile.release]
 debug = true
-oom = "panic"
-[profile.dev]
-oom = "panic"
+

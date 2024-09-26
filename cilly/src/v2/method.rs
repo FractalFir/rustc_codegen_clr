@@ -27,7 +27,7 @@ impl MethodRef {
         asm: &Assembly,
     ) -> MethodDef {
         let class = asm.class_ref_to_def(self.class()).unwrap();
-        let arg_names = (0..(asm.get_sig(self.sig()).inputs().len()))
+        let arg_names = (0..(asm[self.sig()].inputs().len()))
             .map(|_| None)
             .collect();
         MethodDef::new(
@@ -83,7 +83,7 @@ impl MethodRef {
     }
     /// Returns the inputs of this methods, excluding this for constructors.
     pub fn stack_inputs<'s, 'asm: 's>(&'s self, asm: &'asm Assembly) -> &'s [Type] {
-        let sig = asm.get_sig(self.sig);
+        let sig = &asm[self.sig];
         match self.kind() {
             MethodKind::Static => sig.inputs(),
             MethodKind::Instance => sig.inputs(),
@@ -93,7 +93,7 @@ impl MethodRef {
     }
     /// Returns the output of this method.
     pub fn output(&self, asm: &Assembly) -> Type {
-        let sig = asm.get_sig(self.sig);
+        let sig = &asm[self.sig];
         match self.kind() {
             MethodKind::Static => *sig.output(),
             MethodKind::Instance => *sig.output(),
@@ -130,9 +130,9 @@ impl MethodDef {
         asm: &'asm Assembly,
     ) -> impl Iterator<Item = Type> + 'a {
         let defining_class = Type::ClassRef(*self.class());
-        let sig = asm.get_sig(self.sig());
+        let sig = &asm[self.sig()];
         let sig_types = sig.iter_types();
-        let local_types = self.iter_locals(asm).map(|(_, tpe)| asm.get_type(*tpe));
+        let local_types = self.iter_locals(asm).map(|(_, tpe)| asm[*tpe]);
         let body_types = self
             .iter_cil(asm)
             .into_iter()
@@ -140,7 +140,7 @@ impl MethodDef {
         let body_types = body_types.flatten();
         std::iter::once(defining_class)
             .chain(sig_types)
-            .chain(local_types.copied())
+            .chain(local_types)
             .chain(body_types)
     }
     #[must_use]
@@ -298,7 +298,7 @@ impl MethodDef {
                 v1.call_site().name()
                 );
                 for arg in &arg_names {
-                    println!("{:?}", arg.map(|arg| asm.get_string(arg)));
+                    println!("{:?}", arg.map(|arg| &asm[arg]));
                 }
                 arg_names.truncate(arg_sig_count);
             }
@@ -336,11 +336,7 @@ impl MethodDef {
     pub fn stack_inputs(&self, asm: &mut Assembly) -> Vec<(Type, Option<StringIdx>)> {
         let mut arg_names = self.arg_names().to_vec();
         let sig = asm[self.sig()].clone();
-        arg_names.extend(
-            (arg_names.len()..(sig.inputs().len()))
-                .into_iter()
-                .map(|_| None),
-        );
+        arg_names.extend((arg_names.len()..(sig.inputs().len())).map(|_| None));
         sig.inputs()
             .iter()
             .copied()

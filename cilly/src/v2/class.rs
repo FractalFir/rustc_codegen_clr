@@ -1,14 +1,10 @@
-use std::num::NonZeroU32;
-
-use serde::{Deserialize, Serialize};
-
-use crate::IString;
-
 use super::{
     access::Access,
     bimap::{BiMapIndex, IntoBiMapIndex},
     Assembly, MethodDefIdx, MethodRef, MethodRefIdx, StringIdx, Type,
 };
+use serde::{Deserialize, Serialize};
+use std::num::NonZeroU32;
 
 impl From<ClassRefIdx> for Type {
     fn from(val: ClassRefIdx) -> Self {
@@ -38,8 +34,8 @@ impl ClassRef {
     pub fn display(&self, asm: &Assembly) -> String {
         format!(
             "ClassRef{{name:{},asm:{:?},is_valuetype:{},generics{:?}}}",
-            asm.get_string(self.name()),
-            self.asm().map(|idx| asm.get_string(idx)),
+            &asm[self.name()],
+            self.asm().map(|idx| &asm[idx]),
             self.is_valuetype(),
             self.generics()
         )

@@ -13,9 +13,9 @@ pub fn call_alias(
         asm.alloc_string(name),
         Box::new(move |original, asm| {
             let method_ref = asm.alloc_methodref(call.clone());
-            let inputs: Box<[_]> = asm.get_sig(call.sig()).inputs().into();
+            let inputs: Box<[_]> = asm[call.sig()].inputs().into();
             let original_inputs: Box<[_]> =
-                asm.get_sig(asm.get_mref(original).sig()).inputs().into();
+                asm[asm[original].sig()].inputs().into();
             let args = inputs
                 .iter()
                 .zip(original_inputs.iter())
@@ -59,7 +59,7 @@ pub fn call_alias(
                     }
                 })
                 .collect();
-            if *asm.get_sig(call.sig()).output() == Type::Void {
+            if *asm[call.sig()].output() == Type::Void {
                 let call = asm.alloc_root(CILRoot::Call(Box::new((method_ref, args))));
                 let ret = asm.alloc_root(CILRoot::VoidRet);
                 cilly::v2::MethodImpl::MethodBody {
@@ -77,16 +77,3 @@ pub fn call_alias(
         }),
     );
 }
-/*
-pub fn builtin_call(
-    overrides: &mut MissingMethodPatcher,
-    asm: &mut Assembly,
-    name: impl Into<IString> + Clone,
-    sig: SigIdx,
-) {
-    let main = asm.main_module();
-    let call = asm.new_methodref(*main, name.clone(), sig, MethodKind::Static, []);
-    let call = asm.get_mref(call).clone();
-    call_alias(overrides, asm, name, call)
-}
- */

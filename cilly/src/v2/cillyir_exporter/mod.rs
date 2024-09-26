@@ -20,7 +20,7 @@ impl Exporter for CillyIRExpoter {
         let mut il_out = std::io::BufWriter::new(std::fs::File::create(&il_path)?);
         writeln!(il_out, "fn add_cilly(asm:&mut Assembly){{")?;
         for def in asm.class_defs().values() {
-            let name = asm.get_string(def.name());
+            let name = &asm[def.name()];
             let escaped_name = escape_class_name(name);
             writeln!(il_out, "fn {escaped_name}(asm:&mut Assembly){{",)?;
             let extends = if let Some(extends) = def.extends() {
@@ -33,7 +33,7 @@ impl Exporter for CillyIRExpoter {
                 .iter()
                 .map(|(tpe, name, offset)| {
                     let tpe = tpe_to(tpe, asm);
-                    let name = asm.get_string(*name);
+                    let name = &asm[*name];
                     let offset = if let Some(offset) = offset {
                         format!("Some(NonZeroU32::new({offset}).unwrap())")
                     } else {
@@ -49,7 +49,7 @@ impl Exporter for CillyIRExpoter {
                 .iter()
                 .map(|(tpe, name, thread_local)| {
                     let tpe = tpe_to(tpe, asm);
-                    let name = asm.get_string(*name);
+                    let name = &asm[*name];
                     format!("({tpe},{{asm.alloc_string({name:?})}},{thread_local})")
                 })
                 .intersperse(",".to_owned())
@@ -78,14 +78,8 @@ impl Exporter for CillyIRExpoter {
 }
 fn tpe_to(tpe: &Type, asm: &Assembly) -> String {
     match tpe {
-        Type::Ptr(inner) => format!(
-            "{{asm.nptr({inner})}}",
-            inner = tpe_to(asm.get_type(*inner), asm)
-        ),
-        Type::Ref(inner) => format!(
-            "{{asm.nref({inner})}}",
-            inner = tpe_to(asm.get_type(*inner), asm)
-        ),
+        Type::Ptr(inner) => format!("{{asm.nptr({inner})}}", inner = tpe_to(&asm[*inner], asm)),
+        Type::Ref(inner) => format!("{{asm.nref({inner})}}", inner = tpe_to(&asm[*inner], asm)),
         Type::ClassRef(cref) => format!(
             "Type::ClassRef({{asm.alloc_class_ref({cref})}})",
             cref = class_ref(asm.class_ref(*cref), asm)
@@ -99,10 +93,7 @@ fn tpe_to(tpe: &Type, asm: &Assembly) -> String {
         | Type::Bool
         | Type::Void => format!("{tpe:?}"),
         Type::PlatformArray { .. } => todo!(),
-        Type::FnPtr(sig) => format!(
-            "Type::FnPtr({sig})",
-            sig = sig_to(asm.get_sig(*sig).clone(), asm)
-        ),
+        Type::FnPtr(sig) => format!("Type::FnPtr({sig})", sig = sig_to(asm[*sig].clone(), asm)),
     }
 }
 fn sig_to(sig: FnSig, asm: &Assembly) -> String {
@@ -121,9 +112,9 @@ fn escape_class_name(name: &str) -> String {
     name.replace('.', "dot")
 }
 fn class_ref(cref: &ClassRef, asm: &Assembly) -> String {
-    let name = asm.get_string(cref.name());
+    let name = &asm[cref.name()];
     let ref_asm = if let Some(ref_asm) = cref.asm() {
-        format!("Some(asm.alloc_string({:?}))", asm.get_string(ref_asm))
+        format!("Some(asm.alloc_string({:?}))", &asm[ref_asm])
     } else {
         "None".into()
     };

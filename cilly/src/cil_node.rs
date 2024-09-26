@@ -685,7 +685,6 @@ impl CILNode {
                 sig_ptr_args.2.iter_mut().for_each(|arg|arg.allocate_tmps(curr_loc, locals));
             }
             Self::LDStaticField(_sfield)=>(),
-            Self::AddressOfStaticField(_sfield)=>(),
             Self::LDLen { arr } =>{
                arr.allocate_tmps(curr_loc, locals);
             }

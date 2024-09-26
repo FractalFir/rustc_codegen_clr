@@ -43,8 +43,7 @@ impl CILTree {
     pub fn root(&self) -> &CILRoot {
         &self.tree
     }
-    /// Optimizes this tree
-    pub fn opt(&mut self, opt_count: &mut usize) {}
+
     /// Allocates the temporary variables this tree uses.
     pub fn allocate_tmps(&mut self, locals: &mut Vec<(Option<IString>, Type)>) {
         // self.tree.borrow_mut().allocate_tmps(None, locals);
@@ -57,65 +56,3 @@ impl CILTree {
         &mut self.tree
     }
 }
-/*
-#[test]
-fn test_sheed() {
-    use crate::cil_node::CILNode;
-    let node = CILNode::SubTrees(Box::new((
-        [CILRoot::STLoc {
-            local: 11,
-            tree: CILNode::TemporaryLocal(Box::new((
-                Type::ClassRef(Box::new(crate::ClassRef::new::<&str, _>(
-                    None,
-                    "core.ptr.metadata.PtrComponents.h4c1f0d773746020e",
-                ))),
-                Box::new([CILRoot::SetTMPLocal {
-                    value: CILNode::LDLoc(1),
-                }]),
-                CILNode::LdObj {
-                    ptr: Box::new(CILNode::LoadAddresOfTMPLocal),
-                    obj: Box::new(Type::ClassRef(Box::new(crate::ClassRef::new::<
-                        &str,
-                        _,
-                    >(
-                        None,
-                        "core.ptr.metadata.PtrComponents.h4c1f0d773746020e",
-                    )))),
-                },
-            ))),
-        }]
-        .into(),
-        Box::new(CILNode::LdObj {
-            ptr: Box::new(CILNode::LDLocA(11)),
-            obj: Box::new(Type::ClassRef(Box::new(crate::ClassRef::new::<
-                &str,
-                _,
-            >(
-                None,
-                "core.ptr.metadata.PtrComponents.h4c1f0d773746020e",
-            )))),
-        }),
-    )));
-    let tree: CILTree = CILRoot::STLoc {
-        local: 7,
-        tree: node,
-    }
-    .into();
-    let _trees = tree.shed_trees();
-}
-#[test]
-fn test_alloc() {
-    use crate::cil_node::CILNode;
-    let mut tree: CILNode = CILNode::TemporaryLocal(Box::new((
-        Type::Int(Int::U8),
-        [CILRoot::SetTMPLocal {
-            value: CILNode::TemporaryLocal(Box::new((Type::Int(Int::U8), [].into(), CILNode::LDLoc(0)))),
-        }]
-        .into(),
-        CILNode::LDLoc(0),
-    )));
-
-    let mut locs = vec![];
-    tree.allocate_tmps(None, &mut locs);
-}
-*/

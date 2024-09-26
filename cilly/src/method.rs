@@ -422,18 +422,6 @@ impl Method {
     }
 
     pub fn opt(&mut self) {
-        for tree in self
-            .blocks
-            .iter_mut()
-            .flat_map(|block| block.all_trees_mut())
-        {
-            let mut opt_counter: usize = 1;
-            while opt_counter > 0 {
-                // Reset `opt_counter`
-                opt_counter = 0;
-                tree.opt(&mut opt_counter);
-            }
-        }
         //self.const_opt_pass();
         self.opt_merge_bbs();
     }

@@ -9,7 +9,7 @@ pub fn op_direct(
     asm: &mut Assembly,
     patcher: &mut MissingMethodPatcher,
     lhs: Int,
-    rhs: Int,
+    _rhs: Int,
     op: BinOp,
 ) {
     let name = asm.alloc_string(format!("{op}_{lhs}", op = op.name(), lhs = lhs.name()));

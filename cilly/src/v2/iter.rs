@@ -468,13 +468,13 @@ impl<'this, T: Iterator<Item = CILIterElem> + 'this> TpeIter<'this> for T {
                     CILNode::Call(_) | CILNode::LdFtn(_) => None,
                     CILNode::PtrCast(_, res) => match res.as_ref() {
                         crate::v2::cilnode::PtrCastRes::Ptr(inner) => {
-                            Some(Box::new(std::iter::once(asm.get_type(*inner)).copied()))
+                            Some(Box::new(std::iter::once(asm[*inner])))
                         }
                         crate::v2::cilnode::PtrCastRes::Ref(inner) => {
-                            Some(Box::new(std::iter::once(asm.get_type(*inner)).copied()))
+                            Some(Box::new(std::iter::once(asm[*inner])))
                         }
                         crate::v2::cilnode::PtrCastRes::FnPtr(sig) => {
-                            Some(Box::new(asm.get_sig(*sig).iter_types()))
+                            Some(Box::new(asm[*sig].iter_types()))
                         }
                         crate::v2::cilnode::PtrCastRes::USize => None,
                         crate::v2::cilnode::PtrCastRes::ISize => None,
@@ -485,18 +485,16 @@ impl<'this, T: Iterator<Item = CILIterElem> + 'this> TpeIter<'this> for T {
                         let tpe = field.tpe();
                         Some(Box::new([class, tpe].into_iter()))
                     }
-                    CILNode::LdInd { tpe, .. } => {
-                        Some(Box::new(std::iter::once(asm.get_type(tpe)).copied()))
-                    }
+                    CILNode::LdInd { tpe, .. } => Some(Box::new(std::iter::once(asm[tpe]))),
                     CILNode::SizeOf(tpe)
                     | CILNode::IsInst(_, tpe)
                     | CILNode::CheckedCast(_, tpe)
                     | CILNode::LdTypeToken(tpe)
                     | CILNode::UnboxAny { tpe, .. }
                     | CILNode::LocAllocAlgined { tpe, .. } => {
-                        Some(Box::new(std::iter::once(asm.get_type(tpe)).copied()))
+                        Some(Box::new(std::iter::once(asm[tpe])))
                     }
-                    CILNode::CallI(info) => Some(Box::new(asm.get_sig(info.1).iter_types())),
+                    CILNode::CallI(info) => Some(Box::new(asm[info.1].iter_types())),
                     CILNode::LdStaticField(sfld) => {
                         let field = asm.get_static_field(sfld);
                         let class = Type::ClassRef(field.owner());
@@ -538,9 +536,7 @@ impl<'this, T: Iterator<Item = CILIterElem> + 'this> TpeIter<'this> for T {
                         let tpe = field.tpe();
                         Some(Box::new([class, tpe].into_iter()))
                     }
-                    CILRoot::CpObj { tpe, .. } => {
-                        Some(Box::new(std::iter::once(*asm.get_type(tpe))))
-                    }
+                    CILRoot::CpObj { tpe, .. } => Some(Box::new(std::iter::once(asm[tpe]))),
                     // Since this method is called, then if it uses an "internal" type, we must assume it is defined in this module. Thus, its types are already included, and we don't need to include them again.
                     CILRoot::Call(_) | CILRoot::CallI(_) => None,
                     CILRoot::StInd(info) => Some(Box::new(std::iter::once(info.2))),

@@ -130,7 +130,7 @@ fn file_stem(file: &str) -> String {
         .unwrap()
         .to_owned()
 }
-#[cfg(any(target_os = "linux", target_os = "darwin"))]
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 fn get_out_path(args: &[String]) -> &str {
     &args[1 + args
         .iter()
@@ -235,7 +235,7 @@ fn main() {
         let sig = final_assembly.sig([Type::Int(Int::ISize)], Type::Int(Int::ISize));
         let allochglobal =
             final_assembly.new_methodref(marshal, "AllocHGlobal", sig, MethodKind::Static, []);
-        let mref = final_assembly.get_mref(allochglobal).clone();
+        let mref = final_assembly[allochglobal].clone();
         call_alias(&mut overrides, &mut final_assembly, "malloc", mref);
         // Overrides calls to realloc
         let sig = final_assembly.sig(
@@ -244,13 +244,13 @@ fn main() {
         );
         let realloc =
             final_assembly.new_methodref(marshal, "ReAllocHGlobal", sig, MethodKind::Static, []);
-        let mref = final_assembly.get_mref(realloc).clone();
+        let mref = final_assembly[realloc].clone();
         call_alias(&mut overrides, &mut final_assembly, "realloc", mref);
         // Overrides calls to free
         let sig = final_assembly.sig([Type::Int(Int::ISize)], Type::Void);
         let allochglobal =
             final_assembly.new_methodref(marshal, "FreeHGlobal", sig, MethodKind::Static, []);
-        let mref = final_assembly.get_mref(allochglobal).clone();
+        let mref = final_assembly[allochglobal].clone();
         call_alias(&mut overrides, &mut final_assembly, "free", mref);
     }
     if !*PANIC_MANAGED_BT {
@@ -310,8 +310,8 @@ fn main() {
         final_assembly.alloc_string("_Unwind_Backtrace"),
         Box::new(|mref, asm| {
             // 1 Get the output of the method.
-            let mref = asm.get_mref(mref);
-            let sig = asm.get_sig(mref.sig()).clone();
+            let mref = &asm[mref];
+            let sig = asm[mref.sig()].clone();
             let output = sig.output();
             // 2. Create one local of the output type
             let loc_name = asm.alloc_string("uninit");

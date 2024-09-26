@@ -4,7 +4,7 @@ use super::{opt_if_fuel, OptFuel};
 
 pub fn opt_node(original: CILNode, asm: &mut Assembly, fuel: &mut OptFuel) -> CILNode {
     match original {
-        CILNode::SizeOf(tpe) => match asm.get_type(tpe) {
+        CILNode::SizeOf(tpe) => match asm[tpe] {
             Type::Int(
                 int @ (Int::I128
                 | Int::I64
@@ -127,7 +127,7 @@ pub fn opt_node(original: CILNode, asm: &mut Assembly, fuel: &mut OptFuel) -> CI
             CILNode::LdArgA(loc) => opt_if_fuel(CILNode::LdArg(*loc), original, fuel),
             CILNode::LdFieldAdress { addr, field } => {
                 let field_desc = asm.get_field(*field);
-                if field_desc.tpe() == *asm.get_type(tpe) {
+                if field_desc.tpe() == asm[tpe] {
                     opt_if_fuel(
                         CILNode::LdField {
                             addr: *addr,
@@ -182,7 +182,7 @@ pub fn opt_node(original: CILNode, asm: &mut Assembly, fuel: &mut OptFuel) -> CI
                 tpe,
                 volitale: _,
             } => {
-                if let Type::ClassRef(tpe) = *asm.get_type(*tpe) {
+                if let Type::ClassRef(tpe) = asm[*tpe] {
                     if tpe == asm.get_field(field).owner() {
                         opt_if_fuel(CILNode::LdField { addr: *addr, field }, original, fuel)
                     } else {

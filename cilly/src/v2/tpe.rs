@@ -4,7 +4,6 @@ use serde::{Deserialize, Serialize};
 
 use super::{
     bimap::{BiMapIndex, IntoBiMapIndex},
-    typecheck::TypeCheckError,
     Assembly, ClassRefIdx, Float, Int, SigIdx,
 };
 
@@ -48,7 +47,7 @@ impl Type {
     ) -> impl Iterator<Item = ClassRefIdx> + 'a {
         let tmp: Box<dyn Iterator<Item = ClassRefIdx>> = match self {
             Type::PlatformArray { elem: inner, .. } | Type::Ptr(inner) | Type::Ref(inner) => {
-                asm.get_type(*inner).iter_class_refs::<'a, 'asm>(asm)
+                asm[*inner].iter_class_refs::<'a, 'asm>(asm)
             }
             Type::Int(_)
             | Type::Float(_)
@@ -59,7 +58,7 @@ impl Type {
             | Type::Bool
             | Type::Void => Box::new(std::iter::empty()),
             Type::FnPtr(sig) => Box::new(
-                asm.get_sig(*sig)
+                asm[*sig]
                     .iter_types()
                     .flat_map(|tpe| tpe.iter_class_refs(asm).collect::<Box<_>>()),
             ),
@@ -70,7 +69,7 @@ impl Type {
     #[must_use]
     pub fn deref<'a, 'b: 'a>(&'a self, asm: &'b Assembly) -> &'a Self {
         match self {
-            Type::Ptr(inner) | Type::Ref(inner) => asm.get_type(*inner),
+            Type::Ptr(inner) | Type::Ref(inner) => &asm[*inner],
             _ => panic!(),
         }
     }
@@ -85,8 +84,8 @@ impl Type {
     #[must_use]
     pub fn mangle(&self, asm: &Assembly) -> String {
         match self {
-            Type::Ptr(inner) => format!("p{}", asm.get_type(*inner).mangle(asm)),
-            Type::Ref(inner) => format!("r{}", asm.get_type(*inner).mangle(asm)),
+            Type::Ptr(inner) => format!("p{}", asm[*inner].mangle(asm)),
+            Type::Ref(inner) => format!("r{}", asm[*inner].mangle(asm)),
             Type::Int(int) => match int {
                 Int::U8 => "u1".into(),
                 Int::U16 => "u2".into(),
@@ -106,12 +105,12 @@ impl Type {
                 let asm_name = match cref.asm() {
                     Some(asm_name) => format!(
                         "{len}{asm_name}",
-                        len = asm.get_string(asm_name).len(),
-                        asm_name = asm.get_string(asm_name)
+                        len = asm[asm_name].len(),
+                        asm_name = &asm[asm_name]
                     ),
                     None => "n".into(),
                 };
-                let name = asm.get_string(cref.name());
+                let name = &asm[cref.name()];
                 format!("{asm_name}{len}{name}", len = name.len())
             }
             Type::Float(float) => match float {
@@ -128,11 +127,11 @@ impl Type {
             Type::Void => "v".into(),
             Type::PlatformArray { elem, dims } => format!(
                 "a{dims}{elem}",
-                elem = asm.get_type(*elem).mangle(asm),
+                elem = asm[*elem].mangle(asm),
                 dims = dims.get()
             ),
             Type::FnPtr(sig) => {
-                let sig = asm.get_sig(*sig);
+                let sig = &asm[*sig];
                 let argc = sig.inputs().len();
                 let output = sig.output().mangle(asm);
                 let inputs = sig
@@ -190,22 +189,22 @@ impl Type {
             (Type::ClassRef(cref), Type::PlatformString) => {
                 let cref = asm.class_ref(cref);
                 !cref.is_valuetype()
-                    && cref.asm().map(|s| asm.get_string(s).as_ref()) == Some("System.Runtime")
-                    && asm.get_string(cref.name()).as_ref() == "System.String"
+                    && cref.asm().map(|s| asm[s].as_ref()) == Some("System.Runtime")
+                    && &asm[cref.name()] == "System.String"
             }
             (Type::ClassRef(cref), Type::Int(Int::I128))
             | (Type::Int(Int::I128), Type::ClassRef(cref)) => {
                 let cref = asm.class_ref(cref);
                 cref.is_valuetype()
-                    && cref.asm().map(|s| asm.get_string(s).as_ref()) == Some("System.Runtime")
-                    && asm.get_string(cref.name()).as_ref() == "System.Int128"
+                    && cref.asm().map(|s| asm[s].as_ref()) == Some("System.Runtime")
+                    && &asm[cref.name()] == "System.Int128"
             }
             (Type::ClassRef(cref), Type::Int(Int::U128))
             | (Type::Int(Int::U128), Type::ClassRef(cref)) => {
                 let cref = asm.class_ref(cref);
                 cref.is_valuetype()
-                    && cref.asm().map(|s| asm.get_string(s).as_ref()) == Some("System.Runtime")
-                    && asm.get_string(cref.name()).as_ref() == "System.UInt128"
+                    && cref.asm().map(|s| asm[s].as_ref()) == Some("System.Runtime")
+                    && &asm[cref.name()] == "System.UInt128"
             }
             (Type::Ptr(ptr), Type::Ref(rf)) => ptr == rf,
             // TODO: check generics propely?

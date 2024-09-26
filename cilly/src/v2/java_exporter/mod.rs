@@ -42,7 +42,7 @@ impl JavaExporter {
                 "java/lang/Object".into()
             };
 
-            let name = asm.get_string(class_def.name()).replace('.', "/");
+            let name = asm[class_def.name()].replace('.', "/");
             writeln!(out, ".class {vis} {sealed} {name}\n.super {extends}")?;
             // Export size
             if let Some(size) = class_def.explict_size() {
@@ -50,7 +50,7 @@ impl JavaExporter {
             }
             // Export all fields
             for (tpe, name, offset) in class_def.fields() {
-                let name = asm.get_string(*name);
+                let name = &asm[*name];
 
                 if let Some(offset) = offset {
                     writeln!(
@@ -65,98 +65,7 @@ impl JavaExporter {
                     )
                 }?;
             }
-            /*// Export all static fields
-            for (tpe, name, thread_local) in class_def.static_fields() {
-                let name = asm.get_string(*name);
-                let tpe = non_void_type_il(tpe, asm);
 
-                writeln!(out, ".field static {tpe} '{name}'")?;
-                if *thread_local {
-                    writeln!(out,".custom instance void [System.Runtime]System.ThreadStaticAttribute::.ctor() = (01 00 00 00)")?;
-                };
-            }
-            // Export all methods
-
-            for method_id in class_def.methods() {
-                let method = asm.method_def(*method_id);
-                let vis = match method.access() {
-                    crate::v2::Access::Extern | crate::v2::Access::Public => "public",
-                    crate::v2::Access::Private => "private",
-                };
-                let kind = match method.kind() {
-                    crate::v2::cilnode::MethodKind::Static => "static",
-                    crate::v2::cilnode::MethodKind::Instance => "instance",
-                    crate::v2::cilnode::MethodKind::Virtual => "virtual instance",
-                    crate::v2::cilnode::MethodKind::Constructor => {
-                        "rtspecialname specialname"
-                    }
-                };
-                let pinvoke = if let MethodImpl::Extern {
-                    lib,
-                    preserve_errno,
-                } = method.implementation()
-                {
-                    let lib = asm.get_string(*lib);
-                    if *preserve_errno {
-                        format!("pinvokeimpl(\"{lib}\" cdecl lasterr)")
-                    } else {
-                        format!("pinvokeimpl(\"{lib}\" cdecl)")
-                    }
-                } else {
-                    "".into()
-                };
-                let name = asm.get_string(method.name());
-                let sig = asm.get_sig(method.sig());
-                let ret = type_il(sig.output(), asm);
-                assert_eq!(method.arg_names().len(), sig.inputs().len(), "{name:?}");
-                let inputs = match method.kind() {
-                    crate::v2::cilnode::MethodKind::Static => sig.inputs(),
-                    crate::v2::cilnode::MethodKind::Instance
-                    | crate::v2::cilnode::MethodKind::Virtual
-                    | crate::v2::cilnode::MethodKind::Constructor => &sig.inputs()[1..],
-                };
-
-                let inputs: String = inputs
-                    .iter()
-                    .zip(method.arg_names())
-                    .map(|(tpe, name)| match name {
-                        Some(name) => {
-                            format!("{} '{}'", non_void_type_il(tpe, asm), asm.get_string(*name))
-                        }
-                        None => non_void_type_il(tpe, asm),
-                    })
-                    .intersperse(",".to_string())
-                    .collect();
-                let preservesig = if method.implementation().is_extern(){
-                    "preservesig"
-                }else{""};
-                writeln!(
-                    out,
-                    ".method {vis} hidebysig {kind} {pinvoke} {ret} '{name}'({inputs}) cil managed {preservesig}{{// Method ID {method_id:?}"
-                )?;
-                let stack_size = match method.implementation() {
-                    MethodImpl::MethodBody { blocks, .. } => blocks
-                        .iter()
-                        .flat_map(|block| block.roots().iter())
-                        .map(|root| {
-                            crate::v2::CILIter::new(asm.get_root(*root).clone(), asm).count() + 4
-                        })
-                        .max()
-                        .unwrap_or(0),
-                    MethodImpl::Extern { .. } => 0,
-                    MethodImpl::AliasFor(_) => todo!(),
-                    MethodImpl::Missing => 3,
-                };
-                if stack_size > 6 {
-                    writeln!(out, ".maxstack {stack_size}")?;
-                }
-                if **name == *"entrypoint" {
-                    writeln!(out, ".entrypoint")?;
-                }
-                // Export the implementation
-                self.export_method_imp(asm, out, method.resolved_implementation(asm), name)?;
-                writeln!(out, "}}")?;
-            }*/
             writeln!(out, ".end class")?;
         }
 
@@ -198,9 +107,9 @@ impl Exporter for JavaExporter {
 }
 fn simple_class_ref(cref: ClassRefIdx, asm: &Assembly) -> String {
     let cref = asm.class_ref(cref);
-    let name = asm.get_string(cref.name()).replace('.', "/");
+    let name = asm[cref.name()].replace('.', "/");
     if let Some(assembly) = cref.asm() {
-        let assembly = asm.get_string(assembly).replace('.', "/");
+        let assembly = asm[assembly].replace('.', "/");
         format!("{assembly}/{name}")
     } else {
         name
@@ -208,7 +117,7 @@ fn simple_class_ref(cref: ClassRefIdx, asm: &Assembly) -> String {
 }
 pub(crate) fn class_ref(cref: ClassRefIdx, asm: &Assembly) -> String {
     let cref = asm.class_ref(cref);
-    let name = asm.get_string(cref.name());
+    let name = &asm[cref.name()];
     let prefix = if cref.is_valuetype() {
         "valuetype"
     } else {
@@ -233,7 +142,7 @@ pub(crate) fn class_ref(cref: ClassRefIdx, asm: &Assembly) -> String {
         format!("`{}", cref.generics().len())
     };
     if let Some(assembly) = cref.asm() {
-        let assembly = asm.get_string(assembly);
+        let assembly = &asm[assembly];
         format!("{prefix} [{assembly}]'{name}{generic_postfix}'{generic_list}")
     } else {
         format!("{prefix} '{name}{generic_postfix}'{generic_list}")
@@ -247,8 +156,8 @@ fn non_void_type_il(tpe: &Type, asm: &Assembly) -> String {
 }
 fn type_il(tpe: &Type, asm: &Assembly) -> String {
     match tpe {
-        Type::Ptr(inner) => format!("{}*", type_il(asm.get_type(*inner), asm)),
-        Type::Ref(inner) => format!("{}&", type_il(asm.get_type(*inner), asm)),
+        Type::Ptr(inner) => format!("{}*", type_il(&asm[*inner], asm)),
+        Type::Ref(inner) => format!("{}&", type_il(&asm[*inner], asm)),
         Type::Int(int) => match int {
             super::Int::U8 => "uint8".into(),
             super::Int::U16 => "uint16".into(),
@@ -280,11 +189,11 @@ fn type_il(tpe: &Type, asm: &Assembly) -> String {
         Type::Void => "void".into(),
         Type::PlatformArray { elem, dims } => format!(
             "{elem}[{dims}]",
-            elem = type_il(asm.get_type(*elem), asm),
+            elem = type_il(&asm[*elem], asm),
             dims = (1..(dims.get())).map(|_| ',').collect::<String>()
         ),
         Type::FnPtr(sig) => {
-            let sig = asm.get_sig(*sig);
+            let sig = &asm[*sig];
             format!(
                 "method {output}*({inputs})",
                 output = type_il(sig.output(), asm),
@@ -300,86 +209,7 @@ fn type_il(tpe: &Type, asm: &Assembly) -> String {
         Type::PlatformObject => "object".into(),
     }
 }
-/*
-compile_test::aligned::stable::debug
-    compile_test::aligned::stable::release
-    compile_test::any::stable::debug
-    compile_test::any::stable::release
-    compile_test::arg_test::stable::debug
-    compile_test::arg_test::stable::release
-    compile_test::assert::stable::debug
-    compile_test::assert::stable::release
-    compile_test::assign::stable::debug
-    compile_test::assign::stable::release
-    compile_test::binops::stable::debug
-    compile_test::binops::stable::release
-    compile_test::branches::stable::debug
-    compile_test::branches::stable::release
-    compile_test::caller_location::stable::debug
-    compile_test::caller_location::stable::release
-    compile_test::calls::stable::debug
-    compile_test::calls::stable::release
-    compile_test::casts::stable::debug
-    compile_test::casts::stable::release
-    compile_test::catch::stable::debug
-    compile_test::catch::stable::release
-    compile_test::closure::stable::debug
-    compile_test::closure::stable::release
-    compile_test::cmp::stable::debug
-    compile_test::cmp::stable::release
-    compile_test::copy_nonoverlaping::stable::debug
-    compile_test::copy_nonoverlaping::stable::release
-    compile_test::dyns::stable::debug
-    compile_test::dyns::stable::release
-    compile_test::empty_string_slice::stable::debug
-    compile_test::empty_string_slice::stable::release
-    compile_test::fn_ptr::stable::debug
-    compile_test::fn_ptr::stable::release
-    compile_test::fold::stable::debug
-    compile_test::fold::stable::release
-    compile_test::fuzz100::stable::debug
-    compile_test::fuzz16::stable::debug
-    compile_test::fuzz16::stable::release
-    compile_test::fuzz43::stable::debug
-    compile_test::fuzz4::stable::debug
-    compile_test::fuzz4::stable::release
-    compile_test::fuzz67::stable::debug
-    compile_test::fuzz67::stable::release
-    compile_test::fuzz80::stable::debug
-    compile_test::fuzz88::stable::debug
-    compile_test::fuzz88::stable::release
-    compile_test::fuzz94::stable::debug
-    compile_test::fuzz94::stable::release
-    compile_test::fuzz9::stable::debug
-    compile_test::fuzz9::stable::release
-    compile_test::identity::stable::debug
-    compile_test::identity::stable::release
-    compile_test::interop::stable::debug
-    compile_test::interop::stable::release
-    compile_test::mutithreading::stable::debug
-    compile_test::mutithreading::stable::release
-    compile_test::recursive::stable::debug
-    compile_test::recursive::stable::release
-    compile_test::references::stable::debug
-    compile_test::references::stable::release
-    compile_test::slice::stable::debug
-    compile_test::slice::stable::release
-    compile_test::slice_from_end::stable::debug
-    compile_test::slice_from_end::stable::release
-    compile_test::slice_index_ref::stable::debug
-    compile_test::slice_index_ref::stable::release
-    compile_test::tlocal_key_test::stable::debug
-    compile_test::tlocal_key_test::stable::release
-    compile_test::tuple::stable::debug
-    compile_test::tuple::stable::release
-    compile_test::type_id::stable::debug
-    compile_test::type_id::stable::release
-    compile_test::types::stable::debug
-    compile_test::types::stable::release
-    compile_test::vec::stable::debug
-    compile_test::vec::stable::release
 
-*/
 fn type_string(tpe: Type, asm: &Assembly) -> String {
     match tpe {
         Type::Ptr(_) => "J".into(),
@@ -402,7 +232,7 @@ fn type_string(tpe: Type, asm: &Assembly) -> String {
         Type::PlatformArray { elem, dims } => format!(
             "{arr}{elem}",
             arr = (0..dims.get()).map(|_| "[").collect::<String>(),
-            elem = type_string(*asm.get_type(elem), asm)
+            elem = type_string(asm[elem], asm)
         ),
         Type::FnPtr(_) => "J".into(),
     }

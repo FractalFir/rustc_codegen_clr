@@ -11,7 +11,7 @@ use crate::{asm::Assembly as V1Asm, v2::MethodImpl};
 use fxhash::{FxHashMap, FxHashSet};
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
-use std::{any::type_name, ops::Index, path::PathBuf};
+use std::{any::type_name, ops::Index};
 
 pub type MissingMethodPatcher =
     FxHashMap<StringIdx, Box<dyn Fn(MethodRefIdx, &mut Assembly) -> MethodImpl>>;
@@ -238,7 +238,7 @@ impl Assembly {
     }
     #[must_use]
     pub fn get_class_def(&self, id: ClassDefIdx) -> &ClassDef {
-        self.class_defs.get(&id).unwrap()
+        &self.class_defs[&id]
     }
     #[must_use]
     pub fn class_ref(&self, cref: ClassRefIdx) -> &ClassRef {
@@ -251,10 +251,7 @@ impl Assembly {
     pub fn alloc_string(&mut self, string: impl Into<IString>) -> StringIdx {
         self.strings.alloc(string.into())
     }
-    #[must_use]
-    pub fn get_string(&self, key: StringIdx) -> &IString {
-        self.strings.get(key)
-    }
+
     pub fn sig(&mut self, input: impl Into<Box<[Type]>>, output: impl Into<Type>) -> SigIdx {
         self.sigs.alloc(FnSig::new(input.into(), output.into()))
     }
@@ -262,24 +259,13 @@ impl Assembly {
         let sig = self.sig(input, output);
         Type::FnPtr(sig)
     }
-    #[must_use]
-    pub fn get_sig(&self, key: SigIdx) -> &FnSig {
-        self.sigs.get(key)
-    }
     pub fn nptr(&mut self, inner: Type) -> Type {
         Type::Ptr(self.types.alloc(inner))
     }
     pub fn nref(&mut self, inner: Type) -> Type {
         Type::Ref(self.types.alloc(inner))
     }
-    #[must_use]
-    pub fn get_type(&self, idx: TypeIdx) -> &Type {
-        self.types.get(idx)
-    }
-    #[must_use]
-    pub fn get_mref(&self, idx: MethodRefIdx) -> &MethodRef {
-        self.method_refs.get(idx)
-    }
+
     #[must_use]
     pub fn get_root(&self, root: RootIdx) -> &CILRoot {
         self.roots.get(root)
@@ -382,7 +368,7 @@ impl Assembly {
         let cref = self.alloc_class_ref(cref);
 
         if self.class_defs.contains_key(&ClassDefIdx(cref)) {
-            if self.get_string(def.name()).contains("core.ffi.c_void") {
+            if self[def.name()].contains("core.ffi.c_void") {
                 return ClassDefIdx(cref);
             }
             panic!()
@@ -808,8 +794,7 @@ impl Assembly {
         let mut alive: FxHashSet<ClassDefIdx> = FxHashSet::default();
         while !previosly_ressurected.is_empty() {
             for def in &previosly_ressurected {
-                let defids: FxHashSet<ClassDefIdx> = self
-                    .get_class_def(*def)
+                let defids: FxHashSet<ClassDefIdx> = self.class_defs[def]
                     .iter_types()
                     .flat_map(|tpe| tpe.iter_class_refs(self).collect::<Vec<_>>())
                     .filter_map(|cref| self.class_ref_to_def(cref))
@@ -899,7 +884,7 @@ impl Assembly {
             }
             // Check if this method is in the extern list
             if let Some(lib) = externs.get(&mref.name()) {
-                let arg_names = (0..(self.get_sig(mref.sig()).inputs().len()))
+                let arg_names = (0..(self[mref.sig()].inputs().len()))
                     .map(|_| None)
                     .collect();
                 let method_def = MethodDef::new(
@@ -925,7 +910,7 @@ impl Assembly {
             }
             // Create a replacement method.
 
-            let arg_names = (0..(self.get_sig(mref.sig()).inputs().len()))
+            let arg_names = (0..(self[mref.sig()].inputs().len()))
                 .map(|_| None)
                 .collect();
             let method_def = MethodDef::new(
@@ -942,7 +927,7 @@ impl Assembly {
                 "Can't yet handle missing types. Type {} with id {:?} is missing. Method {}",
                 self.class_ref(mref.class()).display(self),
                 mref.class(),
-                self.get_string(mref.name())
+                &self[mref.name()]
             );
 
             self.new_method(method_def);

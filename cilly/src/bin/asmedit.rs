@@ -121,7 +121,7 @@ fn main() {
                     }
                 };
                 for (id, def) in asm.methods_with(|_, _, def| *def.access() == access) {
-                    println!("{name:?} {id:?}", name = asm.get_string(def.name()));
+                    println!("{name:?} {id:?}", name = &asm[def.name()]);
                 }
             }
             "mbyname" => {
@@ -169,14 +169,14 @@ fn main() {
                     continue;
                 };
                 let def = asm.method_def(id);
-                let name = asm.get_string(def.name());
+                let name = &asm[def.name()];
                 let (blocks, locals) = match def.resolved_implementation(&asm) {
                     MethodImpl::MethodBody { blocks, locals } => (blocks, locals),
                     MethodImpl::Extern {
                         lib,
                         preserve_errno,
                     } => {
-                        let lib = asm.get_string(*lib);
+                        let lib = &asm[*lib];
                         eprintln!(
                             "Extern method {name} is in {lib} preserve_errno:{preserve_errno}"
                         );

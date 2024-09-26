@@ -82,9 +82,7 @@ pub fn handle_statement<'tcx>(
                         CILRoot::CpBlk {
                             src: Box::new(src_op),
                             dst: Box::new(dst_op),
-                            len: Box::new(
-                                count_op * conv_usize!(size_of!((*ctx.asm().get_type(pointed)))),
-                            ),
+                            len: Box::new(count_op * conv_usize!(size_of!(ctx.asm()[pointed]))),
                         }
                         .into(),
                     )

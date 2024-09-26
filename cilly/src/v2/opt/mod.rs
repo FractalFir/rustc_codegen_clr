@@ -302,7 +302,7 @@ impl BasicBlock {
                             let new_node = new_node.propagate_locals(
                                 asm,
                                 loc,
-                                *asm.get_type(locals[loc as usize].1),
+                                asm[locals[loc as usize].1],
                                 tree,
                                 fuel,
                             );
@@ -484,9 +484,7 @@ impl MethodDef {
                 if check.is_err() {
                     display_typecheck_err(asm.get_root(*root).clone(), asm, sig, &locals);
                 };
-                check.unwrap_or_else(|_| {
-                    eprintln!("Could not verify method {}", asm.get_string(name))
-                })
+                check.unwrap_or_else(|_| eprintln!("Could not verify method {}", &asm[name]))
             })
         }
     }
@@ -588,7 +586,7 @@ impl MethodDef {
                                 tpe,
                                 volitale:_,
                             } => {
-                                assert_eq!(*asm.get_type(*tpe), info.2);
+                                assert_eq!(*asm[*tpe), info.2);
                                 CILRoot::CpObj {
                                     src: *src_addr,
                                     dst: info.0,
