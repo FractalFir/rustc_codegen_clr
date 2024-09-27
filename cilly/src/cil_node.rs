@@ -746,6 +746,12 @@ macro_rules! div {
     };
 }
 #[macro_export]
+macro_rules! div_un {
+    ($a:expr,$b:expr) => {
+        CILNode::DivUn($a.into(), $b.into())
+    };
+}
+#[macro_export]
 macro_rules! rem {
     ($a:expr,$b:expr) => {
         CILNode::Rem($a.into(), $b.into())

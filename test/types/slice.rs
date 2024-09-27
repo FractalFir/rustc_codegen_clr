@@ -54,9 +54,9 @@ fn main() {
     test_eq!(oslice.len(), 14);
     test_eq!(oslice.last(), Some(&b'\0'));
     if let Some((first, rem)) = oslice.split_first() {
-        unsafe { printf(rem.as_ptr() as *const i8) };
+        unsafe { printf(rem.as_ptr() as *const core::ffi::c_char) };
         test_eq!(rem.len(), oslice.len() - 1);
-        unsafe { printf("%c\n\0".as_ptr() as *const i8, *first as i32) };
+        unsafe { printf("%c\n\0".as_ptr() as *const core::ffi::c_char, *first as i32) };
     }
     test_eq!(memrchr(b'W', b"Hello, World\n\0"), Some(7));
     dump_var(0, 0, true, 1, 1, 2, 2, 3, false);
@@ -128,15 +128,15 @@ fn dump_var(
     val3: impl PrintFDebug,
 ) {
     unsafe {
-        printf("fn%u:_%u = \0".as_ptr() as *const i8, f, var0);
+        printf("fn%u:_%u = \0".as_ptr() as *const core::ffi::c_char, f, var0);
         val0.printf_debug();
-        printf("\n_%u = \0".as_ptr() as *const i8, var1);
+        printf("\n_%u = \0".as_ptr() as *const core::ffi::c_char, var1);
         val1.printf_debug();
-        printf("\n_%u = \0".as_ptr() as *const i8, var2);
+        printf("\n_%u = \0".as_ptr() as *const core::ffi::c_char, var2);
         val2.printf_debug();
-        printf("\n_%u = \0".as_ptr() as *const i8, var3);
+        printf("\n_%u = \0".as_ptr() as *const core::ffi::c_char, var3);
         val3.printf_debug();
-        printf("\n\0".as_ptr() as *const i8);
+        printf("\n\0".as_ptr() as *const core::ffi::c_char);
     }
 }
 trait PrintFDebug {
@@ -144,21 +144,21 @@ trait PrintFDebug {
 }
 impl PrintFDebug for u8 {
     unsafe fn printf_debug(&self) {
-        printf("%u\0".as_ptr() as *const i8, *self as u8 as i32);
+        printf("%u\0".as_ptr() as *const core::ffi::c_char, *self as u8 as i32);
     }
 }
 impl PrintFDebug for bool {
     unsafe fn printf_debug(&self) {
         if *self {
-            printf("true\0".as_ptr() as *const i8);
+            printf("true\0".as_ptr() as *const core::ffi::c_char);
         } else {
-            printf("false\0".as_ptr() as *const i8);
+            printf("false\0".as_ptr() as *const core::ffi::c_char);
         }
     }
 }
 impl PrintFDebug for () {
     unsafe fn printf_debug(&self) {
-        printf("()\0".as_ptr() as *const i8);
+        printf("()\0".as_ptr() as *const core::ffi::c_char);
     }
 }
 #[inline]

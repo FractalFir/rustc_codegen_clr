@@ -26,7 +26,7 @@ fn main() {
     }
     unsafe {
         printf(
-            "%s:%d:%d\n\0".as_ptr() as *const i8,
+            "%s:%d:%d\n\0".as_ptr() as *const core::ffi::c_char,
             fcopy,
             cloc.line(),
             cloc.column(),

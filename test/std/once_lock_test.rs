@@ -28,6 +28,6 @@ fn main() {
         core::intrinsics::abort();
     }
     if let Some(val) = COMPUTATION.get() {
-        unsafe { printf("val is:%d\n\0".as_ptr() as *const i8, *val as u32) };
+        unsafe { printf("val is:%d\n\0".as_ptr() as *const core::ffi::c_char, *val as u32) };
     }
 }
