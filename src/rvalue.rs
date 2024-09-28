@@ -50,19 +50,20 @@ pub fn handle_rvalue<'tcx>(
         Rvalue::Ref(_region, _borrow_kind, place) => crate::place::place_adress(place, ctx),
         Rvalue::RawPtr(_mutability, place) => crate::place::place_adress(place, ctx),
         Rvalue::Cast(
-            CastKind::PointerCoercion(PointerCoercion::UnsafeFnPointer),
+            CastKind::PointerCoercion(PointerCoercion::UnsafeFnPointer, _),
             operand,
             _dst,
         ) => handle_operand(operand, ctx),
         Rvalue::Cast(
             CastKind::PointerCoercion(
                 PointerCoercion::MutToConstPointer | PointerCoercion::ArrayToPointer,
+                _,
             )
             | CastKind::PtrToPtr,
             operand,
             dst,
         ) => ptr_to_ptr(ctx, operand, *dst),
-        Rvalue::Cast(CastKind::PointerCoercion(PointerCoercion::Unsize), operand, target) => {
+        Rvalue::Cast(CastKind::PointerCoercion(PointerCoercion::Unsize, _), operand, target) => {
             crate::unsize::unsize2(ctx, operand, *target)
         }
         Rvalue::BinaryOp(binop, operands) => {
@@ -108,7 +109,7 @@ pub fn handle_rvalue<'tcx>(
             field_index,
         ),
         Rvalue::Cast(
-            CastKind::PointerCoercion(PointerCoercion::ClosureFnPointer(_)),
+            CastKind::PointerCoercion(PointerCoercion::ClosureFnPointer(_), _),
             ref operand,
             _to_ty,
         ) => match ctx.monomorphize(operand.ty(ctx.body(), ctx.tcx())).kind() {
@@ -231,7 +232,7 @@ pub fn handle_rvalue<'tcx>(
             ops
         }
         Rvalue::Cast(
-            CastKind::PointerCoercion(PointerCoercion::ReifyFnPointer),
+            CastKind::PointerCoercion(PointerCoercion::ReifyFnPointer, _),
             operand,
             _target,
         ) => {
@@ -336,9 +337,14 @@ pub fn handle_rvalue<'tcx>(
             let target = ctx.type_from_cache(*target);
             handle_operand(operand, ctx).cast_ptr(target)
         }
-        Rvalue::Cast(rustc_middle::mir::CastKind::DynStar, _, _) => {
-            todo!("Unusported cast kind:DynStar")
-        }
+        rustc_middle::mir::Rvalue::Cast(
+            rustc_middle::mir::CastKind::PointerCoercion(
+                rustc_middle::ty::adjustment::PointerCoercion::DynStar,
+                _,
+            ),
+            _,
+            _,
+        ) => todo!("Dyn star casts unspoorted"),
     }
 }
 fn repeat<'tcx>(

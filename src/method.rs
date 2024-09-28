@@ -21,9 +21,8 @@ pub(crate) fn resolve_global_allocations(method: &mut Method, ctx: &mut MethodCo
                         *node = crate::assembly::add_allocation(*alloc_id, asm, tcx);
                     }
                     CILNode::PointerToConstValue(bytes) => {
-                        let asm = ctx;
                         *node = CILNode::AddressOfStaticField(Box::new(
-                            crate::assembly::add_const_value(asm, **bytes),
+                            crate::assembly::add_const_value(ctx, **bytes),
                         ));
                     }
                     _ => (),
