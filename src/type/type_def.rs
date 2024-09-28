@@ -5,7 +5,7 @@ use cilly::{
     cil_node::CILNode,
     cil_root::CILRoot,
     conv_usize,
-    field_desc::FieldDescriptor,
+    
     ld_field_address,
     method::{Method, MethodType},
     size_of,
@@ -144,7 +144,7 @@ pub fn get_array_type(element_count: usize, element: Type, explict_size: u64) ->
                         addr_calc: Box::new(
                             (conv_usize!(ld_field_address!(
                                 CILNode::LDArg(0),
-                                FieldDescriptor::boxed(
+                                FieldDesc::boxed(
                                     (&def).into(),
                                     element.clone(),
                                     "f0".to_string().into(),
@@ -182,7 +182,7 @@ pub fn get_array_type(element_count: usize, element: Type, explict_size: u64) ->
                 vec![CILRoot::Ret {
                     tree: (conv_usize!(ld_field_address!(
                         CILNode::LDArg(0),
-                        FieldDescriptor::boxed(
+                        FieldDesc::boxed(
                             (&def).into(),
                             element.clone(),
                             "f0".to_string().into(),
@@ -218,7 +218,7 @@ pub fn get_array_type(element_count: usize, element: Type, explict_size: u64) ->
                         ptr: Box::new(
                             (conv_usize!(ld_field_address!(
                                 CILNode::LDArg(0),
-                                FieldDescriptor::boxed(
+                                FieldDesc::boxed(
                                     (&def).into(),
                                     element.clone(),
                                     "f0".to_string().into(),

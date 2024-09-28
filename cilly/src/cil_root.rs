@@ -1,10 +1,8 @@
-use crate::v2::{Assembly, ClassRef, FnSig, Type};
+use crate::v2::{Assembly, ClassRef, FieldIdx, FnSig, StaticFieldDesc, Type};
 use crate::{
     call,
     call_site::CallSite,
     cil_node::{CILNode, CallOpArgs},
-    field_desc::FieldDescriptor,
-    static_field_desc::StaticFieldDescriptor,
     AsmString, IString,
 };
 use serde::{Deserialize, Serialize};
@@ -84,7 +82,7 @@ pub enum CILRoot {
     SetField {
         addr: Box<CILNode>,
         value: Box<CILNode>,
-        desc: Box<FieldDescriptor>,
+        desc: FieldIdx,
     },
     SetTMPLocal {
         value: CILNode,
@@ -142,7 +140,7 @@ pub enum CILRoot {
         target: u32,
     },
     SetStaticField {
-        descr: Box<StaticFieldDescriptor>,
+        descr: Box<StaticFieldDesc>,
         value: CILNode,
     },
     SourceFileInfo(SFI),
@@ -371,11 +369,11 @@ impl CILRoot {
         Self::SourceFileInfo(Box::new((line, column, file.to_owned().into())))
     }
     #[must_use]
-    pub fn set_field(addr: CILNode, value: CILNode, desc: FieldDescriptor) -> Self {
+    pub fn set_field(addr: CILNode, value: CILNode, desc: FieldIdx) -> Self {
         Self::SetField {
             addr: Box::new(addr),
             value: Box::new(value),
-            desc: Box::new(desc),
+            desc,
         }
     }
 }

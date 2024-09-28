@@ -4,8 +4,8 @@ use super::{
     bimap::{BiMapIndex, IntoBiMapIndex},
     cilnode::MethodKind,
     field::FieldIdx,
-    Assembly, CILNode, FieldDesc, Float, Int, MethodRef, MethodRefIdx, NodeIdx, SigIdx,
-    StaticFieldDesc, StaticFieldIdx, StringIdx, Type, TypeIdx,
+    Assembly, CILNode, Float, Int, MethodRef, MethodRefIdx, NodeIdx, SigIdx, StaticFieldIdx,
+    StringIdx, Type, TypeIdx,
 };
 use crate::cil_root::CILRoot as V1Root;
 //use crate::cil_node::CILNode as V1Node;
@@ -352,14 +352,12 @@ impl CILRoot {
                 Self::Call(Box::new((method_ref, args)))
             }
             V1Root::SetField { value, addr, desc } => {
-                let field = FieldDesc::from_v1(desc, asm);
-                let field = asm.alloc_field(field);
                 let value = CILNode::from_v1(value, asm);
                 let value = asm.alloc_node(value);
                 let addr = CILNode::from_v1(addr, asm);
                 let addr = asm.alloc_node(addr);
 
-                Self::SetField(Box::new((field, addr, value)))
+                Self::SetField(Box::new((*desc, addr, value)))
             }
             V1Root::STIndI8(addr, val) => {
                 let val = CILNode::from_v1(val, asm);
@@ -480,10 +478,9 @@ impl CILRoot {
             }
             V1Root::ReThrow => Self::ReThrow,
             V1Root::SetStaticField { descr, value } => {
-                let descr = StaticFieldDesc::from_v1(descr, asm);
                 let val = CILNode::from_v1(value, asm);
                 Self::SetStaticField {
-                    field: asm.alloc_sfld(descr),
+                    field: asm.alloc_sfld(**descr),
                     val: asm.alloc_node(val),
                 }
             }

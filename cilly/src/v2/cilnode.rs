@@ -1,11 +1,10 @@
 use serde::{Deserialize, Serialize};
 
 use super::bimap::BiMapIndex;
-use super::field::{StaticFieldDesc, StaticFieldIdx};
+use super::field::StaticFieldIdx;
 
 use super::{bimap::IntoBiMapIndex, Assembly, Const, Int, MethodRefIdx, SigIdx, TypeIdx};
-use super::{ClassRef, FieldDesc, FieldIdx, Float};
-
+use super::{ClassRef, FieldIdx, Float};
 use crate::cil_node::CILNode as V1Node;
 use crate::v2::{MethodRef, Type};
 
@@ -714,21 +713,17 @@ impl CILNode {
             }
             // Field access
             V1Node::LDField { addr, field } => {
-                let field = FieldDesc::from_v1(field, asm);
-                let field = asm.alloc_field(field);
                 let addr = Self::from_v1(addr, asm);
                 Self::LdField {
                     addr: asm.alloc_node(addr),
-                    field,
+                    field: *field,
                 }
             }
             V1Node::LDFieldAdress { addr, field } => {
-                let field = FieldDesc::from_v1(field, asm);
-                let field = asm.alloc_field(field);
                 let addr = Self::from_v1(addr, asm);
                 Self::LdFieldAdress {
                     addr: asm.alloc_node(addr),
-                    field,
+                    field: *field,
                 }
             }
             // Calls
@@ -854,14 +849,8 @@ impl CILNode {
                 let tpe = asm.alloc_type(*tpe.as_ref());
                 CILNode::LocAllocAlgined { tpe, align: *align }
             }
-            V1Node::LDStaticField(sfld) => {
-                let sfld = StaticFieldDesc::from_v1(sfld, asm);
-                Self::LdStaticField(asm.alloc_sfld(sfld))
-            }
-            V1Node::AddressOfStaticField(sfld) => {
-                let sfld = StaticFieldDesc::from_v1(sfld, asm);
-                Self::LdStaticFieldAdress(asm.alloc_sfld(sfld))
-            }
+            V1Node::AddressOfStaticField(sfld) => Self::LdStaticFieldAdress(asm.alloc_sfld(**sfld)),
+            V1Node::LDStaticField(sfld) => Self::LdStaticField(asm.alloc_sfld(**sfld)),
             V1Node::LDFtn(site) => {
                 let sig = asm.alloc_sig(site.signature().clone());
                 let generics: Box<[_]> = (site.generics()).into();

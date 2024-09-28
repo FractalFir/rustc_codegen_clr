@@ -485,12 +485,12 @@ pub fn handle_intrinsic<'tcx>(
             // Set a field of the destination
             let dst_ty = destination.ty(ctx.body(), ctx.tcx());
             let fld_desc = field_descrptor(dst_ty.ty, 0, ctx);
-            assert_eq!(*fld_desc.tpe(), src_type);
+
             // Set the value of the result.
             let set_val = CILRoot::SetField {
                 addr: Box::new(place_adress(destination, ctx)),
                 value: Box::new(exchange_res),
-                desc: Box::new(fld_desc.clone()),
+                desc: (fld_desc.clone()),
             };
             // Get the result back
             let val = CILNode::SubTrees(Box::new((
@@ -500,12 +500,11 @@ pub fn handle_intrinsic<'tcx>(
             // Compare the result to comparand(aka `old`)
             let cmp = eq!(val, old);
             let fld_desc = field_descrptor(dst_ty.ty, 1, ctx);
-            assert_eq!(*fld_desc.tpe(), Type::Bool);
 
             CILRoot::SetField {
                 addr: Box::new(place_adress(destination, ctx)),
                 value: Box::new(cmp),
-                desc: Box::new(fld_desc.clone()),
+                desc: (fld_desc.clone()),
             }
         }
         "atomic_xsub_release"

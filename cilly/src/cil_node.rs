@@ -1,11 +1,9 @@
-use crate::v2::{Assembly, ClassRef, ClassRefIdx, FnSig, Int, Type};
+use crate::v2::{Assembly, ClassRef, ClassRefIdx, FieldIdx, FnSig, Int, StaticFieldDesc, Type};
 use crate::{
     call,
     call_site::CallSite,
     cil_iter::CILIterTrait,
     cil_root::CILRoot,
-    field_desc::FieldDescriptor,
-    static_field_desc::StaticFieldDescriptor,
     v2::hashable::{HashableF32, HashableF64},
     IString,
 };
@@ -30,8 +28,7 @@ pub enum CILNode {
     /// A black box that prevents the bulit-in optimization engine from doing any optimizations.
     BlackBox(Box<Self>),
     /// Loads the value of a static variable described by the descripstor.
-    LDStaticField(Box<StaticFieldDescriptor>),
-
+    LDStaticField(Box<StaticFieldDesc>),
     /// Converts the signed inner value to a 32 bit floating-point number.
     ConvF32(Box<Self>),
     /// Converts the signed inner value to a 64 bit floating-point number.
@@ -104,13 +101,13 @@ pub enum CILNode {
     LDFieldAdress {
         /// Address of the object
         addr: Box<Self>,
-        field: Box<FieldDescriptor>,
+        field: FieldIdx,
     },
     /// Loads the value of `field` of the object `addr` points to
     LDField {
         /// Address of the object
         addr: Box<Self>,
-        field: Box<FieldDescriptor>,
+        field: FieldIdx,
     },
     /// Adds 2 values together
     Add(Box<Self>, Box<Self>),
@@ -230,7 +227,7 @@ pub enum CILNode {
     /// Marks the inner pointer operation as volatile.
     Volatile(Box<Self>),
     UnboxAny(Box<Self>, Box<Type>),
-    AddressOfStaticField(Box<StaticFieldDescriptor>),
+    AddressOfStaticField(Box<StaticFieldDesc>),
     LdNull(ClassRefIdx),
 }
 

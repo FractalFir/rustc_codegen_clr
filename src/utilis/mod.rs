@@ -1,5 +1,8 @@
 use crate::{assembly::MethodCompileCtx, IString};
-use cilly::{field_desc::FieldDescriptor, utilis::escape_class_name};
+use cilly::{
+    utilis::escape_class_name,
+    v2::{FieldDesc, FieldIdx},
+};
 use rustc_middle::{
     mir::interpret::AllocId,
     ty::{
@@ -118,7 +121,7 @@ pub fn enum_field_descriptor<'tcx>(
     field_idx: u32,
     variant_idx: u32,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-) -> FieldDescriptor {
+) -> FieldIdx {
     let (adt, subst) = as_adt(owner_ty).expect("Tried to get a field of a non ADT or tuple type!");
     let variant = adt
         .variants()
@@ -131,11 +134,12 @@ pub fn enum_field_descriptor<'tcx>(
         .nth(field_idx as usize)
         .expect("No enum field with provided index!");
     let variant_name: IString = variant.name.to_string().into();
-    let field_name = format!(
-        "{variant_name}_{fname}",
-        fname = crate::r#type::escape_field_name(&field.name.to_string())
-    )
-    .into();
+    let field_name = ctx
+        .alloc_string(format!(
+            "{variant_name}_{fname}",
+            fname = crate::r#type::escape_field_name(&field.name.to_string())
+        ))
+        .into();
     let field_ty = field.ty(ctx.tcx(), subst);
     let field_ty = ctx.monomorphize(field_ty);
     let field_ty = ctx.type_from_cache(field_ty);
@@ -144,31 +148,27 @@ pub fn enum_field_descriptor<'tcx>(
         .as_class_ref()
         .expect("Error: tried to set a field of a non-object type!");
 
-    FieldDescriptor::new(owner_ty, field_ty, field_name)
+    ctx.alloc_field(FieldDesc::new(owner_ty, field_name, field_ty))
 }
 pub fn field_descrptor<'tcx>(
     owner_ty: Ty<'tcx>,
     field_idx: u32,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-) -> FieldDescriptor {
+) -> FieldIdx {
     if let TyKind::Tuple(elements) = owner_ty.kind() {
         let element = elements[field_idx as usize];
         let element = ctx.monomorphize(element);
         let element = ctx.type_from_cache(element);
-        return FieldDescriptor::new(
-            crate::r#type::simple_tuple(
-                &elements
-                    .iter()
-                    .map(|tpe| {
-                        let tpe = ctx.monomorphize(tpe);
-                        ctx.type_from_cache(tpe)
-                    })
-                    .collect::<Vec<_>>(),
-                ctx.asm_mut(),
-            ),
-            element,
-            format!("Item{}", field_idx + 1).into(),
-        );
+        let elements = elements
+            .iter()
+            .map(|tpe| {
+                let tpe = ctx.monomorphize(tpe);
+                ctx.type_from_cache(tpe)
+            })
+            .collect::<Vec<_>>();
+        let field_name = ctx.alloc_string(format!("Item{}", field_idx + 1));
+        let tuple_type = crate::r#type::simple_tuple(&elements, ctx.asm_mut());
+        return ctx.alloc_field(FieldDesc::new(tuple_type, field_name, element));
     } else if let TyKind::Closure(_, args) = owner_ty.kind() {
         let closure = args.as_closure();
         let field_type = closure
@@ -180,12 +180,12 @@ pub fn field_descrptor<'tcx>(
         let field_type = ctx.type_from_cache(field_type);
         let owner_ty = ctx.monomorphize(owner_ty);
         let owner_type = ctx.type_from_cache(owner_ty);
-        let field_name = format!("f_{field_idx}").into();
-        return FieldDescriptor::new(
+        let field_name = ctx.alloc_string(format!("f_{field_idx}"));
+        return ctx.alloc_field(FieldDesc::new(
             owner_type.as_class_ref().expect("Closure type invalid!"),
-            field_type,
             field_name,
-        );
+            field_type,
+        ));
     }
     let (adt, subst) = as_adt(owner_ty).expect("Tried to get a field of a non ADT or tuple type!");
     let field = adt
@@ -200,7 +200,8 @@ pub fn field_descrptor<'tcx>(
         .type_from_cache(owner_ty)
         .as_class_ref()
         .expect("Error: tried to set a field of a non-object type!");
-    FieldDescriptor::new(owner_ty, field_ty, field_name.into())
+    let field_name = ctx.alloc_string(field_name);
+    ctx.alloc_field(FieldDesc::new(owner_ty, field_name, field_ty))
 }
 
 /// Tires to get the value of Const `size` as usize.

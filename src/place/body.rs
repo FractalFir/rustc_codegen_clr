@@ -11,10 +11,8 @@ use cilly::{
     call_site::CallSite,
     cil_node::CILNode,
     cil_root::CILRoot,
-    conv_usize,
-    field_desc::FieldDescriptor,
-    ld_field, size_of,
-    v2::{FnSig, Int},
+    conv_usize, ld_field, size_of,
+    v2::{FieldDesc, FnSig, Int},
     Type,
 };
 use rustc_middle::mir::PlaceElem;
@@ -160,12 +158,12 @@ pub fn place_elem_body<'tcx>(
                     let inner = ctx.monomorphize(*inner);
                     let inner_type = ctx.type_from_cache(inner);
                     let slice = fat_ptr_to(Ty::new_slice(ctx.tcx(), inner), ctx);
-                    let desc = FieldDescriptor::new(
+                    let desc = FieldDesc::new(
                         slice,
+                        ctx.alloc_string(crate::DATA_PTR),
                         ctx.asm_mut().nptr(Type::Void),
-                        crate::DATA_PTR.into(),
                     );
-                    let addr = ld_field!(parrent_node, desc)
+                    let addr = ld_field!(parrent_node, ctx.alloc_field(desc))
                         .cast_ptr(ctx.asm_mut().nptr(inner_type))
                         + (index * CILNode::ZeroExtendToUSize(size_of!(inner_type).into()));
 
@@ -233,13 +231,13 @@ pub fn place_elem_body<'tcx>(
                     let inner = ctx.monomorphize(*inner);
                     let inner_type = ctx.type_from_cache(inner);
                     let slice = fat_ptr_to(Ty::new_slice(ctx.tcx(), inner), ctx);
-                    let desc = FieldDescriptor::new(
+                    let desc = FieldDesc::new(
                         slice,
+                        ctx.alloc_string(crate::DATA_PTR),
                         ctx.asm_mut().nptr(Type::Void),
-                        crate::DATA_PTR.into(),
                     );
 
-                    let addr = Box::new(ld_field!(parrent_node.clone(), desc))
+                    let addr = Box::new(ld_field!(parrent_node.clone(), ctx.alloc_field(desc)))
                         .cast_ptr(ctx.asm_mut().nptr(inner_type))
                         + (index) * conv_usize!(CILNode::SizeOf(inner_type.into()));
                     if body_ty_is_by_adress(inner, ctx) {

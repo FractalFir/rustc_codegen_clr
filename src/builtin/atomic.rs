@@ -7,7 +7,7 @@ use cilly::{
     cil_node::CILNode,
     cil_root::CILRoot,
     conv_u32, conv_u64, conv_usize, size_of,
-    static_field_desc::StaticFieldDescriptor,
+    static_field_desc::StaticFieldDesc,
     v2::{ClassRef, Int},
     FnSig, Type,
 };
@@ -24,7 +24,7 @@ macro_rules! monitor_enter {
                 true,
             )),
             args: [CILNode::LDStaticField(Box::new(
-                StaticFieldDescriptor::new(
+                StaticFieldDesc::new(
                     None,
                     Type::ClassRef(Box::new(ClassRef::object_type())),
                     "GlobalAtomicLock".into(),
@@ -48,7 +48,7 @@ macro_rules! monitor_exit {
                 true,
             )),
             args: [CILNode::LDStaticField(Box::new(
-                StaticFieldDescriptor::new(
+                StaticFieldDesc::new(
                     None,
                     Type::ClassRef(Box::new(ClassRef::object_type())),
                     "GlobalAtomicLock".into(),

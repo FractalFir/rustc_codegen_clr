@@ -237,3 +237,22 @@ fn type_string(tpe: Type, asm: &Assembly) -> String {
         Type::FnPtr(_) => "J".into(),
     }
 }
+/*
+// Type your code here, or load an example.
+import java.lang.foreign.*;
+import  java.lang.System;
+class Memory {
+    static MemorySegment globalMem;
+    static int bitWidth;
+    static{
+        bitWidth = 8;
+        globalMem = MemorySegment.ofAddress(0).reinterpret(1l<<(bitWidth * 8));
+    }
+    static int LoadI32(long ptr){
+        return globalMem.get(ValueLayout.JAVA_INT,ptr);
+    }
+    static long LoadI64(long ptr){
+        return globalMem.get(ValueLayout.JAVA_LONG,ptr);
+    }
+}
+*/

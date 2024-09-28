@@ -2,8 +2,6 @@ use serde::{Deserialize, Serialize};
 
 use super::bimap::BiMapIndex;
 use super::{bimap::IntoBiMapIndex, ClassRefIdx, StringIdx, Type};
-use crate::field_desc::FieldDescriptor as V1Field;
-use crate::static_field_desc::StaticFieldDescriptor as V1StaticField;
 
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Copy, Serialize, Deserialize)]
 pub struct FieldIdx(BiMapIndex);
@@ -26,12 +24,6 @@ impl FieldDesc {
     #[must_use]
     pub fn new(owner: ClassRefIdx, name: StringIdx, tpe: Type) -> Self {
         Self { owner, name, tpe }
-    }
-
-    pub(crate) fn from_v1(desc: &V1Field, asm: &mut super::Assembly) -> Self {
-        let owner = desc.owner();
-
-        Self::new(*owner, asm.alloc_string(desc.name()), *desc.tpe())
     }
 
     #[must_use]
@@ -70,15 +62,6 @@ impl StaticFieldDesc {
     #[must_use]
     pub fn new(owner: ClassRefIdx, name: StringIdx, tpe: Type) -> Self {
         Self { owner, name, tpe }
-    }
-
-    pub fn from_v1(desc: &V1StaticField, asm: &mut super::Assembly) -> Self {
-        let owner = if let Some(owner) = desc.owner() {
-            *owner
-        } else {
-            *asm.main_module()
-        };
-        Self::new(owner, asm.alloc_string(desc.name()), *desc.tpe())
     }
 
     #[must_use]

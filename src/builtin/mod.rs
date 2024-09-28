@@ -9,12 +9,12 @@ use cilly::{
     cil_node::{CILNode, CallOpArgs},
     cil_root::CILRoot,
     conv_isize, conv_u64, conv_usize,
-    field_desc::FieldDescriptor,
+    
     fn_sig::FnSig,
     ld_field, ldc_i32, ldc_u32, ldc_u64, lt_un,
     method::{Method, MethodType},
     shl, shr, size_of, source_info,
-    static_field_desc::StaticFieldDescriptor,
+    static_field_desc::StaticFieldDesc,
     utilis::escape_class_name,
     v2::Int,
 };
@@ -543,7 +543,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
         false,
     );
     asm.add_initialzer(CILRoot::SetStaticField {
-        descr: Box::new(StaticFieldDescriptor::new(
+        descr: Box::new(StaticFieldDesc::new(
             None,
             Type::ClassRef(Box::new(ClassRef::dictionary(
                 Type::Int(Int::I32),
@@ -602,7 +602,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
                     CILRoot::SetField {
                         addr: Box::new(CILNode::LDArg(0)),
                         value: Box::new(CILNode::LDArg(1)),
-                        desc: Box::new(FieldDescriptor::new(
+                        desc: ctx.alloc_field(FieldDesc::new(
                             ClassRef::new::<&str, _>(None, "RustException").with_valuetype(false),
                             Type::Int(Int::USize),
                             "data_pointer".into(),
@@ -647,7 +647,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
                         (FnSig::new(&[ptr!(Type::Void)], ptr!(Type::Void))),
                         (ld_field!(
                             CILNode::LDArg(0),
-                            FieldDescriptor::new(
+                            FieldDesc::new(
                                 unmanaged_start(),
                                 Type::FnPtr(Box::new(FnSig::new(
                                     &[ptr!(Type::Void)],
@@ -658,7 +658,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
                         )),
                         [ld_field!(
                             CILNode::LDArg(0),
-                            FieldDescriptor::new(
+                            FieldDesc::new(
                                 unmanaged_start(),
                                 ptr!(Type::Void),
                                 "data".into(),
@@ -688,7 +688,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
                         false,
                     )),
                     args: Box::new([
-                        CILNode::LDStaticField(Box::new(StaticFieldDescriptor::new(
+                        CILNode::LDStaticField(Box::new(StaticFieldDesc::new(
                             None,
                             Type::ClassRef(Box::new(ClassRef::dictionary(
                                 Type::Int(Int::I32),
@@ -759,7 +759,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
                         CILRoot::SetField {
                             addr: Box::new(CILNode::LDArg(0)),
                             value: Box::new(CILNode::LDArg(1)),
-                            desc: Box::new(FieldDescriptor::new(
+                            desc: ctx.alloc_field(FieldDesc::new(
                                 unmanaged_start(),
                                 Type::FnPtr(Box::new(FnSig::new(
                                     &[ptr!(Type::Void)],
@@ -772,7 +772,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
                         CILRoot::SetField {
                             addr: Box::new(CILNode::LDArg(0)),
                             value: Box::new(CILNode::LDArg(2)),
-                            desc: Box::new(FieldDescriptor::new(
+                            desc: ctx.alloc_field(FieldDesc::new(
                                 unmanaged_start(),
                                 ptr!(Type::Void),
                                 "data".into(),
@@ -1160,7 +1160,7 @@ add_method_from_trees!(
                                     ClassRef::new::<&str, _>(None, "RustException")
                                         .with_valuetype(false)
                                 ))),
-                                FieldDescriptor::new(
+                                FieldDesc::new(
                                     ClassRef::new::<&str, _>(None, "RustException")
                                         .with_valuetype(false),
                                     Type::Int(Int::USize),
@@ -1308,7 +1308,7 @@ add_method_from_trees!(
                             false
                         ),
                         [
-                            CILNode::LDStaticField(Box::new(StaticFieldDescriptor::new(
+                            CILNode::LDStaticField(Box::new(StaticFieldDesc::new(
                                 None,
                                 Type::ClassRef(Box::new(ClassRef::dictionary(
                                     Type::Int(Int::I32),

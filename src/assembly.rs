@@ -19,9 +19,8 @@ use cilly::{
     cil_tree::CILTree,
     conv_usize, ldc_i32, ldc_u32, ldc_u64,
     method::{Method, MethodType},
-    static_field_desc::StaticFieldDescriptor,
     utilis::{self, encode},
-    v2::{field, FnSig, Int, MethodDef, StaticFieldDesc},
+    v2::{FnSig, Int, MethodDef, StaticFieldDesc},
     Type,
 };
 use rustc_middle::{
@@ -392,7 +391,7 @@ pub fn add_fn<'tcx, 'asm, 'a: 'asm>(
                     value: Box::new(CILNode::LDArg(
                         spread_arg.as_u32() - 1 + u32::try_from(arg_id).unwrap(),
                     )),
-                    desc: Box::new(arg_field),
+                    desc: (arg_field),
                 }
                 .into(),
             );
@@ -587,18 +586,21 @@ pub fn add_item<'tcx>(
                         panic!()
                     };
 
+                    let argv = asm.alloc_string("argv");
+                    let argc = asm.alloc_string("argc");
+                    let main_module = asm.main_module();
                     asm.add_initialzer(CILRoot::Call {
                         site: Box::new(init_call_site),
                         args: [
-                            CILNode::LDStaticField(Box::new(StaticFieldDescriptor::new(
-                                None,
+                            CILNode::LDStaticField(Box::new(StaticFieldDesc::new(
+                                *main_module,
+                                argc,
                                 Type::Int(Int::I32),
-                                "argc".into(),
                             ))),
-                            CILNode::LDStaticField(Box::new(StaticFieldDescriptor::new(
-                                None,
+                            CILNode::LDStaticField(Box::new(StaticFieldDesc::new(
+                                *main_module,
+                                argv,
                                 uint8_ptr_ptr,
-                                "argv".into(),
                             ))),
                             call!(get_environ, []),
                         ]
@@ -638,14 +640,23 @@ pub fn add_allocation(alloc_id: u64, asm: &mut cilly::v2::Assembly, tcx: TyCtxt<
             GlobalAlloc::VTable(..) => {
                 //TODO: handle VTables
                 let alloc_fld: IString = format!("al_{alloc_id:x}").into();
-                let field_desc = StaticFieldDescriptor::new(None, uint8_ptr, alloc_fld.clone());
+
+                let field_desc = StaticFieldDesc::new(
+                    *asm.main_module(),
+                    asm.alloc_string(alloc_fld.clone()),
+                    uint8_ptr,
+                );
                 asm.add_static(uint8_ptr, alloc_fld, false, main_module_id);
                 return CILNode::LDStaticField(Box::new(field_desc));
             }
             GlobalAlloc::Function { .. } => {
                 //TODO: handle constant functions
                 let alloc_fld: IString = format!("al_{alloc_id:x}").into();
-                let field_desc = StaticFieldDescriptor::new(None, uint8_ptr, alloc_fld.clone());
+                let field_desc = StaticFieldDesc::new(
+                    *asm.main_module(),
+                    asm.alloc_string(alloc_fld.clone()),
+                    uint8_ptr,
+                );
                 asm.add_static(uint8_ptr, alloc_fld, false, main_module_id);
 
                 return CILNode::LDStaticField(Box::new(field_desc));
@@ -671,14 +682,12 @@ pub fn add_allocation(alloc_id: u64, asm: &mut cilly::v2::Assembly, tcx: TyCtxt<
     } else {
         format!("al_{}_{}", encode(alloc_id), encode(byte_hash)).into()
     };
-    let field_desc =
-        StaticFieldDescriptor::new(None, asm.nptr(Type::Int(Int::U8)), alloc_fld.clone());
     let name = asm.alloc_string(alloc_fld.clone());
-
+    let field_desc = StaticFieldDesc::new(*asm.main_module(), name, asm.nptr(Type::Int(Int::U8)));
     // Currently, all static fields are in one module. Consider spliting them up.
     let main_module = asm.class_mut(main_module_id);
 
-    if main_module.has_static_field(name, *field_desc.tpe()) {
+    if main_module.has_static_field(name, field_desc.tpe()) {
         return CILNode::LDStaticField(Box::new(field_desc));
     }
     let init_method = allocation_initializer_method(const_allocation, &alloc_fld, asm, tcx);
@@ -686,8 +695,8 @@ pub fn add_allocation(alloc_id: u64, asm: &mut cilly::v2::Assembly, tcx: TyCtxt<
     let initialzer = asm.new_method(init_method);
     // Calls the static initialzer, and sets the static field to the returned pointer.
     let val = asm.alloc_node(cilly::v2::CILNode::Call(Box::new((*initialzer, [].into()))));
-    let field = StaticFieldDesc::from_v1(&field_desc, asm);
-    let field = asm.alloc_sfld(field);
+
+    let field = asm.alloc_sfld(field_desc);
     let root = asm.alloc_root(cilly::v2::CILRoot::SetStaticField { field, val });
     if thread_local {
         asm.add_tcctor(&[root]);
@@ -699,22 +708,22 @@ pub fn add_allocation(alloc_id: u64, asm: &mut cilly::v2::Assembly, tcx: TyCtxt<
 
     CILNode::LDStaticField(Box::new(field_desc))
 }
-pub fn add_const_value(asm: &mut cilly::v2::Assembly, bytes: u128) -> StaticFieldDescriptor {
+pub fn add_const_value(asm: &mut cilly::v2::Assembly, bytes: u128) -> StaticFieldDesc {
     let uint8_ptr = Type::Int(Int::U128);
     let main_module_id = asm.main_module();
     let alloc_fld: IString = format!("a_{bytes:x}").into();
+    let alloc_fld_name = asm.alloc_string(alloc_fld.clone());
 
-    let field_desc = StaticFieldDescriptor::new(None, Type::Int(Int::U128), alloc_fld.clone());
-    let name = asm.alloc_string(alloc_fld.clone());
+    let field_desc = StaticFieldDesc::new(*asm.main_module(), alloc_fld_name, Type::Int(Int::U128));
+
     let main_module = asm.class_mut(main_module_id);
-    if main_module.has_static_field(name, *field_desc.tpe()) {
+    if main_module.has_static_field(alloc_fld_name, field_desc.tpe()) {
         return field_desc;
     }
     asm.add_static(uint8_ptr, alloc_fld, false, main_module_id);
     let cst = CILNode::const_u128(bytes, asm);
 
-    let field = StaticFieldDesc::from_v1(&field_desc, asm);
-    let field = asm.alloc_sfld(field);
+    let field = asm.alloc_sfld(field_desc);
     let val = cilly::v2::CILNode::from_v1(&cst, asm);
     let val = asm.alloc_node(val);
     let set = asm.alloc_root(cilly::v2::CILRoot::SetStaticField { field, val });

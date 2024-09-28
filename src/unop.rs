@@ -2,9 +2,8 @@ use crate::assembly::MethodCompileCtx;
 use crate::r#type::get_type;
 use cilly::call_site::CallSite;
 use cilly::cil_node::CILNode;
-use cilly::field_desc::FieldDescriptor;
 
-use cilly::v2::{ClassRef, FnSig, Int};
+use cilly::v2::{ClassRef, FieldDesc, FnSig, Int};
 use cilly::{call, ld_field, Type};
 
 use rustc_middle::mir::{Operand, UnOp};
@@ -22,7 +21,7 @@ pub fn unop<'tcx>(
         UnOp::Neg => match ty.kind() {
             TyKind::Int(IntTy::I128) => call!(
                 CallSite::boxed(
-                    ClassRef::int_128(ctx.asm_mut()).into(),
+                    ClassRef::int_128(ctx).into(),
                     "op_UnaryNegation".into(),
                     FnSig::new(Box::new([Type::Int(Int::I128)]), Type::Int(Int::I128)),
                     true,
@@ -33,7 +32,7 @@ pub fn unop<'tcx>(
             TyKind::Int(IntTy::I16) => CILNode::Neg(CILNode::ConvI16(parrent_node.into()).into()),
             TyKind::Uint(UintTy::U128) => call!(
                 CallSite::boxed(
-                    ClassRef::uint_128(ctx.asm_mut()).into(),
+                    ClassRef::uint_128(ctx).into(),
                     "op_UnaryNegation".into(),
                     FnSig::new(Box::new([Type::Int(Int::U128)]), Type::Int(Int::U128)),
                     true,
@@ -46,7 +45,7 @@ pub fn unop<'tcx>(
             TyKind::Bool => CILNode::Eq(CILNode::LdFalse.into(), parrent_node.into()),
             TyKind::Uint(UintTy::U128) => call!(
                 CallSite::boxed(
-                    ClassRef::uint_128(ctx.asm_mut()).into(),
+                    ClassRef::uint_128(ctx).into(),
                     "op_OnesComplement".into(),
                     FnSig::new(Box::new([Type::Int(Int::U128)]), Type::Int(Int::U128)),
                     true,
@@ -55,7 +54,7 @@ pub fn unop<'tcx>(
             ),
             TyKind::Int(IntTy::I128) => call!(
                 CallSite::boxed(
-                    ClassRef::int_128(ctx.asm_mut()).into(),
+                    ClassRef::int_128(ctx).into(),
                     "op_OnesComplement".into(),
                     FnSig::new(Box::new([Type::Int(Int::I128)]), Type::Int(Int::I128)),
                     true,
@@ -70,13 +69,14 @@ pub fn unop<'tcx>(
             let tpe = get_type(ty, ctx)
                 .as_class_ref()
                 .expect("Invalid pointer type");
+            let metadata = ctx.alloc_string(crate::METADATA);
             ld_field!(
                 parrent_node,
-                FieldDescriptor::new(
+                ctx.alloc_field(FieldDesc::new(
                     tpe,
+                    metadata,
                     cilly::v2::Type::Int(cilly::v2::Int::USize),
-                    crate::METADATA.into()
-                )
+                ))
             )
         }
     }

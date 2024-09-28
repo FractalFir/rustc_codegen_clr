@@ -6,10 +6,9 @@ use cilly::{
     call_site::CallSite,
     cil_node::CILNode,
     cil_root::CILRoot,
-    conv_i8, conv_u16, conv_u32, conv_u64, conv_u8, div, eq,
-    field_desc::FieldDescriptor,
-    gt_un, ld_false, lt_un, rem, rem_un, size_of, sub,
-    v2::{ClassRef, Float, FnSig, Int},
+    conv_i8, conv_u16, conv_u32, conv_u64, conv_u8, div, eq, gt_un, ld_false, lt_un, rem, rem_un,
+    size_of, sub,
+    v2::{FieldDesc, Float, FnSig, Int},
     Type,
 };
 use cmp::{eq_unchecked, gt_unchecked, lt_unchecked, ne_unchecked};
@@ -140,15 +139,16 @@ pub(crate) fn binop<'tcx>(
             ));
             let gt = conv_i8!(gt_unchecked(ty_a, ops_a, ops_b, ctx.asm_mut()));
             let res = lt | gt;
+            let enum_tag = ctx.alloc_string(crate::ENUM_TAG);
             CILNode::TemporaryLocal(Box::new((
                 ordering_type,
                 [CILRoot::SetField {
                     addr: Box::new(CILNode::LoadAddresOfTMPLocal),
                     value: Box::new(res),
-                    desc: Box::new(FieldDescriptor::new(
+                    desc: ctx.alloc_field(FieldDesc::new(
                         ordering_type.as_class_ref().unwrap(),
+                        enum_tag,
                         Type::Int(Int::I8),
-                        crate::ENUM_TAG.into(),
                     )),
                 }]
                 .into(),

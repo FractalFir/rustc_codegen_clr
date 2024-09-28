@@ -14,9 +14,9 @@ use cilly::{
     cil_node::{CILNode, CallOpArgs},
     cil_root::CILRoot,
     conv_usize, ld_field, ldc_i32, size_of,
-    v2::{ClassRef, FnSig, Int},
+    v2::{ClassRef, FieldDesc, FnSig, Int},
 };
-use cilly::{call_site::CallSite, field_desc::FieldDescriptor, Type};
+use cilly::{call_site::CallSite, Type};
 use rustc_middle::ty::InstanceKind;
 use rustc_middle::{
     mir::{Operand, Place},
@@ -261,15 +261,15 @@ pub fn call_closure<'tcx>(
                         continue;
                     }
                     let tuple_element_name = format!("Item{}", index + 1);
-                    let field_descriptor = FieldDescriptor::boxed(
+                    let field_descriptor = FieldDesc::new(
                         tuple_type.as_class_ref().expect("Invalid tuple type"),
+                        ctx.alloc_string(tuple_element_name),
                         element_type,
-                        tuple_element_name.into(),
                     );
 
                     call_args.push(ld_field!(
                         crate::operand::handle_operand(&last_arg.node, ctx),
-                        field_descriptor
+                        ctx.alloc_field(field_descriptor)
                     ));
                 }
 
@@ -320,31 +320,29 @@ pub fn call<'tcx>(
 
         let fat_ptr_address = operand_address(&args[0].node, ctx);
         let fat_ptr_dyn = ctx.asm_mut().alloc_string("FatPtrn3Dyn");
+        let vtable_ptr_field_desc = FieldDesc::new(
+            ctx.asm_mut()
+                .alloc_class_ref(ClassRef::new(fat_ptr_dyn, None, true, [].into())),
+            ctx.alloc_string(crate::METADATA),
+            Type::Int(Int::USize),
+        );
         let vtable_ptr = ld_field!(
             fat_ptr_address.clone(),
-            FieldDescriptor::new(
-                ctx.asm_mut()
-                    .alloc_class_ref(ClassRef::new(fat_ptr_dyn, None, true, [].into())),
-                Type::Int(Int::USize),
-                crate::METADATA.into()
-            )
+            ctx.alloc_field(vtable_ptr_field_desc)
         );
 
         let vtable_index =
             ldc_i32!(i32::try_from(fn_idx).expect("More tahn 2^31 functions in a vtable!"));
         let vtable_offset = conv_usize!(vtable_index * size_of!(Type::Int(Int::USize)));
         // Get the address of the function ptr, and load it
-
-        // Get the addres of the object
-        let obj_ptr = ld_field!(
-            fat_ptr_address,
-            FieldDescriptor::new(
-                ctx.asm_mut()
-                    .alloc_class_ref(ClassRef::new(fat_ptr_dyn, None, true, [].into())),
-                ctx.asm_mut().nptr(Type::Void),
-                crate::DATA_PTR.into()
-            )
+        let obj_ptr_field_desc = FieldDesc::new(
+            ctx.asm_mut()
+                .alloc_class_ref(ClassRef::new(fat_ptr_dyn, None, true, [].into())),
+            ctx.alloc_string(crate::DATA_PTR),
+            ctx.asm_mut().nptr(Type::Void),
         );
+        // Get the addres of the object
+        let obj_ptr = ld_field!(fat_ptr_address, ctx.alloc_field(obj_ptr_field_desc));
         // Get the call info
         let call_info = CallInfo::sig_from_instance_(instance, ctx);
 
@@ -380,14 +378,14 @@ pub fn call<'tcx>(
                                 continue;
                             }
                             let tuple_element_name = format!("Item{}", index + 1);
-                            let field_descriptor = FieldDescriptor::boxed(
+                            let field_descriptor = FieldDesc::new(
                                 tuple_type.as_class_ref().expect("Invalid tuple type"),
+                                ctx.alloc_string(tuple_element_name),
                                 element_type,
-                                tuple_element_name.into(),
                             );
                             call_args.push(ld_field!(
                                 crate::operand::handle_operand(&last_arg.node, ctx),
-                                field_descriptor
+                                ctx.alloc_field(field_descriptor)
                             ));
                         }
                     }

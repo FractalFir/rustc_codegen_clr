@@ -326,7 +326,7 @@ impl Assembly {
         self.nodes.get(key)
     }
 
-    pub(crate) fn alloc_field(&mut self, field: FieldDesc) -> FieldIdx {
+    pub fn alloc_field(&mut self, field: FieldDesc) -> FieldIdx {
         self.fields.alloc(field)
     }
     #[must_use]

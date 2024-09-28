@@ -1,6 +1,5 @@
 #![allow(clippy::module_name_repetitions)]
 #![feature(iter_intersperse, pattern)]
-pub mod field_desc;
 
 pub use crate::v2::Type;
 use fxhash::FxHasher;
@@ -58,8 +57,7 @@ pub mod entrypoint;
 
 pub mod libc_fns;
 pub mod method;
-pub mod static_field_desc;
-//pub mod type_def;
+
 pub mod utilis;
 pub mod v2;
 

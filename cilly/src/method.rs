@@ -14,7 +14,6 @@ use crate::{
     cil_node::CILNode,
     cil_root::CILRoot,
     cil_tree::CILTree,
-    static_field_desc::StaticFieldDescriptor,
     v2::{Assembly, FnSig},
     IString, Type,
 };
@@ -283,9 +282,10 @@ impl Method {
             .flat_map(|block| block.iter_cil())
             .call_sites()
     }
+    /*
     /// Returns the list of static fields this function references. Calls may repeat.
     // TODO: make this not call `into_ops`
-    pub fn sflds(&self) -> impl Iterator<Item = &StaticFieldDescriptor> {
+    pub fn sflds(&self) -> impl Iterator<Item = &StaticFieldDesc> {
         self.blocks
             .iter()
             .flat_map(|block| block.iter_cil())
@@ -295,7 +295,7 @@ impl Method {
                 CILIterElem::Root(CILRoot::SetStaticField { descr, value: _ }) => Some(descr),
                 _ => None,
             })
-    }
+    }*/
 
     /// Returns a call site that describes this method.
     pub fn call_site(&self) -> CallSite {

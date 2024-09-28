@@ -173,7 +173,7 @@ impl TyCache {
 
                 let val = CILNode::LDField {
                     addr: Box::new(CILNode::LDArg(0)),
-                    field: Box::new(cilly::field_desc::FieldDescriptor::new(
+                    field: Box::new(cilly::field_desc::FieldDesc::new(
                         owner_ty.clone(),
                         field_type,
                         name,

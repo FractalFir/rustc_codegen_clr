@@ -4,10 +4,8 @@ use cilly::{
     cil_node::CILNode,
     cil_root::CILRoot,
     cil_tree::CILTree,
-    conv_usize,
-    field_desc::FieldDescriptor,
-    ld_field, ldc_u32,
-    v2::{Assembly, FnSig, Int},
+    conv_usize, ld_field, ldc_u32,
+    v2::{Assembly, FieldDesc, FnSig, Int},
     Type,
 };
 use rustc_middle::{
@@ -177,25 +175,21 @@ pub fn handle_terminator<'tcx>(
                             ty,
                             rustc_middle::ty::Mutability::Mut,
                         ));
-                        // Get the vtable
-                        let vtable_ptr = ld_field!(
-                            fat_ptr_address.clone(),
-                            FieldDescriptor::new(
-                                fat_ptr_type.as_class_ref().unwrap(),
-                                Type::Int(Int::USize),
-                                crate::METADATA.into()
-                            )
+                        let desc = FieldDesc::new(
+                            fat_ptr_type.as_class_ref().unwrap(),
+                            ctx.alloc_string(crate::METADATA),
+                            Type::Int(Int::USize),
                         );
+                        // Get the vtable
+                        let vtable_ptr = ld_field!(fat_ptr_address.clone(), ctx.alloc_field(desc));
                         let void_ptr = ctx.asm_mut().nptr(Type::Void);
                         // Get the addres of the object
-                        let obj_ptr = ld_field!(
-                            fat_ptr_address,
-                            FieldDescriptor::new(
-                                fat_ptr_type.as_class_ref().unwrap(),
-                                void_ptr,
-                                crate::DATA_PTR.into()
-                            )
+                        let desc = FieldDesc::new(
+                            fat_ptr_type.as_class_ref().unwrap(),
+                            ctx.alloc_string(crate::DATA_PTR),
+                            void_ptr,
                         );
+                        let obj_ptr = ld_field!(fat_ptr_address, ctx.alloc_field(desc));
                         // We asusme the drop is the first method in the vtable
                         assert_eq!(
                             rustc_middle::ty::vtable::COMMON_VTABLE_ENTRIES_DROPINPLACE,

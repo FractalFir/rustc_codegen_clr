@@ -8,10 +8,8 @@ use cilly::{
     call_site::CallSite,
     cil_node::CILNode,
     cil_root::CILRoot,
-    conv_usize,
-    field_desc::FieldDescriptor,
-    ld_field, ldc_u64, size_of,
-    v2::{ClassRef, FnSig, Int},
+    conv_usize, ld_field, ldc_u64, size_of,
+    v2::{ClassRef, FieldDesc, FnSig, Int},
     Type,
 };
 use rustc_middle::{
@@ -71,7 +69,7 @@ pub fn place_elem_set<'a>(
                 CILRoot::SetField {
                     addr: Box::new(addr_calc),
                     value: Box::new(value_calc),
-                    desc: Box::new(field_desc),
+                    desc: (field_desc),
                 }
             }
         },
@@ -85,18 +83,18 @@ pub fn place_elem_set<'a>(
                 TyKind::Slice(inner) => {
                     let inner = ctx.monomorphize(*inner);
                     let inner_type = ctx.type_from_cache(inner);
-                    let inner_ptr = ctx.asm_mut().nptr(inner_type);
+                    let inner_ptr = ctx.nptr(inner_type);
                     let slice = fat_ptr_to(Ty::new_slice(ctx.tcx(), inner), ctx);
-                    let desc = FieldDescriptor::new(
+                    let desc = FieldDesc::new(
                         slice,
-                        ctx.asm_mut().nptr(Type::Void),
-                        crate::DATA_PTR.into(),
+                        ctx.alloc_string(crate::DATA_PTR),
+                        ctx.nptr(Type::Void),
                     );
+                    let field_val = ld_field!(addr_calc, ctx.alloc_field(desc));
                     ptr_set_op(
                         super::PlaceTy::Ty(inner),
                         ctx,
-                        ld_field!(addr_calc, desc).cast_ptr(inner_ptr)
-                            + index * conv_usize!(size_of!(inner_type)),
+                        field_val.cast_ptr(inner_ptr) + index * conv_usize!(size_of!(inner_type)),
                         value_calc,
                     )
                 }
@@ -112,12 +110,7 @@ pub fn place_elem_set<'a>(
                             Some(array_dotnet),
                             "set_Item".into(),
                             FnSig::new(
-                                [
-                                    ctx.asm_mut().nref(array_type),
-                                    Type::Int(Int::USize),
-                                    element_type,
-                                ]
-                                .into(),
+                                [ctx.nref(array_type), Type::Int(Int::USize), element_type].into(),
                                 Type::Void,
                             ),
                             false,
@@ -148,15 +141,18 @@ pub fn place_elem_set<'a>(
 
                     let inner_type = ctx.type_from_cache(inner);
                     let slice = fat_ptr_to(Ty::new_slice(ctx.tcx(), inner), ctx);
-                    let desc = FieldDescriptor::new(
+                    let desc = FieldDesc::new(
                         slice,
-                        ctx.asm_mut().nptr(Type::Void),
-                        crate::DATA_PTR.into(),
+                        ctx.alloc_string(crate::DATA_PTR),
+                        ctx.nptr(Type::Void),
                     );
-                    let metadata =
-                        FieldDescriptor::new(slice, Type::Int(Int::USize), crate::METADATA.into());
-                    let addr = ld_field!(addr_calc.clone(), desc)
-                        .cast_ptr(ctx.asm_mut().nptr(inner_type))
+                    let metadata = FieldDesc::new(
+                        slice,
+                        ctx.alloc_string(crate::METADATA),
+                        Type::Int(Int::USize),
+                    );
+                    let addr = ld_field!(addr_calc.clone(), ctx.alloc_field(desc))
+                        .cast_ptr(ctx.nptr(inner_type))
                         + call!(
                             CallSite::new(
                                 None,
@@ -167,7 +163,10 @@ pub fn place_elem_set<'a>(
                                 ),
                                 true
                             ),
-                            [conv_usize!(index), ld_field!(addr_calc, metadata),]
+                            [
+                                conv_usize!(index),
+                                ld_field!(addr_calc, ctx.alloc_field(metadata)),
+                            ]
                         ) * conv_usize!(CILNode::SizeOf(inner_type.into()));
                     ptr_set_op(super::PlaceTy::Ty(inner), ctx, addr, value_calc)
                 }
@@ -182,12 +181,7 @@ pub fn place_elem_set<'a>(
                             Some(array_dotnet),
                             "set_Item".into(),
                             FnSig::new(
-                                [
-                                    ctx.asm_mut().nref(array_type),
-                                    Type::Int(Int::USize),
-                                    element,
-                                ]
-                                .into(),
+                                [ctx.nref(array_type), Type::Int(Int::USize), element].into(),
                                 Type::Void,
                             ),
                             false,
@@ -240,7 +234,7 @@ pub fn ptr_set_op<'tcx>(
                 IntTy::I64 => CILRoot::STIndI64(addr_calc, value_calc),
                 IntTy::Isize => CILRoot::STIndISize(addr_calc, value_calc),
                 IntTy::I128 => CILRoot::STObj {
-                    tpe: Box::new(ClassRef::int_128(ctx.asm_mut()).into()),
+                    tpe: Box::new(ClassRef::int_128(ctx).into()),
                     addr_calc: Box::new(addr_calc),
                     value_calc: Box::new(value_calc),
                 },
@@ -252,7 +246,7 @@ pub fn ptr_set_op<'tcx>(
                 UintTy::U64 => CILRoot::STIndI64(addr_calc, value_calc),
                 UintTy::Usize => CILRoot::STIndISize(addr_calc, value_calc),
                 UintTy::U128 => CILRoot::STObj {
-                    tpe: Box::new(ClassRef::uint_128(ctx.asm_mut()).into()),
+                    tpe: Box::new(ClassRef::uint_128(ctx).into()),
                     addr_calc: Box::new(addr_calc),
                     value_calc: Box::new(value_calc),
                 },

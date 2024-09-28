@@ -9,10 +9,8 @@ use cilly::{
     call_site::CallSite,
     cil_node::CILNode,
     cil_root::CILRoot,
-    conv_usize,
-    field_desc::FieldDescriptor,
-    ld_field, ldc_u32, ldc_u64, size_of,
-    v2::{FnSig, Int},
+    conv_usize, ld_field, ldc_u32, ldc_u64, size_of,
+    v2::{FieldDesc, FnSig, Int},
     Type,
 };
 use rustc_middle::{
@@ -60,18 +58,21 @@ pub fn address_last_dereference<'tcx>(
         pointer_to_is_fat(curr_points_to, ctx.tcx(), ctx.instance()),
         pointer_to_is_fat(target_ty, ctx.tcx(), ctx.instance()),
     ) {
-        (true, false) => CILNode::LDIndPtr {
-            ptr: Box::new(CILNode::LDField {
-                field: FieldDescriptor::new(
-                    curr_type.as_class_ref().unwrap(),
-                    ctx.asm_mut().nptr(Type::Void),
-                    crate::DATA_PTR.into(),
-                )
-                .into(),
-                addr: addr_calc.into(),
-            }),
-            loaded_ptr: Box::new(ctx.asm_mut().nptr(target_type)),
-        },
+        (true, false) => {
+            let data_ptr_name = ctx.alloc_string(crate::DATA_PTR);
+            let void_ptr = ctx.asm_mut().nptr(Type::Void);
+            CILNode::LDIndPtr {
+                ptr: Box::new(CILNode::LDField {
+                    field: ctx.alloc_field(FieldDesc::new(
+                        curr_type.as_class_ref().unwrap(),
+                        data_ptr_name,
+                        void_ptr,
+                    )),
+                    addr: addr_calc.into(),
+                }),
+                loaded_ptr: Box::new(ctx.asm_mut().nptr(target_type)),
+            }
+        }
         (false, true) => panic!("Invalid last dereference in address!"),
         (false, false) => addr_calc,
         (true, true) => CILNode::LdObj {
@@ -82,10 +83,10 @@ pub fn address_last_dereference<'tcx>(
     /*match (curr_points_to.kind(), target_type.kind()) {
         (TyKind::Slice(_), TyKind::Slice(_)) => addr_calc,
         (TyKind::Slice(_), _) => CILNode::LDField {
-            field: FieldDescriptor::new(
+            field: FieldDesc::new(
                 curr_type.as_class_ref().unwrap(),
                 ctx.asm_mut().nptr(Type::Void.into()),
-                crate::DATA_PTR.into(),
+                ctx.alloc_string(crate::DATA_PTR),
             )
             .into(),
             addr: addr_calc.into(),
@@ -113,7 +114,7 @@ fn field_address<'a>(
                     let field_desc = crate::utilis::field_descrptor(curr_type, field_index, ctx);
                 CILNode::LDFieldAdress {
                     addr: addr_calc.into(),
-                    field: field_desc.into(),
+                    field: (field_desc),
                 }
                 }
                 (false, true) => panic!("Sized type {curr_type:?} contains an unsized field of type {field_ty}. This is a bug."),
@@ -129,7 +130,9 @@ fn field_address<'a>(
                         curr_type,
                         rustc_middle::ty::Mutability::Mut,
                     ));
-                    let addr_descr = FieldDescriptor::new(curr_type_fat_ptr.as_class_ref().unwrap(),ctx.asm_mut().nptr(Type::Void),crate::DATA_PTR.into());
+                    let data_ptr_name = ctx.alloc_string(crate::DATA_PTR);
+                    let void_ptr = ctx.asm_mut().nptr(Type::Void);
+                    let addr_descr = ctx.alloc_field(FieldDesc::new(curr_type_fat_ptr.as_class_ref().unwrap(),data_ptr_name,void_ptr));
                     // Get the address of the unsized object.
                     let obj_addr = ld_field!(addr_calc,addr_descr);
                     // Add the offset to the object.
@@ -147,16 +150,23 @@ fn field_address<'a>(
                         curr_type,
                         rustc_middle::ty::Mutability::Mut,
                     ));
-                        let addr_descr = FieldDescriptor::new(curr_type_fat_ptr.as_class_ref().unwrap(),ctx.asm_mut().nptr(Type::Void),crate::DATA_PTR.into());
+                        let data_ptr_name = ctx.alloc_string(crate::DATA_PTR);
+                        let metadata_name = ctx.alloc_string(crate::METADATA);
+                        let void_ptr = ctx.asm_mut().nptr(Type::Void);
+
+                        let addr_descr =  ctx.alloc_field(FieldDesc::new(curr_type_fat_ptr.as_class_ref().unwrap(),data_ptr_name,void_ptr));
                         // Get the address of the unsized object.
                         let obj_addr = ld_field!(addr_calc.clone(),addr_descr);
-                        let metadata_descr = FieldDescriptor::new(curr_type_fat_ptr.as_class_ref().unwrap(),Type::Int(Int::USize),crate::METADATA.into());
+                   
+                        let metadata_descr = ctx.alloc_field(FieldDesc::new(curr_type_fat_ptr.as_class_ref().unwrap(),metadata_name,Type::Int(Int::USize)));
                         let metadata = ld_field!(addr_calc,metadata_descr);
                         let field_fat_ptr = ctx.type_from_cache(Ty::new_ptr(
                             ctx.tcx(),
                             field_ty,
                             rustc_middle::ty::Mutability::Mut,
                         ));
+                      
+                        
                         CILNode::TemporaryLocal(Box::new((
                             field_fat_ptr,
                             [
@@ -164,13 +174,13 @@ fn field_address<'a>(
                                     addr: Box::new(CILNode::LoadAddresOfTMPLocal),
                                     value: Box::new(obj_addr
                                             + conv_usize!(ldc_u32!(offset))),
-                                    desc: Box::new(FieldDescriptor::new(field_fat_ptr.as_class_ref().unwrap(),ctx.asm_mut().nptr(Type::Void),crate::DATA_PTR.into())),
+                                    desc: ctx.alloc_field(FieldDesc::new(field_fat_ptr.as_class_ref().unwrap(),data_ptr_name,void_ptr)),
                                 },
                                 CILRoot::SetField {
                                     addr: Box::new(CILNode::LoadAddresOfTMPLocal),
                                     value: Box::new(metadata
                                            ),
-                                    desc: Box::new(FieldDescriptor::new(field_fat_ptr.as_class_ref().unwrap(),Type::Int(Int::USize),crate::METADATA.into())),
+                                    desc: ctx.alloc_field(FieldDesc::new(field_fat_ptr.as_class_ref().unwrap(),metadata_name,Type::Int(Int::USize),)),
                                 },
                             ]
                             .into(),
@@ -184,7 +194,7 @@ fn field_address<'a>(
             let field_desc = crate::utilis::enum_field_descriptor(owner, field_index, var_idx, ctx);
             CILNode::LDFieldAdress {
                 addr: addr_calc.into(),
-                field: field_desc.into(),
+                field: field_desc,
             }
         }
     }
@@ -215,11 +225,13 @@ pub fn place_elem_adress<'tcx>(
                     let inner_type = ctx.type_from_cache(inner);
                     let slice = fat_ptr_to(inner, ctx);
 
-                    let desc = FieldDescriptor::new(
+                    let data_ptr_name = ctx.alloc_string(crate::DATA_PTR);
+                    let void_ptr = ctx.asm_mut().nptr(Type::Void);
+                    let desc = ctx.alloc_field(FieldDesc::new(
                         slice,
-                        ctx.asm_mut().nptr(Type::Void),
-                        crate::DATA_PTR.into(),
-                    );
+                        data_ptr_name,
+                        void_ptr,
+                    ));
                     // This is a false positive
                     //    #[allow(unused_parens)]
                     (ld_field!(addr_calc.clone(), desc)).cast_ptr(ctx.asm_mut().nptr(inner_type))
@@ -253,13 +265,19 @@ pub fn place_elem_adress<'tcx>(
             let curr_type = fat_ptr_to(curr_type.as_ty().expect("Can't index into an enum!"), ctx);
 
             if *from_end {
-                let metadata_field =
-                    FieldDescriptor::new(curr_type, Type::Int(Int::USize), crate::METADATA.into());
-                let ptr_field = FieldDescriptor::new(
+                let metadata_name = ctx.alloc_string(crate::METADATA);
+                let metadata_field = ctx.alloc_field(FieldDesc::new(
                     curr_type,
-                    ctx.asm_mut().nptr(Type::Void),
-                    crate::DATA_PTR.into(),
-                );
+                    metadata_name,
+                    Type::Int(Int::USize),
+                ));
+                let data_ptr_name = ctx.alloc_string(crate::DATA_PTR);
+                let void_ptr = ctx.asm_mut().nptr(Type::Void);
+                let ptr_field = ctx.alloc_field(FieldDesc::new(
+                    curr_type,
+                    data_ptr_name,
+                    void_ptr,
+                ));
                 CILNode::TemporaryLocal(Box::new((
                     Type::ClassRef(curr_type),
                     [
@@ -269,7 +287,7 @@ pub fn place_elem_adress<'tcx>(
                                 Box::new(ld_field!(addr_calc.clone(), metadata_field.clone())),
                                 Box::new(conv_usize!(ldc_u64!(*to + 1))),
                             )),
-                            desc: Box::new(metadata_field),
+                            desc: (metadata_field),
                         },
                         CILRoot::SetField {
                             addr: Box::new(CILNode::LoadAddresOfTMPLocal),
@@ -277,27 +295,33 @@ pub fn place_elem_adress<'tcx>(
                                 ld_field!(addr_calc, ptr_field.clone())
                                     + conv_usize!(ldc_u64!(*from)),
                             ),
-                            desc: Box::new(ptr_field.clone()),
+                            desc: (ptr_field.clone()),
                         },
                     ]
                     .into(),
                     CILNode::LoadTMPLocal,
                 )))
             } else {
-                let metadata_field =
-                    FieldDescriptor::new(curr_type, Type::Int(Int::USize), crate::METADATA.into());
-                let ptr_field = FieldDescriptor::new(
+                let void_ptr = ctx.asm_mut().nptr(Type::Void);
+                let data_ptr = ctx.alloc_string(crate::DATA_PTR);
+                let metadata = ctx.alloc_string(crate::METADATA);
+                let metadata_field = ctx.alloc_field(FieldDesc::new(
                     curr_type,
-                    ctx.asm_mut().nptr(Type::Void),
-                    crate::DATA_PTR.into(),
-                );
+                    metadata,
+                    Type::Int(Int::USize),
+                ));
+                let ptr_field = ctx.alloc_field(FieldDesc::new(
+                    curr_type,
+                    data_ptr,
+                    void_ptr,
+                ));
                 CILNode::TemporaryLocal(Box::new((
                     Type::ClassRef(curr_type),
                     [
                         CILRoot::SetField {
                             addr: Box::new(CILNode::LoadAddresOfTMPLocal),
                             value: Box::new(conv_usize!(ldc_u64!(to - from))),
-                            desc: Box::new(metadata_field),
+                            desc: (metadata_field),
                         },
                         CILRoot::SetField {
                             addr: Box::new(CILNode::LoadAddresOfTMPLocal),
@@ -305,7 +329,7 @@ pub fn place_elem_adress<'tcx>(
                                 ld_field!(addr_calc, ptr_field.clone())
                                     + conv_usize!(ldc_u64!(*from)),
                             ),
-                            desc: Box::new(ptr_field.clone()),
+                            desc: (ptr_field.clone()),
                         },
                     ]
                     .into(),
@@ -330,13 +354,19 @@ pub fn place_elem_adress<'tcx>(
 
                     let inner_type = ctx.type_from_cache(inner);
                     let slice = fat_ptr_to(Ty::new_slice(ctx.tcx(), inner), ctx);
-                    let desc = FieldDescriptor::new(
+                    let void_ptr = ctx.asm_mut().nptr(Type::Void);
+                    let data_ptr = ctx.alloc_string(crate::DATA_PTR);
+                    let desc = ctx.alloc_field(FieldDesc::new(
                         slice,
-                        ctx.asm_mut().nptr(Type::Void),
-                        crate::DATA_PTR.into(),
-                    );
-                    let len =
-                        FieldDescriptor::new(slice, Type::Int(Int::USize), crate::METADATA.into());
+                        data_ptr,
+                        void_ptr,
+                    ));
+                    let metadata = ctx.alloc_string(crate::METADATA);
+                    let len = ctx.alloc_field(FieldDesc::new(
+                        slice,
+                        metadata,
+                        Type::Int(Int::USize),
+                    ));
                     let index = if *from_end {
                         //eprintln!("Slice index from end is:{offset}");
                         CILNode::Sub(

@@ -3,8 +3,8 @@ use crate::operand::{handle_operand, operand_address};
 use crate::r#type::fat_ptr_to;
 use cilly::cil_node::CILNode;
 use cilly::cil_root::CILRoot;
-use cilly::field_desc::FieldDescriptor;
-use cilly::v2::Int;
+
+use cilly::v2::{FieldDesc, Int};
 use cilly::Type;
 use cilly::{conv_u32, conv_usize, ldc_i64, ldc_u32, size_of};
 use rustc_middle::{
@@ -37,36 +37,34 @@ pub fn unsize2<'tcx>(
     );
     let fat_ptr_type = fat_ptr_to(Ty::new(ctx.tcx(), TyKind::Uint(UintTy::U8)), ctx);
 
-    let metadata_field = FieldDescriptor::new(
+    let metadata_field = FieldDesc::new(
         fat_ptr_type,
+        ctx.alloc_string(crate::METADATA),
         cilly::v2::Type::Int(Int::USize),
-        crate::METADATA.into(),
     );
-    let ptr_field = FieldDescriptor::new(
+    let ptr_field = FieldDesc::new(
         fat_ptr_type,
-        ctx.asm_mut().nptr(cilly::v2::Type::Void),
-        crate::DATA_PTR.into(),
+        ctx.alloc_string(crate::DATA_PTR),
+        ctx.nptr(cilly::v2::Type::Void),
     );
 
     let target_ptr = CILNode::LoadAddresOfTMPLocal;
 
     let init_metadata = CILRoot::set_field(
-        target_ptr
-            .clone()
-            .cast_ptr(ctx.asm_mut().nptr(fat_ptr_type.into())),
+        target_ptr.clone().cast_ptr(ctx.nptr(fat_ptr_type.into())),
         metadata.cast_ptr(Type::Int(Int::USize)),
-        metadata_field,
+        ctx.alloc_field(metadata_field),
     );
 
     let init_ptr = if crate::r#type::is_fat_ptr(source, ctx.tcx(), ctx.instance()) {
-        let void_ptr = ctx.asm_mut().nptr(Type::Void);
+        let void_ptr = ctx.nptr(Type::Void);
         CILRoot::set_field(
-            target_ptr.cast_ptr(ctx.asm_mut().nptr(fat_ptr_type.into())),
+            target_ptr.cast_ptr(ctx.nptr(fat_ptr_type.into())),
             CILNode::LDIndPtr {
-                ptr: Box::new(operand_address(operand, ctx).cast_ptr(ctx.asm_mut().nptr(void_ptr))),
-                loaded_ptr: Box::new(ctx.asm_mut().nptr(Type::Void)),
+                ptr: Box::new(operand_address(operand, ctx).cast_ptr(ctx.nptr(void_ptr))),
+                loaded_ptr: Box::new(ctx.nptr(Type::Void)),
             },
-            ptr_field,
+            ctx.alloc_field(ptr_field),
         )
     } else {
         let operand = if source.is_any_ptr() {
@@ -83,16 +81,16 @@ pub fn unsize2<'tcx>(
                         }]),
                         CILNode::LoadAddresOfTMPLocal,
                     )))
-                    .cast_ptr(ctx.asm_mut().nptr(Type::Int(Int::USize))),
+                    .cast_ptr(ctx.nptr(Type::Int(Int::USize))),
                 ),
             }
         };
         // `source` is not a fat pointer, so operand should be a pointer.
 
         CILRoot::set_field(
-            target_ptr.cast_ptr(ctx.asm_mut().nptr(fat_ptr_type.into())),
-            operand.cast_ptr(ctx.asm_mut().nptr(Type::Void)),
-            ptr_field,
+            target_ptr.cast_ptr(ctx.nptr(fat_ptr_type.into())),
+            operand.cast_ptr(ctx.nptr(Type::Void)),
+            ctx.alloc_field(ptr_field),
         )
     };
 
@@ -103,7 +101,7 @@ pub fn unsize2<'tcx>(
                 [init_metadata, init_ptr].into(),
                 CILNode::LoadAddresOfTMPLocal,
             )))
-            .cast_ptr(ctx.asm_mut().nptr(target_type)),
+            .cast_ptr(ctx.nptr(target_type)),
         ),
         obj: Box::new(target_type),
     };
@@ -141,12 +139,11 @@ pub(crate) fn unsized_info<'tcx>(
 
             if let Some(entry_idx) = vptr_entry_idx {
                 let entry_idx = u32::try_from(entry_idx).unwrap();
-                let entry_offset =
-                    ldc_u32!(entry_idx) * conv_u32!(size_of!(ctx.asm_mut().nptr(Type::Void)));
+                let entry_offset = ldc_u32!(entry_idx) * conv_u32!(size_of!(ctx.nptr(Type::Void)));
                 CILNode::LDIndUSize {
                     ptr: Box::new(
                         (old_info + conv_usize!(entry_offset))
-                            .cast_ptr(ctx.asm_mut().nptr(Type::Int(Int::USize))),
+                            .cast_ptr(ctx.nptr(Type::Int(Int::USize))),
                     ),
                 }
             } else {
@@ -161,14 +158,12 @@ pub(crate) fn unsized_info<'tcx>(
 fn load_scalar_pair(addr: CILNode, ctx: &mut MethodCompileCtx<'_, '_>) -> (CILNode, CILNode) {
     (
         CILNode::LDIndUSize {
-            ptr: Box::new(
-                Box::new(addr.clone()).cast_ptr(ctx.asm_mut().nptr(Type::Int(Int::USize))),
-            ),
+            ptr: Box::new(Box::new(addr.clone()).cast_ptr(ctx.nptr(Type::Int(Int::USize)))),
         },
         CILNode::LDIndUSize {
             ptr: Box::new(
                 Box::new(addr + conv_usize!(size_of!(Type::Int(Int::USize))))
-                    .cast_ptr(ctx.asm_mut().nptr(Type::Int(Int::USize))),
+                    .cast_ptr(ctx.nptr(Type::Int(Int::USize))),
             ),
         },
     )

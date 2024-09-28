@@ -4,28 +4,29 @@ use cilly::{
     call_site::CallSite,
     cil_node::CILNode,
     cil_root::CILRoot,
-    conv_i16, conv_i32, conv_i64, conv_i8, conv_isize, conv_u64, conv_usize,
-    field_desc::FieldDescriptor,
-    gt, gt_un, ldc_i32, ldc_i64, ldc_u32, ldc_u64, lt, mul, or,
-    v2::{Assembly, ClassRef, FnSig, Int},
+    conv_i16, conv_i32, conv_i64, conv_i8, conv_isize, conv_u64, conv_usize, gt, gt_un, ldc_i32,
+    ldc_i64, ldc_u32, ldc_u64, lt, mul, or,
+    v2::{Assembly, ClassRef, FieldDesc, FnSig, Int},
     Type,
 };
 use rustc_middle::ty::{IntTy, Ty, TyKind, UintTy};
 
 pub fn result_tuple(tpe: Type, out_of_range: CILNode, val: CILNode, asm: &mut Assembly) -> CILNode {
     let tuple = crate::r#type::simple_tuple(&[tpe, Type::Bool], asm);
+    let item2 = asm.alloc_string("Item2");
+    let item1 = asm.alloc_string("Item1");
     CILNode::TemporaryLocal(Box::new((
         tuple.into(),
         [
             CILRoot::SetField {
                 addr: Box::new(CILNode::LoadAddresOfTMPLocal),
                 value: Box::new(out_of_range),
-                desc: Box::new(FieldDescriptor::new(tuple, Type::Bool, "Item2".into())),
+                desc: asm.alloc_field(FieldDesc::new(tuple, item2, Type::Bool)),
             },
             CILRoot::SetField {
                 addr: Box::new(CILNode::LoadAddresOfTMPLocal),
                 value: Box::new(val),
-                desc: Box::new(FieldDescriptor::new(tuple, tpe, "Item1".into())),
+                desc: asm.alloc_field(FieldDesc::new(tuple, item1, tpe)),
             },
         ]
         .into(),

@@ -9,10 +9,8 @@ use cilly::{
     call_site::CallSite,
     cil_node::CILNode,
     cil_root::CILRoot,
-    conv_usize,
-    field_desc::FieldDescriptor,
-    ldc_u64,
-    v2::{ClassRef, FnSig, Int},
+    conv_usize, ldc_u64,
+    v2::{ClassRef, FieldDesc, FnSig, Int},
     Type,
 };
 use rustc_index::IndexVec;
@@ -121,13 +119,14 @@ pub fn handle_aggregate<'tcx>(
                 }
                 let name = format!("Item{}", field.0 + 1);
 
+                let field_name = ctx.alloc_string(name);
                 sub_trees.push(CILRoot::SetField {
                     addr: Box::new(tuple_getter.clone()),
                     value: Box::new(field.1.clone()),
-                    desc: Box::new(FieldDescriptor::new(
+                    desc: ctx.alloc_field(FieldDesc::new(
                         dotnet_tpe,
+                        field_name,
                         types[field.0 as usize],
-                        name.into(),
                     )),
                 });
             }
@@ -150,14 +149,11 @@ pub fn handle_aggregate<'tcx>(
                 if field_type == cilly::v2::Type::Void {
                     continue;
                 }
+                let field_name = ctx.alloc_string(format!("f_{}", index.as_u32()));
                 sub_trees.push(CILRoot::SetField {
                     addr: Box::new(closure_getter.clone()),
                     value: Box::new(handle_operand(value, ctx)),
-                    desc: Box::new(FieldDescriptor::new(
-                        closure_dotnet,
-                        field_type,
-                        format!("f_{}", index.as_u32()).into(),
-                    )),
+                    desc: ctx.alloc_field(FieldDesc::new(closure_dotnet, field_name, field_type)),
                 });
             }
 
@@ -201,22 +197,25 @@ pub fn handle_aggregate<'tcx>(
             assert!(pointer_to_is_fat(pointee,ctx.tcx(), ctx.instance()), "A pointer to {pointee:?} is not fat, but its metadata is {meta_ty:?}, and not a zst:{is_meta_zst}",is_meta_zst = crate::utilis::is_zst(meta_ty,  ctx.tcx()));
             let fat_ptr_type = get_type(fat_ptr, ctx);
             // Assign the components
+            let data_ptr_name = ctx.alloc_string(crate::DATA_PTR);
+            let void_ptr = ctx.asm_mut().nptr(cilly::v2::Type::Void);
             let assign_ptr = CILRoot::SetField {
                 addr: Box::new(init_addr.clone()),
                 value: Box::new(values[0].1.clone().cast_ptr(ctx.asm_mut().nptr(Type::Void))),
-                desc: Box::new(FieldDescriptor::new(
+                desc: ctx.alloc_field(FieldDesc::new(
                     fat_ptr_type.as_class_ref().unwrap(),
-                    ctx.asm_mut().nptr(cilly::v2::Type::Void),
-                    crate::DATA_PTR.into(),
+                    data_ptr_name,
+                    void_ptr,
                 )),
             };
+            let name = ctx.alloc_string(crate::METADATA);
             let assign_metadata = CILRoot::SetField {
                 addr: Box::new(init_addr),
                 value: Box::new(handle_operand(meta, ctx)),
-                desc: Box::new(FieldDescriptor::new(
+                desc: ctx.alloc_field(FieldDesc::new(
                     fat_ptr_type.as_class_ref().unwrap(),
+                    name,
                     cilly::v2::Type::Int(Int::USize),
-                    crate::METADATA.into(),
                 )),
             };
 
@@ -263,7 +262,7 @@ fn aggregate_adt<'tcx>(
                 sub_trees.push(CILRoot::SetField {
                     addr: Box::new(obj_getter.clone()),
                     value: Box::new(field.1),
-                    desc: Box::new(field_desc),
+                    desc: (field_desc),
                 });
             }
             CILNode::SubTrees(Box::new((
@@ -284,11 +283,10 @@ fn aggregate_adt<'tcx>(
                 .nth(variant_idx as usize)
                 .expect("Can't get variant index");
             for (field, field_value) in enum_variant.fields.iter().zip(fields.iter()) {
-                let field_name = format!(
+                let field_name = ctx.alloc_string(format!(
                     "{variant_name}_{fname}",
                     fname = crate::r#type::escape_field_name(&field.name.to_string())
-                )
-                .into();
+                ));
                 let field_type = get_type(field.ty(ctx.tcx(), subst), ctx);
                 // Seting a void field is a no-op.
                 if field_type == cilly::v2::Type::Void {
@@ -298,7 +296,7 @@ fn aggregate_adt<'tcx>(
                 sub_trees.push(CILRoot::SetField {
                     addr: Box::new(variant_address.clone()),
                     value: Box::new(field_value.1.clone()),
-                    desc: Box::new(FieldDescriptor::new(adt_type_ref, field_type, field_name)),
+                    desc: ctx.alloc_field(FieldDesc::new(adt_type_ref, field_name, field_type)),
                 });
             }
 
@@ -340,11 +338,11 @@ fn aggregate_adt<'tcx>(
 
             let field_name = field_name(adt_type, active_field.as_u32());
 
-            let desc = FieldDescriptor::new(adt_type_ref, field_type, field_name);
+            let desc = FieldDesc::new(adt_type_ref, ctx.alloc_string(field_name), field_type);
             sub_trees.push(CILRoot::SetField {
                 addr: Box::new(obj_getter.clone()),
                 value: Box::new(fields[0].1.clone()),
-                desc: Box::new(desc),
+                desc: ctx.alloc_field(desc),
             });
             CILNode::SubTrees(Box::new((
                 sub_trees.into(),

@@ -3,10 +3,8 @@ use cilly::{
     call_site::CallSite,
     cil_node::CILNode,
     cil_root::CILRoot,
-    eq,
-    field_desc::FieldDescriptor,
-    gt_un, ldc_u64, sub,
-    v2::{Assembly, ClassRef, ClassRefIdx, Float, FnSig, Int},
+    eq, gt_un, ldc_u64, sub,
+    v2::{Assembly, ClassRef, ClassRefIdx, FieldDesc, Float, FnSig, Int},
     Type,
 };
 use rustc_middle::ty::{AdtDef, Ty};
@@ -191,14 +189,11 @@ pub fn set_discr<'tcx>(
                 .expect("Enum varaint id can't fit in u64."));
             let tag_val =
                 crate::casts::int_to_int(Type::Int(Int::U64), tag_tpe, tag_val, ctx.asm_mut());
+            let enum_tag_name = ctx.alloc_string(crate::ENUM_TAG);
             CILRoot::SetField {
                 addr: Box::new(enum_addr),
                 value: Box::new(tag_val),
-                desc: Box::new(FieldDescriptor::new(
-                    enum_tpe,
-                    tag_tpe,
-                    crate::ENUM_TAG.into(),
-                )),
+                desc: ctx.alloc_field(FieldDesc::new(enum_tpe, enum_tag_name, tag_tpe)),
             }
         }
         Variants::Multiple {
@@ -223,14 +218,11 @@ pub fn set_discr<'tcx>(
                     .expect("Enum varaint id can't fit in u64."));
                 let tag_val =
                     crate::casts::int_to_int(Type::Int(Int::U64), tag_tpe, tag_val, ctx.asm_mut());
+                let enum_tag_name = ctx.alloc_string(crate::ENUM_TAG);
                 CILRoot::SetField {
                     addr: Box::new(enum_addr),
                     value: Box::new(tag_val),
-                    desc: Box::new(FieldDescriptor::new(
-                        enum_tpe,
-                        tag_tpe,
-                        crate::ENUM_TAG.into(),
-                    )),
+                    desc: ctx.alloc_field(FieldDesc::new(enum_tpe, enum_tag_name, tag_tpe)),
                 }
             }
         }
@@ -270,8 +262,9 @@ pub fn get_discr<'tcx>(
                 //CILNode::LDOb
                 todo!();
             } else {
+                let enum_tag_name = ctx.alloc_string(crate::ENUM_TAG);
                 CILNode::LDField {
-                    field: FieldDescriptor::new(enum_tpe, tag_tpe, crate::ENUM_TAG.into()).into(),
+                    field: ctx.alloc_field(FieldDesc::new(enum_tpe, enum_tag_name, tag_tpe)),
                     addr: enum_addr.into(),
                 }
             }
@@ -283,8 +276,9 @@ pub fn get_discr<'tcx>(
         } => {
             let (disrc_type, _) = crate::utilis::adt::enum_tag_info(layout, ctx.asm_mut());
             let relative_max = niche_variants.end().as_u32() - niche_variants.start().as_u32();
+            let enum_tag_name = ctx.alloc_string(crate::ENUM_TAG);
             let tag = CILNode::LDField {
-                field: FieldDescriptor::new(enum_tpe, disrc_type, crate::ENUM_TAG.into()).into(),
+                field: ctx.alloc_field(FieldDesc::new(enum_tpe, enum_tag_name, disrc_type)),
                 addr: enum_addr.into(),
             };
             // We have a subrange `niche_start..=niche_end` inside `range`.

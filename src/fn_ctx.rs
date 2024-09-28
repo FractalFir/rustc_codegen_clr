@@ -7,8 +7,21 @@ pub struct MethodCompileCtx<'tcx, 'asm> {
     tcx: TyCtxt<'tcx>,
     method: Option<&'tcx rustc_middle::mir::Body<'tcx>>,
     method_instance: Instance<'tcx>,
-
     asm: &'asm mut Assembly,
+}
+
+impl<'tcx, 'asm> std::ops::DerefMut for MethodCompileCtx<'tcx, 'asm> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.asm
+    }
+}
+
+impl<'tcx, 'asm> std::ops::Deref for MethodCompileCtx<'tcx, 'asm> {
+    type Target = &'asm mut Assembly;
+
+    fn deref(&self) -> &Self::Target {
+        &self.asm
+    }
 }
 
 impl<'tcx, 'asm> MethodCompileCtx<'tcx, 'asm> {

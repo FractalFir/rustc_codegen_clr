@@ -696,7 +696,7 @@ fn array_methods(element_count: usize, arr_class: ClassDefIdx, element: Type, as
                         addr_calc: Box::new(
                             (conv_usize!(ld_field_address!(
                                 CILNode::LDArg(0),
-                                FieldDescriptor::boxed(
+                                FieldDesc::boxed(
                                     (&def).into(),
                                     element.clone(),
                                     "f0".to_string().into(),
@@ -754,7 +754,7 @@ fn array_methods(element_count: usize, arr_class: ClassDefIdx, element: Type, as
                 vec![CILRoot::Ret {
                     tree: (conv_usize!(ld_field_address!(
                         CILNode::LDArg(0),
-                        FieldDescriptor::boxed(
+                        FieldDesc::boxed(
                             (&def).into(),
                             element.clone(),
                             "f0".to_string().into(),
@@ -790,7 +790,7 @@ fn array_methods(element_count: usize, arr_class: ClassDefIdx, element: Type, as
                         ptr: Box::new(
                             (conv_usize!(ld_field_address!(
                                 CILNode::LDArg(0),
-                                FieldDescriptor::boxed(
+                                FieldDesc::boxed(
                                     (&def).into(),
                                     element.clone(),
                                     "f0".to_string().into(),

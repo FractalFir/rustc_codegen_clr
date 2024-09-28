@@ -9,7 +9,7 @@ use cilly::{
     cil_node::CILNode,
     cil_root::{CILRoot, SFI},
     method::Method,
-    static_field_desc::StaticFieldDescriptor,
+    static_field_desc::StaticFieldDesc,
     AsmStringContainer, FnSig, Type,
 };
 mod value;
@@ -29,7 +29,7 @@ struct InterpreterState<'asm> {
     locals: Vec<Box<[Value]>>,
     mem: FxHashMap<AllocID, Box<[u8]>>,
     last_alloc: AllocID,
-    fields: FxHashMap<StaticFieldDescriptor, Value>,
+    fields: FxHashMap<StaticFieldDesc, Value>,
     methods: FxHashMap<AllocID, CallSite>,
     inv_methods: FxHashMap<CallSite, AllocID>,
     last_alloc_method: AllocID,

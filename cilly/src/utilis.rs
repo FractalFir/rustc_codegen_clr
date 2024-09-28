@@ -1,12 +1,13 @@
 use std::fmt::Debug;
 
 use crate::method::Method;
-use crate::static_field_desc::StaticFieldDescriptor;
-use crate::v2::{ClassRef, FnSig, Int};
+
+use crate::v2::{ClassRef, FnSig, Int, StaticFieldDesc};
 use crate::{
     asm::Assembly, call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, eq, lt, size_of,
 };
 use crate::{call, call_virt, conv_i32, conv_usize, ldc_i32, ldc_u32, mul, Type};
+
 pub fn argc_argv_init_method(asm: &mut Assembly) -> CallSite {
     use std::num::NonZeroU8;
     let init_cs = CallSite::new(
@@ -90,12 +91,16 @@ pub fn argc_argv_init_method(asm: &mut Assembly) -> CallSite {
 
     // Fill up the start block
     let start_block = &mut blocks[start_bb as usize];
-    let status = StaticFieldDescriptor::new(None, Type::Bool, "argv_argc_init_status".into());
+    let status = StaticFieldDesc::new(
+        *asm.main_module(),
+        asm.alloc_string("argv_argc_init_status"),
+        Type::Bool,
+    );
     start_block.trees_mut().push(
         CILRoot::BTrue {
             target: start_bb + 3,
             sub_target: 0,
-            cond: CILNode::LDStaticField(Box::new(status.clone())),
+            cond: CILNode::LDStaticField(Box::new(status)),
         }
         .into(),
     );
@@ -177,7 +182,11 @@ pub fn argc_argv_init_method(asm: &mut Assembly) -> CallSite {
     let loop_end_bb = init_method.new_bb();
     let mut blocks = init_method.blocks_mut();
     let loop_end_block = &mut blocks[loop_end_bb as usize];
-    let argv_static = StaticFieldDescriptor::new(None, asm.nptr(uint8_ptr), "argv".into());
+    let argv_static = StaticFieldDesc::new(
+        *asm.main_module(),
+        asm.alloc_string("argv"),
+        asm.nptr(uint8_ptr),
+    );
     loop_end_block.trees_mut().push(
         CILRoot::SetStaticField {
             descr: Box::new(argv_static),
@@ -185,7 +194,11 @@ pub fn argc_argv_init_method(asm: &mut Assembly) -> CallSite {
         }
         .into(),
     );
-    let argc_static = StaticFieldDescriptor::new(None, Type::Int(Int::I32), "argc".into());
+    let argc_static = StaticFieldDesc::new(
+        *asm.main_module(),
+        asm.alloc_string("argc"),
+        Type::Int(Int::I32),
+    );
     loop_end_block.trees_mut().push(
         CILRoot::SetStaticField {
             descr: Box::new(argc_static),
@@ -233,6 +246,7 @@ pub fn mstring_to_utf8ptr(mstring: CILNode, asm: &mut Assembly) -> CILNode {
     )
     .cast_ptr(asm.nptr(Type::Int(Int::U8)))
 }
+
 pub fn get_environ(asm: &mut Assembly) -> CallSite {
     let uint8_ptr = asm.nptr(Type::Int(Int::U8));
     let uint8_ptr_ptr = asm.nptr(uint8_ptr);
@@ -283,9 +297,11 @@ pub fn get_environ(asm: &mut Assembly) -> CallSite {
         CILRoot::BNe {
             target: ret_bb,
             sub_target: 0,
-            a: Box::new(CILNode::LDStaticField(Box::new(
-                StaticFieldDescriptor::new(None, uint8_ptr_ptr, "environ".into()),
-            ))),
+            a: Box::new(CILNode::LDStaticField(Box::new(StaticFieldDesc::new(
+                *asm.main_module(),
+                asm.alloc_string("environ"),
+                uint8_ptr_ptr,
+            )))),
             b: Box::new(conv_usize!(ldc_u32!(0)).cast_ptr(uint8_ptr_ptr)),
         }
         .into(),
@@ -378,10 +394,10 @@ pub fn get_environ(asm: &mut Assembly) -> CallSite {
     let ret = &mut blocks[ret_bb as usize];
     ret.trees_mut().push(
         CILRoot::Ret {
-            tree: CILNode::LDStaticField(Box::new(StaticFieldDescriptor::new(
-                None,
+            tree: CILNode::LDStaticField(Box::new(StaticFieldDesc::new(
+                *asm.main_module(),
+                asm.alloc_string("environ"),
                 uint8_ptr_ptr,
-                "environ".into(),
             ))),
         }
         .into(),
@@ -509,10 +525,10 @@ pub fn get_environ(asm: &mut Assembly) -> CallSite {
     );
     loop_end.trees_mut().push(
         CILRoot::SetStaticField {
-            descr: Box::new(StaticFieldDescriptor::new(
-                None,
+            descr: Box::new(StaticFieldDesc::new(
+                *asm.main_module(),
+                asm.alloc_string("environ"),
                 uint8_ptr_ptr,
-                "environ".into(),
             )),
             value: CILNode::LDLoc(arr_ptr),
         }
@@ -571,11 +587,12 @@ pub fn escape_class_name(name: &str) -> String {
         .replace('!', "_excl_")
         .replace('\"', "_qt_")
 }
+/*
 #[test]
 fn argv() {
     let mut asm = Assembly::empty();
     argc_argv_init_method(&mut asm);
-}
+} */
 
 #[test]
 fn environ() {

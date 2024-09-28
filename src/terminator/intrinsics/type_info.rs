@@ -1,7 +1,10 @@
 use crate::{assembly::MethodCompileCtx, place::place_set, r#type::pointer_to_is_fat};
 use cilly::{
-    cil_node::CILNode, cil_root::CILRoot, conv_usize, field_desc::FieldDescriptor, ld_field,
-    ldc_u32, size_of, v2::Int, Type,
+    cil_node::CILNode,
+    cil_root::CILRoot,
+    conv_usize, ld_field, ldc_u32, size_of,
+    v2::{FieldDesc, Int},
+    Type,
 };
 use rustc_middle::{
     mir::{Operand, Place},
@@ -46,21 +49,32 @@ pub fn size_of_val<'tcx>(
         match pointed_ty.kind() {
             TyKind::Str => {
                 let slice_tpe = ctx.type_from_cache(ptr_ty).as_class_ref().unwrap();
-                let descriptor =
-                    FieldDescriptor::new(slice_tpe, Type::Int(Int::USize), crate::METADATA.into());
+                let descriptor = FieldDesc::new(
+                    slice_tpe,
+                    ctx.alloc_string(crate::METADATA),
+                    Type::Int(Int::USize),
+                );
                 let addr = crate::operand::operand_address(&args[0].node, ctx);
-                return place_set(destination, ld_field!(addr, descriptor), ctx);
+                return place_set(
+                    destination,
+                    ld_field!(addr, ctx.alloc_field(descriptor)),
+                    ctx,
+                );
             }
             TyKind::Slice(inner) => {
                 let slice_tpe = ctx.type_from_cache(ptr_ty).as_class_ref().unwrap();
                 let inner = ctx.monomorphize(*inner);
                 let inner_type = ctx.type_from_cache(inner);
-                let descriptor =
-                    FieldDescriptor::new(slice_tpe, Type::Int(Int::USize), crate::METADATA.into());
+                let descriptor = FieldDesc::new(
+                    slice_tpe,
+                    ctx.alloc_string(crate::METADATA),
+                    Type::Int(Int::USize),
+                );
                 let addr = crate::operand::operand_address(&args[0].node, ctx);
                 return place_set(
                     destination,
-                    ld_field!(addr, descriptor) * conv_usize!(size_of!(inner_type)),
+                    ld_field!(addr, ctx.alloc_field(descriptor))
+                        * conv_usize!(size_of!(inner_type)),
                     ctx,
                 );
             }
@@ -68,15 +82,18 @@ pub fn size_of_val<'tcx>(
             _ => {
                 let slice_tpe = ctx.type_from_cache(ptr_ty).as_class_ref().unwrap();
 
-                let descriptor =
-                    FieldDescriptor::new(slice_tpe, Type::Int(Int::USize), crate::METADATA.into());
+                let descriptor = FieldDesc::new(
+                    slice_tpe,
+                    ctx.alloc_string(crate::METADATA),
+                    Type::Int(Int::USize),
+                );
                 let addr = crate::operand::operand_address(&args[0].node, ctx);
                 return place_set(
                     destination,
                     CILNode::LDIndUSize {
                         ptr: Box::new(
-                            ld_field!(addr, descriptor)
-                                .cast_ptr(ctx.asm_mut().nptr(Type::Int(Int::USize)))
+                            ld_field!(addr, ctx.alloc_field(descriptor))
+                                .cast_ptr(ctx.nptr(Type::Int(Int::USize)))
                                 + conv_usize!((size_of!(Type::Int(Int::ISize)))),
                         ),
                     },
