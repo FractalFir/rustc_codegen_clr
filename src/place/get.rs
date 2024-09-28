@@ -74,7 +74,7 @@ fn get_field<'a>(
                     let field_desc = crate::utilis::field_descrptor(curr_type, field_index, ctx);
                     CILNode::LDField {
                         addr: addr_calc.into(),
-                        field: field_desc.into(),
+                        field: field_desc,
                     }
                 }
                 (false, true) => panic!("Sized type {curr_type:?} contains an unsized field of type {field_type}. This is a bug."),
@@ -105,7 +105,7 @@ fn get_field<'a>(
             let field_desc = crate::utilis::enum_field_descriptor(owner, field_index, var_idx, ctx);
             CILNode::LDField {
                 addr: addr_calc.into(),
-                field: field_desc.into(),
+                field: field_desc,
             }
         }
     }
@@ -203,10 +203,7 @@ fn place_elem_get<'a>(
                     let index = if *from_end {
                         //eprintln!("Slice index from end is:{offset}");
                         CILNode::Sub(
-                            Box::new(ld_field!(
-                                addr_calc.clone(),
-                                ctx.alloc_field(metadata.clone())
-                            )),
+                            Box::new(ld_field!(addr_calc.clone(), ctx.alloc_field(metadata))),
                             Box::new(conv_usize!(ldc_u64!(*offset))),
                         )
                     } else {

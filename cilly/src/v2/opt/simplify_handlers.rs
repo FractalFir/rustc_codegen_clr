@@ -34,7 +34,6 @@ fn block_gc(blocks: &mut Vec<BasicBlock>, asm: &Assembly) {
         .cloned()
         .collect();
 }
-
 pub fn simplify_bbs(
     handler: Option<&mut Vec<BasicBlock>>,
     asm: &mut Assembly,

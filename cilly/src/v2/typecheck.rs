@@ -804,6 +804,6 @@ fn test() {
     let lhs = super::Const::I64(0);
     let rhs = super::Const::F64(super::hashable::HashableF64(0.0));
     let sum = asm.biop(lhs, rhs, BinOp::Add);
-    let sum = asm.alloc_node(sum);
-    let sig = asm.sig([], Type::Void);
+    let _sum = asm.alloc_node(sum);
+    let _sig = asm.sig([], Type::Void);
 }

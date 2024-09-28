@@ -1124,7 +1124,7 @@ impl ILExporter {
             }
             super::CILRoot::SetStaticField { field, val } => {
                 self.export_node(asm, out, val, sig, locals)?;
-                let sfld = asm[field].clone();
+                let sfld = asm[field];
                 let owner = class_ref(sfld.owner(), asm);
                 let name = &asm[sfld.name()];
                 let tpe = type_il(&sfld.tpe(), asm);

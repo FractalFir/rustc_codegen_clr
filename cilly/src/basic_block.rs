@@ -208,7 +208,6 @@ impl BasicBlock {
             .flat_map(|tree| tree.root_mut().deref_mut().into_iter())
     }*/
     /// Checks if this block does nothing except cononditionaly jump to another block.
-
     #[must_use]
     pub fn handler(&self) -> Option<&Handler> {
         self.handler.as_ref()

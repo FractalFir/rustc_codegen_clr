@@ -397,7 +397,6 @@ pub struct ClassDef {
 }
 impl ClassDef {
     /// Checks if this class defition has a with the name and type.
-
     #[must_use]
     pub fn has_static_field(&self, fld_name: StringIdx, fld_tpe: Type) -> bool {
         self.static_fields

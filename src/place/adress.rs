@@ -273,7 +273,7 @@ pub fn place_elem_adress<'tcx>(
                         CILRoot::SetField {
                             addr: Box::new(CILNode::LoadAddresOfTMPLocal),
                             value: Box::new(CILNode::Sub(
-                                Box::new(ld_field!(addr_calc.clone(), metadata_field.clone())),
+                                Box::new(ld_field!(addr_calc.clone(), metadata_field)),
                                 Box::new(conv_usize!(ldc_u64!(*to + 1))),
                             )),
                             desc: (metadata_field),
@@ -281,10 +281,9 @@ pub fn place_elem_adress<'tcx>(
                         CILRoot::SetField {
                             addr: Box::new(CILNode::LoadAddresOfTMPLocal),
                             value: Box::new(
-                                ld_field!(addr_calc, ptr_field.clone())
-                                    + conv_usize!(ldc_u64!(*from)),
+                                ld_field!(addr_calc, ptr_field) + conv_usize!(ldc_u64!(*from)),
                             ),
-                            desc: (ptr_field.clone()),
+                            desc: ptr_field,
                         },
                     ]
                     .into(),
@@ -308,10 +307,9 @@ pub fn place_elem_adress<'tcx>(
                         CILRoot::SetField {
                             addr: Box::new(CILNode::LoadAddresOfTMPLocal),
                             value: Box::new(
-                                ld_field!(addr_calc, ptr_field.clone())
-                                    + conv_usize!(ldc_u64!(*from)),
+                                ld_field!(addr_calc, ptr_field) + conv_usize!(ldc_u64!(*from)),
                             ),
-                            desc: (ptr_field.clone()),
+                            desc: ptr_field,
                         },
                     ]
                     .into(),
@@ -345,7 +343,7 @@ pub fn place_elem_adress<'tcx>(
                     let index = if *from_end {
                         //eprintln!("Slice index from end is:{offset}");
                         CILNode::Sub(
-                            Box::new(ld_field!(addr_calc.clone(), len.clone())),
+                            Box::new(ld_field!(addr_calc.clone(), len)),
                             Box::new(conv_usize!(ldc_u64!(*offset))),
                         )
                     } else {

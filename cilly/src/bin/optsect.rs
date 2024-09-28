@@ -14,7 +14,7 @@ fn asm_with_fuel(asm: &Assembly, path: &Path, fuel: u32) {
     );
     let export_time = std::time::Instant::now();
     eprintln!("Prepraing to export.");
-    asm.export(&path, ILExporter::new(*ILASM_FLAVOUR, false));
+    asm.export(path, ILExporter::new(*ILASM_FLAVOUR, false));
     eprintln!("Exported in {} ms", export_time.elapsed().as_millis());
     let mut config_path = path.to_owned();
     config_path.set_extension("runtimeconfig.json");

@@ -1,7 +1,91 @@
-use crate::v2::{cilnode::ExtendKind, Assembly, CILNode, Const, Int, Type};
+use crate::v2::{cilnode::ExtendKind, Assembly, CILNode, Const, Int, NodeIdx, Type};
 
 use super::{opt_if_fuel, OptFuel};
-
+/// Optimizes an intiger cast.
+fn opt_int_cast(
+    original: CILNode,
+    asm: &mut Assembly,
+    fuel: &mut OptFuel,
+    input: NodeIdx,
+    target: Int,
+    extend: ExtendKind,
+) -> CILNode {
+    match asm.get_node(input) {
+        CILNode::Const(cst) => match (cst.as_ref(), target) {
+            (Const::U64(val), Int::USize) => opt_if_fuel(Const::USize(*val).into(), original, fuel),
+            (Const::I64(val), Int::ISize) => opt_if_fuel(Const::ISize(*val).into(), original, fuel),
+            (Const::U64(val), Int::U64) => opt_if_fuel(Const::U64(*val).into(), original, fuel),
+            (Const::I64(val), Int::I64) => opt_if_fuel(Const::I64(*val).into(), original, fuel),
+            (Const::U32(val), Int::U32) => opt_if_fuel(Const::U32(*val).into(), original, fuel),
+            (Const::I32(val), Int::I32) => opt_if_fuel(Const::I32(*val).into(), original, fuel),
+            (Const::I32(val), Int::U32) => {
+                opt_if_fuel(Const::U32(*val as u32).into(), original, fuel)
+            }
+            (Const::U64(val), Int::U8) => opt_if_fuel(Const::U8(*val as u8).into(), original, fuel),
+            (Const::I32(val), Int::USize) => match extend {
+                ExtendKind::SignExtend => {
+                    opt_if_fuel(Const::USize(*val as i64 as u64).into(), original, fuel)
+                }
+                ExtendKind::ZeroExtend => {
+                    opt_if_fuel(Const::USize(*val as u32 as u64).into(), original, fuel)
+                }
+            },
+            _ => original,
+        },
+        CILNode::IntCast {
+            input: input2,
+            target: target2,
+            extend: extend2,
+        } => {
+            if target == *target2 && extend == *extend2 {
+                return opt_if_fuel(asm.get_node(input).clone(), original, fuel);
+            }
+            match (target, target2) {
+                (Int::USize | Int::ISize, Int::USize | Int::ISize) => {
+                    // A usize to isize cast does nothing, except change the type on the evaulation stack(the bits are unchanged).
+                    // So, we can just create a cast like it.
+                    opt_if_fuel(
+                        CILNode::IntCast {
+                            input: *input2,
+                            target,
+                            extend: *extend2,
+                        },
+                        original,
+                        fuel,
+                    )
+                }
+                (Int::U64 | Int::I64, Int::U64 | Int::I64) => {
+                    // A u64 to i64 cast does nothing, except change the type on the evaulation stack(the bits are unchanged).
+                    // So, we can just create a cast like it.
+                    opt_if_fuel(
+                        CILNode::IntCast {
+                            input: *input2,
+                            target,
+                            extend: *extend2,
+                        },
+                        original,
+                        fuel,
+                    )
+                }
+                (Int::U32 | Int::I32, Int::U32 | Int::I32) => {
+                    // A u64 to i64 cast does nothing, except change the type on the evaulation stack(the bits are unchanged).
+                    // So, we can just create a cast like it.
+                    opt_if_fuel(
+                        CILNode::IntCast {
+                            input: *input2,
+                            target,
+                            extend: *extend2,
+                        },
+                        original,
+                        fuel,
+                    )
+                }
+                _ => original,
+            }
+        }
+        _ => original,
+    }
+}
 pub fn opt_node(original: CILNode, asm: &mut Assembly, fuel: &mut OptFuel) -> CILNode {
     match original {
         CILNode::SizeOf(tpe) => match asm[tpe] {
@@ -27,87 +111,7 @@ pub fn opt_node(original: CILNode, asm: &mut Assembly, fuel: &mut OptFuel) -> CI
             input,
             target,
             extend,
-        } => match asm.get_node(input) {
-            CILNode::Const(cst) => match (cst.as_ref(), target) {
-                (Const::U64(val), Int::USize) => {
-                    opt_if_fuel(Const::USize(*val).into(), original, fuel)
-                }
-                (Const::I64(val), Int::ISize) => {
-                    opt_if_fuel(Const::ISize(*val).into(), original, fuel)
-                }
-                (Const::U64(val), Int::U64) => opt_if_fuel(Const::U64(*val).into(), original, fuel),
-                (Const::I64(val), Int::I64) => opt_if_fuel(Const::I64(*val).into(), original, fuel),
-                (Const::U32(val), Int::U32) => opt_if_fuel(Const::U32(*val).into(), original, fuel),
-                (Const::I32(val), Int::I32) => opt_if_fuel(Const::I32(*val).into(), original, fuel),
-                (Const::I32(val), Int::U32) => {
-                    opt_if_fuel(Const::U32(*val as u32).into(), original, fuel)
-                }
-                (Const::U64(val), Int::U8) => {
-                    opt_if_fuel(Const::U8(*val as u8).into(), original, fuel)
-                }
-                (Const::I32(val), Int::USize) => match extend {
-                    ExtendKind::SignExtend => {
-                        opt_if_fuel(Const::USize(*val as i64 as u64).into(), original, fuel)
-                    }
-                    ExtendKind::ZeroExtend => {
-                        opt_if_fuel(Const::USize(*val as u32 as u64).into(), original, fuel)
-                    }
-                },
-                _ => original,
-            },
-            CILNode::IntCast {
-                input: input2,
-                target: target2,
-                extend: extend2,
-            } => {
-                if target == *target2 && extend == *extend2 {
-                    return opt_if_fuel(asm.get_node(input).clone(), original, fuel);
-                }
-                match (target, target2) {
-                    (Int::USize | Int::ISize, Int::USize | Int::ISize) => {
-                        // A usize to isize cast does nothing, except change the type on the evaulation stack(the bits are unchanged).
-                        // So, we can just create a cast like it.
-                        opt_if_fuel(
-                            CILNode::IntCast {
-                                input: *input2,
-                                target,
-                                extend: *extend2,
-                            },
-                            original,
-                            fuel,
-                        )
-                    }
-                    (Int::U64 | Int::I64, Int::U64 | Int::I64) => {
-                        // A u64 to i64 cast does nothing, except change the type on the evaulation stack(the bits are unchanged).
-                        // So, we can just create a cast like it.
-                        opt_if_fuel(
-                            CILNode::IntCast {
-                                input: *input2,
-                                target,
-                                extend: *extend2,
-                            },
-                            original,
-                            fuel,
-                        )
-                    }
-                    (Int::U32 | Int::I32, Int::U32 | Int::I32) => {
-                        // A u64 to i64 cast does nothing, except change the type on the evaulation stack(the bits are unchanged).
-                        // So, we can just create a cast like it.
-                        opt_if_fuel(
-                            CILNode::IntCast {
-                                input: *input2,
-                                target,
-                                extend: *extend2,
-                            },
-                            original,
-                            fuel,
-                        )
-                    }
-                    _ => original,
-                }
-            }
-            _ => original,
-        },
+        } => opt_int_cast(original, asm, fuel, input, target, extend),
         CILNode::Call(info) => super::inline::trivial_inline_call(info.0, &info.1, fuel, asm),
         CILNode::LdInd {
             addr,
@@ -142,7 +146,6 @@ pub fn opt_node(original: CILNode, asm: &mut Assembly, fuel: &mut OptFuel) -> CI
             }
             _ => original,
         },
-
         CILNode::LdField { addr, field } => match asm.get_node(addr) {
             CILNode::RefToPtr(addr) => {
                 opt_if_fuel(CILNode::LdField { addr: *addr, field }, original, fuel)

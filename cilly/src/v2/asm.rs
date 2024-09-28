@@ -191,7 +191,6 @@ impl Assembly {
             .filter(move |(id, def)| filter(self, **id, def))
     }
     /// Modifies the method deifinition by running the closure on it
-
     pub fn modify_methodef(
         &mut self,
         modify: impl FnOnce(&mut Self, &mut MethodDef),
@@ -1051,7 +1050,7 @@ fn get_default_ilasm() -> String {
         return "ilasm".into();
     }
     // Framework Path
-    let framework_path = PathBuf::from("C:\\Windows\\Microsoft.NET\\Framework");
+    let framework_path = std::path::PathBuf::from("C:\\Windows\\Microsoft.NET\\Framework");
     let framework_dir = std::fs::read_dir(&framework_path).unwrap_or_else(|_| panic!("Could not find the .NET framework directory at {framework_path:?}, when searching for ilasm."));
     for entry in framework_dir {
         let entry = entry.unwrap();

@@ -23,6 +23,7 @@ pub fn opt_if_fuel<T>(new: T, original: T, fuel: &mut OptFuel) -> T {
         original
     }
 }
+
 impl CILNode {
     // The complexity of this function is unavoidable.
     #[allow(clippy::too_many_lines)]
@@ -49,46 +50,43 @@ impl CILNode {
                 let input = asm.alloc_node(input);
                 CILNode::UnOp(input, unop.clone())
             }
-            CILNode::LdLoc(loc) => {
-                if *loc == idx {
-                    if !fuel.consume(1) {
-                        return self.clone();
-                    }
-                    match tpe {
-                        Type::Float(_)
-                        | Type::Bool
-                        | Type::FnPtr(_)
-                        | Type::Ptr(_)
-                        | Type::ClassRef(_)
-                        | Type::Int(
-                            Int::I128
-                            | Int::U128
-                            | Int::USize
-                            | Int::ISize
-                            | Int::I64
-                            | Int::U64
-                            | Int::U32
-                            | Int::I32,
-                        )
-                        | Type::Ref(_) => asm.get_node(new_node).clone(),
-                        Type::Int(int @ (Int::I8 | Int::U8 | Int::I16 | Int::U16)) => {
-                            CILNode::IntCast {
-                                input: new_node,
-                                target: int,
-                                // Does not matter, since this does nothing for ints < 32 bits, which this arm handles.
-                                extend: if int.is_signed() {
-                                    super::cilnode::ExtendKind::SignExtend
-                                } else {
-                                    super::cilnode::ExtendKind::ZeroExtend
-                                },
-                            }
+            CILNode::LdLoc(loc) if *loc == idx => {
+                if !fuel.consume(1) {
+                    return self.clone();
+                }
+                match tpe {
+                    Type::Float(_)
+                    | Type::Bool
+                    | Type::FnPtr(_)
+                    | Type::Ptr(_)
+                    | Type::ClassRef(_)
+                    | Type::Int(
+                        Int::I128
+                        | Int::U128
+                        | Int::USize
+                        | Int::ISize
+                        | Int::I64
+                        | Int::U64
+                        | Int::U32
+                        | Int::I32,
+                    )
+                    | Type::Ref(_) => asm.get_node(new_node).clone(),
+                    Type::Int(int @ (Int::I8 | Int::U8 | Int::I16 | Int::U16)) => {
+                        CILNode::IntCast {
+                            input: new_node,
+                            target: int,
+                            // Does not matter, since this does nothing for ints < 32 bits, which this arm handles.
+                            extend: if int.is_signed() {
+                                super::cilnode::ExtendKind::SignExtend
+                            } else {
+                                super::cilnode::ExtendKind::ZeroExtend
+                            },
                         }
-                        _ => CILNode::LdLoc(*loc),
                     }
-                } else {
-                    CILNode::LdLoc(*loc)
+                    _ => CILNode::LdLoc(*loc),
                 }
             }
+            CILNode::LdLoc(loc) => CILNode::LdLoc(*loc),
             CILNode::LdLocA(loc) => CILNode::LdLocA(*loc), // This takes an address, so we can't propagate it
             CILNode::LdArg(arg) => CILNode::LdArg(*arg),
             CILNode::LdArgA(arg) => CILNode::LdArgA(*arg),

@@ -94,7 +94,7 @@ pub fn unsize2<'tcx>(
         )
     };
 
-    let res = CILNode::LdObj {
+    CILNode::LdObj {
         ptr: Box::new(
             CILNode::TemporaryLocal(Box::new((
                 Type::ClassRef(fat_ptr_type),
@@ -104,9 +104,7 @@ pub fn unsize2<'tcx>(
             .cast_ptr(ctx.nptr(target_type)),
         ),
         obj: Box::new(target_type),
-    };
-
-    res
+    }
 }
 /// Adopted from <https://github.com/rust-lang/rustc_codegen_cranelift/blob/45600348c009303847e8cddcfa8483f1f3d56625/src/unsize.rs#L64>
 pub(crate) fn unsized_info<'tcx>(

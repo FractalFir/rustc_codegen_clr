@@ -485,7 +485,7 @@ pub fn handle_intrinsic<'tcx>(
             let set_val = CILRoot::SetField {
                 addr: Box::new(place_adress(destination, ctx)),
                 value: Box::new(exchange_res),
-                desc: (fld_desc.clone()),
+                desc: fld_desc,
             };
             // Get the result back
             let val = CILNode::SubTrees(Box::new((
@@ -499,7 +499,7 @@ pub fn handle_intrinsic<'tcx>(
             CILRoot::SetField {
                 addr: Box::new(place_adress(destination, ctx)),
                 value: Box::new(cmp),
-                desc: (fld_desc.clone()),
+                desc: fld_desc,
             }
         }
         "atomic_xsub_release"

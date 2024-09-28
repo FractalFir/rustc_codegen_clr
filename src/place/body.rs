@@ -47,7 +47,7 @@ fn body_field<'a>(
                         (
                             (field_type).into(),
                             CILNode::LDFieldAdress {
-                                field: field_desc.into(),
+                                field: field_desc,
                                 addr: parrent_node.into(),
                             },
                         )
@@ -55,7 +55,7 @@ fn body_field<'a>(
                         (
                             (field_type).into(),
                             CILNode::LDField {
-                                field: field_desc.into(),
+                                field: field_desc,
                                 addr: parrent_node.into(),
                             },
                         )
@@ -104,7 +104,7 @@ fn body_field<'a>(
             (
                 field_ty.into(),
                 CILNode::LDFieldAdress {
-                    field: field_desc.into(),
+                    field: field_desc,
                     addr: parrent_node.into(),
                 },
             )

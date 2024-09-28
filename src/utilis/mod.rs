@@ -134,12 +134,10 @@ pub fn enum_field_descriptor<'tcx>(
         .nth(field_idx as usize)
         .expect("No enum field with provided index!");
     let variant_name: IString = variant.name.to_string().into();
-    let field_name = ctx
-        .alloc_string(format!(
-            "{variant_name}_{fname}",
-            fname = crate::r#type::escape_field_name(&field.name.to_string())
-        ))
-        .into();
+    let field_name = ctx.alloc_string(format!(
+        "{variant_name}_{fname}",
+        fname = crate::r#type::escape_field_name(&field.name.to_string())
+    ));
     let field_ty = field.ty(ctx.tcx(), subst);
     let field_ty = ctx.monomorphize(field_ty);
     let field_ty = ctx.type_from_cache(field_ty);

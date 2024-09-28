@@ -86,8 +86,7 @@ fn c_tpe(field_tpe: Type, asm: &Assembly) -> String {
             "{elem}{dims}",
             elem = c_tpe(asm[elem], asm),
             dims = "*".repeat(dims.get() as usize)
-        )
-        .into(),
+        ),
         Type::FnPtr(_) => "void*".into(),
     }
 }
@@ -732,7 +731,7 @@ impl CExporter {
                     ),
                 }
             }
-            CILRoot::SourceFileInfo { line_start, line_len, col_start, col_len, file  } => format!("#line {line_start} {file:?}", file = &asm[file]).into(),
+            CILRoot::SourceFileInfo { line_start, line_len, col_start, col_len, file  } => format!("#line {line_start} {file:?}", file = &asm[file]),
             CILRoot::SetField(info) =>{
                 let (field,addr,value) = info.as_ref();
                 let addr = Self::node_to_string(asm[*addr].clone(), asm, locals, inputs, sig);
