@@ -177,30 +177,30 @@ pub fn mul<'tcx>(
     let mul = super::mul_unchecked(ty, ty, ctx, ops_a.clone(), ops_b.clone());
     let ovf = match ty.kind() {
         // Work without promotions
-        TyKind::Uint(UintTy::U8 | UintTy::U16) => gt_un!(mul.clone(), max(ty, ctx.asm_mut())),
+        TyKind::Uint(UintTy::U8 | UintTy::U16) => gt_un!(mul.clone(), max(ty, ctx)),
         TyKind::Int(IntTy::I8 | IntTy::I16) => {
             or!(
-                gt!(mul.clone(), max(ty, ctx.asm_mut())),
-                lt!(mul.clone(), min(ty, ctx.asm_mut()))
+                gt!(mul.clone(), max(ty, ctx)),
+                lt!(mul.clone(), min(ty, ctx))
             )
         }
         // Works with 32 -> 64 size promotions
         TyKind::Uint(UintTy::U32) => {
             let mul = mul!(conv_u64!(ops_a.clone()), conv_u64!(ops_b.clone()));
-            gt_un!(mul.clone(), conv_u64!(max(ty, ctx.asm_mut())))
+            gt_un!(mul.clone(), conv_u64!(max(ty, ctx)))
         }
         TyKind::Int(IntTy::I32) => {
             let mul = mul!(conv_i64!(ops_a.clone()), conv_i64!(ops_b.clone()));
             or!(
-                gt!(mul.clone(), conv_i64!(max(ty, ctx.asm_mut()))),
-                lt!(mul.clone(), conv_i64!(min(ty, ctx.asm_mut())))
+                gt!(mul.clone(), conv_i64!(max(ty, ctx))),
+                lt!(mul.clone(), conv_i64!(min(ty, ctx)))
             )
         }
         // Use 128 bit ints, not supported in mono.
         TyKind::Uint(UintTy::U64) => {
             let mul = call!(
                 CallSite::new_extern(
-                    ClassRef::uint_128(ctx.asm_mut()),
+                    ClassRef::uint_128(ctx),
                     "op_Multiply".into(),
                     FnSig::new(
                         [Type::Int(Int::U128), Type::Int(Int::U128)].into(),
@@ -213,19 +213,19 @@ pub fn mul<'tcx>(
                         Type::Int(Int::U64),
                         Type::Int(Int::U128),
                         ops_a.clone(),
-                        ctx.asm_mut()
+                        ctx
                     ),
                     casts::int_to_int(
                         Type::Int(Int::U64),
                         Type::Int(Int::U128),
                         ops_b.clone(),
-                        ctx.asm_mut()
+                        ctx
                     )
                 ]
             );
             call!(
                 CallSite::new_extern(
-                    ClassRef::uint_128(ctx.asm_mut()),
+                    ClassRef::uint_128(ctx),
                     "op_GreaterThan".into(),
                     FnSig::new(
                         [Type::Int(Int::U128), Type::Int(Int::U128)].into(),
@@ -235,19 +235,14 @@ pub fn mul<'tcx>(
                 ),
                 [
                     mul.clone(),
-                    casts::int_to_int(
-                        Type::Int(Int::U64),
-                        Type::Int(Int::U128),
-                        max(ty, ctx.asm_mut()),
-                        ctx.asm_mut()
-                    )
+                    casts::int_to_int(Type::Int(Int::U64), Type::Int(Int::U128), max(ty, ctx), ctx)
                 ]
             )
         }
         TyKind::Int(IntTy::I64) => {
             let mul = call!(
                 CallSite::new_extern(
-                    ClassRef::int_128(ctx.asm_mut()),
+                    ClassRef::int_128(ctx),
                     "op_Multiply".into(),
                     FnSig::new(
                         [Type::Int(Int::I128), Type::Int(Int::I128)].into(),
@@ -260,19 +255,19 @@ pub fn mul<'tcx>(
                         Type::Int(Int::I64),
                         Type::Int(Int::I128),
                         ops_a.clone(),
-                        ctx.asm_mut()
+                        ctx
                     ),
                     casts::int_to_int(
                         Type::Int(Int::I64),
                         Type::Int(Int::I128),
                         ops_b.clone(),
-                        ctx.asm_mut()
+                        ctx
                     )
                 ]
             );
             let gt = call!(
                 CallSite::new_extern(
-                    ClassRef::int_128(ctx.asm_mut()),
+                    ClassRef::int_128(ctx),
                     "op_GreaterThan".into(),
                     FnSig::new(
                         [Type::Int(Int::I128), Type::Int(Int::I128)].into(),
@@ -282,17 +277,12 @@ pub fn mul<'tcx>(
                 ),
                 [
                     mul.clone(),
-                    casts::int_to_int(
-                        Type::Int(Int::I64),
-                        Type::Int(Int::I128),
-                        max(ty, ctx.asm_mut()),
-                        ctx.asm_mut()
-                    )
+                    casts::int_to_int(Type::Int(Int::I64), Type::Int(Int::I128), max(ty, ctx), ctx)
                 ]
             );
             let lt = call!(
                 CallSite::new_extern(
-                    ClassRef::int_128(ctx.asm_mut()),
+                    ClassRef::int_128(ctx),
                     "op_LessThan".into(),
                     FnSig::new(
                         [Type::Int(Int::I128), Type::Int(Int::I128)].into(),
@@ -302,12 +292,7 @@ pub fn mul<'tcx>(
                 ),
                 [
                     mul.clone(),
-                    casts::int_to_int(
-                        Type::Int(Int::I64),
-                        Type::Int(Int::I128),
-                        min(ty, ctx.asm_mut()),
-                        ctx.asm_mut()
-                    )
+                    casts::int_to_int(Type::Int(Int::I64), Type::Int(Int::I128), min(ty, ctx), ctx)
                 ]
             );
             or!(gt, lt)
@@ -316,7 +301,7 @@ pub fn mul<'tcx>(
         TyKind::Uint(UintTy::Usize) => {
             let mul = call!(
                 CallSite::new_extern(
-                    ClassRef::uint_128(ctx.asm_mut()),
+                    ClassRef::uint_128(ctx),
                     "op_Multiply".into(),
                     FnSig::new(
                         [Type::Int(Int::U128), Type::Int(Int::U128)].into(),
@@ -329,20 +314,20 @@ pub fn mul<'tcx>(
                         Type::Int(Int::USize),
                         Type::Int(Int::U128),
                         ops_a.clone(),
-                        ctx.asm_mut()
+                        ctx
                     ),
                     casts::int_to_int(
                         Type::Int(Int::USize),
                         Type::Int(Int::U128),
                         ops_b.clone(),
-                        ctx.asm_mut()
+                        ctx
                     )
                 ]
             );
 
             call!(
                 CallSite::new_extern(
-                    ClassRef::uint_128(ctx.asm_mut()),
+                    ClassRef::uint_128(ctx),
                     "op_GreaterThan".into(),
                     FnSig::new(
                         [Type::Int(Int::U128), Type::Int(Int::U128)].into(),
@@ -355,8 +340,8 @@ pub fn mul<'tcx>(
                     casts::int_to_int(
                         Type::Int(Int::USize),
                         Type::Int(Int::U128),
-                        max(ty, ctx.asm_mut()),
-                        ctx.asm_mut()
+                        max(ty, ctx),
+                        ctx
                     )
                 ]
             )
@@ -364,7 +349,7 @@ pub fn mul<'tcx>(
         TyKind::Int(IntTy::Isize) => {
             let mul = call!(
                 CallSite::new_extern(
-                    ClassRef::int_128(ctx.asm_mut()),
+                    ClassRef::int_128(ctx),
                     "op_Multiply".into(),
                     FnSig::new(
                         [Type::Int(Int::I128), Type::Int(Int::I128)].into(),
@@ -377,19 +362,19 @@ pub fn mul<'tcx>(
                         Type::Int(Int::ISize),
                         Type::Int(Int::I128),
                         ops_a.clone(),
-                        ctx.asm_mut()
+                        ctx
                     ),
                     casts::int_to_int(
                         Type::Int(Int::ISize),
                         Type::Int(Int::I128),
                         ops_b.clone(),
-                        ctx.asm_mut()
+                        ctx
                     )
                 ]
             );
             let gt = call!(
                 CallSite::new_extern(
-                    ClassRef::int_128(ctx.asm_mut()),
+                    ClassRef::int_128(ctx),
                     "op_GreaterThan".into(),
                     FnSig::new(
                         [Type::Int(Int::I128), Type::Int(Int::I128)].into(),
@@ -402,14 +387,14 @@ pub fn mul<'tcx>(
                     casts::int_to_int(
                         Type::Int(Int::ISize),
                         Type::Int(Int::I128),
-                        max(ty, ctx.asm_mut()),
-                        ctx.asm_mut()
+                        max(ty, ctx),
+                        ctx
                     )
                 ]
             );
             let lt = call!(
                 CallSite::new_extern(
-                    ClassRef::int_128(ctx.asm_mut()),
+                    ClassRef::int_128(ctx),
                     "op_LessThan".into(),
                     FnSig::new(
                         [Type::Int(Int::I128), Type::Int(Int::I128)].into(),
@@ -422,8 +407,8 @@ pub fn mul<'tcx>(
                     casts::int_to_int(
                         Type::Int(Int::ISize),
                         Type::Int(Int::I128),
-                        min(ty, ctx.asm_mut()),
-                        ctx.asm_mut()
+                        min(ty, ctx),
+                        ctx
                     )
                 ]
             );
@@ -434,7 +419,7 @@ pub fn mul<'tcx>(
             CILNode::LdFalse
         }
     };
-    result_tuple(tpe, ovf, mul, ctx.asm_mut())
+    result_tuple(tpe, ovf, mul, ctx)
 }
 pub fn sub_signed<'tcx>(
     ops_a: &CILNode,
@@ -443,32 +428,32 @@ pub fn sub_signed<'tcx>(
     ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> CILNode {
     let tpe = ctx.type_from_cache(ty);
-    let min = min(ty, ctx.asm_mut());
-    let max = max(ty, ctx.asm_mut());
+    let min = min(ty, ctx);
+    let max = max(ty, ctx);
     result_tuple(
         tpe,
         or!(
             and!(
-                super::cmp::gt_unchecked(ty, ops_b.clone(), zero(ty, ctx.asm_mut()), ctx.asm_mut()),
+                super::cmp::gt_unchecked(ty, ops_b.clone(), zero(ty, ctx), ctx),
                 super::cmp::lt_unchecked(
                     ty,
                     ops_a.clone(),
                     super::add_unchecked(ty, ty, ctx, min, ops_b.clone()),
-                    ctx.asm_mut()
+                    ctx
                 )
             ),
             and!(
-                super::cmp::lt_unchecked(ty, ops_b.clone(), zero(ty, ctx.asm_mut()), ctx.asm_mut()),
+                super::cmp::lt_unchecked(ty, ops_b.clone(), zero(ty, ctx), ctx),
                 super::cmp::gt_unchecked(
                     ty,
                     ops_a.clone(),
                     super::add_unchecked(ty, ty, ctx, max, ops_b.clone()),
-                    ctx.asm_mut()
+                    ctx
                 )
             )
         ),
         super::sub_unchecked(ty, ty, ctx, ops_a.clone(), ops_b.clone()),
-        ctx.asm_mut(),
+        ctx,
     )
 }
 pub fn sub_unsigned<'tcx>(
@@ -480,9 +465,9 @@ pub fn sub_unsigned<'tcx>(
     let tpe = ctx.type_from_cache(ty);
     result_tuple(
         tpe,
-        super::cmp::lt_unchecked(ty, ops_a.clone(), ops_b.clone(), ctx.asm_mut()),
+        super::cmp::lt_unchecked(ty, ops_a.clone(), ops_b.clone(), ctx),
         super::sub_unchecked(ty, ty, ctx, ops_a.clone(), ops_b.clone()),
-        ctx.asm_mut(),
+        ctx,
     )
 }
 pub fn add_unsigned<'tcx>(
@@ -500,10 +485,10 @@ pub fn add_unsigned<'tcx>(
             ty,
             res.clone(),
             super::bit_or_unchecked(ty, ty, ctx, ops_a.clone(), ops_b.clone()),
-            ctx.asm_mut(),
+            ctx,
         ),
         res,
-        ctx.asm_mut(),
+        ctx,
     )
 }
 pub fn add_signed<'tcx>(
@@ -523,7 +508,7 @@ pub fn add_signed<'tcx>(
                     gt!(sum.clone(), conv_i16!(ldc_i32!(i8::MAX.into())))
                 ),
                 conv_i8!(sum),
-                ctx.asm_mut(),
+                ctx,
             );
         }
         TyKind::Int(IntTy::I16) => {
@@ -535,7 +520,7 @@ pub fn add_signed<'tcx>(
                     gt!(sum.clone(), (ldc_i32!(i16::MAX.into())))
                 ),
                 conv_i16!(sum),
-                ctx.asm_mut(),
+                ctx,
             );
         }
         TyKind::Int(IntTy::I32) => {
@@ -544,7 +529,7 @@ pub fn add_signed<'tcx>(
                 lt!(sum.clone(), conv_i64!(ldc_i32!(i32::MIN))),
                 gt!(sum.clone(), conv_i64!(ldc_i32!(i32::MAX)))
             );
-            return result_tuple(tpe, out_of_range, conv_i32!(sum), ctx.asm_mut());
+            return result_tuple(tpe, out_of_range, conv_i32!(sum), ctx);
         }
         _ => (),
     }
@@ -553,21 +538,21 @@ pub fn add_signed<'tcx>(
         tpe,
         or!(
             and!(
-                super::lt_unchecked(ty, ops_a.clone(), zero(ty, ctx.asm_mut()), ctx.asm_mut()),
+                super::lt_unchecked(ty, ops_a.clone(), zero(ty, ctx), ctx),
                 and!(
-                    super::lt_unchecked(ty, ops_b.clone(), zero(ty, ctx.asm_mut()), ctx.asm_mut()),
-                    super::gt_unchecked(ty, res.clone(), zero(ty, ctx.asm_mut()), ctx.asm_mut())
+                    super::lt_unchecked(ty, ops_b.clone(), zero(ty, ctx), ctx),
+                    super::gt_unchecked(ty, res.clone(), zero(ty, ctx), ctx)
                 )
             ),
             and!(
-                super::gt_unchecked(ty, ops_a.clone(), zero(ty, ctx.asm_mut()), ctx.asm_mut()),
+                super::gt_unchecked(ty, ops_a.clone(), zero(ty, ctx), ctx),
                 and!(
-                    super::gt_unchecked(ty, ops_b.clone(), zero(ty, ctx.asm_mut()), ctx.asm_mut()),
-                    super::lt_unchecked(ty, res.clone(), zero(ty, ctx.asm_mut()), ctx.asm_mut())
+                    super::gt_unchecked(ty, ops_b.clone(), zero(ty, ctx), ctx),
+                    super::lt_unchecked(ty, res.clone(), zero(ty, ctx), ctx)
                 )
             )
         ),
         res,
-        ctx.asm_mut(),
+        ctx,
     )
 }

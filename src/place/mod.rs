@@ -77,7 +77,7 @@ pub fn deref_op<'tcx>(
                 IntTy::Isize => CILNode::LDIndISize { ptr },
                 IntTy::I128 => CILNode::LdObj {
                     ptr,
-                    obj: Box::new(ClassRef::int_128(ctx.asm_mut()).into()),
+                    obj: Box::new(ClassRef::int_128(ctx).into()),
                 },
                 //_ => todo!("TODO: can't deref int type {int_ty:?} yet"),
             },
@@ -89,7 +89,7 @@ pub fn deref_op<'tcx>(
                 UintTy::Usize => CILNode::LDIndUSize { ptr },
                 UintTy::U128 => CILNode::LdObj {
                     ptr,
-                    obj: Box::new(ClassRef::uint_128(ctx.asm_mut()).into()),
+                    obj: Box::new(ClassRef::uint_128(ctx).into()),
                 }, //vec![CILOp::LdObj(Box::new())],
                    //_ => todo!("TODO: can't deref int type {int_ty:?} yet"),
             },
@@ -165,8 +165,7 @@ pub fn place_adress<'a>(place: &Place<'a>, ctx: &mut MethodCompileCtx<'a, '_>) -
     let layout = ctx.layout_of(place_ty);
     if layout.is_zst() {
         let place_type = ctx.type_from_cache(place_ty);
-        return conv_usize!(ldc_u64!(layout.align.pref.bytes()))
-            .cast_ptr(ctx.asm_mut().nptr(place_type));
+        return conv_usize!(ldc_u64!(layout.align.pref.bytes())).cast_ptr(ctx.nptr(place_type));
     }
     if place.projection.is_empty() {
         let loc_ty = ctx.monomorphize(ctx.body().local_decls[place.local].ty);

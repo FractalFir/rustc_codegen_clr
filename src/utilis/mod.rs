@@ -167,7 +167,7 @@ pub fn field_descrptor<'tcx>(
             })
             .collect::<Vec<_>>();
         let field_name = ctx.alloc_string(format!("Item{}", field_idx + 1));
-        let tuple_type = crate::r#type::simple_tuple(&elements, ctx.asm_mut());
+        let tuple_type = crate::r#type::simple_tuple(&elements, ctx);
         return ctx.alloc_field(FieldDesc::new(tuple_type, field_name, element));
     } else if let TyKind::Closure(_, args) = owner_ty.kind() {
         let closure = args.as_closure();

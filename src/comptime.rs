@@ -141,7 +141,7 @@ pub fn interpret<'tcx>(
                             .expect("ERROR: unuported operation in interop type definiton.")
                             .as_local()
                             .expect("ERROR: unuported operation in interop type definiton.");
-                        ctx.asm_mut()
+                        ctx
                             .class_def(locals[usize::from(local)].as_type_def().unwrap().clone());
                         ComptimeLocalVar::Void
                     } else if function_name.as_ref() == "black_box" {

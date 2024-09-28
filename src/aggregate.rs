@@ -72,14 +72,10 @@ pub fn handle_aggregate<'tcx>(
 
             let element = ctx.monomorphize(*element);
             let element = ctx.type_from_cache(element);
-            let array_type = ClassRef::fixed_array(element, value_index.len(), ctx.asm_mut());
+            let array_type = ClassRef::fixed_array(element, value_index.len(), ctx);
             let array_getter = super::place::place_adress(target_location, ctx);
             let sig = FnSig::new(
-                Box::new([
-                    ctx.asm_mut().nref(array_type.into()),
-                    Type::Int(Int::USize),
-                    element,
-                ]),
+                Box::new([ctx.nref(array_type.into()), Type::Int(Int::USize), element]),
                 Type::Void,
             );
             let site = CallSite::new(Some(array_type), "set_Item".into(), sig, false);
@@ -110,7 +106,7 @@ pub fn handle_aggregate<'tcx>(
                     get_type(operand_ty, ctx)
                 })
                 .collect();
-            let dotnet_tpe = crate::r#type::simple_tuple(&types, ctx.asm_mut());
+            let dotnet_tpe = crate::r#type::simple_tuple(&types, ctx);
             let mut sub_trees = Vec::new();
             for field in &values {
                 // Assigining to a Void field is a NOP and must be skipped(since it can have wierd side-effects).
@@ -181,14 +177,14 @@ pub fn handle_aggregate<'tcx>(
                     "data_ty:{data_ty:?} is a zst. That is bizzare, cause it should be a pointer?"
                 );
                 let data_type = ctx.type_from_cache(data_ty);
-                let fat_ptr_type_ptr = ctx.asm_mut().nptr(fat_ptr_type);
+                let fat_ptr_type_ptr = ctx.nptr(fat_ptr_type);
                 assert_ne!(data_type, Type::Void);
                 // Pointer is thin, just directly assign
                 return CILNode::SubTrees(Box::new((
                     [CILRoot::STIndPtr(
                         init_addr,
-                        handle_operand(data, ctx).cast_ptr(ctx.asm_mut().nptr(fat_ptr_type_ptr)),
-                        Box::new(ctx.asm_mut().nptr(fat_ptr_type)),
+                        handle_operand(data, ctx).cast_ptr(ctx.nptr(fat_ptr_type_ptr)),
+                        Box::new(ctx.nptr(fat_ptr_type)),
                     )]
                     .into(),
                     Box::new(place_get(target_location, ctx)),
@@ -198,10 +194,10 @@ pub fn handle_aggregate<'tcx>(
             let fat_ptr_type = get_type(fat_ptr, ctx);
             // Assign the components
             let data_ptr_name = ctx.alloc_string(crate::DATA_PTR);
-            let void_ptr = ctx.asm_mut().nptr(cilly::v2::Type::Void);
+            let void_ptr = ctx.nptr(cilly::v2::Type::Void);
             let assign_ptr = CILRoot::SetField {
                 addr: Box::new(init_addr.clone()),
-                value: Box::new(values[0].1.clone().cast_ptr(ctx.asm_mut().nptr(Type::Void))),
+                value: Box::new(values[0].1.clone().cast_ptr(ctx.nptr(Type::Void))),
                 desc: ctx.alloc_field(FieldDesc::new(
                     fat_ptr_type.as_class_ref().unwrap(),
                     data_ptr_name,
@@ -301,7 +297,7 @@ fn aggregate_adt<'tcx>(
             }
 
             let layout = ctx.layout_of(adt_type);
-            let (disrc_type, _) = crate::utilis::adt::enum_tag_info(layout.layout, ctx.asm_mut());
+            let (disrc_type, _) = crate::utilis::adt::enum_tag_info(layout.layout, ctx);
             if disrc_type != Type::Void {
                 sub_trees.push(set_discr(
                     layout.layout,

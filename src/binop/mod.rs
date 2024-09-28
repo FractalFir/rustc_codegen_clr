@@ -52,10 +52,10 @@ pub(crate) fn binop<'tcx>(
             }
         }
         BinOp::Sub | BinOp::SubUnchecked => sub_unchecked(ty_a, ty_b, ctx, ops_a, ops_b),
-        BinOp::Ne => ne_unchecked(ty_a, ops_a, ops_b, ctx.asm_mut()),
-        BinOp::Eq => eq_unchecked(ty_a, ops_a, ops_b, ctx.asm_mut()),
-        BinOp::Lt => lt_unchecked(ty_a, ops_a, ops_b, ctx.asm_mut()),
-        BinOp::Gt => gt_unchecked(ty_a, ops_a, ops_b, ctx.asm_mut()),
+        BinOp::Ne => ne_unchecked(ty_a, ops_a, ops_b, ctx),
+        BinOp::Eq => eq_unchecked(ty_a, ops_a, ops_b, ctx),
+        BinOp::Lt => lt_unchecked(ty_a, ops_a, ops_b, ctx),
+        BinOp::Gt => gt_unchecked(ty_a, ops_a, ops_b, ctx),
         BinOp::BitAnd => bit_and_unchecked(ty_a, ty_b, ctx, ops_a, ops_b),
         BinOp::BitOr => bit_or_unchecked(ty_a, ty_b, ctx, ops_a, ops_b),
         BinOp::BitXor => bit_xor_unchecked(ty_a, ty_b, ctx, ops_a, ops_b),
@@ -83,7 +83,7 @@ pub(crate) fn binop<'tcx>(
                 ),
                 [ops_a, ops_b]
             ),
-            _ => eq!(lt_unchecked(ty_a, ops_a, ops_b, ctx.asm_mut()), ld_false!()),
+            _ => eq!(lt_unchecked(ty_a, ops_a, ops_b, ctx), ld_false!()),
         },
         BinOp::Le => match ty_a.kind() {
             // Unordered, to handle NaNs propely
@@ -99,7 +99,7 @@ pub(crate) fn binop<'tcx>(
                 ),
                 [ops_a, ops_b]
             ),
-            _ => eq!(gt_unchecked(ty_a, ops_a, ops_b, ctx.asm_mut()), ld_false!()),
+            _ => eq!(gt_unchecked(ty_a, ops_a, ops_b, ctx), ld_false!()),
         },
         BinOp::Offset => {
             let pointed_ty = if let TyKind::RawPtr(inner, _) = ty_a.kind() {
@@ -116,7 +116,7 @@ pub(crate) fn binop<'tcx>(
                         Type::Int(Int::U64),
                         offset_tpe,
                         size_of!(pointed_ty),
-                        ctx.asm_mut(),
+                        ctx,
                     )
         }
         BinOp::Cmp => {
@@ -131,13 +131,8 @@ pub(crate) fn binop<'tcx>(
                     .unwrap();
             let ordering_ty = ordering.ty(ctx.tcx(), ParamEnv::reveal_all());
             let ordering_type = ctx.type_from_cache(ordering_ty);
-            let lt = -conv_i8!(lt_unchecked(
-                ty_a,
-                ops_a.clone(),
-                ops_b.clone(),
-                ctx.asm_mut()
-            ));
-            let gt = conv_i8!(gt_unchecked(ty_a, ops_a, ops_b, ctx.asm_mut()));
+            let lt = -conv_i8!(lt_unchecked(ty_a, ops_a.clone(), ops_b.clone(), ctx));
+            let gt = conv_i8!(gt_unchecked(ty_a, ops_a, ops_b, ctx));
             let res = lt | gt;
             let enum_tag = ctx.alloc_string(crate::ENUM_TAG);
             CILNode::TemporaryLocal(Box::new((

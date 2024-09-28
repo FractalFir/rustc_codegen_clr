@@ -91,7 +91,7 @@ fn body_field<'a>(
                             }]
                             .into(),
                             CILNode::LoadAddresOfTMPLocal
-                                .cast_ptr(ctx.asm_mut().nptr(field_type)),
+                                .cast_ptr(ctx.nptr(field_type)),
                         )))
                     )
                 }
@@ -161,10 +161,10 @@ pub fn place_elem_body<'tcx>(
                     let desc = FieldDesc::new(
                         slice,
                         ctx.alloc_string(crate::DATA_PTR),
-                        ctx.asm_mut().nptr(Type::Void),
+                        ctx.nptr(Type::Void),
                     );
                     let addr = ld_field!(parrent_node, ctx.alloc_field(desc))
-                        .cast_ptr(ctx.asm_mut().nptr(inner_type))
+                        .cast_ptr(ctx.nptr(inner_type))
                         + (index * CILNode::ZeroExtendToUSize(size_of!(inner_type).into()));
 
                     if body_ty_is_by_adress(inner, ctx) {
@@ -187,8 +187,8 @@ pub fn place_elem_body<'tcx>(
                                 Some(array_dotnet),
                                 "get_Address".into(),
                                 FnSig::new(
-                                    [ctx.asm_mut().nref(array_type), Type::Int(Int::USize)].into(),
-                                    ctx.asm_mut().nptr(element_type),
+                                    [ctx.nref(array_type), Type::Int(Int::USize)].into(),
+                                    ctx.nptr(element_type),
                                 ),
                                 false,
                             ),
@@ -201,7 +201,7 @@ pub fn place_elem_body<'tcx>(
                                 Some(array_dotnet),
                                 "get_Item".into(),
                                 FnSig::new(
-                                    [ctx.asm_mut().nref(array_type), Type::Int(Int::USize)].into(),
+                                    [ctx.nref(array_type), Type::Int(Int::USize)].into(),
                                     element_type,
                                 ),
                                 false,
@@ -234,11 +234,11 @@ pub fn place_elem_body<'tcx>(
                     let desc = FieldDesc::new(
                         slice,
                         ctx.alloc_string(crate::DATA_PTR),
-                        ctx.asm_mut().nptr(Type::Void),
+                        ctx.nptr(Type::Void),
                     );
 
                     let addr = Box::new(ld_field!(parrent_node.clone(), ctx.alloc_field(desc)))
-                        .cast_ptr(ctx.asm_mut().nptr(inner_type))
+                        .cast_ptr(ctx.nptr(inner_type))
                         + (index) * conv_usize!(CILNode::SizeOf(inner_type.into()));
                     if body_ty_is_by_adress(inner, ctx) {
                         (inner.into(), addr)
@@ -260,8 +260,8 @@ pub fn place_elem_body<'tcx>(
                                 Some(array_dotnet),
                                 "get_Address".into(),
                                 FnSig::new(
-                                    [ctx.asm_mut().nref(array_type), Type::Int(Int::USize)].into(),
-                                    ctx.asm_mut().nptr(element),
+                                    [ctx.nref(array_type), Type::Int(Int::USize)].into(),
+                                    ctx.nptr(element),
                                 ),
                                 false,
                             ),
@@ -274,7 +274,7 @@ pub fn place_elem_body<'tcx>(
                                 Some(array_dotnet),
                                 "get_Item".into(),
                                 FnSig::new(
-                                    [ctx.asm_mut().nref(array_type), Type::Int(Int::USize)].into(),
+                                    [ctx.nref(array_type), Type::Int(Int::USize)].into(),
                                     element
                                 ),
                                 false,

@@ -43,9 +43,9 @@ fn call_managed<'tcx>(
     //assert!(subst_ref.len() as u32 == argc + 3 || subst_ref.len() as u32 == argc + 4);
     assert!(args.len() == argument_count as usize);
     let asm = AssemblyRef::decode_assembly_ref(subst_ref[0], ctx.tcx());
-    let asm = asm.name().map(|name| ctx.asm_mut().alloc_string(name));
+    let asm = asm.name().map(|name| ctx.alloc_string(name));
     let class_name = garg_to_string(subst_ref[1], ctx.tcx());
-    let class_name = ctx.asm_mut().alloc_string(class_name);
+    let class_name = ctx.alloc_string(class_name);
     let is_valuetype = crate::utilis::garag_to_bool(subst_ref[2], ctx.tcx());
     let managed_fn_name = garg_to_string(subst_ref[3], ctx.tcx());
     let tpe = ClassRef::new(class_name, asm, is_valuetype, [].into());
@@ -57,7 +57,7 @@ fn call_managed<'tcx>(
     if argument_count == 0 {
         let ret = cilly::Type::Void;
         let call_site = CallSite::new(
-            Some(ctx.asm_mut().alloc_class_ref(tpe)),
+            Some(ctx.alloc_class_ref(tpe)),
             managed_fn_name,
             FnSig::new(Box::new([]), ret),
             true,
@@ -78,7 +78,7 @@ fn call_managed<'tcx>(
             call_args.push(crate::operand::handle_operand(&arg.node, ctx));
         }
         let call = CallSite::new(
-            Some(ctx.asm_mut().alloc_class_ref(tpe)),
+            Some(ctx.alloc_class_ref(tpe)),
             managed_fn_name,
             signature.clone(),
             is_static,
@@ -108,9 +108,9 @@ fn callvirt_managed<'tcx>(
         u32::try_from(args.len()).expect("More than 2^32 function arguments.") == argument_count
     );
     let asm = AssemblyRef::decode_assembly_ref(subst_ref[0], ctx.tcx());
-    let asm = asm.name().map(|name| ctx.asm_mut().alloc_string(name));
+    let asm = asm.name().map(|name| ctx.alloc_string(name));
     let class_name = garg_to_string(subst_ref[1], ctx.tcx());
-    let class_name = ctx.asm_mut().alloc_string(class_name);
+    let class_name = ctx.alloc_string(class_name);
     let is_valuetype = crate::utilis::garag_to_bool(subst_ref[2], ctx.tcx());
 
     let managed_fn_garg = &subst_ref[3];
@@ -123,7 +123,7 @@ fn callvirt_managed<'tcx>(
     if argument_count == 0 {
         let ret = cilly::Type::Void;
         let call = CallSite::new(
-            Some(ctx.asm_mut().alloc_class_ref(tpe)),
+            Some(ctx.alloc_class_ref(tpe)),
             managed_fn_name,
             FnSig::new(Box::new([]), ret),
             true,
@@ -144,7 +144,7 @@ fn callvirt_managed<'tcx>(
             call_args.push(crate::operand::handle_operand(&arg.node, ctx));
         }
         let call = CallSite::new(
-            Some(ctx.asm_mut().alloc_class_ref(tpe)),
+            Some(ctx.alloc_class_ref(tpe)),
             managed_fn_name,
             signature.clone(),
             is_static,
@@ -174,14 +174,14 @@ fn call_ctor<'tcx>(
     assert!(args.len() == argument_count as usize);
     // Get the name of the assembly the constructed object resides in
     let asm = AssemblyRef::decode_assembly_ref(subst_ref[0], ctx.tcx());
-    let asm = asm.name().map(|name| ctx.asm_mut().alloc_string(name));
+    let asm = asm.name().map(|name| ctx.alloc_string(name));
     // Get the name of the constructed object
     let class_name = garg_to_string(subst_ref[1], ctx.tcx());
-    let class_name = ctx.asm_mut().alloc_string(class_name);
+    let class_name = ctx.alloc_string(class_name);
     // Check if the costructed object is valuetype. TODO: this may be unnecesary. Are valuetpes constructed using newobj?
     let is_valuetype = crate::utilis::garag_to_bool(subst_ref[2], ctx.tcx());
     let tpe = ClassRef::new(class_name, asm, is_valuetype, [].into());
-    let tpe = ctx.asm_mut().alloc_class_ref(tpe);
+    let tpe = ctx.alloc_class_ref(tpe);
     // If no arguments, inputs don't have to be handled, so a simpler call handling is used.
     if argument_count == 0 {
         crate::place::place_set(
@@ -319,10 +319,9 @@ pub fn call<'tcx>(
         assert!(!args.is_empty());
 
         let fat_ptr_address = operand_address(&args[0].node, ctx);
-        let fat_ptr_dyn = ctx.asm_mut().alloc_string("FatPtrn3Dyn");
+        let fat_ptr_dyn = ctx.alloc_string("FatPtrn3Dyn");
         let vtable_ptr_field_desc = FieldDesc::new(
-            ctx.asm_mut()
-                .alloc_class_ref(ClassRef::new(fat_ptr_dyn, None, true, [].into())),
+            ctx.alloc_class_ref(ClassRef::new(fat_ptr_dyn, None, true, [].into())),
             ctx.alloc_string(crate::METADATA),
             Type::Int(Int::USize),
         );
@@ -336,10 +335,9 @@ pub fn call<'tcx>(
         let vtable_offset = conv_usize!(vtable_index * size_of!(Type::Int(Int::USize)));
         // Get the address of the function ptr, and load it
         let obj_ptr_field_desc = FieldDesc::new(
-            ctx.asm_mut()
-                .alloc_class_ref(ClassRef::new(fat_ptr_dyn, None, true, [].into())),
+            ctx.alloc_class_ref(ClassRef::new(fat_ptr_dyn, None, true, [].into())),
             ctx.alloc_string(crate::DATA_PTR),
-            ctx.asm_mut().nptr(Type::Void),
+            ctx.nptr(Type::Void),
         );
         // Get the addres of the object
         let obj_ptr = ld_field!(fat_ptr_address, ctx.alloc_field(obj_ptr_field_desc));
@@ -347,7 +345,7 @@ pub fn call<'tcx>(
         let call_info = CallInfo::sig_from_instance_(instance, ctx);
 
         let mut signature = call_info.sig().clone();
-        signature.inputs_mut()[0] = ctx.asm_mut().nptr(Type::Void);
+        signature.inputs_mut()[0] = ctx.nptr(Type::Void);
         let mut call_args = [obj_ptr].to_vec();
         if call_info.split_last_tuple() {
             let last_arg = args
@@ -397,11 +395,9 @@ pub fn call<'tcx>(
                 call_args.push(crate::operand::handle_operand(&arg.node, ctx));
             }
         }
-        let sig = ctx.asm_mut().alloc_sig(signature.clone());
+        let sig = ctx.alloc_sig(signature.clone());
         let fn_ptr = CILNode::LDIndPtr {
-            ptr: Box::new(
-                (vtable_ptr + vtable_offset).cast_ptr(ctx.asm_mut().nptr(Type::FnPtr(sig))),
-            ),
+            ptr: Box::new((vtable_ptr + vtable_offset).cast_ptr(ctx.nptr(Type::FnPtr(sig)))),
             loaded_ptr: Box::new(Type::FnPtr(sig)),
         };
         assert_eq!(

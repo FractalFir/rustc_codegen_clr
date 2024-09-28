@@ -168,7 +168,7 @@ pub fn set_discr<'tcx>(
         // after it safely.
         return CILRoot::throw(
             "UB: SetDiscirminant used, but the specified enum variant is not inhabited.",
-            ctx.asm_mut(),
+            ctx,
         );
     }
     match layout.variants {
@@ -180,15 +180,14 @@ pub fn set_discr<'tcx>(
             tag_encoding: TagEncoding::Direct,
             ..
         } => {
-            let (tag_tpe, _) = enum_tag_info(layout, ctx.asm_mut());
+            let (tag_tpe, _) = enum_tag_info(layout, ctx);
             let tag_val = ldc_u64!(ty
                 .discriminant_for_variant(ctx.tcx(), variant_index)
                 .unwrap()
                 .val
                 .try_into()
                 .expect("Enum varaint id can't fit in u64."));
-            let tag_val =
-                crate::casts::int_to_int(Type::Int(Int::U64), tag_tpe, tag_val, ctx.asm_mut());
+            let tag_val = crate::casts::int_to_int(Type::Int(Int::U64), tag_tpe, tag_val, ctx);
             let enum_tag_name = ctx.alloc_string(crate::ENUM_TAG);
             CILRoot::SetField {
                 addr: Box::new(enum_addr),
@@ -208,7 +207,7 @@ pub fn set_discr<'tcx>(
             if variant_index == untagged_variant {
                 CILRoot::Nop
             } else {
-                let (tag_tpe, _) = enum_tag_info(layout, ctx.asm_mut());
+                let (tag_tpe, _) = enum_tag_info(layout, ctx);
                 //let niche = self.project_field(bx, tag_field);
                 //let niche_llty = bx.cx().immediate_backend_type(niche.layout);
                 let niche_value = variant_index.as_u32() - niche_variants.start().as_u32();
@@ -216,8 +215,7 @@ pub fn set_discr<'tcx>(
                 let tag_val = ldc_u64!(niche_value
                     .try_into()
                     .expect("Enum varaint id can't fit in u64."));
-                let tag_val =
-                    crate::casts::int_to_int(Type::Int(Int::U64), tag_tpe, tag_val, ctx.asm_mut());
+                let tag_val = crate::casts::int_to_int(Type::Int(Int::U64), tag_tpe, tag_val, ctx);
                 let enum_tag_name = ctx.alloc_string(crate::ENUM_TAG);
                 CILRoot::SetField {
                     addr: Box::new(enum_addr),
@@ -241,14 +239,14 @@ pub fn get_discr<'tcx>(
         !layout.abi.is_uninhabited(),
         "UB: enum layout is unanhibited!"
     );
-    let (tag_tpe, _) = crate::utilis::adt::enum_tag_info(layout, ctx.asm_mut());
+    let (tag_tpe, _) = crate::utilis::adt::enum_tag_info(layout, ctx);
     let tag_encoding = match layout.variants {
         Variants::Single { index } => {
             let discr_val = ty
                 .discriminant_for_variant(ctx.tcx(), index)
                 .map_or(u128::from(index.as_u32()), |discr| discr.val);
             let tag_val = ldc_u64!(discr_val.try_into().expect("Tag does not fit within a u64"));
-            return crate::casts::int_to_int(Type::Int(Int::U64), tag_tpe, tag_val, ctx.asm_mut());
+            return crate::casts::int_to_int(Type::Int(Int::U64), tag_tpe, tag_val, ctx);
         }
         Variants::Multiple {
             ref tag_encoding, ..
@@ -274,7 +272,7 @@ pub fn get_discr<'tcx>(
             ref niche_variants,
             niche_start,
         } => {
-            let (disrc_type, _) = crate::utilis::adt::enum_tag_info(layout, ctx.asm_mut());
+            let (disrc_type, _) = crate::utilis::adt::enum_tag_info(layout, ctx);
             let relative_max = niche_variants.end().as_u32() - niche_variants.start().as_u32();
             let enum_tag_name = ctx.alloc_string(crate::ENUM_TAG);
             let tag = CILNode::LDField {
@@ -309,7 +307,7 @@ pub fn get_discr<'tcx>(
                 let is_niche = match tag_tpe {
                     Type::Int(Int::U128) => call!(
                         CallSite::new_extern(
-                            ClassRef::uint_128(ctx.asm_mut()),
+                            ClassRef::uint_128(ctx),
                             "op_Equality".into(),
                             FnSig::new(
                                 Box::new([Type::Int(Int::U128), Type::Int(Int::U128)]),
@@ -319,15 +317,12 @@ pub fn get_discr<'tcx>(
                         ),
                         [
                             tag,
-                            CILNode::const_u128(
-                                u128::from(niche_variants.start().as_u32(),),
-                                ctx.asm_mut()
-                            )
+                            CILNode::const_u128(u128::from(niche_variants.start().as_u32(),), ctx)
                         ]
                     ),
                     Type::Int(Int::I128) => call!(
                         CallSite::new_extern(
-                            ClassRef::int_128(ctx.asm_mut()),
+                            ClassRef::int_128(ctx),
                             "op_Equality".into(),
                             FnSig::new(
                                 Box::new([Type::Int(Int::I128), Type::Int(Int::I128)]),
@@ -337,10 +332,7 @@ pub fn get_discr<'tcx>(
                         ),
                         [
                             tag,
-                            CILNode::const_i128(
-                                u128::from(niche_variants.start().as_u32()),
-                                ctx.asm_mut()
-                            )
+                            CILNode::const_i128(u128::from(niche_variants.start().as_u32()), ctx)
                         ]
                     ),
 
@@ -352,7 +344,7 @@ pub fn get_discr<'tcx>(
                             ldc_u64!(niche_start
                                 .try_into()
                                 .expect("tag is too big to fit within u64")),
-                            ctx.asm_mut()
+                            ctx
                         )
                     ),
                 }; //bx.icmp(IntPredicate::IntEQ, tag, niche_start);
@@ -361,7 +353,7 @@ pub fn get_discr<'tcx>(
                     Type::Int(Int::U64),
                     disrc_type,
                     ldc_u64!(u64::from(niche_variants.start().as_u32())),
-                    ctx.asm_mut(),
+                    ctx,
                 );
                 (is_niche, tagged_discr, 0)
             } else {
@@ -380,14 +372,14 @@ pub fn get_discr<'tcx>(
                             ldc_u64!(niche_start
                                 .try_into()
                                 .expect("tag is too big to fit within u64")),
-                            ctx.asm_mut()
+                            ctx
                         )
                     ),
                 };
                 let gt = match tag_tpe {
                     Type::Int(Int::U128) => call!(
                         CallSite::new_extern(
-                            ClassRef::uint_128(ctx.asm_mut()),
+                            ClassRef::uint_128(ctx),
                             "op_GreaterThan".into(),
                             FnSig::new(
                                 Box::new([Type::Int(Int::U128), Type::Int(Int::U128)]),
@@ -397,12 +389,12 @@ pub fn get_discr<'tcx>(
                         ),
                         [
                             relative_discr.clone(),
-                            CILNode::const_u128(u128::from(relative_max), ctx.asm_mut())
+                            CILNode::const_u128(u128::from(relative_max), ctx)
                         ]
                     ),
                     Type::Int(Int::I128) => call!(
                         CallSite::new_extern(
-                            ClassRef::int_128(ctx.asm_mut()),
+                            ClassRef::int_128(ctx),
                             "op_GreaterThan".into(),
                             FnSig::new(
                                 Box::new([Type::Int(Int::I128), Type::Int(Int::I128)]),
@@ -412,7 +404,7 @@ pub fn get_discr<'tcx>(
                         ),
                         [
                             relative_discr.clone(),
-                            CILNode::const_i128(u128::from(relative_max), ctx.asm_mut())
+                            CILNode::const_i128(u128::from(relative_max), ctx)
                         ]
                     ),
 
@@ -422,7 +414,7 @@ pub fn get_discr<'tcx>(
                             Type::Int(Int::U64),
                             disrc_type,
                             ldc_u64!(u64::from(relative_max)),
-                            ctx.asm_mut()
+                            ctx
                         )
                     ),
                 };
@@ -441,7 +433,7 @@ pub fn get_discr<'tcx>(
                     Type::Int(Int::U64),
                     disrc_type,
                     ldc_u64!(delta.try_into().expect("Tag does not fit within u64")),
-                    ctx.asm_mut(),
+                    ctx,
                 );
                 assert!(matches!(
                     disrc_type,
@@ -471,7 +463,7 @@ pub fn get_discr<'tcx>(
                     Type::Int(Int::U64),
                     disrc_type,
                     ldc_u64!(u64::from(untagged_variant.as_u32())),
-                    ctx.asm_mut(),
+                    ctx,
                 ),
                 is_niche,
             )

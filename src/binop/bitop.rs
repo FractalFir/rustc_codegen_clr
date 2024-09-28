@@ -20,7 +20,7 @@ pub fn bit_and_unchecked<'tcx>(
     match ty_a.kind() {
         TyKind::Uint(UintTy::U128) => call!(
             CallSite::boxed(
-                ClassRef::uint_128(ctx.asm_mut()).into(),
+                ClassRef::uint_128(ctx).into(),
                 "op_BitwiseAnd".into(),
                 FnSig::new(
                     [Type::Int(Int::U128), Type::Int(Int::U128)].into(),
@@ -30,12 +30,12 @@ pub fn bit_and_unchecked<'tcx>(
             ),
             [
                 operand_a,
-                crate::casts::int_to_int(type_b, Type::Int(Int::U128), operand_b, ctx.asm_mut())
+                crate::casts::int_to_int(type_b, Type::Int(Int::U128), operand_b, ctx)
             ]
         ),
         TyKind::Int(IntTy::I128) => call!(
             CallSite::boxed(
-                ClassRef::int_128(ctx.asm_mut()).into(),
+                ClassRef::int_128(ctx).into(),
                 "op_BitwiseAnd".into(),
                 FnSig::new(
                     [Type::Int(Int::I128), Type::Int(Int::I128)].into(),
@@ -45,7 +45,7 @@ pub fn bit_and_unchecked<'tcx>(
             ),
             [
                 operand_a,
-                crate::casts::int_to_int(type_b, Type::Int(Int::I128), operand_b, ctx.asm_mut())
+                crate::casts::int_to_int(type_b, Type::Int(Int::I128), operand_b, ctx)
             ]
         ),
         _ => and!(operand_a, operand_b),
@@ -64,7 +64,7 @@ pub fn bit_or_unchecked<'tcx>(
             let ty_b = ctx.type_from_cache(ty_b);
             call!(
                 CallSite::new_extern(
-                    ClassRef::int_128(ctx.asm_mut()),
+                    ClassRef::int_128(ctx),
                     "op_BitwiseOr".into(),
                     FnSig::new([ty_a, ty_b].into(), ty_a),
                     true,
@@ -77,7 +77,7 @@ pub fn bit_or_unchecked<'tcx>(
             let ty_b = ctx.type_from_cache(ty_b);
             call!(
                 CallSite::new_extern(
-                    ClassRef::uint_128(ctx.asm_mut()),
+                    ClassRef::uint_128(ctx),
                     "op_BitwiseOr".into(),
                     FnSig::new([ty_a, ty_b].into(), ty_a),
                     true,
@@ -101,7 +101,7 @@ pub fn bit_xor_unchecked<'tcx>(
             let ty_b = ctx.type_from_cache(ty_b);
             call!(
                 CallSite::new_extern(
-                    ClassRef::int_128(ctx.asm_mut()),
+                    ClassRef::int_128(ctx),
                     "op_ExclusiveOr".into(),
                     FnSig::new([ty_a, ty_b].into(), ty_a),
                     true,
@@ -114,7 +114,7 @@ pub fn bit_xor_unchecked<'tcx>(
             let ty_b = ctx.type_from_cache(ty_b);
             call!(
                 CallSite::new_extern(
-                    ClassRef::uint_128(ctx.asm_mut()),
+                    ClassRef::uint_128(ctx),
                     "op_ExclusiveOr".into(),
                     FnSig::new([ty_a, ty_b].into(), ty_a),
                     true,

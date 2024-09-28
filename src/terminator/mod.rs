@@ -93,7 +93,7 @@ pub fn handle_call_terminator<'tycxt>(
             .into(),
         );
     } else {
-        trees.push(CILRoot::throw("Function returning `Never` returned!", ctx.asm_mut()).into());
+        trees.push(CILRoot::throw("Function returning `Never` returned!", ctx).into());
     }
     trees
 }
@@ -126,7 +126,7 @@ pub fn handle_terminator<'tcx>(
         TerminatorKind::SwitchInt { discr, targets } => {
             let ty = ctx.monomorphize(discr.ty(ctx.body(), ctx.tcx()));
             let discr = crate::operand::handle_operand(discr, ctx);
-            handle_switch(ty, &discr, targets, ctx.asm_mut())
+            handle_switch(ty, &discr, targets, ctx)
         }
         TerminatorKind::Assert {
             cond: _,
@@ -182,7 +182,7 @@ pub fn handle_terminator<'tcx>(
                         );
                         // Get the vtable
                         let vtable_ptr = ld_field!(fat_ptr_address.clone(), ctx.alloc_field(desc));
-                        let void_ptr = ctx.asm_mut().nptr(Type::Void);
+                        let void_ptr = ctx.nptr(Type::Void);
                         // Get the addres of the object
                         let desc = FieldDesc::new(
                             fat_ptr_type.as_class_ref().unwrap(),
@@ -195,11 +195,9 @@ pub fn handle_terminator<'tcx>(
                             rustc_middle::ty::vtable::COMMON_VTABLE_ENTRIES_DROPINPLACE,
                             0
                         );
-                        let sig = ctx.asm_mut().sig([void_ptr], Type::Void);
+                        let sig = ctx.sig([void_ptr], Type::Void);
                         let drop_fn_ptr = CILNode::LDIndPtr {
-                            ptr: Box::new(
-                                vtable_ptr.cast_ptr(ctx.asm_mut().nptr(Type::FnPtr(sig))),
-                            ),
+                            ptr: Box::new(vtable_ptr.cast_ptr(ctx.nptr(Type::FnPtr(sig)))),
                             loaded_ptr: Box::new(Type::FnPtr(sig)),
                         };
                         vec![
@@ -250,7 +248,7 @@ pub fn handle_terminator<'tcx>(
         TerminatorKind::Unreachable => {
             let loc = terminator.source_info.span;
             vec![
-                rustc_middle::ty::print::with_no_trimmed_paths! {CILRoot::throw(&format!("Unreachable reached at {loc:?}!"),ctx.asm_mut()).into()},
+                rustc_middle::ty::print::with_no_trimmed_paths! {CILRoot::throw(&format!("Unreachable reached at {loc:?}!"),ctx).into()},
             ]
         }
         TerminatorKind::InlineAsm {
@@ -262,12 +260,12 @@ pub fn handle_terminator<'tcx>(
             targets: _,
         } => {
             eprintln!("Inline assembly is not yet supported!");
-            vec![CILRoot::throw("Inline assembly is not yet supported!", ctx.asm_mut()).into()]
+            vec![CILRoot::throw("Inline assembly is not yet supported!", ctx).into()]
         }
         TerminatorKind::UnwindTerminate(_) => {
             let loc = terminator.source_info.span;
             vec![
-                rustc_middle::ty::print::with_no_trimmed_paths! {CILRoot::throw(&format!("UnwindTerminate reached at {loc:?}!"),ctx.asm_mut()).into()},
+                rustc_middle::ty::print::with_no_trimmed_paths! {CILRoot::throw(&format!("UnwindTerminate reached at {loc:?}!"),ctx).into()},
             ]
         }
         TerminatorKind::FalseEdge {

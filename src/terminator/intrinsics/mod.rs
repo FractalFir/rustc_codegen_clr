@@ -90,7 +90,7 @@ pub fn handle_intrinsic<'tcx>(
                 handle_operand(&args[0].node, ctx),
                 handle_operand(&args[1].node, ctx),
                 handle_operand(&args[2].node, ctx),
-                ctx.asm_mut(),
+                ctx,
             ),
             ctx,
         ),
@@ -126,7 +126,7 @@ pub fn handle_intrinsic<'tcx>(
             destination,
             call!(
                 CallSite::new_extern(
-                    ClassRef::single(ctx.asm_mut()),
+                    ClassRef::single(ctx),
                     "FusedMultiplyAdd".into(),
                     FnSig::new(
                         [
@@ -151,7 +151,7 @@ pub fn handle_intrinsic<'tcx>(
             destination,
             call!(
                 CallSite::new_extern(
-                    ClassRef::double(ctx.asm_mut()),
+                    ClassRef::double(ctx),
                     "FusedMultiplyAdd".into(),
                     FnSig::new(
                         [
@@ -211,12 +211,10 @@ pub fn handle_intrinsic<'tcx>(
                 destination,
                 eq!(
                     compare_bytes(
-                        handle_operand(&args[0].node, ctx)
-                            .cast_ptr(ctx.asm_mut().nptr(Type::Int(Int::U8))),
-                        handle_operand(&args[1].node, ctx)
-                            .cast_ptr(ctx.asm_mut().nptr(Type::Int(Int::U8))),
+                        handle_operand(&args[0].node, ctx).cast_ptr(ctx.nptr(Type::Int(Int::U8))),
+                        handle_operand(&args[1].node, ctx).cast_ptr(ctx.nptr(Type::Int(Int::U8))),
                         conv_usize!(size),
-                        ctx.asm_mut()
+                        ctx
                     ),
                     ldc_i32!(0)
                 ),
@@ -295,32 +293,32 @@ pub fn handle_intrinsic<'tcx>(
             );
             let tpe = ctx.type_from_cache(tpe);
             let sig = FnSig::new(
-                [ClassRef::runtime_type_hadle(ctx.asm_mut()).into()].into(),
-                ClassRef::type_type(ctx.asm_mut()).into(),
+                [ClassRef::runtime_type_hadle(ctx).into()].into(),
+                ClassRef::type_type(ctx).into(),
             );
             let gethash_sig = FnSig::new(
-                [ClassRef::type_type(ctx.asm_mut()).into()].into(),
+                [ClassRef::type_type(ctx).into()].into(),
                 Type::Int(Int::I32),
             );
             place_set(
                 destination,
                 call!(
                     CallSite::boxed(
-                        Some(ClassRef::uint_128(ctx.asm_mut())),
+                        Some(ClassRef::uint_128(ctx)),
                         "op_Implicit".into(),
                         FnSig::new([Type::Int(Int::U32)].into(), Type::Int(Int::U128)),
                         true,
                     ),
                     [conv_u32!(call_virt!(
                         CallSite::boxed(
-                            ClassRef::object(ctx.asm_mut()).into(),
+                            ClassRef::object(ctx).into(),
                             "GetHashCode".into(),
                             gethash_sig,
                             false,
                         ),
                         [call!(
                             CallSite::boxed(
-                                ClassRef::type_type(ctx.asm_mut()).into(),
+                                ClassRef::type_type(ctx).into(),
                                 "GetTypeFromHandle".into(),
                                 sig,
                                 true,
@@ -422,7 +420,7 @@ pub fn handle_intrinsic<'tcx>(
         | "atomic_cxchg_acqrel_relaxed"
         | "atomic_cxchg_relaxed_relaxed"
         | "atomic_cxchg_acqrel_seqcst" => {
-            let interlocked = ClassRef::interlocked(ctx.asm_mut());
+            let interlocked = ClassRef::interlocked(ctx);
             // *T
             let dst = handle_operand(&args[0].node, ctx);
             // T
@@ -447,7 +445,7 @@ pub fn handle_intrinsic<'tcx>(
                         "CompareExchange".into(),
                         FnSig::new(
                             [
-                                ctx.asm_mut().nref(Type::Int(Int::USize)),
+                                ctx.nref(Type::Int(Int::USize)),
                                 Type::Int(Int::USize),
                                 Type::Int(Int::USize),
                             ]
@@ -459,7 +457,7 @@ pub fn handle_intrinsic<'tcx>(
                     call!(
                         call_site,
                         [
-                            Box::new(dst).cast_ptr(ctx.asm_mut().nref(Type::Int(Int::USize))),
+                            Box::new(dst).cast_ptr(ctx.nref(Type::Int(Int::USize))),
                             conv_usize!(value),
                             conv_usize!(comaprand)
                         ]
@@ -472,10 +470,7 @@ pub fn handle_intrinsic<'tcx>(
                     let call_site = CallSite::new(
                         Some(interlocked),
                         "CompareExchange".into(),
-                        FnSig::new(
-                            [ctx.asm_mut().nref(src_type), src_type, src_type].into(),
-                            src_type,
-                        ),
+                        FnSig::new([ctx.nref(src_type), src_type, src_type].into(), src_type),
                         true,
                     );
                     call!(call_site, [dst, value, comaprand])
@@ -524,7 +519,7 @@ pub fn handle_intrinsic<'tcx>(
             place_set(
                 destination,
                 sub!(
-                    atomic_add(dst, add_ammount.clone(), src_type, ctx.asm_mut()),
+                    atomic_add(dst, add_ammount.clone(), src_type, ctx),
                     add_ammount
                 ),
                 ctx,
@@ -540,11 +535,7 @@ pub fn handle_intrinsic<'tcx>(
             let src_type = ctx.monomorphize(args[1].node.ty(ctx.body(), ctx.tcx()));
             let src_type = ctx.type_from_cache(src_type);
 
-            place_set(
-                destination,
-                atomic_or(dst, orand, src_type, ctx.asm_mut()),
-                ctx,
-            )
+            place_set(destination, atomic_or(dst, orand, src_type, ctx), ctx)
         }
         "atomic_xor_seqcst" | "atomic_xor_release" | "atomic_xor_acqrel" | "atomic_xor_acquire"
         | "atomic_xor_relaxed" => {
@@ -556,11 +547,7 @@ pub fn handle_intrinsic<'tcx>(
             let src_type = ctx.monomorphize(args[1].node.ty(ctx.body(), ctx.tcx()));
             let src_type = ctx.type_from_cache(src_type);
 
-            place_set(
-                destination,
-                atomic_xor(dst, xorand, src_type, ctx.asm_mut()),
-                ctx,
-            )
+            place_set(destination, atomic_xor(dst, xorand, src_type, ctx), ctx)
         }
         "atomic_and_seqcst" | "atomic_and_release" | "atomic_and_acqrel" | "atomic_and_acquire"
         | "atomic_and_relaxed" => {
@@ -572,11 +559,7 @@ pub fn handle_intrinsic<'tcx>(
             let src_type = ctx.monomorphize(args[1].node.ty(ctx.body(), ctx.tcx()));
             let src_type = ctx.type_from_cache(src_type);
 
-            place_set(
-                destination,
-                atomic_and(dst, andand, src_type, ctx.asm_mut()),
-                ctx,
-            )
+            place_set(destination, atomic_and(dst, andand, src_type, ctx), ctx)
         }
         "atomic_nand_seqcst"
         | "atomic_nand_release"
@@ -591,17 +574,13 @@ pub fn handle_intrinsic<'tcx>(
             let src_type = ctx.monomorphize(args[1].node.ty(ctx.body(), ctx.tcx()));
             let src_type = ctx.type_from_cache(src_type);
 
-            place_set(
-                destination,
-                atomic_nand(dst, andand, src_type, ctx.asm_mut()),
-                ctx,
-            )
+            place_set(destination, atomic_nand(dst, andand, src_type, ctx), ctx)
         }
         "atomic_fence_acquire"
         | "atomic_fence_seqcst"
         | "atomic_fence_release"
         | "atomic_fence_acqrel" => {
-            let thread = ClassRef::thread(ctx.asm_mut());
+            let thread = ClassRef::thread(ctx);
             CILRoot::Call {
                 site: Box::new(CallSite::new(
                     Some(thread),
@@ -628,7 +607,7 @@ pub fn handle_intrinsic<'tcx>(
 
             place_set(
                 destination,
-                atomic_add(dst, add_ammount, src_type, ctx.asm_mut()),
+                atomic_add(dst, add_ammount, src_type, ctx),
                 ctx,
             )
         }
@@ -653,7 +632,7 @@ pub fn handle_intrinsic<'tcx>(
 
             place_set(
                 destination,
-                atomic_min(dst, min_ammount, src_type, ctx.asm_mut()),
+                atomic_min(dst, min_ammount, src_type, ctx),
                 ctx,
             )
         }
@@ -678,7 +657,7 @@ pub fn handle_intrinsic<'tcx>(
 
             place_set(
                 destination,
-                atomic_max(dst, max_ammount, src_type, ctx.asm_mut()),
+                atomic_max(dst, max_ammount, src_type, ctx),
                 ctx,
             )
         }
@@ -687,7 +666,7 @@ pub fn handle_intrinsic<'tcx>(
         | "atomic_xchg_acqrel"
         | "atomic_xchg_relaxed"
         | "atomic_xchg_seqcst" => {
-            let interlocked = ClassRef::interlocked(ctx.asm_mut());
+            let interlocked = ClassRef::interlocked(ctx);
             // *T
             let dst = handle_operand(&args[0].node, ctx);
             // T
@@ -708,8 +687,7 @@ pub fn handle_intrinsic<'tcx>(
                             CallSite::builtin(
                                 "atomic_xchng_u8".into(),
                                 FnSig::new(
-                                    [ctx.asm_mut().nref(Type::Int(Int::U8)), Type::Int(Int::U8)]
-                                        .into(),
+                                    [ctx.nref(Type::Int(Int::U8)), Type::Int(Int::U8)].into(),
                                     Type::Int(Int::U8)
                                 ),
                                 true
@@ -724,11 +702,7 @@ pub fn handle_intrinsic<'tcx>(
                         Some(interlocked),
                         "Exchange".into(),
                         FnSig::new(
-                            [
-                                ctx.asm_mut().nref(Type::Int(Int::USize)),
-                                Type::Int(Int::USize),
-                            ]
-                            .into(),
+                            [ctx.nref(Type::Int(Int::USize)), Type::Int(Int::USize)].into(),
                             Type::Int(Int::USize),
                         ),
                         true,
@@ -738,7 +712,7 @@ pub fn handle_intrinsic<'tcx>(
                         call!(
                             call_site,
                             [
-                                Box::new(dst).cast_ptr(ctx.asm_mut().nref(Type::Int(Int::USize))),
+                                Box::new(dst).cast_ptr(ctx.nref(Type::Int(Int::USize))),
                                 conv_usize!(new),
                             ]
                         )
@@ -754,7 +728,7 @@ pub fn handle_intrinsic<'tcx>(
             let call_site = CallSite::new(
                 Some(interlocked),
                 "Exchange".into(),
-                FnSig::new([ctx.asm_mut().nref(src_type), src_type].into(), src_type),
+                FnSig::new([ctx.nref(src_type), src_type].into(), src_type),
                 true,
             );
             // T
@@ -797,7 +771,7 @@ pub fn handle_intrinsic<'tcx>(
                     .expect("needs_drop works only on types!"),
             );
             let tpe = ctx.type_from_cache(tpe);
-            let tpe = ctx.asm_mut().nptr(tpe);
+            let tpe = ctx.nptr(tpe);
 
             place_set(
                 destination,
@@ -876,7 +850,7 @@ pub fn handle_intrinsic<'tcx>(
                 destination,
                 call!(
                     CallSite::boxed(
-                        Some(ClassRef::mathf(ctx.asm_mut())),
+                        Some(ClassRef::mathf(ctx)),
                         "Sqrt".into(),
                         FnSig::new([Type::Float(Float::F32)].into(), Type::Float(Float::F32)),
                         true,
@@ -898,7 +872,7 @@ pub fn handle_intrinsic<'tcx>(
                 destination,
                 call!(
                     CallSite::boxed(
-                        Some(ClassRef::single(ctx.asm_mut())),
+                        Some(ClassRef::single(ctx)),
                         "Pow".into(),
                         FnSig::new(
                             [Type::Float(Float::F32), Type::Float(Float::F32)].into(),
@@ -925,7 +899,7 @@ pub fn handle_intrinsic<'tcx>(
                 destination,
                 call!(
                     CallSite::boxed(
-                        Some(ClassRef::double(ctx.asm_mut())),
+                        Some(ClassRef::double(ctx)),
                         "Pow".into(),
                         FnSig::new(
                             [Type::Float(Float::F64), Type::Float(Float::F64)].into(),
@@ -955,8 +929,8 @@ pub fn handle_intrinsic<'tcx>(
                     "swap_at_generic".into(),
                     FnSig::new(
                         [
-                            ctx.asm_mut().nptr(Type::Void),
-                            ctx.asm_mut().nptr(Type::Void),
+                            ctx.nptr(Type::Void),
+                            ctx.nptr(Type::Void),
                             Type::Int(Int::USize),
                         ]
                         .into(),
@@ -965,8 +939,8 @@ pub fn handle_intrinsic<'tcx>(
                     true,
                 )),
                 args: [
-                    handle_operand(&args[0].node, ctx).cast_ptr(ctx.asm_mut().nptr(Type::Void)),
-                    handle_operand(&args[1].node, ctx).cast_ptr(ctx.asm_mut().nptr(Type::Void)),
+                    handle_operand(&args[0].node, ctx).cast_ptr(ctx.nptr(Type::Void)),
+                    handle_operand(&args[1].node, ctx).cast_ptr(ctx.nptr(Type::Void)),
                     conv_usize!(size_of!(tpe)),
                 ]
                 .into(),
@@ -1015,7 +989,7 @@ pub fn handle_intrinsic<'tcx>(
             destination,
             call!(
                 CallSite::new_extern(
-                    ClassRef::single(ctx.asm_mut()),
+                    ClassRef::single(ctx),
                     "Abs".into(),
                     FnSig::new([Type::Float(Float::F32)].into(), Type::Float(Float::F32)),
                     true
@@ -1028,7 +1002,7 @@ pub fn handle_intrinsic<'tcx>(
             destination,
             call!(
                 CallSite::new_extern(
-                    ClassRef::double(ctx.asm_mut()),
+                    ClassRef::double(ctx),
                     "Abs".into(),
                     FnSig::new([Type::Float(Float::F64)].into(), Type::Float(Float::F64)),
                     true
@@ -1041,7 +1015,7 @@ pub fn handle_intrinsic<'tcx>(
             destination,
             call!(
                 CallSite::new_extern(
-                    ClassRef::single(ctx.asm_mut()),
+                    ClassRef::single(ctx),
                     "Exp".into(),
                     FnSig::new([Type::Float(Float::F32)].into(), Type::Float(Float::F32)),
                     true
@@ -1054,7 +1028,7 @@ pub fn handle_intrinsic<'tcx>(
             destination,
             call!(
                 CallSite::new_extern(
-                    ClassRef::double(ctx.asm_mut()),
+                    ClassRef::double(ctx),
                     "Exp".into(),
                     FnSig::new([Type::Float(Float::F64)].into(), Type::Float(Float::F64)),
                     true
@@ -1067,7 +1041,7 @@ pub fn handle_intrinsic<'tcx>(
             destination,
             call!(
                 CallSite::new_extern(
-                    ClassRef::single(ctx.asm_mut()),
+                    ClassRef::single(ctx),
                     "Log".into(),
                     FnSig::new([Type::Float(Float::F32)].into(), Type::Float(Float::F32)),
                     true
@@ -1080,7 +1054,7 @@ pub fn handle_intrinsic<'tcx>(
             destination,
             call!(
                 CallSite::new_extern(
-                    ClassRef::double(ctx.asm_mut()),
+                    ClassRef::double(ctx),
                     "Log".into(),
                     FnSig::new([Type::Float(Float::F64)].into(), Type::Float(Float::F64)),
                     true
@@ -1093,7 +1067,7 @@ pub fn handle_intrinsic<'tcx>(
             destination,
             call!(
                 CallSite::new_extern(
-                    ClassRef::single(ctx.asm_mut()),
+                    ClassRef::single(ctx),
                     "Log2".into(),
                     FnSig::new([Type::Float(Float::F32)].into(), Type::Float(Float::F32)),
                     true
@@ -1106,7 +1080,7 @@ pub fn handle_intrinsic<'tcx>(
             destination,
             call!(
                 CallSite::new_extern(
-                    ClassRef::double(ctx.asm_mut()),
+                    ClassRef::double(ctx),
                     "Log2".into(),
                     FnSig::new([Type::Float(Float::F64)].into(), Type::Float(Float::F64)),
                     true
@@ -1119,7 +1093,7 @@ pub fn handle_intrinsic<'tcx>(
             destination,
             call!(
                 CallSite::new_extern(
-                    ClassRef::single(ctx.asm_mut()),
+                    ClassRef::single(ctx),
                     "Log10".into(),
                     FnSig::new([Type::Float(Float::F32)].into(), Type::Float(Float::F32)),
                     true
@@ -1132,7 +1106,7 @@ pub fn handle_intrinsic<'tcx>(
             destination,
             call!(
                 CallSite::new_extern(
-                    ClassRef::double(ctx.asm_mut()),
+                    ClassRef::double(ctx),
                     "Log10".into(),
                     FnSig::new([Type::Float(Float::F64)].into(), Type::Float(Float::F64)),
                     true
@@ -1145,7 +1119,7 @@ pub fn handle_intrinsic<'tcx>(
             destination,
             call!(
                 CallSite::new_extern(
-                    ClassRef::single(ctx.asm_mut()),
+                    ClassRef::single(ctx),
                     "Pow".into(),
                     FnSig::new(
                         [Type::Float(Float::F32), Type::Float(Float::F32)].into(),
@@ -1164,7 +1138,7 @@ pub fn handle_intrinsic<'tcx>(
             destination,
             call!(
                 CallSite::new_extern(
-                    ClassRef::double(ctx.asm_mut()),
+                    ClassRef::double(ctx),
                     "Pow".into(),
                     FnSig::new(
                         [Type::Float(Float::F64), Type::Float(Float::F64)].into(),
@@ -1183,7 +1157,7 @@ pub fn handle_intrinsic<'tcx>(
             destination,
             call!(
                 CallSite::new_extern(
-                    ClassRef::single(ctx.asm_mut()),
+                    ClassRef::single(ctx),
                     "CopySign".into(),
                     FnSig::new(
                         [Type::Float(Float::F32), Type::Float(Float::F32)].into(),
@@ -1202,7 +1176,7 @@ pub fn handle_intrinsic<'tcx>(
             destination,
             call!(
                 CallSite::new_extern(
-                    ClassRef::double(ctx.asm_mut()),
+                    ClassRef::double(ctx),
                     "CopySign".into(),
                     FnSig::new(
                         [Type::Float(Float::F64), Type::Float(Float::F64)].into(),
@@ -1221,7 +1195,7 @@ pub fn handle_intrinsic<'tcx>(
             destination,
             call!(
                 CallSite::new_extern(
-                    ClassRef::single(ctx.asm_mut()),
+                    ClassRef::single(ctx),
                     "Sin".into(),
                     FnSig::new([Type::Float(Float::F32)].into(), Type::Float(Float::F32)),
                     true
@@ -1234,7 +1208,7 @@ pub fn handle_intrinsic<'tcx>(
             destination,
             call!(
                 CallSite::new_extern(
-                    ClassRef::double(ctx.asm_mut()),
+                    ClassRef::double(ctx),
                     "Sin".into(),
                     FnSig::new([Type::Float(Float::F64)].into(), Type::Float(Float::F64)),
                     true
@@ -1247,7 +1221,7 @@ pub fn handle_intrinsic<'tcx>(
             destination,
             call!(
                 CallSite::new_extern(
-                    ClassRef::single(ctx.asm_mut()),
+                    ClassRef::single(ctx),
                     "Cos".into(),
                     FnSig::new([Type::Float(Float::F32)].into(), Type::Float(Float::F32)),
                     true
@@ -1260,7 +1234,7 @@ pub fn handle_intrinsic<'tcx>(
             destination,
             call!(
                 CallSite::new_extern(
-                    ClassRef::double(ctx.asm_mut()),
+                    ClassRef::double(ctx),
                     "Cos".into(),
                     FnSig::new([Type::Float(Float::F64)].into(), Type::Float(Float::F64)),
                     true
@@ -1273,7 +1247,7 @@ pub fn handle_intrinsic<'tcx>(
             destination,
             call!(
                 CallSite::new_extern(
-                    ClassRef::single(ctx.asm_mut()),
+                    ClassRef::single(ctx),
                     "Exp2".into(),
                     FnSig::new([Type::Float(Float::F32)].into(), Type::Float(Float::F32)),
                     true
@@ -1286,7 +1260,7 @@ pub fn handle_intrinsic<'tcx>(
             destination,
             call!(
                 CallSite::new_extern(
-                    ClassRef::double(ctx.asm_mut()),
+                    ClassRef::double(ctx),
                     "Exp2".into(),
                     FnSig::new([Type::Float(Float::F64)].into(), Type::Float(Float::F64)),
                     true
@@ -1299,7 +1273,7 @@ pub fn handle_intrinsic<'tcx>(
             destination,
             call!(
                 CallSite::new_extern(
-                    ClassRef::mathf(ctx.asm_mut()),
+                    ClassRef::mathf(ctx),
                     "Truncate".into(),
                     FnSig::new([Type::Float(Float::F32)].into(), Type::Float(Float::F32)),
                     true
@@ -1312,7 +1286,7 @@ pub fn handle_intrinsic<'tcx>(
             destination,
             call!(
                 CallSite::new_extern(
-                    ClassRef::math(ctx.asm_mut()),
+                    ClassRef::math(ctx),
                     "Truncate".into(),
                     FnSig::new([Type::Float(Float::F64)].into(), Type::Float(Float::F64)),
                     true
@@ -1326,7 +1300,7 @@ pub fn handle_intrinsic<'tcx>(
             destination,
             call!(
                 CallSite::new_extern(
-                    ClassRef::mathf(ctx.asm_mut()),
+                    ClassRef::mathf(ctx),
                     "Round".into(),
                     FnSig::new([Type::Float(Float::F32)].into(), Type::Float(Float::F32)),
                     true
@@ -1339,12 +1313,12 @@ pub fn handle_intrinsic<'tcx>(
             destination,
             call!(
                 CallSite::new_extern(
-                    ClassRef::mathf(ctx.asm_mut()),
+                    ClassRef::mathf(ctx),
                     "Round".into(),
                     FnSig::new(
                         [
                             Type::Float(Float::F32),
-                            Type::ClassRef(ClassRef::midpoint_rounding(ctx.asm_mut())),
+                            Type::ClassRef(ClassRef::midpoint_rounding(ctx)),
                         ]
                         .into(),
                         Type::Float(Float::F32)
@@ -1355,8 +1329,8 @@ pub fn handle_intrinsic<'tcx>(
                     handle_operand(&args[0].node, ctx),
                     ldc_i32!(1).transmute_on_stack(
                         Type::Int(Int::I32),
-                        Type::ClassRef(ClassRef::midpoint_rounding(ctx.asm_mut())),
-                        ctx.asm_mut()
+                        Type::ClassRef(ClassRef::midpoint_rounding(ctx)),
+                        ctx
                     )
                 ]
             ),
@@ -1366,7 +1340,7 @@ pub fn handle_intrinsic<'tcx>(
             destination,
             call!(
                 CallSite::new_extern(
-                    ClassRef::math(ctx.asm_mut()),
+                    ClassRef::math(ctx),
                     "Round".into(),
                     FnSig::new([Type::Float(Float::F64)].into(), Type::Float(Float::F64)),
                     true
@@ -1379,12 +1353,12 @@ pub fn handle_intrinsic<'tcx>(
             destination,
             call!(
                 CallSite::new_extern(
-                    ClassRef::math(ctx.asm_mut()),
+                    ClassRef::math(ctx),
                     "Round".into(),
                     FnSig::new(
                         [
                             Type::Float(Float::F64),
-                            Type::ClassRef(ClassRef::midpoint_rounding(ctx.asm_mut()))
+                            Type::ClassRef(ClassRef::midpoint_rounding(ctx))
                         ]
                         .into(),
                         Type::Float(Float::F64)
@@ -1395,8 +1369,8 @@ pub fn handle_intrinsic<'tcx>(
                     handle_operand(&args[0].node, ctx),
                     ldc_i32!(1).transmute_on_stack(
                         Type::Int(Int::I32),
-                        Type::ClassRef(ClassRef::midpoint_rounding(ctx.asm_mut())),
-                        ctx.asm_mut()
+                        Type::ClassRef(ClassRef::midpoint_rounding(ctx)),
+                        ctx
                     )
                 ]
             ),
@@ -1406,7 +1380,7 @@ pub fn handle_intrinsic<'tcx>(
             destination,
             call!(
                 CallSite::new_extern(
-                    ClassRef::mathf(ctx.asm_mut()),
+                    ClassRef::mathf(ctx),
                     "Floor".into(),
                     FnSig::new([Type::Float(Float::F32)].into(), Type::Float(Float::F32)),
                     true
@@ -1419,7 +1393,7 @@ pub fn handle_intrinsic<'tcx>(
             destination,
             call!(
                 CallSite::new_extern(
-                    ClassRef::math(ctx.asm_mut()),
+                    ClassRef::math(ctx),
                     "Floor".into(),
                     FnSig::new([Type::Float(Float::F64)].into(), Type::Float(Float::F64)),
                     true
@@ -1432,7 +1406,7 @@ pub fn handle_intrinsic<'tcx>(
             destination,
             call!(
                 CallSite::new_extern(
-                    ClassRef::mathf(ctx.asm_mut()),
+                    ClassRef::mathf(ctx),
                     "Ceiling".into(),
                     FnSig::new([Type::Float(Float::F32)].into(), Type::Float(Float::F32)),
                     true
@@ -1445,7 +1419,7 @@ pub fn handle_intrinsic<'tcx>(
             destination,
             call!(
                 CallSite::new_extern(
-                    ClassRef::math(ctx.asm_mut()),
+                    ClassRef::math(ctx),
                     "Ceiling".into(),
                     FnSig::new([Type::Float(Float::F64)].into(), Type::Float(Float::F64)),
                     true
@@ -1458,7 +1432,7 @@ pub fn handle_intrinsic<'tcx>(
             destination,
             call!(
                 CallSite::new_extern(
-                    ClassRef::double(ctx.asm_mut()),
+                    ClassRef::double(ctx),
                     "MaxNumber".into(),
                     FnSig::new(
                         [Type::Float(Float::F64), Type::Float(Float::F64)].into(),
@@ -1477,7 +1451,7 @@ pub fn handle_intrinsic<'tcx>(
             destination,
             call!(
                 CallSite::new_extern(
-                    ClassRef::single(ctx.asm_mut()),
+                    ClassRef::single(ctx),
                     "MaxNumber".into(),
                     FnSig::new(
                         [Type::Float(Float::F32), Type::Float(Float::F32)].into(),
@@ -1496,7 +1470,7 @@ pub fn handle_intrinsic<'tcx>(
             destination,
             call!(
                 CallSite::new_extern(
-                    ClassRef::double(ctx.asm_mut()),
+                    ClassRef::double(ctx),
                     "MinNumber".into(),
                     FnSig::new(
                         [Type::Float(Float::F64), Type::Float(Float::F64)].into(),
@@ -1515,7 +1489,7 @@ pub fn handle_intrinsic<'tcx>(
             destination,
             call!(
                 CallSite::new_extern(
-                    ClassRef::single(ctx.asm_mut()),
+                    ClassRef::single(ctx),
                     "MinNumber".into(),
                     FnSig::new(
                         [Type::Float(Float::F32), Type::Float(Float::F32)].into(),
@@ -1554,7 +1528,7 @@ pub fn handle_intrinsic<'tcx>(
 
             let ops = call!(
                 CallSite::boxed(
-                    Some(ClassRef::math(ctx.asm_mut())),
+                    Some(ClassRef::math(ctx)),
                     "Sqrt".into(),
                     FnSig::new([Type::Float(Float::F64)].into(), Type::Float(Float::F64)),
                     true,
@@ -1573,7 +1547,7 @@ pub fn handle_intrinsic<'tcx>(
             let try_fn = handle_operand(&args[0].node, ctx);
             let data_ptr = handle_operand(&args[1].node, ctx);
             let catch_fn = handle_operand(&args[2].node, ctx);
-            let uint8_ptr = ctx.asm_mut().nptr(Type::Int(Int::U8));
+            let uint8_ptr = ctx.nptr(Type::Int(Int::U8));
             place_set(
                 destination,
                 call!(
@@ -1581,9 +1555,9 @@ pub fn handle_intrinsic<'tcx>(
                         "catch_unwind".into(),
                         FnSig::new(
                             [
-                                Type::FnPtr(ctx.asm_mut().sig([uint8_ptr], Type::Void)),
+                                Type::FnPtr(ctx.sig([uint8_ptr], Type::Void)),
                                 uint8_ptr,
-                                Type::FnPtr(ctx.asm_mut().sig([uint8_ptr, uint8_ptr], Type::Void)),
+                                Type::FnPtr(ctx.sig([uint8_ptr, uint8_ptr], Type::Void)),
                             ]
                             .into(),
                             Type::Int(Int::I32),
@@ -1595,7 +1569,7 @@ pub fn handle_intrinsic<'tcx>(
                 ctx,
             )
         }
-        "abort" => CILRoot::throw("Called abort!", ctx.asm_mut()),
+        "abort" => CILRoot::throw("Called abort!", ctx),
         "const_allocate" => place_set(destination, conv_usize!(ldc_u32!(0)), ctx),
         "vtable_size" => {
             let vtableptr = handle_operand(&args[0].node, ctx);
@@ -1604,7 +1578,7 @@ pub fn handle_intrinsic<'tcx>(
                 CILNode::LDIndUSize {
                     ptr: Box::new(
                         (vtableptr + conv_usize!((size_of!(Type::Int(Int::ISize)))))
-                            .cast_ptr(ctx.asm_mut().nptr(Type::Int(Int::USize))),
+                            .cast_ptr(ctx.nptr(Type::Int(Int::USize))),
                     ),
                 },
                 ctx,
@@ -1617,7 +1591,7 @@ pub fn handle_intrinsic<'tcx>(
                 CILNode::LDIndUSize {
                     ptr: Box::new(
                         (vtableptr + conv_usize!((size_of!(Type::Int(Int::ISize))) * ldc_i32!(2)))
-                            .cast_ptr(ctx.asm_mut().nptr(Type::Int(Int::USize))),
+                            .cast_ptr(ctx.nptr(Type::Int(Int::USize))),
                     ),
                 },
                 ctx,
@@ -1654,32 +1628,32 @@ fn intrinsic_slow<'tcx>(
         );
         let tpe = ctx.type_from_cache(tpe);
         let sig = FnSig::new(
-            [ClassRef::runtime_type_hadle(ctx.asm_mut()).into()].into(),
-            ClassRef::type_type(ctx.asm_mut()).into(),
+            [ClassRef::runtime_type_hadle(ctx).into()].into(),
+            ClassRef::type_type(ctx).into(),
         );
         let gethash_sig = FnSig::new(
-            [ClassRef::type_type(ctx.asm_mut()).into()].into(),
+            [ClassRef::type_type(ctx).into()].into(),
             Type::Int(Int::I32),
         );
         place_set(
             destination,
             call!(
                 CallSite::boxed(
-                    Some(ClassRef::uint_128(ctx.asm_mut())),
+                    Some(ClassRef::uint_128(ctx)),
                     "op_Implicit".into(),
                     FnSig::new([Type::Int(Int::U32)].into(), Type::Int(Int::U128)),
                     true,
                 ),
                 [conv_u32!(call_virt!(
                     CallSite::boxed(
-                        ClassRef::object(ctx.asm_mut()).into(),
+                        ClassRef::object(ctx).into(),
                         "GetHashCode".into(),
                         gethash_sig,
                         false,
                     ),
                     [call!(
                         CallSite::boxed(
-                            ClassRef::type_type(ctx.asm_mut()).into(),
+                            ClassRef::type_type(ctx).into(),
                             "GetTypeFromHandle".into(),
                             sig,
                             true,
@@ -1723,8 +1697,8 @@ fn intrinsic_slow<'tcx>(
                 "swap_at_generic".into(),
                 FnSig::new(
                     [
-                        ctx.asm_mut().nptr(Type::Void),
-                        ctx.asm_mut().nptr(Type::Void),
+                        ctx.nptr(Type::Void),
+                        ctx.nptr(Type::Void),
                         Type::Int(Int::USize),
                     ]
                     .into(),
@@ -1733,8 +1707,8 @@ fn intrinsic_slow<'tcx>(
                 true,
             )),
             args: [
-                handle_operand(&args[0].node, ctx).cast_ptr(ctx.asm_mut().nptr(Type::Void)),
-                handle_operand(&args[1].node, ctx).cast_ptr(ctx.asm_mut().nptr(Type::Void)),
+                handle_operand(&args[0].node, ctx).cast_ptr(ctx.nptr(Type::Void)),
+                handle_operand(&args[1].node, ctx).cast_ptr(ctx.nptr(Type::Void)),
                 conv_usize!(size_of!(tpe)),
             ]
             .into(),
@@ -1778,7 +1752,7 @@ fn intrinsic_slow<'tcx>(
             CILNode::LDIndUSize {
                 ptr: Box::new(
                     (vtableptr + conv_usize!((size_of!(Type::Int(Int::ISize)))))
-                        .cast_ptr(ctx.asm_mut().nptr(Type::Int(Int::USize))),
+                        .cast_ptr(ctx.nptr(Type::Int(Int::USize))),
                 ),
             },
             ctx,
@@ -1790,7 +1764,7 @@ fn intrinsic_slow<'tcx>(
             CILNode::LDIndUSize {
                 ptr: Box::new(
                     (vtableptr + conv_usize!((size_of!(Type::Int(Int::ISize))) * ldc_i32!(2)))
-                        .cast_ptr(ctx.asm_mut().nptr(Type::Int(Int::USize))),
+                        .cast_ptr(ctx.nptr(Type::Int(Int::USize))),
                 ),
             },
             ctx,

@@ -75,12 +75,10 @@ pub fn magic_type<'tcx>(
         let assembly = garg_to_string(subst[0], ctx.tcx());
         let assembly = Some(assembly)
             .filter(|assembly| !assembly.is_empty())
-            .map(|a| ctx.asm_mut().alloc_string(a));
+            .map(|a| ctx.alloc_string(a));
         let name = garg_to_string(subst[1], ctx.tcx());
-        let name = ctx.asm_mut().alloc_string(name);
-        let dotnet_tpe =
-            ctx.asm_mut()
-                .alloc_class_ref(ClassRef::new(name, assembly, false, [].into()));
+        let name = ctx.alloc_string(name);
+        let dotnet_tpe = ctx.alloc_class_ref(ClassRef::new(name, assembly, false, [].into()));
         Type::ClassRef(dotnet_tpe)
     } else if name.contains(INTEROP_STRUCT_TPE_NAME) {
         assert!(
@@ -90,12 +88,10 @@ pub fn magic_type<'tcx>(
         let assembly = garg_to_string(subst[0], ctx.tcx());
         let assembly = Some(assembly)
             .filter(|assembly| !assembly.is_empty())
-            .map(|a| ctx.asm_mut().alloc_string(a));
+            .map(|a| ctx.alloc_string(a));
         let name = garg_to_string(subst[1], ctx.tcx());
-        let name = ctx.asm_mut().alloc_string(name);
-        let dotnet_tpe =
-            ctx.asm_mut()
-                .alloc_class_ref(ClassRef::new(name, assembly, true, [].into()));
+        let name = ctx.alloc_string(name);
+        let dotnet_tpe = ctx.alloc_class_ref(ClassRef::new(name, assembly, true, [].into()));
         Type::ClassRef(dotnet_tpe)
     } else if name.contains(INTEROP_ARR_TPE_NAME) {
         assert!(subst.len() == 2, "Managed array reference must have exactly 2 generic arguments: type and dimension count!");
@@ -105,7 +101,7 @@ pub fn magic_type<'tcx>(
         let element = get_type(element, ctx);
 
         Type::PlatformArray {
-            elem: ctx.asm_mut().alloc_type(element),
+            elem: ctx.alloc_type(element),
             dims: std::num::NonZeroU8::new(dimensions.try_into().unwrap()).unwrap(),
         }
     } else if name.contains(INTEROP_CHR_TPE_NAME) {

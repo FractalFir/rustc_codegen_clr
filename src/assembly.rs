@@ -281,7 +281,7 @@ pub fn terminator_to_ops<'tcx>(
                     format!("Tried to execute terminator {term:?} whose compialtion failed with a no-string message!")
                     }
                 };
-                vec![CILRoot::throw(&msg, ctx.asm_mut()).into()]
+                vec![CILRoot::throw(&msg, ctx).into()]
             }
         }
     };
@@ -405,8 +405,8 @@ pub fn add_fn<'tcx, 'asm, 'a: 'asm>(
         let mut trees = Vec::new();
         for statement in &block_data.statements {
             if *crate::config::INSERT_MIR_DEBUG_COMMENTS {
-                rustc_middle::ty::print::with_no_trimmed_paths! {trees.push(CILRoot::debug(&format!("{statement:?}"),ctx.asm_mut()).into())};
-                rustc_middle::ty::print::with_no_trimmed_paths! {trees.push(CILRoot::debug(&format!("{:?}",statement.source_info.span),ctx.asm_mut()).into())};
+                rustc_middle::ty::print::with_no_trimmed_paths! {trees.push(CILRoot::debug(&format!("{statement:?}"),ctx).into())};
+                rustc_middle::ty::print::with_no_trimmed_paths! {trees.push(CILRoot::debug(&format!("{:?}",statement.source_info.span),ctx).into())};
             }
 
             let statement_tree = match statement_to_ops(statement, ctx) {
@@ -415,7 +415,7 @@ pub fn add_fn<'tcx, 'asm, 'a: 'asm>(
                     rustc_middle::ty::print::with_no_trimmed_paths! {eprintln!(
                         "Method \"{name}\" failed to compile statement {statement:?} with message {err:?}\n"
                     )};
-                    rustc_middle::ty::print::with_no_trimmed_paths! {Some(CILRoot::throw(&format!("Tired to run a statement {statement:?} which failed to compile with error message {err:?}."),ctx.asm_mut()).into())}
+                    rustc_middle::ty::print::with_no_trimmed_paths! {Some(CILRoot::throw(&format!("Tired to run a statement {statement:?} which failed to compile with error message {err:?}."),ctx).into())}
                 }
             };
             // Only save debuginfo for statements which result in ops.
@@ -430,7 +430,7 @@ pub fn add_fn<'tcx, 'asm, 'a: 'asm>(
         }
         if let Some(term) = &block_data.terminator {
             if *crate::config::INSERT_MIR_DEBUG_COMMENTS {
-                rustc_middle::ty::print::with_no_trimmed_paths! {trees.push(CILRoot::debug(&format!("{term:?}"),ctx.asm_mut()).into())};
+                rustc_middle::ty::print::with_no_trimmed_paths! {trees.push(CILRoot::debug(&format!("{term:?}"),ctx).into())};
             }
             let term_trees = terminator_to_ops(term, ctx).unwrap_or_else(|err| {
                 panic!("Could not compile terminator {term:?} because {err:?}")
@@ -495,14 +495,14 @@ pub fn add_fn<'tcx, 'asm, 'a: 'asm>(
 
     let adjust = check_align_adjust(&mir.local_decls, ctx.tcx(), &ctx.instance(), mir.arg_count);
     // TODO: find a better way of checking if we are in release
-    method.adjust_aligement(adjust, ctx.asm_mut());
+    method.adjust_aligement(adjust, ctx);
     if ctx.tcx().sess.opts.optimize != rustc_session::config::OptLevel::No {
         method.opt();
         method.realloc_locals();
     }
-    let main_module = ctx.asm_mut().main_module();
-    let method = MethodDef::from_v1(&method, ctx.asm_mut(), main_module);
-    ctx.asm_mut().new_method(method);
+    let main_module = ctx.main_module();
+    let method = MethodDef::from_v1(&method, ctx, main_module);
+    ctx.new_method(method);
     drop(timer);
     Ok(())
     //todo!("Can't add function")

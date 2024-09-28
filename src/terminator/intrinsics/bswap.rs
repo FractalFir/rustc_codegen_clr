@@ -33,7 +33,7 @@ pub fn bswap<'tcx>(
             TyKind::Uint(_) | TyKind::Int(_) => {
                 call!(
                     CallSite::boxed(
-                        Some(ClassRef::binary_primitives(ctx.asm_mut())),
+                        Some(ClassRef::binary_primitives(ctx)),
                         "ReverseEndianness".into(),
                         FnSig::new([tpe].into(), tpe),
                         true,
