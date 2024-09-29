@@ -1,7 +1,9 @@
-use crate::v2::{Assembly, ClassRef, FieldIdx, FnSig, StaticFieldDesc, Type};
+use crate::v2::cilnode::MethodKind;
+use crate::v2::{
+    Assembly, ClassRef, FieldIdx, FnSig, MethodRef, MethodRefIdx, StaticFieldDesc, Type,
+};
 use crate::{
     call,
-    call_site::CallSite,
     cil_node::{CILNode, CallOpArgs},
     AsmString, IString,
 };
@@ -76,7 +78,7 @@ pub enum CILRoot {
     },
 
     Call {
-        site: Box<CallSite>,
+        site: MethodRefIdx,
         args: Box<[CILNode]>,
     },
     SetField {
@@ -118,7 +120,7 @@ pub enum CILRoot {
         count: Box<CILNode>,
     },
     CallVirt {
-        site: Box<CallSite>,
+        site: MethodRefIdx,
         args: Box<[CILNode]>,
     },
     Ret {
@@ -154,10 +156,16 @@ impl CILRoot {
     pub fn throw(msg: &str, asm: &mut Assembly) -> Self {
         let class = ClassRef::exception(asm);
 
-        let name = ".ctor".to_owned().into();
-        let signature = FnSig::new(Box::new([class.into(), Type::PlatformString]), Type::Void);
+        let name = asm.alloc_string(".ctor");
+        let signature = asm.sig([class.into(), Type::PlatformString], Type::Void);
         Self::Throw(CILNode::NewObj(Box::new(CallOpArgs {
-            site: CallSite::boxed(Some(class), name, signature, false),
+            site: asm.alloc_methodref(MethodRef::new(
+                class,
+                name,
+                signature,
+                MethodKind::Instance,
+                vec![].into(),
+            )),
             args: [CILNode::LdStr(msg.into())].into(),
         })))
     }
@@ -165,11 +173,17 @@ impl CILRoot {
     pub fn debug(msg: &str, asm: &mut Assembly) -> Self {
         let class = ClassRef::console(asm);
 
-        let name = "WriteLine".to_owned().into();
-        let signature = FnSig::new(Box::new([Type::PlatformString]), Type::Void);
+        let name = asm.alloc_string("WriteLine");
+        let signature = asm.sig([Type::PlatformString], Type::Void);
         let message = tiny_message(msg, asm);
         Self::Call {
-            site: Box::new(CallSite::new_extern(class, name, signature, true)),
+            site: asm.alloc_methodref(MethodRef::new(
+                class,
+                name,
+                signature,
+                MethodKind::Static,
+                vec![].into(),
+            )),
             args: [message].into(),
         }
     }
@@ -382,83 +396,98 @@ fn tiny_message(msg: &str, asm: &mut Assembly) -> CILNode {
     runtime_string(&pieces, asm)
 }
 fn runtime_string(pieces: &[&str], asm: &mut Assembly) -> CILNode {
+    //
     match pieces.len() {
         0 => panic!("Incorrect piece count"),
         1 => CILNode::LdStr(pieces[0].to_owned().into()),
-        2 => call!(
-            CallSite::new_extern(
+        2 => {
+            let mref = MethodRef::new(
                 ClassRef::string(asm),
-                "Concat".to_owned().into(),
-                FnSig::new(
-                    Box::new([Type::PlatformString, Type::PlatformString,]),
+                asm.alloc_string("Concat"),
+                asm.sig(
+                    [Type::PlatformString, Type::PlatformString],
                     Type::PlatformString,
                 ),
-                true
-            ),
-            [
-                CILNode::LdStr(pieces[0].to_owned().into()),
-                CILNode::LdStr(pieces[1].to_owned().into())
-            ]
-        ),
-        3 => call!(
-            CallSite::new_extern(
+                MethodKind::Static,
+                vec![].into(),
+            );
+            call!(
+                asm.alloc_methodref(mref),
+                [
+                    CILNode::LdStr(pieces[0].to_owned().into()),
+                    CILNode::LdStr(pieces[1].to_owned().into())
+                ]
+            )
+        }
+        3 => {
+            let mref = MethodRef::new(
                 ClassRef::string(asm),
-                "Concat".to_owned().into(),
-                FnSig::new(
-                    Box::new([
+                asm.alloc_string("Concat"),
+                asm.sig(
+                    [
                         Type::PlatformString,
                         Type::PlatformString,
                         Type::PlatformString,
-                    ]),
+                    ],
                     Type::PlatformString,
                 ),
-                true
-            ),
-            [
-                CILNode::LdStr(pieces[0].to_owned().into()),
-                CILNode::LdStr(pieces[1].to_owned().into()),
-                CILNode::LdStr(pieces[2].to_owned().into())
-            ]
-        ),
-        4 => call!(
-            CallSite::new_extern(
+                MethodKind::Static,
+                vec![].into(),
+            );
+            call!(
+                asm.alloc_methodref(mref),
+                [
+                    CILNode::LdStr(pieces[0].to_owned().into()),
+                    CILNode::LdStr(pieces[1].to_owned().into()),
+                    CILNode::LdStr(pieces[2].to_owned().into())
+                ]
+            )
+        }
+        4 => {
+            let mref = MethodRef::new(
                 ClassRef::string(asm),
-                "Concat".to_owned().into(),
-                FnSig::new(
-                    Box::new([
+                asm.alloc_string("Concat"),
+                asm.sig(
+                    [
                         Type::PlatformString,
                         Type::PlatformString,
                         Type::PlatformString,
                         Type::PlatformString,
-                    ]),
+                    ],
                     Type::PlatformString,
                 ),
-                true
-            ),
-            [
-                CILNode::LdStr(pieces[0].to_owned().into()),
-                CILNode::LdStr(pieces[1].to_owned().into()),
-                CILNode::LdStr(pieces[2].to_owned().into()),
-                CILNode::LdStr(pieces[3].to_owned().into())
-            ]
-        ),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            call!(
+                asm.alloc_methodref(mref),
+                [
+                    CILNode::LdStr(pieces[0].to_owned().into()),
+                    CILNode::LdStr(pieces[1].to_owned().into()),
+                    CILNode::LdStr(pieces[2].to_owned().into()),
+                    CILNode::LdStr(pieces[3].to_owned().into())
+                ]
+            )
+        }
         _ => {
             let sub_part = pieces.len() / 4;
-            call!(
-                CallSite::new_extern(
-                    ClassRef::string(asm),
-                    "Concat".to_owned().into(),
-                    FnSig::new(
-                        Box::new([
-                            Type::PlatformString,
-                            Type::PlatformString,
-                            Type::PlatformString,
-                            Type::PlatformString,
-                        ]),
+            let mref = MethodRef::new(
+                ClassRef::string(asm),
+                asm.alloc_string("Concat"),
+                asm.sig(
+                    [
                         Type::PlatformString,
-                    ),
-                    true
+                        Type::PlatformString,
+                        Type::PlatformString,
+                        Type::PlatformString,
+                    ],
+                    Type::PlatformString,
                 ),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            call!(
+                asm.alloc_methodref(mref),
                 [
                     runtime_string(&pieces[..sub_part], asm),
                     runtime_string(&pieces[sub_part..(sub_part * 2)], asm),

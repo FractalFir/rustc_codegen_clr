@@ -1,9 +1,8 @@
 use cilly::{
     call,
-    call_site::CallSite,
     cil_node::CILNode,
     eq, gt, gt_un, lt, lt_un,
-    v2::{Assembly, ClassRef, Float, FnSig, Int},
+    v2::{Assembly, ClassRef, Float, FnSig, Int, MethodRef},
     Type,
 };
 use rustc_middle::ty::{FloatTy, IntTy, Ty, TyKind, UintTy};
@@ -30,7 +29,7 @@ pub fn eq_unchecked(
     match ty_a.kind() {
         TyKind::Uint(uint) => match uint {
             UintTy::U128 => call!(
-                CallSite::new_extern(
+                MethodRef::new(
                     ClassRef::uint_128(asm),
                     "op_Equality".into(),
                     FnSig::new(
@@ -45,7 +44,7 @@ pub fn eq_unchecked(
         },
         TyKind::Int(int) => match int {
             IntTy::I128 => call!(
-                CallSite::new_extern(
+                MethodRef::new(
                     ClassRef::int_128(asm),
                     "op_Equality".into(),
                     FnSig::new(
@@ -65,7 +64,7 @@ pub fn eq_unchecked(
             eq!(operand_a, operand_b)
         }
         TyKind::Float(FloatTy::F128) => call!(
-            CallSite::builtin(
+            MethodRefIdx::builtin(
                 "__eqtf2".into(),
                 FnSig::new(
                     [Type::Float(Float::F128), Type::Float(Float::F128)].into(),
@@ -76,7 +75,7 @@ pub fn eq_unchecked(
             [operand_a, operand_b]
         ),
         TyKind::Float(FloatTy::F16) => call!(
-            CallSite::new_extern(
+            MethodRef::new(
                 ClassRef::half(asm),
                 "op_Equality".into(),
                 FnSig::new(
@@ -100,7 +99,7 @@ pub fn lt_unchecked(
     match ty_a.kind() {
         TyKind::Uint(uint) => match uint {
             UintTy::U128 => call!(
-                CallSite::new_extern(
+                MethodRef::new(
                     ClassRef::uint_128(asm),
                     "op_LessThan".into(),
                     FnSig::new(
@@ -115,7 +114,7 @@ pub fn lt_unchecked(
         },
         TyKind::Int(int) => match int {
             IntTy::I128 => call!(
-                CallSite::new_extern(
+                MethodRef::new(
                     ClassRef::int_128(asm),
                     "op_LessThan".into(),
                     FnSig::new(
@@ -134,7 +133,7 @@ pub fn lt_unchecked(
         }
         TyKind::RawPtr(_, _) | TyKind::FnPtr(_, _) => lt_un!(operand_a, operand_b),
         TyKind::Float(FloatTy::F128) => call!(
-            CallSite::builtin(
+            MethodRefIdx::builtin(
                 "__lttf2".into(),
                 FnSig::new(
                     [Type::Float(Float::F128), Type::Float(Float::F128)].into(),
@@ -156,7 +155,7 @@ pub fn gt_unchecked(
     match ty_a.kind() {
         TyKind::Uint(uint) => match uint {
             UintTy::U128 => call!(
-                CallSite::new_extern(
+                MethodRef::new(
                     ClassRef::uint_128(asm),
                     "op_GreaterThan".into(),
                     FnSig::new(
@@ -171,7 +170,7 @@ pub fn gt_unchecked(
         },
         TyKind::Int(int) => match int {
             IntTy::I128 => call!(
-                CallSite::new_extern(
+                MethodRef::new(
                     ClassRef::int_128(asm),
                     "op_GreaterThan".into(),
                     FnSig::new(
@@ -189,7 +188,7 @@ pub fn gt_unchecked(
             gt!(operand_a, operand_b)
         }
         TyKind::Float(FloatTy::F128) => call!(
-            CallSite::builtin(
+            MethodRefIdx::builtin(
                 "__gttf2".into(),
                 FnSig::new(
                     [Type::Float(Float::F128), Type::Float(Float::F128)].into(),

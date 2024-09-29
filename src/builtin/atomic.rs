@@ -3,7 +3,7 @@ use cilly::{
     asm::Assembly,
     basic_block::BasicBlock,
     call,
-    call_site::CallSite,
+    call_site::MethodRefIdx,
     cil_node::CILNode,
     cil_root::CILRoot,
     conv_u32, conv_u64, conv_usize, size_of,
@@ -14,7 +14,7 @@ use cilly::{
 macro_rules! monitor_enter {
     () => {{
         CILRoot::Call {
-            site: Box::new(CallSite::new(
+            site: Box::new(MethodRefIdx::new(
                 Some(ClassRef::monitor()),
                 "Enter".into(),
                 FnSig::new(
@@ -38,7 +38,7 @@ macro_rules! monitor_enter {
 macro_rules! monitor_exit {
     () => {{
         CILRoot::Call {
-            site: Box::new(CallSite::new(
+            site: Box::new(MethodRefIdx::new(
                 Some(ClassRef::monitor()),
                 "Exit".into(),
                 FnSig::new(
@@ -79,7 +79,7 @@ crate::add_method_from_trees!(
                 .into(),
                 CILRoot::Ret {
                     tree: conv_usize!(call!(
-                        CallSite::new(
+                        MethodRefIdx::new(
                             Some(ClassRef::interlocked()),
                             "Add".into(),
                             FnSig::new(
@@ -106,7 +106,7 @@ crate::add_method_from_trees!(
         BasicBlock::new(
             vec![CILRoot::Ret {
                 tree: conv_usize!(call!(
-                    CallSite::new(
+                    MethodRefIdx::new(
                         Some(ClassRef::interlocked()),
                         "Add".into(),
                         FnSig::new(
@@ -150,7 +150,7 @@ crate::add_method_from_trees!(
                 .into(),
                 CILRoot::Ret {
                     tree: conv_usize!(call!(
-                        CallSite::new(
+                        MethodRefIdx::new(
                             Some(ClassRef::interlocked()),
                             "Or".into(),
                             FnSig::new(
@@ -177,7 +177,7 @@ crate::add_method_from_trees!(
         BasicBlock::new(
             vec![CILRoot::Ret {
                 tree: conv_usize!(call!(
-                    CallSite::new(
+                    MethodRefIdx::new(
                         Some(ClassRef::interlocked()),
                         "Or".into(),
                         FnSig::new(
@@ -221,7 +221,7 @@ crate::add_method_from_trees!(
                 .into(),
                 CILRoot::Ret {
                     tree: conv_usize!(call!(
-                        CallSite::new(
+                        MethodRefIdx::new(
                             Some(ClassRef::interlocked()),
                             "And".into(),
                             FnSig::new(
@@ -248,7 +248,7 @@ crate::add_method_from_trees!(
         BasicBlock::new(
             vec![CILRoot::Ret {
                 tree: conv_usize!(call!(
-                    CallSite::new(
+                    MethodRefIdx::new(
                         Some(ClassRef::interlocked()),
                         "And".into(),
                         FnSig::new(

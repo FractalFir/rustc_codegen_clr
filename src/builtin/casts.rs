@@ -6,7 +6,7 @@ use cilly::{
     asm::Assembly,
     basic_block::BasicBlock,
     call,
-    call_site::CallSite,
+    call_site::MethodRefIdx,
     cil_node::CILNode,
     cil_root::CILRoot,
     conv_f32, conv_f64, conv_f_un, conv_i16, conv_i32, conv_i64, conv_i8, conv_isize, conv_u16,
@@ -67,7 +67,7 @@ add_method_from_trees!(
                     sub_target: 0,
                     cond: eq!(
                         call!(
-                            CallSite::new_extern(
+                            MethodRefIdx::new_extern(
                                 ClassRef::single(),
                                 "IsNaN".into(),
                                 FnSig::new(&[Type::Float(Float::F32)], Type::Bool),
@@ -148,7 +148,7 @@ add_method_from_trees!(
                     sub_target: 0,
                     cond: eq!(
                         call!(
-                            CallSite::new_extern(
+                            MethodRefIdx::new_extern(
                                 ClassRef::single(),
                                 "IsNaN".into(),
                                 FnSig::new(&[Type::Float(Float::F32)], Type::Bool),
@@ -229,7 +229,7 @@ add_method_from_trees!(
                     sub_target: 0,
                     cond: eq!(
                         call!(
-                            CallSite::new_extern(
+                            MethodRefIdx::new_extern(
                                 ClassRef::single(),
                                 "IsNaN".into(),
                                 FnSig::new(&[Type::Float(Float::F32)], Type::Bool),
@@ -307,7 +307,7 @@ add_method_from_trees!(
                     sub_target: 0,
                     cond: eq!(
                         call!(
-                            CallSite::new_extern(
+                            MethodRefIdx::new_extern(
                                 ClassRef::single(),
                                 "IsNaN".into(),
                                 FnSig::new(&[Type::Float(Float::F32)], Type::Bool),
@@ -385,7 +385,7 @@ add_method_from_trees!(
                     sub_target: 0,
                     cond: eq!(
                         call!(
-                            CallSite::new_extern(
+                            MethodRefIdx::new_extern(
                                 ClassRef::single(),
                                 "IsNaN".into(),
                                 FnSig::new(&[Type::Float(Float::F32)], Type::Bool),
@@ -413,7 +413,7 @@ add_method_from_trees!(
                     cond: lt!(
                         CILNode::LDArg(0),
                         conv_f32!(conv_f_un!(call!(
-                            CallSite::new(
+                            MethodRefIdx::new(
                                 Some(ClassRef::usize_type()),
                                 "get_MaxValue".into(),
                                 FnSig::new(&[], Type::Int(Int::USize)),
@@ -426,7 +426,7 @@ add_method_from_trees!(
                 .into(),
                 CILRoot::Ret {
                     tree: call!(
-                        CallSite::new(
+                        MethodRefIdx::new(
                             Some(ClassRef::usize_type()),
                             "get_MaxValue".into(),
                             FnSig::new(&[], Type::Int(Int::USize)),
@@ -479,7 +479,7 @@ add_method_from_trees!(
                     sub_target: 0,
                     cond: eq!(
                         call!(
-                            CallSite::new_extern(
+                            MethodRefIdx::new_extern(
                                 ClassRef::double(),
                                 "IsNaN".into(),
                                 FnSig::new(&[Type::Float(Float::F64)], Type::Bool),
@@ -507,7 +507,7 @@ add_method_from_trees!(
                     cond: lt!(
                         CILNode::LDArg(0),
                         conv_f64!(conv_f_un!(call!(
-                            CallSite::new(
+                            MethodRefIdx::new(
                                 Some(ClassRef::usize_type()),
                                 "get_MaxValue".into(),
                                 FnSig::new(&[], Type::Int(Int::USize)),
@@ -520,7 +520,7 @@ add_method_from_trees!(
                 .into(),
                 CILRoot::Ret {
                     tree: call!(
-                        CallSite::new(
+                        MethodRefIdx::new(
                             Some(ClassRef::usize_type()),
                             "get_MaxValue".into(),
                             FnSig::new(&[], Type::Int(Int::USize)),
@@ -573,7 +573,7 @@ add_method_from_trees!(
                     sub_target: 0,
                     cond: eq!(
                         call!(
-                            CallSite::new_extern(
+                            MethodRefIdx::new_extern(
                                 ClassRef::double(),
                                 "IsNaN".into(),
                                 FnSig::new(&[Type::Float(Float::F64)], Type::Bool),
@@ -601,7 +601,7 @@ add_method_from_trees!(
                     cond: lt!(
                         CILNode::LDArg(0),
                         conv_f64!(call!(
-                            CallSite::new(
+                            MethodRefIdx::new(
                                 Some(ClassRef::isize_type()),
                                 "get_MaxValue".into(),
                                 FnSig::new(&[], Type::Int(Int::ISize)),
@@ -614,7 +614,7 @@ add_method_from_trees!(
                 .into(),
                 CILRoot::Ret {
                     tree: call!(
-                        CallSite::new(
+                        MethodRefIdx::new(
                             Some(ClassRef::isize_type()),
                             "get_MaxValue".into(),
                             FnSig::new(&[], Type::Int(Int::ISize)),
@@ -636,7 +636,7 @@ add_method_from_trees!(
                     cond: gt!(
                         CILNode::LDArg(0),
                         conv_f64!(call!(
-                            CallSite::new(
+                            MethodRefIdx::new(
                                 Some(ClassRef::isize_type()),
                                 "get_MinValue".into(),
                                 FnSig::new(&[], Type::Int(Int::ISize)),
@@ -649,7 +649,7 @@ add_method_from_trees!(
                 .into(),
                 CILRoot::Ret {
                     tree: call!(
-                        CallSite::new(
+                        MethodRefIdx::new(
                             Some(ClassRef::isize_type()),
                             "get_MinValue".into(),
                             FnSig::new(&[], Type::Int(Int::ISize)),
@@ -686,7 +686,7 @@ add_method_from_trees!(
                     sub_target: 0,
                     cond: eq!(
                         call!(
-                            CallSite::new_extern(
+                            MethodRefIdx::new_extern(
                                 ClassRef::single(),
                                 "IsNaN".into(),
                                 FnSig::new(&[Type::Float(Float::F32)], Type::Bool),
@@ -714,7 +714,7 @@ add_method_from_trees!(
                     cond: lt!(
                         CILNode::LDArg(0),
                         conv_f32!(call!(
-                            CallSite::new(
+                            MethodRefIdx::new(
                                 Some(ClassRef::isize_type()),
                                 "get_MaxValue".into(),
                                 FnSig::new(&[], Type::Int(Int::ISize)),
@@ -727,7 +727,7 @@ add_method_from_trees!(
                 .into(),
                 CILRoot::Ret {
                     tree: call!(
-                        CallSite::new(
+                        MethodRefIdx::new(
                             Some(ClassRef::isize_type()),
                             "get_MaxValue".into(),
                             FnSig::new(&[], Type::Int(Int::ISize)),
@@ -749,7 +749,7 @@ add_method_from_trees!(
                     cond: gt!(
                         CILNode::LDArg(0),
                         conv_f32!(call!(
-                            CallSite::new(
+                            MethodRefIdx::new(
                                 Some(ClassRef::isize_type()),
                                 "get_MinValue".into(),
                                 FnSig::new(&[], Type::Int(Int::ISize)),
@@ -762,7 +762,7 @@ add_method_from_trees!(
                 .into(),
                 CILRoot::Ret {
                     tree: call!(
-                        CallSite::new(
+                        MethodRefIdx::new(
                             Some(ClassRef::isize_type()),
                             "get_MinValue".into(),
                             FnSig::new(&[], Type::Int(Int::ISize)),
@@ -799,7 +799,7 @@ add_method_from_trees!(
                     sub_target: 0,
                     cond: eq!(
                         call!(
-                            CallSite::new_extern(
+                            MethodRefIdx::new_extern(
                                 ClassRef::single(),
                                 "IsNaN".into(),
                                 FnSig::new(&[Type::Float(Float::F32)], Type::Bool),
@@ -880,7 +880,7 @@ add_method_from_trees!(
                     sub_target: 0,
                     cond: eq!(
                         call!(
-                            CallSite::new_extern(
+                            MethodRefIdx::new_extern(
                                 ClassRef::single(),
                                 "IsNaN".into(),
                                 FnSig::new(&[Type::Float(Float::F32)], Type::Bool),
@@ -961,7 +961,7 @@ add_method_from_trees!(
                     sub_target: 0,
                     cond: eq!(
                         call!(
-                            CallSite::new_extern(
+                            MethodRefIdx::new_extern(
                                 ClassRef::single(),
                                 "IsNaN".into(),
                                 FnSig::new(&[Type::Float(Float::F32)], Type::Bool),
@@ -1039,7 +1039,7 @@ add_method_from_trees!(
                     sub_target: 0,
                     cond: eq!(
                         call!(
-                            CallSite::new_extern(
+                            MethodRefIdx::new_extern(
                                 ClassRef::single(),
                                 "IsNaN".into(),
                                 FnSig::new(&[Type::Float(Float::F32)], Type::Bool),
@@ -1117,7 +1117,7 @@ add_method_from_trees!(
                     sub_target: 0,
                     cond: eq!(
                         call!(
-                            CallSite::new_extern(
+                            MethodRefIdx::new_extern(
                                 ClassRef::double(),
                                 "IsNaN".into(),
                                 FnSig::new(&[Type::Float(Float::F64)], Type::Bool),
@@ -1198,7 +1198,7 @@ add_method_from_trees!(
                     sub_target: 0,
                     cond: eq!(
                         call!(
-                            CallSite::new_extern(
+                            MethodRefIdx::new_extern(
                                 ClassRef::double(),
                                 "IsNaN".into(),
                                 FnSig::new(&[Type::Float(Float::F64)], Type::Bool),
@@ -1279,7 +1279,7 @@ add_method_from_trees!(
                     sub_target: 0,
                     cond: eq!(
                         call!(
-                            CallSite::new_extern(
+                            MethodRefIdx::new_extern(
                                 ClassRef::double(),
                                 "IsNaN".into(),
                                 FnSig::new(&[Type::Float(Float::F64)], Type::Bool),
@@ -1357,7 +1357,7 @@ add_method_from_trees!(
                     sub_target: 0,
                     cond: eq!(
                         call!(
-                            CallSite::new_extern(
+                            MethodRefIdx::new_extern(
                                 ClassRef::double(),
                                 "IsNaN".into(),
                                 FnSig::new(&[Type::Float(Float::F64)], Type::Bool),
@@ -1435,7 +1435,7 @@ add_method_from_trees!(
                     sub_target: 0,
                     cond: eq!(
                         call!(
-                            CallSite::new_extern(
+                            MethodRefIdx::new_extern(
                                 ClassRef::double(),
                                 "IsNaN".into(),
                                 FnSig::new(&[Type::Float(Float::F64)], Type::Bool),
@@ -1516,7 +1516,7 @@ add_method_from_trees!(
                     sub_target: 0,
                     cond: eq!(
                         call!(
-                            CallSite::new_extern(
+                            MethodRefIdx::new_extern(
                                 ClassRef::double(),
                                 "IsNaN".into(),
                                 FnSig::new(&[Type::Float(Float::F64)], Type::Bool),
@@ -1597,7 +1597,7 @@ add_method_from_trees!(
                     sub_target: 0,
                     cond: eq!(
                         call!(
-                            CallSite::new_extern(
+                            MethodRefIdx::new_extern(
                                 ClassRef::double(),
                                 "IsNaN".into(),
                                 FnSig::new(&[Type::Float(Float::F64)], Type::Bool),
@@ -1675,7 +1675,7 @@ add_method_from_trees!(
                     sub_target: 0,
                     cond: eq!(
                         call!(
-                            CallSite::new_extern(
+                            MethodRefIdx::new_extern(
                                 ClassRef::double(),
                                 "IsNaN".into(),
                                 FnSig::new(&[Type::Float(Float::F64)], Type::Bool),

@@ -3,7 +3,7 @@ use crate::assembly::MethodCompileCtx;
 use bitop::{bit_and_unchecked, bit_or_unchecked, bit_xor_unchecked};
 use cilly::{
     call,
-    call_site::CallSite,
+    call_site::MethodRefIdx,
     cil_node::CILNode,
     cil_root::CILRoot,
     conv_i8, conv_u16, conv_u32, conv_u64, conv_u8, div, eq, gt_un, ld_false, lt_un, rem, rem_un,
@@ -73,7 +73,7 @@ pub(crate) fn binop<'tcx>(
             // Unordered, to handle NaNs propely
             TyKind::Float(FloatTy::F32 | FloatTy::F64) => eq!(lt_un!(ops_a, ops_b), ld_false!()),
             TyKind::Float(FloatTy::F128) => call!(
-                CallSite::builtin(
+                MethodRefIdx::builtin(
                     "__getf2".into(),
                     FnSig::new(
                         [Type::Float(Float::F128), Type::Float(Float::F128)].into(),
@@ -89,7 +89,7 @@ pub(crate) fn binop<'tcx>(
             // Unordered, to handle NaNs propely
             TyKind::Float(FloatTy::F32 | FloatTy::F64) => eq!(gt_un!(ops_a, ops_b), ld_false!()),
             TyKind::Float(FloatTy::F128) => call!(
-                CallSite::builtin(
+                MethodRefIdx::builtin(
                     "__letf2".into(),
                     FnSig::new(
                         [Type::Float(Float::F128), Type::Float(Float::F128)].into(),
@@ -164,7 +164,7 @@ pub fn add_unchecked<'tcx>(
         TyKind::Int(int_ty) => {
             if let IntTy::I128 = int_ty {
                 call!(
-                    CallSite::builtin(
+                    MethodRefIdx::builtin(
                         "add_i128".into(),
                         FnSig::new(
                             [Type::Int(Int::I128), Type::Int(Int::I128)].into(),
@@ -181,7 +181,7 @@ pub fn add_unchecked<'tcx>(
         TyKind::Uint(uint_ty) => {
             if let UintTy::U128 = uint_ty {
                 call!(
-                    CallSite::builtin(
+                    MethodRefIdx::builtin(
                         "add_u128".into(),
                         FnSig::new(
                             [Type::Int(Int::U128), Type::Int(Int::U128)].into(),
@@ -203,7 +203,7 @@ pub fn add_unchecked<'tcx>(
         }
         TyKind::Float(FloatTy::F32 | FloatTy::F64) => ops_a + ops_b,
         TyKind::Float(FloatTy::F128) => call!(
-            CallSite::builtin(
+            MethodRefIdx::builtin(
                 "__addtf3".into(),
                 FnSig::new(
                     [Type::Float(Float::F128), Type::Float(Float::F128)].into(),
@@ -214,7 +214,7 @@ pub fn add_unchecked<'tcx>(
             [ops_a, ops_b,]
         ),
         TyKind::Float(FloatTy::F16) => call!(
-            CallSite::builtin(
+            MethodRefIdx::builtin(
                 "add_f16".into(),
                 FnSig::new(
                     [Type::Float(Float::F128), Type::Float(Float::F128)].into(),
@@ -239,7 +239,7 @@ pub fn sub_unchecked<'tcx>(
         TyKind::Int(int_ty) => {
             if let IntTy::I128 = int_ty {
                 call!(
-                    CallSite::builtin(
+                    MethodRefIdx::builtin(
                         "sub_i128".into(),
                         FnSig::new(
                             [Type::Int(Int::I128), Type::Int(Int::I128)].into(),
@@ -256,7 +256,7 @@ pub fn sub_unchecked<'tcx>(
         TyKind::Uint(uint_ty) => {
             if let UintTy::U128 = uint_ty {
                 call!(
-                    CallSite::builtin(
+                    MethodRefIdx::builtin(
                         "sub_u128".into(),
                         FnSig::new(
                             [Type::Int(Int::U128), Type::Int(Int::U128)].into(),
@@ -272,7 +272,7 @@ pub fn sub_unchecked<'tcx>(
         }
         TyKind::Float(FloatTy::F32 | FloatTy::F64) => sub!(ops_a, ops_b),
         TyKind::Float(FloatTy::F128) => call!(
-            CallSite::builtin(
+            MethodRefIdx::builtin(
                 "__subtf3".into(),
                 FnSig::new(
                     [Type::Float(Float::F128), Type::Float(Float::F128)].into(),
@@ -296,7 +296,7 @@ fn rem_unchecked<'tcx>(
     match ty_a.kind() {
         TyKind::Int(IntTy::I128) => {
             call!(
-                CallSite::builtin(
+                MethodRefIdx::builtin(
                     "mod_i128".into(),
                     FnSig::new(
                         [Type::Int(Int::I128), Type::Int(Int::I128)].into(),
@@ -309,7 +309,7 @@ fn rem_unchecked<'tcx>(
         }
         TyKind::Uint(UintTy::U128) => {
             call!(
-                CallSite::builtin(
+                MethodRefIdx::builtin(
                     "mod_u128".into(),
                     FnSig::new(
                         [Type::Int(Int::U128), Type::Int(Int::U128)].into(),
@@ -324,7 +324,7 @@ fn rem_unchecked<'tcx>(
             rem!(ops_a, ops_b)
         }
         TyKind::Float(FloatTy::F128) => call!(
-            CallSite::builtin(
+            MethodRefIdx::builtin(
                 "fmodl".into(),
                 FnSig::new(
                     [Type::Float(Float::F128), Type::Float(Float::F128)].into(),
@@ -350,7 +350,7 @@ fn mul_unchecked<'tcx>(
     match ty_a.kind() {
         TyKind::Int(IntTy::I128) => {
             call!(
-                CallSite::builtin(
+                MethodRefIdx::builtin(
                     "mul_i128".into(),
                     FnSig::new(
                         [Type::Int(Int::I128), Type::Int(Int::I128)].into(),
@@ -363,7 +363,7 @@ fn mul_unchecked<'tcx>(
         }
         TyKind::Uint(UintTy::U128) => {
             call!(
-                CallSite::builtin(
+                MethodRefIdx::builtin(
                     "mul_u128".into(),
                     FnSig::new(
                         [Type::Int(Int::U128), Type::Int(Int::U128)].into(),
@@ -375,7 +375,7 @@ fn mul_unchecked<'tcx>(
             )
         }
         TyKind::Float(FloatTy::F128) => call!(
-            CallSite::builtin(
+            MethodRefIdx::builtin(
                 "__multf3".into(),
                 FnSig::new(
                     [Type::Float(Float::F128), Type::Float(Float::F128)].into(),
@@ -398,7 +398,7 @@ fn div_unchecked<'tcx>(
     match ty_a.kind() {
         TyKind::Int(IntTy::I128) => {
             call!(
-                CallSite::builtin(
+                MethodRefIdx::builtin(
                     "div_i128".into(),
                     FnSig::new(
                         [Type::Int(Int::I128), Type::Int(Int::I128)].into(),
@@ -411,7 +411,7 @@ fn div_unchecked<'tcx>(
         }
         TyKind::Uint(UintTy::U128) => {
             call!(
-                CallSite::builtin(
+                MethodRefIdx::builtin(
                     "div_u128".into(),
                     FnSig::new(
                         [Type::Int(Int::U128), Type::Int(Int::U128)].into(),
@@ -427,7 +427,7 @@ fn div_unchecked<'tcx>(
             div!(operand_a, operand_b)
         }
         TyKind::Float(FloatTy::F128) => call!(
-            CallSite::builtin(
+            MethodRefIdx::builtin(
                 "__divtf3".into(),
                 FnSig::new(
                     [Type::Float(Float::F128), Type::Float(Float::F128)].into(),

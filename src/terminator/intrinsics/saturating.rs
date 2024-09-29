@@ -1,7 +1,7 @@
 use crate::{assembly::MethodCompileCtx, operand::handle_operand, place::place_set};
 use cilly::{
     call,
-    call_site::CallSite,
+    call_site::MethodRefIdx,
     cil_node::CILNode,
     cil_root::CILRoot,
     conv_i16, conv_i32, conv_i64, conv_i8, ldc_i32, ldc_i64,
@@ -47,7 +47,7 @@ pub fn saturating_add<'tcx>(
             let b = conv_i64!(b);
             let diff = a + b;
             let diff_capped = call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::math(ctx),
                     "Clamp".into(),
                     FnSig::new(
@@ -73,7 +73,7 @@ pub fn saturating_add<'tcx>(
             let a = crate::casts::int_to_int(Type::Int(Int::I64), Type::Int(Int::I128), a, ctx);
             let b = crate::casts::int_to_int(Type::Int(Int::I64), Type::Int(Int::I128), b, ctx);
             let diff = call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::int_128(ctx),
                     "op_Addition".into(),
                     FnSig::new(
@@ -86,7 +86,7 @@ pub fn saturating_add<'tcx>(
             );
             #[allow(clippy::cast_sign_loss)]
             let diff_capped = call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::int_128(ctx),
                     "Clamp".into(),
                     FnSig::new(
@@ -112,7 +112,7 @@ pub fn saturating_add<'tcx>(
             let a = crate::casts::int_to_int(Type::Int(Int::ISize), Type::Int(Int::I128), a, ctx);
             let b = crate::casts::int_to_int(Type::Int(Int::ISize), Type::Int(Int::I128), b, ctx);
             let diff = call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::int_128(ctx),
                     "op_Addition".into(),
                     FnSig::new(
@@ -125,7 +125,7 @@ pub fn saturating_add<'tcx>(
             );
             #[allow(clippy::cast_sign_loss)]
             let diff_capped = call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::int_128(ctx),
                     "Clamp".into(),
                     FnSig::new(
@@ -157,7 +157,7 @@ pub fn saturating_add<'tcx>(
             let b = conv_i32!(b);
             let diff = a + b;
             let diff_capped = call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::math(ctx),
                     "Clamp".into(),
                     FnSig::new(
@@ -183,7 +183,7 @@ pub fn saturating_add<'tcx>(
             let b = conv_i32!(b);
             let diff = a + b;
             let diff_capped = call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::math(ctx),
                     "Clamp".into(),
                     FnSig::new(
@@ -233,7 +233,7 @@ pub fn saturating_sub<'tcx>(
             let a = crate::casts::int_to_int(Type::Int(Int::I64), Type::Int(Int::I128), a, ctx);
             let b = crate::casts::int_to_int(Type::Int(Int::I64), Type::Int(Int::I128), b, ctx);
             let diff = call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::int_128(ctx),
                     "op_Subtraction".into(),
                     FnSig::new(
@@ -246,7 +246,7 @@ pub fn saturating_sub<'tcx>(
             );
             #[allow(clippy::cast_sign_loss)]
             let diff_capped = call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::int_128(ctx),
                     "Clamp".into(),
                     FnSig::new(
@@ -271,7 +271,7 @@ pub fn saturating_sub<'tcx>(
             let a = crate::casts::int_to_int(Type::Int(Int::ISize), Type::Int(Int::I128), a, ctx);
             let b = crate::casts::int_to_int(Type::Int(Int::ISize), Type::Int(Int::I128), b, ctx);
             let diff = call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::int_128(ctx),
                     "op_Subtraction".into(),
                     FnSig::new(
@@ -284,7 +284,7 @@ pub fn saturating_sub<'tcx>(
             );
             #[allow(clippy::cast_sign_loss)]
             let diff_capped = call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::int_128(ctx),
                     "Clamp".into(),
                     FnSig::new(
@@ -316,7 +316,7 @@ pub fn saturating_sub<'tcx>(
             let b = conv_i64!(b);
             let diff = a - b;
             let diff_capped = call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::math(ctx),
                     "Clamp".into(),
                     FnSig::new(
@@ -342,7 +342,7 @@ pub fn saturating_sub<'tcx>(
             let b = conv_i32!(b);
             let diff = a - b;
             let diff_capped = call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::math(ctx),
                     "Clamp".into(),
                     FnSig::new(
@@ -368,7 +368,7 @@ pub fn saturating_sub<'tcx>(
             let b = conv_i32!(b);
             let diff = a - b;
             let diff_capped = call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::math(ctx),
                     "Clamp".into(),
                     FnSig::new(

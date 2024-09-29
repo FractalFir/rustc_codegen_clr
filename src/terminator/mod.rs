@@ -1,11 +1,10 @@
 use crate::{assembly::MethodCompileCtx, place::place_set};
 use cilly::{
-    call_site::CallSite,
     cil_node::CILNode,
     cil_root::CILRoot,
     cil_tree::CILTree,
     conv_usize, ld_field, ldc_u32,
-    v2::{Assembly, FieldDesc, FnSig, Int},
+    v2::{cilnode::MethodKind, Assembly, FieldDesc, FnSig, Int, MethodRef},
     Type,
 };
 use rustc_middle::{
@@ -229,9 +228,16 @@ pub fn handle_terminator<'tcx>(
                             crate::function_sig::sig_from_instance_(drop_instance, ctx).unwrap();
                         let function_name =
                             crate::utilis::function_name(ctx.tcx().symbol_name(drop_instance));
+                        let mref = MethodRef::new(
+                            *ctx.main_module(),
+                            ctx.alloc_string(function_name),
+                            ctx.alloc_sig(sig),
+                            MethodKind::Static,
+                            vec![].into(),
+                        );
                         vec![
                             CILRoot::Call {
-                                site: Box::new(CallSite::new(None, function_name, sig, true)),
+                                site: ctx.alloc_methodref(mref),
                                 args: [crate::place::place_adress(place, ctx)].into(),
                             }
                             .into(),

@@ -1,7 +1,7 @@
 use crate::{assembly::MethodCompileCtx, operand::handle_operand, place::place_set};
 use cilly::{
     and, call,
-    call_site::CallSite,
+    call_site::MethodRefIdx,
     cil_node::CILNode,
     cil_root::CILRoot,
     conv_i16, conv_i32, conv_i8, conv_isize, conv_u16, conv_u32, conv_u64, conv_u8, conv_usize,
@@ -40,7 +40,7 @@ pub fn ctpop<'tcx>(
         destination,
         match tpe {
             Type::Int(Int::U64) => conv_u32!(call!(
-                CallSite::boxed(
+                MethodRefIdx::boxed(
                     bit_operations,
                     "PopCount".into(),
                     FnSig::new([Type::Int(Int::U64)].into(), Type::Int(Int::I32)),
@@ -49,7 +49,7 @@ pub fn ctpop<'tcx>(
                 [operand]
             )),
             Type::Int(Int::I64) => conv_u32!(call!(
-                CallSite::boxed(
+                MethodRefIdx::boxed(
                     bit_operations,
                     "PopCount".into(),
                     FnSig::new([Type::Int(Int::U64)].into(), Type::Int(Int::I32)),
@@ -58,7 +58,7 @@ pub fn ctpop<'tcx>(
                 [conv_u64!(operand)]
             )),
             Type::Int(Int::U32) => conv_u32!(call!(
-                CallSite::boxed(
+                MethodRefIdx::boxed(
                     bit_operations,
                     "PopCount".into(),
                     FnSig::new([Type::Int(Int::U32)].into(), Type::Int(Int::I32)),
@@ -69,7 +69,7 @@ pub fn ctpop<'tcx>(
 
             Type::Int(Int::U8 | Int::U16 | Int::I8 | Int::I16 | Int::I32) => {
                 conv_u32!(call!(
-                    CallSite::boxed(
+                    MethodRefIdx::boxed(
                         bit_operations,
                         "PopCount".into(),
                         FnSig::new([Type::Int(Int::U32)].into(), Type::Int(Int::I32)),
@@ -79,7 +79,7 @@ pub fn ctpop<'tcx>(
                 ))
             }
             Type::Int(Int::USize) => conv_u32!(call!(
-                CallSite::boxed(
+                MethodRefIdx::boxed(
                     bit_operations,
                     "PopCount".into(),
                     FnSig::new([Type::Int(Int::USize)].into(), Type::Int(Int::I32)),
@@ -88,7 +88,7 @@ pub fn ctpop<'tcx>(
                 [operand]
             )),
             Type::Int(Int::ISize) => conv_u32!(call!(
-                CallSite::boxed(
+                MethodRefIdx::boxed(
                     bit_operations,
                     "PopCount".into(),
                     FnSig::new([Type::Int(Int::USize)].into(), Type::Int(Int::I32)),
@@ -100,7 +100,7 @@ pub fn ctpop<'tcx>(
                 Type::Int(Int::U128),
                 Type::Int(Int::U32),
                 call!(
-                    CallSite::new_extern(
+                    MethodRefIdx::new_extern(
                         ClassRef::uint_128(ctx),
                         "PopCount".into(),
                         FnSig::new([Type::Int(Int::U128)].into(), Type::Int(Int::U128)),
@@ -114,7 +114,7 @@ pub fn ctpop<'tcx>(
                 Type::Int(Int::I128),
                 Type::Int(Int::U32),
                 call!(
-                    CallSite::new_extern(
+                    MethodRefIdx::new_extern(
                         ClassRef::int_128(ctx),
                         "PopCount".into(),
                         FnSig::new([Type::Int(Int::I128)].into(), Type::Int(Int::I128)),
@@ -162,7 +162,7 @@ pub fn ctlz<'tcx>(
             return place_set(
                 destination,
                 conv_u32!(call!(
-                    CallSite::new_extern(
+                    MethodRefIdx::new_extern(
                         ClassRef::int_128(ctx),
                         "LeadingZeroCount".into(),
                         FnSig::new([Type::Int(Int::I128)].into(), Type::Int(Int::I128)),
@@ -177,7 +177,7 @@ pub fn ctlz<'tcx>(
             return place_set(
                 destination,
                 conv_u32!(call!(
-                    CallSite::new_extern(
+                    MethodRefIdx::new_extern(
                         ClassRef::uint_128(ctx),
                         "LeadingZeroCount".into(),
                         FnSig::new([Type::Int(Int::U128)].into(), Type::Int(Int::U128)),
@@ -194,7 +194,7 @@ pub fn ctlz<'tcx>(
         destination,
         conv_u32!(sub!(
             call!(
-                CallSite::boxed(
+                MethodRefIdx::boxed(
                     bit_operations,
                     "LeadingZeroCount".into(),
                     FnSig::new([Type::Int(Int::U64)].into(), Type::Int(Int::I32)),
@@ -230,7 +230,7 @@ pub fn cttz<'tcx>(
     match tpe {
         Type::Int(Int::I8) => {
             let value_calc = conv_u32!(call!(
-                CallSite::boxed(
+                MethodRefIdx::boxed(
                     bit_operations,
                     "TrailingZeroCount".into(),
                     FnSig::new([Type::Int(Int::I32)].into(), Type::Int(Int::I32)),
@@ -241,7 +241,7 @@ pub fn cttz<'tcx>(
             place_set(
                 destination,
                 call!(
-                    CallSite::new_extern(
+                    MethodRefIdx::new_extern(
                         ClassRef::math(ctx),
                         "Min".into(),
                         FnSig::new(
@@ -257,7 +257,7 @@ pub fn cttz<'tcx>(
         }
         Type::Int(Int::I16) => {
             let value_calc = conv_u32!(call!(
-                CallSite::boxed(
+                MethodRefIdx::boxed(
                     bit_operations,
                     "TrailingZeroCount".into(),
                     FnSig::new([Type::Int(Int::I32)].into(), Type::Int(Int::I32)),
@@ -268,7 +268,7 @@ pub fn cttz<'tcx>(
             place_set(
                 destination,
                 call!(
-                    CallSite::new_extern(
+                    MethodRefIdx::new_extern(
                         ClassRef::math(ctx),
                         "Min".into(),
                         FnSig::new(
@@ -284,7 +284,7 @@ pub fn cttz<'tcx>(
         }
         Type::Int(Int::U8) => {
             let value_calc = conv_u32!(call!(
-                CallSite::boxed(
+                MethodRefIdx::boxed(
                     bit_operations,
                     "TrailingZeroCount".into(),
                     FnSig::new([Type::Int(Int::U32)].into(), Type::Int(Int::I32)),
@@ -295,7 +295,7 @@ pub fn cttz<'tcx>(
             place_set(
                 destination,
                 call!(
-                    CallSite::new_extern(
+                    MethodRefIdx::new_extern(
                         ClassRef::math(ctx),
                         "Min".into(),
                         FnSig::new(
@@ -311,7 +311,7 @@ pub fn cttz<'tcx>(
         }
         Type::Int(Int::U16) => {
             let value_calc = conv_u32!(call!(
-                CallSite::boxed(
+                MethodRefIdx::boxed(
                     bit_operations,
                     "TrailingZeroCount".into(),
                     FnSig::new([Type::Int(Int::U32)].into(), Type::Int(Int::I32)),
@@ -322,7 +322,7 @@ pub fn cttz<'tcx>(
             place_set(
                 destination,
                 call!(
-                    CallSite::new_extern(
+                    MethodRefIdx::new_extern(
                         ClassRef::math(ctx),
                         "Min".into(),
                         FnSig::new(
@@ -339,7 +339,7 @@ pub fn cttz<'tcx>(
         Type::Int(Int::I128) => place_set(
             destination,
             conv_u32!(call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::int_128(ctx),
                     "TrailingZeroCount".into(),
                     FnSig::new([Type::Int(Int::I128)].into(), Type::Int(Int::I128)),
@@ -352,7 +352,7 @@ pub fn cttz<'tcx>(
         Type::Int(Int::U128) => place_set(
             destination,
             conv_u32!(call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::uint_128(ctx),
                     "TrailingZeroCount".into(),
                     FnSig::new([Type::Int(Int::U128)].into(), Type::Int(Int::U128)),
@@ -365,7 +365,7 @@ pub fn cttz<'tcx>(
         _ => place_set(
             destination,
             conv_u32!(call!(
-                CallSite::boxed(
+                MethodRefIdx::boxed(
                     bit_operations,
                     "TrailingZeroCount".into(),
                     FnSig::new([tpe].into(), Type::Int(Int::I32)),
@@ -400,7 +400,7 @@ pub fn rotate_left<'tcx>(
         Type::Int(Int::U8) => place_set(
             destination,
             call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::byte(ctx),
                     "RotateLeft".into(),
                     FnSig::new(
@@ -416,7 +416,7 @@ pub fn rotate_left<'tcx>(
         Type::Int(Int::U16) => place_set(
             destination,
             call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::uint16(ctx),
                     "RotateLeft".into(),
                     FnSig::new(
@@ -432,7 +432,7 @@ pub fn rotate_left<'tcx>(
         Type::Int(Int::U32) => place_set(
             destination,
             call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::bit_operations(ctx),
                     "RotateLeft".into(),
                     FnSig::new(
@@ -448,7 +448,7 @@ pub fn rotate_left<'tcx>(
         Type::Int(Int::U64) => place_set(
             destination,
             call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::bit_operations(ctx),
                     "RotateLeft".into(),
                     FnSig::new(
@@ -464,7 +464,7 @@ pub fn rotate_left<'tcx>(
         Type::Int(Int::USize) => place_set(
             destination,
             call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::bit_operations(ctx),
                     "RotateLeft".into(),
                     FnSig::new(
@@ -480,7 +480,7 @@ pub fn rotate_left<'tcx>(
         Type::Int(Int::I8) => place_set(
             destination,
             call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::sbyte(ctx),
                     "RotateLeft".into(),
                     FnSig::new(
@@ -496,7 +496,7 @@ pub fn rotate_left<'tcx>(
         Type::Int(Int::I16) => place_set(
             destination,
             call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::int16(ctx),
                     "RotateLeft".into(),
                     FnSig::new(
@@ -512,7 +512,7 @@ pub fn rotate_left<'tcx>(
         Type::Int(Int::I32) => place_set(
             destination,
             call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::bit_operations(ctx),
                     "RotateLeft".into(),
                     FnSig::new(
@@ -528,7 +528,7 @@ pub fn rotate_left<'tcx>(
         Type::Int(Int::I64) => place_set(
             destination,
             call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::bit_operations(ctx),
                     "RotateLeft".into(),
                     FnSig::new(
@@ -544,7 +544,7 @@ pub fn rotate_left<'tcx>(
         Type::Int(Int::ISize) => place_set(
             destination,
             call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::bit_operations(ctx),
                     "RotateLeft".into(),
                     FnSig::new(
@@ -560,7 +560,7 @@ pub fn rotate_left<'tcx>(
         Type::Int(Int::U128) => place_set(
             destination,
             call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::uint_128(ctx),
                     "RotateLeft".into(),
                     FnSig::new(
@@ -576,7 +576,7 @@ pub fn rotate_left<'tcx>(
         Type::Int(Int::I128) => place_set(
             destination,
             call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::int_128(ctx),
                     "RotateLeft".into(),
                     FnSig::new(
@@ -615,7 +615,7 @@ pub fn rotate_right<'tcx>(
         Type::Int(Int::U16) => place_set(
             destination,
             call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::uint16(ctx),
                     "RotateRight".into(),
                     FnSig::new(
@@ -631,7 +631,7 @@ pub fn rotate_right<'tcx>(
         Type::Int(Int::U8) => place_set(
             destination,
             call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::byte(ctx),
                     "RotateRight".into(),
                     FnSig::new(
@@ -647,7 +647,7 @@ pub fn rotate_right<'tcx>(
         Type::Int(Int::U32) => place_set(
             destination,
             call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::bit_operations(ctx),
                     "RotateRight".into(),
                     FnSig::new(
@@ -663,7 +663,7 @@ pub fn rotate_right<'tcx>(
         Type::Int(Int::U64) => place_set(
             destination,
             call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::bit_operations(ctx),
                     "RotateRight".into(),
                     FnSig::new(
@@ -679,7 +679,7 @@ pub fn rotate_right<'tcx>(
         Type::Int(Int::USize) => place_set(
             destination,
             call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::bit_operations(ctx),
                     "RotateRight".into(),
                     FnSig::new(
@@ -695,7 +695,7 @@ pub fn rotate_right<'tcx>(
         Type::Int(Int::I8) => place_set(
             destination,
             call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::sbyte(ctx),
                     "RotateRight".into(),
                     FnSig::new(
@@ -711,7 +711,7 @@ pub fn rotate_right<'tcx>(
         Type::Int(Int::I16) => place_set(
             destination,
             call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::int16(ctx),
                     "RotateRight".into(),
                     FnSig::new(
@@ -727,7 +727,7 @@ pub fn rotate_right<'tcx>(
         Type::Int(Int::I32) => place_set(
             destination,
             call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::bit_operations(ctx),
                     "RotateRight".into(),
                     FnSig::new(
@@ -743,7 +743,7 @@ pub fn rotate_right<'tcx>(
         Type::Int(Int::I64) => place_set(
             destination,
             call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::bit_operations(ctx),
                     "RotateRight".into(),
                     FnSig::new(
@@ -759,7 +759,7 @@ pub fn rotate_right<'tcx>(
         Type::Int(Int::ISize) => place_set(
             destination,
             call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::bit_operations(ctx),
                     "RotateRight".into(),
                     FnSig::new(
@@ -775,7 +775,7 @@ pub fn rotate_right<'tcx>(
         Type::Int(Int::U128) => place_set(
             destination,
             call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::uint_128(ctx),
                     "RotateRight".into(),
                     FnSig::new(
@@ -791,7 +791,7 @@ pub fn rotate_right<'tcx>(
         Type::Int(Int::I128) => place_set(
             destination,
             call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::int_128(ctx),
                     "RotateRight".into(),
                     FnSig::new(
@@ -849,7 +849,7 @@ pub fn bitreverse<'tcx>(
             Type::Int(Int::U16) => bitreverse_u16(val),
             Type::Int(Int::I16) => conv_i16!(bitreverse_u16(conv_u16!(val))),
             Type::Int(Int::U32) => call!(
-                CallSite::builtin(
+                MethodRefIdx::builtin(
                     "bitreverse_u32".into(),
                     FnSig::new([Type::Int(Int::U32)].into(), Type::Int(Int::U32)),
                     true
@@ -860,7 +860,7 @@ pub fn bitreverse<'tcx>(
                 Type::Int(Int::U32),
                 Type::Int(Int::I32),
                 call!(
-                    CallSite::builtin(
+                    MethodRefIdx::builtin(
                         "bitreverse_u32".into(),
                         FnSig::new([Type::Int(Int::U32)].into(), Type::Int(Int::U32)),
                         true
@@ -875,7 +875,7 @@ pub fn bitreverse<'tcx>(
                 ctx,
             ),
             Type::Int(Int::U64) => call!(
-                CallSite::builtin(
+                MethodRefIdx::builtin(
                     "bitreverse_u64".into(),
                     FnSig::new([Type::Int(Int::U64)].into(), Type::Int(Int::U64)),
                     true
@@ -886,7 +886,7 @@ pub fn bitreverse<'tcx>(
                 Type::Int(Int::U64),
                 Type::Int(Int::I64),
                 call!(
-                    CallSite::builtin(
+                    MethodRefIdx::builtin(
                         "bitreverse_u64".into(),
                         FnSig::new([Type::Int(Int::U64)].into(), Type::Int(Int::U64)),
                         true
@@ -901,7 +901,7 @@ pub fn bitreverse<'tcx>(
                 ctx,
             ),
             Type::Int(Int::U128) => call!(
-                CallSite::builtin(
+                MethodRefIdx::builtin(
                     "bitreverse_u128".into(),
                     FnSig::new([Type::Int(Int::U128)].into(), Type::Int(Int::U128),),
                     true
@@ -912,7 +912,7 @@ pub fn bitreverse<'tcx>(
                 Type::Int(Int::U128),
                 Type::Int(Int::I128),
                 call!(
-                    CallSite::builtin(
+                    MethodRefIdx::builtin(
                         "bitreverse_u128".into(),
                         FnSig::new([Type::Int(Int::U128)].into(), Type::Int(Int::U128),),
                         true

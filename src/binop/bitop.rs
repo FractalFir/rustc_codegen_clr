@@ -1,10 +1,9 @@
 use crate::assembly::MethodCompileCtx;
 use cilly::{
     and, call,
-    call_site::CallSite,
     cil_node::CILNode,
     or,
-    v2::{ClassRef, FnSig, Int},
+    v2::{cilnode::MethodKind, ClassRef, Int, MethodRef},
     xor, Type,
 };
 use rustc_middle::ty::{IntTy, Ty, TyKind, UintTy};
@@ -18,36 +17,44 @@ pub fn bit_and_unchecked<'tcx>(
 ) -> CILNode {
     let type_b = ctx.type_from_cache(ty_b);
     match ty_a.kind() {
-        TyKind::Uint(UintTy::U128) => call!(
-            CallSite::boxed(
+        TyKind::Uint(UintTy::U128) => {
+            let mref = MethodRef::new(
                 ClassRef::uint_128(ctx).into(),
-                "op_BitwiseAnd".into(),
-                FnSig::new(
-                    [Type::Int(Int::U128), Type::Int(Int::U128)].into(),
-                    Type::Int(Int::U128)
+                ctx.alloc_string("op_BitwiseAnd"),
+                ctx.sig(
+                    [Type::Int(Int::U128), Type::Int(Int::U128)],
+                    Type::Int(Int::U128),
                 ),
-                true,
-            ),
-            [
-                operand_a,
-                crate::casts::int_to_int(type_b, Type::Int(Int::U128), operand_b, ctx)
-            ]
-        ),
-        TyKind::Int(IntTy::I128) => call!(
-            CallSite::boxed(
+                MethodKind::Static,
+                vec![].into(),
+            );
+            call!(
+                ctx.alloc_methodref(mref),
+                [
+                    operand_a,
+                    crate::casts::int_to_int(type_b, Type::Int(Int::U128), operand_b, ctx)
+                ]
+            )
+        }
+        TyKind::Int(IntTy::I128) => {
+            let mref = MethodRef::new(
                 ClassRef::int_128(ctx).into(),
-                "op_BitwiseAnd".into(),
-                FnSig::new(
-                    [Type::Int(Int::I128), Type::Int(Int::I128)].into(),
-                    Type::Int(Int::I128)
+                ctx.alloc_string("op_BitwiseAnd"),
+                ctx.sig(
+                    [Type::Int(Int::I128), Type::Int(Int::I128)],
+                    Type::Int(Int::I128),
                 ),
-                true,
-            ),
-            [
-                operand_a,
-                crate::casts::int_to_int(type_b, Type::Int(Int::I128), operand_b, ctx)
-            ]
-        ),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            call!(
+                ctx.alloc_methodref(mref),
+                [
+                    operand_a,
+                    crate::casts::int_to_int(type_b, Type::Int(Int::I128), operand_b, ctx)
+                ]
+            )
+        }
         _ => and!(operand_a, operand_b),
     }
 }
@@ -62,28 +69,26 @@ pub fn bit_or_unchecked<'tcx>(
         TyKind::Int(IntTy::I128) => {
             let ty_a = ctx.type_from_cache(ty_a);
             let ty_b = ctx.type_from_cache(ty_b);
-            call!(
-                CallSite::new_extern(
-                    ClassRef::int_128(ctx),
-                    "op_BitwiseOr".into(),
-                    FnSig::new([ty_a, ty_b].into(), ty_a),
-                    true,
-                ),
-                [operand_a, operand_b]
-            )
+            let mref = MethodRef::new(
+                ClassRef::int_128(ctx),
+                ctx.alloc_string("op_BitwiseOr"),
+                ctx.sig([ty_a, ty_b], ty_a),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            call!(ctx.alloc_methodref(mref), [operand_a, operand_b])
         }
         TyKind::Uint(UintTy::U128) => {
             let ty_a = ctx.type_from_cache(ty_a);
             let ty_b = ctx.type_from_cache(ty_b);
-            call!(
-                CallSite::new_extern(
-                    ClassRef::uint_128(ctx),
-                    "op_BitwiseOr".into(),
-                    FnSig::new([ty_a, ty_b].into(), ty_a),
-                    true,
-                ),
-                [operand_a, operand_b]
-            )
+            let mref = MethodRef::new(
+                ClassRef::uint_128(ctx),
+                ctx.alloc_string("op_BitwiseOr"),
+                ctx.sig([ty_a, ty_b], ty_a),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            call!(ctx.alloc_methodref(mref), [operand_a, operand_b])
         }
         _ => or!(operand_a, operand_b),
     }
@@ -99,28 +104,26 @@ pub fn bit_xor_unchecked<'tcx>(
         TyKind::Int(IntTy::I128) => {
             let ty_a = ctx.type_from_cache(ty_a);
             let ty_b = ctx.type_from_cache(ty_b);
-            call!(
-                CallSite::new_extern(
-                    ClassRef::int_128(ctx),
-                    "op_ExclusiveOr".into(),
-                    FnSig::new([ty_a, ty_b].into(), ty_a),
-                    true,
-                ),
-                [ops_a, ops_b]
-            )
+            let mref = MethodRef::new(
+                ClassRef::int_128(ctx),
+                ctx.alloc_string("op_ExclusiveOr"),
+                ctx.sig([ty_a, ty_b], ty_a),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            call!(ctx.alloc_methodref(mref), [ops_a, ops_b])
         }
         TyKind::Uint(UintTy::U128) => {
             let ty_a = ctx.type_from_cache(ty_a);
             let ty_b = ctx.type_from_cache(ty_b);
-            call!(
-                CallSite::new_extern(
-                    ClassRef::uint_128(ctx),
-                    "op_ExclusiveOr".into(),
-                    FnSig::new([ty_a, ty_b].into(), ty_a),
-                    true,
-                ),
-                [ops_a, ops_b]
-            )
+            let mref = MethodRef::new(
+                ClassRef::uint_128(ctx),
+                ctx.alloc_string("op_ExclusiveOr"),
+                ctx.sig([ty_a, ty_b], ty_a),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            call!(ctx.alloc_methodref(mref), [ops_a, ops_b])
         }
         _ => xor!(ops_a, ops_b),
     }

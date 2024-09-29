@@ -7,10 +7,9 @@ use serde::{Deserialize, Serialize};
 use crate::{
     access_modifier::AccessModifer,
     basic_block::BasicBlock,
-    call_site::CallSite,
     cil_root::CILRoot,
     method::{Method, MethodType},
-    v2::{ClassDef, FnSig, Int},
+    v2::{cilnode::MethodKind, ClassDef, FnSig, Int, MethodRef, MethodRefIdx},
     IString, Type,
 };
 
@@ -36,9 +35,9 @@ pub type ExternFnDef = (IString, FnSig, bool);
 /// Representation of a .NET assembly.
 pub struct Assembly {
     /// List of functions defined within this assembly.
-    functions: FxHashMap<CallSite, Method>,
-    /// Callsite representing the entrypoint of this assebmly if any present.
-    entrypoint: Option<CallSite>,
+    functions: FxHashMap<MethodRefIdx, Method>,
+    /// MethodRefIdx representing the entrypoint of this assebmly if any present.
+    entrypoint: Option<MethodRefIdx>,
     /// List of references to external assemblies
     extern_refs: FxHashMap<IString, AssemblyExternRef>,
     extern_fns: FxHashMap<ExternFnDef, IString>,
@@ -100,33 +99,34 @@ impl Assembly {
 
     /// Addds a per-thread static initailzer
     pub fn add_tcctor(&mut self) -> &mut Method {
-        self.functions
-            .entry(CallSite::new(
-                None,
-                ".tcctor".into(),
+        let mref = MethodRef::new(
+            *self.main_module(),
+            self.alloc_string(".tcctor"),
+            self.alloc_sig(FnSig::new(Box::new([]), Type::Void)),
+            MethodKind::Static,
+            vec![].into(),
+        );
+        let mref = self.alloc_methodref(mref);
+        self.functions.entry(mref).or_insert_with(|| {
+            Method::new(
+                AccessModifer::Extern,
+                MethodType::Static,
                 FnSig::new(Box::new([]), Type::Void),
-                true,
-            ))
-            .or_insert_with(|| {
-                Method::new(
-                    AccessModifer::Extern,
-                    MethodType::Static,
-                    FnSig::new(Box::new([]), Type::Void),
-                    ".tcctor",
-                    vec![
-                        (None, self.inner.nptr(Type::Int(Int::U8))),
-                        (None, self.inner.nptr(Type::Int(Int::U8))),
-                    ],
-                    vec![BasicBlock::new(vec![CILRoot::VoidRet.into()], 0, None)],
-                    vec![],
-                )
-            })
+                ".tcctor",
+                vec![
+                    (None, self.inner.nptr(Type::Int(Int::U8))),
+                    (None, self.inner.nptr(Type::Int(Int::U8))),
+                ],
+                vec![BasicBlock::new(vec![CILRoot::VoidRet.into()], 0, None)],
+                vec![],
+            )
+        })
     }
 
     /// Returns true if assembly contains function named `name`
     #[must_use]
-    pub fn contains_fn(&self, site: &CallSite) -> bool {
-        self.functions.contains_key(site)
+    pub fn contains_fn(&self, site: MethodRefIdx) -> bool {
+        self.functions.contains_key(&site)
     }
     /// Adds a method to the assebmly.
     pub fn add_method(&mut self, method: Method) {
@@ -144,11 +144,11 @@ impl Assembly {
         }
     }
 
-    /// Sets the entrypoint of the assembly to the method behind `CallSite`.
-    pub fn set_entrypoint(&mut self, entrypoint: &CallSite) {
+    /// Sets the entrypoint of the assembly to the method behind `MethodRefIdx`.
+    pub fn set_entrypoint(&mut self, entrypoint: MethodRefIdx) {
         assert!(self.entrypoint.is_none(), "ERROR: Multiple entrypoints");
-        let wrapper = crate::entrypoint::wrapper(entrypoint, self.inner_mut());
-        self.entrypoint = Some(wrapper.call_site());
+        let wrapper = crate::entrypoint::wrapper(self[entrypoint].clone(), self.inner_mut());
+        self.entrypoint = Some(wrapper.call_site(self));
         self.add_method(wrapper);
     }
 
@@ -161,15 +161,18 @@ impl Assembly {
         self.initializers.push(root);
     }
     pub fn cctor_mut(&mut self) -> Option<&mut Method> {
-        self.functions.get_mut(&CallSite::new(
-            None,
-            ".cctor".into(),
-            FnSig::new(Box::new([]), Type::Void),
-            true,
-        ))
+        let mref = MethodRef::new(
+            *self.main_module(),
+            self.alloc_string(".cctor"),
+            self.sig([], Type::Void),
+            MethodKind::Static,
+            vec![].into(),
+        );
+        let mref = self.alloc_methodref(mref);
+        self.functions.get_mut(&mref)
     }
 
-    pub(crate) fn functions(&self) -> &FxHashMap<CallSite, Method> {
+    pub(crate) fn functions(&self) -> &FxHashMap<MethodRefIdx, Method> {
         &self.functions
     }
 

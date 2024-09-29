@@ -200,7 +200,7 @@ pub fn interpret<'tcx>(
                         let call_info = CallInfo::sig_from_instance_(def_instance, ctx);
                         let target_function_name =
                             crate::utilis::function_name(ctx.tcx().symbol_name(def_instance));
-                        let call_site = CallSite::new(
+                        let call_site = MethodRefIdx::new(
                             None,
                             target_function_name,
                             call_info.sig().clone(),

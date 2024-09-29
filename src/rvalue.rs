@@ -5,11 +5,10 @@ use crate::{
     r#type::{fat_ptr_to, get_type, pointer_to_is_fat},
 };
 use cilly::{
-    call_site::CallSite,
     cil_node::CILNode,
     cil_root::CILRoot,
     conv_usize, ld_field, ldc_i32, ldc_u64, size_of,
-    v2::{FieldDesc, Float, FnSig, Int},
+    v2::{cilnode::MethodKind, FieldDesc, Float, Int, MethodRef},
     Type,
 };
 use rustc_middle::{
@@ -124,8 +123,14 @@ pub fn handle_rvalue<'tcx>(
                 let call_info = CallInfo::sig_from_instance_(instance, ctx);
 
                 let function_name = crate::utilis::function_name(ctx.tcx().symbol_name(instance));
-                let call_site = CallSite::new(None, function_name, call_info.sig().clone(), true);
-                CILNode::LDFtn(Box::new(call_site))
+                let call_site = MethodRef::new(
+                    *ctx.main_module(),
+                    ctx.alloc_string(function_name),
+                    ctx.alloc_sig(call_info.sig().clone()),
+                    MethodKind::Static,
+                    vec![].into(),
+                );
+                CILNode::LDFtn(ctx.alloc_methodref(call_site))
             }
             _ => panic!(
                 "{} cannot be cast to a fn ptr",
@@ -259,8 +264,14 @@ pub fn handle_rvalue<'tcx>(
             let function_sig = crate::function_sig::sig_from_instance_(instance, ctx)
                 .expect("Could not get function signature when trying to get a function pointer!");
             //FIXME: propely handle `#[track_caller]`
-            let call_site = CallSite::new(None, function_name, function_sig, true);
-            CILNode::LDFtn(call_site.into())
+            let call_site = MethodRef::new(
+                *ctx.main_module(),
+                ctx.alloc_string(function_name),
+                ctx.alloc_sig(function_sig),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            CILNode::LDFtn(ctx.alloc_methodref(call_site))
         }
 
         Rvalue::Discriminant(place) => {
@@ -389,17 +400,18 @@ fn repeat<'tcx>(
     // Check if there are more than 16 elements. If so, use mecmpy to accelerate initialzation
     if times > 16 {
         let mut branches = Vec::new();
+        let arr_ref = ctx.nref(array);
+        let mref = MethodRef::new(
+            array_dotnet,
+            ctx.alloc_string("set_Item"),
+            ctx.sig([arr_ref, Type::Int(Int::USize), element_type], Type::Void),
+            MethodKind::Instance,
+            vec![].into(),
+        );
+        let mref = ctx.alloc_methodref(mref);
         for idx in 0..16 {
             branches.push(CILRoot::Call {
-                site: Box::new(CallSite::new(
-                    Some(array_dotnet),
-                    "set_Item".into(),
-                    FnSig::new(
-                        Box::new([ctx.nref(array), Type::Int(Int::USize), element_type]),
-                        Type::Void,
-                    ),
-                    false,
-                )),
+                site: mref,
                 args: [
                     CILNode::LoadAddresOfTMPLocal,
                     conv_usize!(ldc_u64!(idx)),
@@ -409,7 +421,6 @@ fn repeat<'tcx>(
             });
         }
         let mut curr_len = 16;
-
         while curr_len < times {
             // Copy curr_len elements if possible, otherwise this is the last iteration, so copy the reminder.
             let curr_copy_size = curr_len.min(times - curr_len);
@@ -430,17 +441,18 @@ fn repeat<'tcx>(
         CILNode::TemporaryLocal(Box::new((array, branches, CILNode::LoadTMPLocal)))
     } else {
         let mut branches = Vec::new();
+        let arr_ref = ctx.nref(array);
+        let mref = MethodRef::new(
+            array_dotnet,
+            ctx.alloc_string("set_Item"),
+            ctx.sig([arr_ref, Type::Int(Int::USize), element_type], Type::Void),
+            MethodKind::Instance,
+            vec![].into(),
+        );
+        let mref = ctx.alloc_methodref(mref);
         for idx in 0..times {
             branches.push(CILRoot::Call {
-                site: Box::new(CallSite::new(
-                    Some(array_dotnet),
-                    "set_Item".into(),
-                    FnSig::new(
-                        Box::new([ctx.nref(array), Type::Int(Int::USize), element_type]),
-                        Type::Void,
-                    ),
-                    false,
-                )),
+                site: mref,
                 args: [
                     CILNode::LoadAddresOfTMPLocal,
                     conv_usize!(ldc_u64!(idx)),

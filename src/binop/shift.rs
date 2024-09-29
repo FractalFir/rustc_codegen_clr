@@ -3,7 +3,7 @@ use crate::utilis::compiletime_sizeof;
 
 use cilly::{
     call,
-    call_site::CallSite,
+    call_site::MethodRefIdx,
     cil_node::CILNode,
     conv_i32, conv_u32, ldc_u32, rem_un, shl, shr, shr_un,
     v2::{ClassRef, FnSig, Int},
@@ -22,7 +22,7 @@ pub fn shr_unchecked<'tcx>(
     match value_type.kind() {
         TyKind::Uint(UintTy::U128) => {
             call!(
-                CallSite::boxed(
+                MethodRefIdx::boxed(
                     ClassRef::uint_128(ctx).into(),
                     "op_RightShift".into(),
                     FnSig::new(
@@ -39,7 +39,7 @@ pub fn shr_unchecked<'tcx>(
         }
         TyKind::Int(IntTy::I128) => {
             call!(
-                CallSite::boxed(
+                MethodRefIdx::boxed(
                     ClassRef::int_128(ctx).into(),
                     "op_RightShift".into(),
                     FnSig::new(
@@ -90,7 +90,7 @@ pub fn shr_checked<'tcx>(
     match value_type.kind() {
         TyKind::Uint(UintTy::U128) => {
             call!(
-                CallSite::boxed(
+                MethodRefIdx::boxed(
                     ClassRef::uint_128(ctx).into(),
                     "op_RightShift".into(),
                     FnSig::new(
@@ -110,7 +110,7 @@ pub fn shr_checked<'tcx>(
         }
         TyKind::Int(IntTy::I128) => {
             call!(
-                CallSite::boxed(
+                MethodRefIdx::boxed(
                     ClassRef::int_128(ctx).into(),
                     "op_RightShift".into(),
                     FnSig::new(
@@ -183,7 +183,7 @@ pub fn shl_checked<'tcx>(
     match value_type.kind() {
         TyKind::Uint(UintTy::U128) => {
             call!(
-                CallSite::builtin(
+                MethodRefIdx::builtin(
                     "shl_u128".into(),
                     FnSig::new(
                         [Type::Int(Int::U128), Type::Int(Int::I32)].into(),
@@ -207,7 +207,7 @@ pub fn shl_checked<'tcx>(
         }
         TyKind::Int(IntTy::I128) => {
             call!(
-                CallSite::builtin(
+                MethodRefIdx::builtin(
                     "shl_i128".into(),
                     FnSig::new(
                         [Type::Int(Int::I128), Type::Int(Int::I32)].into(),
@@ -283,7 +283,7 @@ pub fn shl_unchecked<'tcx>(
     match value_type.kind() {
         TyKind::Uint(UintTy::U128) => {
             call!(
-                CallSite::boxed(
+                MethodRefIdx::boxed(
                     ClassRef::uint_128(ctx).into(),
                     "op_LeftShift".into(),
                     FnSig::new(
@@ -300,7 +300,7 @@ pub fn shl_unchecked<'tcx>(
         }
         TyKind::Int(IntTy::I128) => {
             call!(
-                CallSite::boxed(
+                MethodRefIdx::boxed(
                     ClassRef::int_128(ctx).into(),
                     "op_LeftShift".into(),
                     FnSig::new(

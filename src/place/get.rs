@@ -1,7 +1,7 @@
 use crate::{assembly::MethodCompileCtx, r#type::fat_ptr_to};
 use cilly::{
     call,
-    call_site::CallSite,
+    call_site::MethodRefIdx,
     cil_node::CILNode,
     conv_usize, ld_field, ldc_u32, ldc_u64,
     v2::{FieldDesc, FnSig, Int},
@@ -158,7 +158,7 @@ fn place_elem_get<'a>(
                     let array_type = ctx.type_from_cache(curr_ty);
                     let array_dotnet = array_type.as_class_ref().expect("Non array type");
                     call!(
-                        CallSite::new(
+                        MethodRefIdx::new(
                             Some(array_dotnet),
                             "get_Item".into(),
                             FnSig::new(
@@ -227,7 +227,7 @@ fn place_elem_get<'a>(
                     } else {
                         let index = CILNode::LdcU64(*offset);
                         call!(
-                            CallSite::new(
+                            MethodRefIdx::new(
                                 Some(array_dotnet),
                                 "get_Item".into(),
                                 FnSig::new(

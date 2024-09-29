@@ -2,7 +2,7 @@
 #![allow(clippy::module_name_repetitions)]
 use cilly::{
     asm::DEAD_CODE_ELIMINATION,
-    call_site::CallSite,
+    call_site::MethodRefIdx,
     conv_usize,
     libc_fns::{self, LIBC_FNS, LIBC_MODIFIES_ERRNO},
     v2::{
@@ -267,7 +267,7 @@ fn main() {
                                         args: Box::new([conv_usize!(
                                             cilly::cil_node::CILNode::LDArg(0)
                                         )]),
-                                        site: Box::new(CallSite::new(
+                                        site: Box::new(MethodRefIdx::new(
                                             Some(asm.alloc_class_ref(ClassRef::new(
                                                 rust_exception,
                                                 None,
@@ -608,7 +608,7 @@ fn override_errno(asm: &mut Assembly) {
                 vec![BasicBlock::new(
                     vec![CILRoot::Ret {
                         tree: cilly::call!(
-                            CallSite::new(
+                            MethodRefIdx::new(
                                 Some(ClassRef::marshal()),
                                 "GetLastWin32Error".into(),
                                 FnSig::new(&[], Type::Int(Int::I32)),

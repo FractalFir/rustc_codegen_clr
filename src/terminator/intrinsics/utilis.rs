@@ -1,6 +1,6 @@
 use cilly::{
     call,
-    call_site::CallSite,
+    call_site::MethodRefIdx,
     cil_node::CILNode,
     v2::{Assembly, ClassRef, FnSig, Int},
     Type,
@@ -10,7 +10,7 @@ pub fn atomic_add(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly)
     match tpe {
         Type::Int(Int::U64 | Int::I64) => {
             call!(
-                CallSite::new(
+                MethodRefIdx::new(
                     Some(ClassRef::interlocked(asm)),
                     "Add".into(),
                     FnSig::new(
@@ -24,7 +24,7 @@ pub fn atomic_add(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly)
         }
         Type::Int(Int::U32 | Int::I32) => {
             call!(
-                CallSite::new(
+                MethodRefIdx::new(
                     Some(ClassRef::interlocked(asm)),
                     "Add".into(),
                     FnSig::new(
@@ -37,7 +37,7 @@ pub fn atomic_add(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly)
             )
         }
         Type::Int(Int::USize | Int::ISize) | Type::Ptr(_) => call!(
-            CallSite::builtin(
+            MethodRefIdx::builtin(
                 "atomic_add_usize".into(),
                 FnSig::new(
                     Box::new([asm.nref(Type::Int(Int::USize)), Type::Int(Int::USize)]),
@@ -58,7 +58,7 @@ pub fn atomic_or(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly) 
     match tpe {
         Type::Int(Int::U64 | Int::I64) => {
             call!(
-                CallSite::new(
+                MethodRefIdx::new(
                     Some(ClassRef::interlocked(asm)),
                     "Or".into(),
                     FnSig::new(
@@ -72,7 +72,7 @@ pub fn atomic_or(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly) 
         }
         Type::Int(Int::U32 | Int::I32) => {
             call!(
-                CallSite::new(
+                MethodRefIdx::new(
                     Some(ClassRef::interlocked(asm)),
                     "Or".into(),
                     FnSig::new(
@@ -85,7 +85,7 @@ pub fn atomic_or(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly) 
             )
         }
         Type::Int(Int::USize) => call!(
-            CallSite::builtin(
+            MethodRefIdx::builtin(
                 "atomic_or_usize".into(),
                 FnSig::new(
                     Box::new([asm.nref(Type::Int(Int::USize)), Type::Int(Int::USize)]),
@@ -96,7 +96,7 @@ pub fn atomic_or(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly) 
             [addr, addend]
         ),
         Type::Int(Int::ISize) => call!(
-            CallSite::builtin(
+            MethodRefIdx::builtin(
                 "atomic_or_isize".into(),
                 FnSig::new(
                     Box::new([asm.nref(Type::Int(Int::ISize)), Type::Int(Int::ISize)]),
@@ -107,7 +107,7 @@ pub fn atomic_or(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly) 
             [addr, addend]
         ),
         Type::Ptr(inner) => call!(
-            CallSite::builtin(
+            MethodRefIdx::builtin(
                 "atomic_or_usize".into(),
                 FnSig::new(
                     Box::new([asm.nref(Type::Int(Int::USize)), Type::Int(Int::USize)]),
@@ -128,7 +128,7 @@ pub fn atomic_xor(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly)
     match tpe {
         Type::Int(Int::I32) => {
             call!(
-                CallSite::builtin(
+                MethodRefIdx::builtin(
                     "atomic_xor_i32".into(),
                     FnSig::new(
                         Box::new([asm.nref(Type::Int(Int::I32)), Type::Int(Int::I32)]),
@@ -141,7 +141,7 @@ pub fn atomic_xor(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly)
         }
         Type::Int(Int::I64) => {
             call!(
-                CallSite::builtin(
+                MethodRefIdx::builtin(
                     "atomic_xor_i64".into(),
                     FnSig::new(
                         Box::new([asm.nref(Type::Int(Int::I64)), Type::Int(Int::I64)]),
@@ -154,7 +154,7 @@ pub fn atomic_xor(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly)
         }
         Type::Int(Int::U32) => {
             call!(
-                CallSite::builtin(
+                MethodRefIdx::builtin(
                     "atomic_xor_u32".into(),
                     FnSig::new(
                         Box::new([asm.nref(Type::Int(Int::U32)), Type::Int(Int::U32)]),
@@ -167,7 +167,7 @@ pub fn atomic_xor(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly)
         }
         Type::Int(Int::U64) => {
             call!(
-                CallSite::builtin(
+                MethodRefIdx::builtin(
                     "atomic_xor_u64".into(),
                     FnSig::new(
                         Box::new([asm.nref(Type::Int(Int::U64)), Type::Int(Int::U64)]),
@@ -179,7 +179,7 @@ pub fn atomic_xor(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly)
             )
         }
         Type::Int(Int::USize) => call!(
-            CallSite::builtin(
+            MethodRefIdx::builtin(
                 "atomic_xor_usize".into(),
                 FnSig::new(
                     Box::new([asm.nref(Type::Int(Int::USize)), Type::Int(Int::USize)]),
@@ -190,7 +190,7 @@ pub fn atomic_xor(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly)
             [addr, addend]
         ),
         Type::Int(Int::ISize) => call!(
-            CallSite::builtin(
+            MethodRefIdx::builtin(
                 "atomic_xor_isize".into(),
                 FnSig::new(
                     Box::new([asm.nref(Type::Int(Int::ISize)), Type::Int(Int::ISize)]),
@@ -201,7 +201,7 @@ pub fn atomic_xor(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly)
             [addr, addend]
         ),
         Type::Ptr(inner) => call!(
-            CallSite::builtin(
+            MethodRefIdx::builtin(
                 "atomic_xor_usize".into(),
                 FnSig::new(
                     Box::new([asm.nref(Type::Int(Int::USize)), Type::Int(Int::USize)]),
@@ -222,7 +222,7 @@ pub fn atomic_and(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly)
     match tpe {
         Type::Int(Int::U64 | Int::I64) => {
             call!(
-                CallSite::new(
+                MethodRefIdx::new(
                     Some(ClassRef::interlocked(asm)),
                     "And".into(),
                     FnSig::new(
@@ -236,7 +236,7 @@ pub fn atomic_and(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly)
         }
         Type::Int(Int::U32 | Int::I32) => {
             call!(
-                CallSite::new(
+                MethodRefIdx::new(
                     Some(ClassRef::interlocked(asm)),
                     "And".into(),
                     FnSig::new(
@@ -249,7 +249,7 @@ pub fn atomic_and(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly)
             )
         }
         Type::Int(Int::USize | Int::ISize) => call!(
-            CallSite::builtin(
+            MethodRefIdx::builtin(
                 "atomic_and_usize".into(),
                 FnSig::new(
                     Box::new([asm.nref(Type::Int(Int::USize)), Type::Int(Int::USize)]),
@@ -260,7 +260,7 @@ pub fn atomic_and(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly)
             [addr, addend]
         ),
         Type::Ptr(inner) => call!(
-            CallSite::builtin(
+            MethodRefIdx::builtin(
                 "atomic_and_usize".into(),
                 FnSig::new(
                     Box::new([asm.nref(Type::Int(Int::USize)), Type::Int(Int::USize)]),
@@ -279,7 +279,7 @@ pub fn atomic_and(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly)
 }
 pub fn compare_bytes(a: CILNode, b: CILNode, len: CILNode, asm: &mut Assembly) -> CILNode {
     call!(
-        CallSite::builtin(
+        MethodRefIdx::builtin(
             "memcmp".into(),
             FnSig::new(
                 Box::new([
@@ -298,7 +298,7 @@ pub fn atomic_nand(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly
     match tpe {
         Type::Int(Int::I32) => {
             call!(
-                CallSite::builtin(
+                MethodRefIdx::builtin(
                     "atomic_nand_i32".into(),
                     FnSig::new(
                         Box::new([asm.nref(Type::Int(Int::I32)), Type::Int(Int::I32)]),
@@ -311,7 +311,7 @@ pub fn atomic_nand(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly
         }
         Type::Int(Int::I64) => {
             call!(
-                CallSite::builtin(
+                MethodRefIdx::builtin(
                     "atomic_nand_i64".into(),
                     FnSig::new(
                         Box::new([asm.nref(Type::Int(Int::I64)), Type::Int(Int::I64)]),
@@ -324,7 +324,7 @@ pub fn atomic_nand(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly
         }
         Type::Int(Int::U32) => {
             call!(
-                CallSite::builtin(
+                MethodRefIdx::builtin(
                     "atomic_nand_u32".into(),
                     FnSig::new(
                         Box::new([asm.nref(Type::Int(Int::U32)), Type::Int(Int::U32)]),
@@ -337,7 +337,7 @@ pub fn atomic_nand(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly
         }
         Type::Int(Int::U64) => {
             call!(
-                CallSite::builtin(
+                MethodRefIdx::builtin(
                     "atomic_nand_u64".into(),
                     FnSig::new(
                         Box::new([asm.nref(Type::Int(Int::U64)), Type::Int(Int::U64)]),
@@ -349,7 +349,7 @@ pub fn atomic_nand(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly
             )
         }
         Type::Int(Int::USize) => call!(
-            CallSite::builtin(
+            MethodRefIdx::builtin(
                 "atomic_nand_usize".into(),
                 FnSig::new(
                     Box::new([asm.nref(Type::Int(Int::USize)), Type::Int(Int::USize)]),
@@ -360,7 +360,7 @@ pub fn atomic_nand(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly
             [addr, addend]
         ),
         Type::Int(Int::ISize) => call!(
-            CallSite::builtin(
+            MethodRefIdx::builtin(
                 "atomic_nand_isize".into(),
                 FnSig::new(
                     Box::new([asm.nref(Type::Int(Int::ISize)), Type::Int(Int::ISize)]),
@@ -371,7 +371,7 @@ pub fn atomic_nand(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly
             [addr, addend]
         ),
         Type::Ptr(inner) => call!(
-            CallSite::builtin(
+            MethodRefIdx::builtin(
                 "atomic_nand_usize".into(),
                 FnSig::new(
                     Box::new([asm.nref(Type::Int(Int::USize)), Type::Int(Int::USize)]),
@@ -392,7 +392,7 @@ pub fn atomic_min(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly)
     match tpe {
         Type::Int(Int::I32) => {
             call!(
-                CallSite::builtin(
+                MethodRefIdx::builtin(
                     "atomic_min_i32".into(),
                     FnSig::new(
                         Box::new([asm.nref(Type::Int(Int::I32)), Type::Int(Int::I32)]),
@@ -405,7 +405,7 @@ pub fn atomic_min(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly)
         }
         Type::Int(Int::I64) => {
             call!(
-                CallSite::builtin(
+                MethodRefIdx::builtin(
                     "atomic_min_i64".into(),
                     FnSig::new(
                         Box::new([asm.nref(Type::Int(Int::I64)), Type::Int(Int::I64)]),
@@ -418,7 +418,7 @@ pub fn atomic_min(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly)
         }
         Type::Int(Int::U32) => {
             call!(
-                CallSite::builtin(
+                MethodRefIdx::builtin(
                     "atomic_min_u32".into(),
                     FnSig::new(
                         Box::new([asm.nref(Type::Int(Int::U32)), Type::Int(Int::U32)]),
@@ -431,7 +431,7 @@ pub fn atomic_min(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly)
         }
         Type::Int(Int::U64) => {
             call!(
-                CallSite::builtin(
+                MethodRefIdx::builtin(
                     "atomic_min_u64".into(),
                     FnSig::new(
                         Box::new([asm.nref(Type::Int(Int::U64)), Type::Int(Int::U64)]),
@@ -443,7 +443,7 @@ pub fn atomic_min(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly)
             )
         }
         Type::Int(Int::USize) => call!(
-            CallSite::builtin(
+            MethodRefIdx::builtin(
                 "atomic_min_usize".into(),
                 FnSig::new(
                     Box::new([asm.nref(Type::Int(Int::USize)), Type::Int(Int::USize)]),
@@ -454,7 +454,7 @@ pub fn atomic_min(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly)
             [addr, addend]
         ),
         Type::Int(Int::ISize) => call!(
-            CallSite::builtin(
+            MethodRefIdx::builtin(
                 "atomic_min_isize".into(),
                 FnSig::new(
                     Box::new([asm.nref(Type::Int(Int::ISize)), Type::Int(Int::ISize)]),
@@ -465,7 +465,7 @@ pub fn atomic_min(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly)
             [addr, addend]
         ),
         Type::Ptr(inner) => call!(
-            CallSite::builtin(
+            MethodRefIdx::builtin(
                 "atomic_min_usize".into(),
                 FnSig::new(
                     Box::new([asm.nref(Type::Int(Int::USize)), Type::Int(Int::USize)]),
@@ -486,7 +486,7 @@ pub fn atomic_max(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly)
     match tpe {
         Type::Int(Int::I32) => {
             call!(
-                CallSite::builtin(
+                MethodRefIdx::builtin(
                     "atomic_max_i32".into(),
                     FnSig::new(
                         Box::new([asm.nref(Type::Int(Int::I32)), Type::Int(Int::I32)]),
@@ -499,7 +499,7 @@ pub fn atomic_max(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly)
         }
         Type::Int(Int::I64) => {
             call!(
-                CallSite::builtin(
+                MethodRefIdx::builtin(
                     "atomic_max_i64".into(),
                     FnSig::new(
                         Box::new([asm.nref(Type::Int(Int::I64)), Type::Int(Int::I64)]),
@@ -512,7 +512,7 @@ pub fn atomic_max(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly)
         }
         Type::Int(Int::U32) => {
             call!(
-                CallSite::builtin(
+                MethodRefIdx::builtin(
                     "atomic_max_u32".into(),
                     FnSig::new(
                         Box::new([asm.nref(Type::Int(Int::U32)), Type::Int(Int::U32)]),
@@ -525,7 +525,7 @@ pub fn atomic_max(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly)
         }
         Type::Int(Int::U64) => {
             call!(
-                CallSite::builtin(
+                MethodRefIdx::builtin(
                     "atomic_max_u64".into(),
                     FnSig::new(
                         Box::new([asm.nref(Type::Int(Int::U64)), Type::Int(Int::U64)]),
@@ -537,7 +537,7 @@ pub fn atomic_max(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly)
             )
         }
         Type::Int(Int::USize) => call!(
-            CallSite::builtin(
+            MethodRefIdx::builtin(
                 "atomic_max_usize".into(),
                 FnSig::new(
                     Box::new([asm.nref(Type::Int(Int::USize)), Type::Int(Int::USize)]),
@@ -548,7 +548,7 @@ pub fn atomic_max(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly)
             [addr, addend]
         ),
         Type::Int(Int::ISize) => call!(
-            CallSite::builtin(
+            MethodRefIdx::builtin(
                 "atomic_max_isize".into(),
                 FnSig::new(
                     Box::new([asm.nref(Type::Int(Int::ISize)), Type::Int(Int::ISize)]),
@@ -559,7 +559,7 @@ pub fn atomic_max(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly)
             [addr, addend]
         ),
         Type::Ptr(inner) => call!(
-            CallSite::builtin(
+            MethodRefIdx::builtin(
                 "atomic_max_usize".into(),
                 FnSig::new(
                     Box::new([asm.nref(Type::Int(Int::USize)), Type::Int(Int::USize)]),

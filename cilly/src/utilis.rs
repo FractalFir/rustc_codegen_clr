@@ -2,21 +2,22 @@ use std::fmt::Debug;
 
 use crate::method::Method;
 
-use crate::v2::{ClassRef, FnSig, Int, StaticFieldDesc};
-use crate::{
-    asm::Assembly, call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, eq, lt, size_of,
-};
+use crate::v2::cilnode::MethodKind;
+use crate::v2::{ClassRef, FnSig, Int, MethodRef, MethodRefIdx, StaticFieldDesc};
+use crate::{asm::Assembly, cil_node::CILNode, cil_root::CILRoot, eq, lt, size_of};
 use crate::{call, call_virt, conv_i32, conv_usize, ldc_i32, ldc_u32, mul, Type};
 
-pub fn argc_argv_init_method(asm: &mut Assembly) -> CallSite {
+pub fn argc_argv_init_method(asm: &mut Assembly) -> MethodRefIdx {
     use std::num::NonZeroU8;
-    let init_cs = CallSite::new(
-        None,
-        "argc_argv_init".into(),
-        FnSig::new(Box::new([]), Type::Void),
-        true,
+    let init_cs = MethodRef::new(
+        *asm.main_module(),
+        asm.alloc_string("argc_argv_init"),
+        asm.sig([], Type::Void),
+        MethodKind::Static,
+        vec![].into(),
     );
-    if asm.contains_fn(&init_cs) {
+    let init_cs = asm.alloc_methodref(init_cs);
+    if asm.contains_fn(init_cs) {
         return init_cs;
     }
     let mut init_method = Method::new(
@@ -46,23 +47,23 @@ pub fn argc_argv_init_method(asm: &mut Assembly) -> CallSite {
     let arg_idx =
         u32::try_from(init_method.add_local(Type::Int(Int::I32), Some("arg_idx".into()))).unwrap();
     // Get managed args
+    let string = asm.alloc_type(Type::PlatformString);
+    let mref = MethodRef::new(
+        ClassRef::enviroment(asm),
+        asm.alloc_string("GetCommandLineArgs"),
+        asm.sig(
+            [],
+            Type::PlatformArray {
+                elem: string,
+                dims: NonZeroU8::new(1).unwrap(),
+            },
+        ),
+        MethodKind::Static,
+        vec![].into(),
+    );
     let margs_init = CILRoot::STLoc {
         local: managed_args,
-        tree: call!(
-            CallSite::new_extern(
-                ClassRef::enviroment(asm),
-                "GetCommandLineArgs".into(),
-                FnSig::new(
-                    Box::new([]),
-                    Type::PlatformArray {
-                        elem: asm.alloc_type(Type::PlatformString),
-                        dims: NonZeroU8::new(1).unwrap()
-                    }
-                ),
-                true
-            ),
-            []
-        ),
+        tree: call!(asm.alloc_methodref(mref), []),
     };
     // Calculate argc
     let argc_init = CILRoot::STLoc {
@@ -71,10 +72,10 @@ pub fn argc_argv_init_method(asm: &mut Assembly) -> CallSite {
             arr: CILNode::LDLoc(managed_args).into()
         }),
     };
-
+    let aligned_alloc = MethodRef::aligned_alloc(asm);
     // Alloc argv
     let tree = call!(
-        CallSite::aligned_alloc(asm),
+        asm.alloc_methodref(aligned_alloc),
         [
             mul!(
                 conv_usize!(CILNode::LDLoc(argc)),
@@ -235,28 +236,28 @@ pub fn argc_argv_init_method(asm: &mut Assembly) -> CallSite {
     init_cs
 }
 pub fn mstring_to_utf8ptr(mstring: CILNode, asm: &mut Assembly) -> CILNode {
-    call!(
-        CallSite::new_extern(
-            ClassRef::marshal(asm),
-            "StringToCoTaskMemUTF8".into(),
-            FnSig::new(Box::new([Type::PlatformString]), Type::Int(Int::ISize)),
-            true
-        ),
-        [mstring]
-    )
-    .cast_ptr(asm.nptr(Type::Int(Int::U8)))
+    let mref = MethodRef::new(
+        ClassRef::marshal(asm),
+        asm.alloc_string("StringToCoTaskMemUTF8"),
+        asm.sig([Type::PlatformString], Type::Int(Int::ISize)),
+        MethodKind::Static,
+        vec![].into(),
+    );
+    call!(asm.alloc_methodref(mref), [mstring]).cast_ptr(asm.nptr(Type::Int(Int::U8)))
 }
 
-pub fn get_environ(asm: &mut Assembly) -> CallSite {
+pub fn get_environ(asm: &mut Assembly) -> MethodRefIdx {
     let uint8_ptr = asm.nptr(Type::Int(Int::U8));
     let uint8_ptr_ptr = asm.nptr(uint8_ptr);
-    let init_cs = CallSite::new(
-        None,
-        "get_environ".into(),
-        FnSig::new(Box::new([]), uint8_ptr_ptr),
-        true,
+    let init_cs = MethodRef::new(
+        *asm.main_module(),
+        asm.alloc_string("get_environ"),
+        asm.sig([], uint8_ptr_ptr),
+        MethodKind::Static,
+        vec![].into(),
     );
-    if asm.contains_fn(&init_cs) {
+    let init_cs = asm.alloc_methodref(init_cs);
+    if asm.contains_fn(init_cs) {
         return init_cs;
     }
 
@@ -314,34 +315,33 @@ pub fn get_environ(asm: &mut Assembly) -> CallSite {
         .into(),
     );
     let init = &mut blocks[init_bb as usize];
+    let i_dictionary = Type::ClassRef(ClassRef::i_dictionary(asm));
+    let mref = MethodRef::new(
+        ClassRef::enviroment(asm),
+        asm.alloc_string("GetEnvironmentVariables"),
+        asm.sig([], i_dictionary),
+        MethodKind::Static,
+        vec![].into(),
+    );
     init.trees_mut().push(
         CILRoot::STLoc {
             local: dictionary_local,
-            tree: call!(
-                CallSite::new(
-                    Some(ClassRef::enviroment(asm)),
-                    "GetEnvironmentVariables".into(),
-                    FnSig::new(Box::new([]), Type::ClassRef(ClassRef::i_dictionary(asm))),
-                    true
-                ),
-                []
-            ),
+            tree: call!(asm.alloc_methodref(mref), []),
         }
         .into(),
+    );
+    let mref = MethodRef::new(
+        ClassRef::i_collection(asm),
+        asm.alloc_string("get_Count"),
+        asm.sig([i_dictionary], Type::Int(Int::I32)),
+        MethodKind::Instance,
+        vec![].into(),
     );
     init.trees_mut().push(
         CILRoot::STLoc {
             local: envc,
             tree: call_virt!(
-                CallSite::new(
-                    Some(ClassRef::i_collection(asm)),
-                    "get_Count".into(),
-                    FnSig::new(
-                        Box::new([Type::ClassRef(ClassRef::i_dictionary(asm))]),
-                        Type::Int(Int::I32)
-                    ),
-                    false
-                ),
+                asm.alloc_methodref(mref),
                 [CILNode::LDLoc(dictionary_local)]
             ),
         }
@@ -350,10 +350,11 @@ pub fn get_environ(asm: &mut Assembly) -> CallSite {
     let element_count = CILNode::LDLoc(envc) + ldc_i32!(1);
     let arr_size = conv_usize!(element_count) * conv_usize!(size_of!(uint8_ptr_ptr));
     let arr_align = conv_usize!(size_of!(uint8_ptr_ptr));
+    let aligned_alloc = MethodRef::aligned_alloc(asm);
     init.trees_mut().push(
         CILRoot::STLoc {
             local: arr_ptr,
-            tree: call!(CallSite::aligned_alloc(asm), [arr_size, arr_align])
+            tree: call!(asm.alloc_methodref(aligned_alloc), [arr_size, arr_align])
                 .cast_ptr(uint8_ptr_ptr),
         }
         .into(),
@@ -365,19 +366,19 @@ pub fn get_environ(asm: &mut Assembly) -> CallSite {
         }
         .into(),
     );
+    let dictionary_iterator = ClassRef::dictionary_iterator(asm);
+    let mref = MethodRef::new(
+        ClassRef::i_dictionary(asm),
+        asm.alloc_string("GetEnumerator"),
+        asm.sig([i_dictionary], Type::ClassRef(dictionary_iterator)),
+        MethodKind::Instance,
+        vec![].into(),
+    );
     init.trees_mut().push(
         CILRoot::STLoc {
             local: iter_local,
             tree: call_virt!(
-                CallSite::new(
-                    Some(ClassRef::i_dictionary(asm)),
-                    "GetEnumerator".into(),
-                    FnSig::new(
-                        Box::new([Type::ClassRef(ClassRef::i_dictionary(asm))]),
-                        Type::ClassRef(ClassRef::dictionary_iterator(asm))
-                    ),
-                    false
-                ),
+                asm.alloc_methodref(mref),
                 [CILNode::LDLoc(dictionary_local)]
             ),
         }
@@ -403,39 +404,34 @@ pub fn get_environ(asm: &mut Assembly) -> CallSite {
         .into(),
     );
     let loop_body = &mut blocks[loop_body_bb as usize];
+    let move_next = MethodRef::new(
+        ClassRef::i_enumerator(asm),
+        asm.alloc_string("MoveNext"),
+        asm.sig([Type::ClassRef(dictionary_iterator)], Type::Bool),
+        MethodKind::Instance,
+        vec![].into(),
+    );
     loop_body.trees_mut().push(
         CILRoot::BFalse {
             target: loop_end_bb,
             sub_target: 0,
-            cond: call_virt!(
-                CallSite::new_extern(
-                    ClassRef::i_enumerator(asm),
-                    "MoveNext".into(),
-                    FnSig::new(
-                        Box::new([Type::ClassRef(ClassRef::dictionary_iterator(asm))]),
-                        Type::Bool,
-                    ),
-                    false
-                ),
-                [CILNode::LDLoc(iter_local)]
-            ),
+            cond: call_virt!(asm.alloc_methodref(move_next), [CILNode::LDLoc(iter_local)]),
         }
         .into(),
+    );
+    let get_current = MethodRef::new(
+        ClassRef::i_enumerator(asm),
+        asm.alloc_string("get_Current"),
+        asm.sig([Type::ClassRef(dictionary_iterator)], Type::PlatformObject),
+        MethodKind::Instance,
+        vec![].into(),
     );
     loop_body.trees_mut().push(
         CILRoot::STLoc {
             local: keyval,
             tree: CILNode::UnboxAny(
                 Box::new(call_virt!(
-                    CallSite::new_extern(
-                        ClassRef::i_enumerator(asm),
-                        "get_Current".into(),
-                        FnSig::new(
-                            Box::new([Type::ClassRef(ClassRef::dictionary_iterator(asm))]),
-                            Type::PlatformObject,
-                        ),
-                        false
-                    ),
+                    asm.alloc_methodref(get_current),
                     [CILNode::LDLoc(iter_local)]
                 )),
                 Box::new(Type::ClassRef(keyval_tpe)),
@@ -443,47 +439,43 @@ pub fn get_environ(asm: &mut Assembly) -> CallSite {
         }
         .into(),
     );
-    let key = call!(
-        CallSite::new_extern(
-            keyval_tpe,
-            "get_Key".into(),
-            FnSig::new(
-                Box::new([asm.nref(Type::ClassRef(keyval_tpe))]),
-                Type::PlatformObject
-            ),
-            false,
-        ),
-        [CILNode::LDLocA(keyval)]
+    let keyval_tpe_ref = asm.nref(Type::ClassRef(keyval_tpe));
+    let sig = asm.sig([keyval_tpe_ref], Type::PlatformObject);
+    let get_key = MethodRef::new(
+        keyval_tpe,
+        asm.alloc_string("get_Key"),
+        sig,
+        MethodKind::Instance,
+        vec![].into(),
     );
-    let value = call!(
-        CallSite::new_extern(
-            keyval_tpe,
-            "get_Value".into(),
-            FnSig::new(
-                Box::new([asm.nref(Type::ClassRef(keyval_tpe))]),
-                Type::PlatformObject
-            ),
-            false,
+    let key = call!(asm.alloc_methodref(get_key), [CILNode::LDLocA(keyval)]);
+    let mref = MethodRef::new(
+        keyval_tpe,
+        asm.alloc_string("get_Value"),
+        sig,
+        MethodKind::Instance,
+        vec![].into(),
+    );
+    let value = call!(asm.alloc_methodref(mref), [CILNode::LDLocA(keyval)]);
+    let concat = MethodRef::new(
+        ClassRef::string(asm),
+        asm.alloc_string("Concat"),
+        asm.sig(
+            [
+                Type::PlatformObject,
+                Type::PlatformObject,
+                Type::PlatformObject,
+            ],
+            Type::PlatformString,
         ),
-        [CILNode::LDLocA(keyval)]
+        MethodKind::Static,
+        vec![].into(),
     );
     loop_body.trees_mut().push(
         CILRoot::STLoc {
             local: encoded_keyval,
             tree: call!(
-                CallSite::new_extern(
-                    ClassRef::string(asm),
-                    "Concat".into(),
-                    FnSig::new(
-                        Box::new([
-                            Type::PlatformObject,
-                            Type::PlatformObject,
-                            Type::PlatformObject
-                        ]),
-                        Type::PlatformString
-                    ),
-                    true
-                ),
+                asm.alloc_methodref(concat),
                 [key, CILNode::LdStr("=".into()), value]
             ),
         }

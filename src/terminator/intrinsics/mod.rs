@@ -6,7 +6,7 @@ use crate::{
 };
 use cilly::{
     call,
-    call_site::CallSite,
+    call_site::MethodRefIdx,
     call_virt,
     cil_node::CILNode,
     cil_root::CILRoot,
@@ -125,7 +125,7 @@ pub fn handle_intrinsic<'tcx>(
         "fmaf32" => place_set(
             destination,
             call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::single(ctx),
                     "FusedMultiplyAdd".into(),
                     FnSig::new(
@@ -150,7 +150,7 @@ pub fn handle_intrinsic<'tcx>(
         "fmaf64" => place_set(
             destination,
             call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::double(ctx),
                     "FusedMultiplyAdd".into(),
                     FnSig::new(
@@ -303,21 +303,21 @@ pub fn handle_intrinsic<'tcx>(
             place_set(
                 destination,
                 call!(
-                    CallSite::boxed(
+                    MethodRefIdx::boxed(
                         Some(ClassRef::uint_128(ctx)),
                         "op_Implicit".into(),
                         FnSig::new([Type::Int(Int::U32)].into(), Type::Int(Int::U128)),
                         true,
                     ),
                     [conv_u32!(call_virt!(
-                        CallSite::boxed(
+                        MethodRefIdx::boxed(
                             ClassRef::object(ctx).into(),
                             "GetHashCode".into(),
                             gethash_sig,
                             false,
                         ),
                         [call!(
-                            CallSite::boxed(
+                            MethodRefIdx::boxed(
                                 ClassRef::type_type(ctx).into(),
                                 "GetTypeFromHandle".into(),
                                 sig,
@@ -440,7 +440,7 @@ pub fn handle_intrinsic<'tcx>(
             #[allow(clippy::single_match_else)]
             let exchange_res = match &src_type {
                 Type::Ptr(_) => {
-                    let call_site = CallSite::new(
+                    let call_site = MethodRefIdx::new(
                         Some(interlocked),
                         "CompareExchange".into(),
                         FnSig::new(
@@ -467,7 +467,7 @@ pub fn handle_intrinsic<'tcx>(
                 // TODO: this is a bug, on purpose. The 1 byte compare exchange is not supported untill .NET 9. Remove after November, when .NET 9 Releases.
                 Type::Int(Int::U8) => comaprand,
                 _ => {
-                    let call_site = CallSite::new(
+                    let call_site = MethodRefIdx::new(
                         Some(interlocked),
                         "CompareExchange".into(),
                         FnSig::new([ctx.nref(src_type), src_type, src_type].into(), src_type),
@@ -582,7 +582,7 @@ pub fn handle_intrinsic<'tcx>(
         | "atomic_fence_acqrel" => {
             let thread = ClassRef::thread(ctx);
             CILRoot::Call {
-                site: Box::new(CallSite::new(
+                site: Box::new(MethodRefIdx::new(
                     Some(thread),
                     "MemoryBarrier".into(),
                     FnSig::new([].into(), Type::Void),
@@ -684,7 +684,7 @@ pub fn handle_intrinsic<'tcx>(
                     return place_set(
                         destination,
                         call!(
-                            CallSite::builtin(
+                            MethodRefIdx::builtin(
                                 "atomic_xchng_u8".into(),
                                 FnSig::new(
                                     [ctx.nref(Type::Int(Int::U8)), Type::Int(Int::U8)].into(),
@@ -698,7 +698,7 @@ pub fn handle_intrinsic<'tcx>(
                     )
                 }
                 Type::Ptr(_) => {
-                    let call_site = CallSite::new(
+                    let call_site = MethodRefIdx::new(
                         Some(interlocked),
                         "Exchange".into(),
                         FnSig::new(
@@ -725,7 +725,7 @@ pub fn handle_intrinsic<'tcx>(
                 }
                 _ => (),
             }
-            let call_site = CallSite::new(
+            let call_site = MethodRefIdx::new(
                 Some(interlocked),
                 "Exchange".into(),
                 FnSig::new([ctx.nref(src_type), src_type].into(), src_type),
@@ -849,7 +849,7 @@ pub fn handle_intrinsic<'tcx>(
             place_set(
                 destination,
                 call!(
-                    CallSite::boxed(
+                    MethodRefIdx::boxed(
                         Some(ClassRef::mathf(ctx)),
                         "Sqrt".into(),
                         FnSig::new([Type::Float(Float::F32)].into(), Type::Float(Float::F32)),
@@ -871,7 +871,7 @@ pub fn handle_intrinsic<'tcx>(
             place_set(
                 destination,
                 call!(
-                    CallSite::boxed(
+                    MethodRefIdx::boxed(
                         Some(ClassRef::single(ctx)),
                         "Pow".into(),
                         FnSig::new(
@@ -898,7 +898,7 @@ pub fn handle_intrinsic<'tcx>(
             place_set(
                 destination,
                 call!(
-                    CallSite::boxed(
+                    MethodRefIdx::boxed(
                         Some(ClassRef::double(ctx)),
                         "Pow".into(),
                         FnSig::new(
@@ -925,7 +925,7 @@ pub fn handle_intrinsic<'tcx>(
             let tpe = ctx.monomorphize(pointed_ty);
             let tpe = ctx.type_from_cache(tpe);
             CILRoot::Call {
-                site: Box::new(CallSite::builtin(
+                site: Box::new(MethodRefIdx::builtin(
                     "swap_at_generic".into(),
                     FnSig::new(
                         [
@@ -988,7 +988,7 @@ pub fn handle_intrinsic<'tcx>(
         "fabsf32" => place_set(
             destination,
             call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::single(ctx),
                     "Abs".into(),
                     FnSig::new([Type::Float(Float::F32)].into(), Type::Float(Float::F32)),
@@ -1001,7 +1001,7 @@ pub fn handle_intrinsic<'tcx>(
         "fabsf64" => place_set(
             destination,
             call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::double(ctx),
                     "Abs".into(),
                     FnSig::new([Type::Float(Float::F64)].into(), Type::Float(Float::F64)),
@@ -1014,7 +1014,7 @@ pub fn handle_intrinsic<'tcx>(
         "expf32" => place_set(
             destination,
             call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::single(ctx),
                     "Exp".into(),
                     FnSig::new([Type::Float(Float::F32)].into(), Type::Float(Float::F32)),
@@ -1027,7 +1027,7 @@ pub fn handle_intrinsic<'tcx>(
         "expf64" => place_set(
             destination,
             call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::double(ctx),
                     "Exp".into(),
                     FnSig::new([Type::Float(Float::F64)].into(), Type::Float(Float::F64)),
@@ -1040,7 +1040,7 @@ pub fn handle_intrinsic<'tcx>(
         "logf32" => place_set(
             destination,
             call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::single(ctx),
                     "Log".into(),
                     FnSig::new([Type::Float(Float::F32)].into(), Type::Float(Float::F32)),
@@ -1053,7 +1053,7 @@ pub fn handle_intrinsic<'tcx>(
         "logf64" => place_set(
             destination,
             call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::double(ctx),
                     "Log".into(),
                     FnSig::new([Type::Float(Float::F64)].into(), Type::Float(Float::F64)),
@@ -1066,7 +1066,7 @@ pub fn handle_intrinsic<'tcx>(
         "log2f32" => place_set(
             destination,
             call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::single(ctx),
                     "Log2".into(),
                     FnSig::new([Type::Float(Float::F32)].into(), Type::Float(Float::F32)),
@@ -1079,7 +1079,7 @@ pub fn handle_intrinsic<'tcx>(
         "log2f64" => place_set(
             destination,
             call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::double(ctx),
                     "Log2".into(),
                     FnSig::new([Type::Float(Float::F64)].into(), Type::Float(Float::F64)),
@@ -1092,7 +1092,7 @@ pub fn handle_intrinsic<'tcx>(
         "log10f32" => place_set(
             destination,
             call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::single(ctx),
                     "Log10".into(),
                     FnSig::new([Type::Float(Float::F32)].into(), Type::Float(Float::F32)),
@@ -1105,7 +1105,7 @@ pub fn handle_intrinsic<'tcx>(
         "log10f64" => place_set(
             destination,
             call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::double(ctx),
                     "Log10".into(),
                     FnSig::new([Type::Float(Float::F64)].into(), Type::Float(Float::F64)),
@@ -1118,7 +1118,7 @@ pub fn handle_intrinsic<'tcx>(
         "powf32" => place_set(
             destination,
             call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::single(ctx),
                     "Pow".into(),
                     FnSig::new(
@@ -1137,7 +1137,7 @@ pub fn handle_intrinsic<'tcx>(
         "powf64" => place_set(
             destination,
             call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::double(ctx),
                     "Pow".into(),
                     FnSig::new(
@@ -1156,7 +1156,7 @@ pub fn handle_intrinsic<'tcx>(
         "copysignf32" => place_set(
             destination,
             call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::single(ctx),
                     "CopySign".into(),
                     FnSig::new(
@@ -1175,7 +1175,7 @@ pub fn handle_intrinsic<'tcx>(
         "copysignf64" => place_set(
             destination,
             call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::double(ctx),
                     "CopySign".into(),
                     FnSig::new(
@@ -1194,7 +1194,7 @@ pub fn handle_intrinsic<'tcx>(
         "sinf32" => place_set(
             destination,
             call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::single(ctx),
                     "Sin".into(),
                     FnSig::new([Type::Float(Float::F32)].into(), Type::Float(Float::F32)),
@@ -1207,7 +1207,7 @@ pub fn handle_intrinsic<'tcx>(
         "sinf64" => place_set(
             destination,
             call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::double(ctx),
                     "Sin".into(),
                     FnSig::new([Type::Float(Float::F64)].into(), Type::Float(Float::F64)),
@@ -1220,7 +1220,7 @@ pub fn handle_intrinsic<'tcx>(
         "cosf32" => place_set(
             destination,
             call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::single(ctx),
                     "Cos".into(),
                     FnSig::new([Type::Float(Float::F32)].into(), Type::Float(Float::F32)),
@@ -1233,7 +1233,7 @@ pub fn handle_intrinsic<'tcx>(
         "cosf64" => place_set(
             destination,
             call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::double(ctx),
                     "Cos".into(),
                     FnSig::new([Type::Float(Float::F64)].into(), Type::Float(Float::F64)),
@@ -1246,7 +1246,7 @@ pub fn handle_intrinsic<'tcx>(
         "exp2f32" => place_set(
             destination,
             call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::single(ctx),
                     "Exp2".into(),
                     FnSig::new([Type::Float(Float::F32)].into(), Type::Float(Float::F32)),
@@ -1259,7 +1259,7 @@ pub fn handle_intrinsic<'tcx>(
         "exp2f64" => place_set(
             destination,
             call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::double(ctx),
                     "Exp2".into(),
                     FnSig::new([Type::Float(Float::F64)].into(), Type::Float(Float::F64)),
@@ -1272,7 +1272,7 @@ pub fn handle_intrinsic<'tcx>(
         "truncf32" => place_set(
             destination,
             call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::mathf(ctx),
                     "Truncate".into(),
                     FnSig::new([Type::Float(Float::F32)].into(), Type::Float(Float::F32)),
@@ -1285,7 +1285,7 @@ pub fn handle_intrinsic<'tcx>(
         "truncf64" => place_set(
             destination,
             call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::math(ctx),
                     "Truncate".into(),
                     FnSig::new([Type::Float(Float::F64)].into(), Type::Float(Float::F64)),
@@ -1299,7 +1299,7 @@ pub fn handle_intrinsic<'tcx>(
         "nearbyintf32" | "rintf32" | "roundevenf32" => place_set(
             destination,
             call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::mathf(ctx),
                     "Round".into(),
                     FnSig::new([Type::Float(Float::F32)].into(), Type::Float(Float::F32)),
@@ -1312,7 +1312,7 @@ pub fn handle_intrinsic<'tcx>(
         "roundf32" => place_set(
             destination,
             call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::mathf(ctx),
                     "Round".into(),
                     FnSig::new(
@@ -1339,7 +1339,7 @@ pub fn handle_intrinsic<'tcx>(
         "nearbyintf64" | "rintf64" | "roundevenf64" => place_set(
             destination,
             call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::math(ctx),
                     "Round".into(),
                     FnSig::new([Type::Float(Float::F64)].into(), Type::Float(Float::F64)),
@@ -1352,7 +1352,7 @@ pub fn handle_intrinsic<'tcx>(
         "roundf64" => place_set(
             destination,
             call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::math(ctx),
                     "Round".into(),
                     FnSig::new(
@@ -1379,7 +1379,7 @@ pub fn handle_intrinsic<'tcx>(
         "floorf32" => place_set(
             destination,
             call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::mathf(ctx),
                     "Floor".into(),
                     FnSig::new([Type::Float(Float::F32)].into(), Type::Float(Float::F32)),
@@ -1392,7 +1392,7 @@ pub fn handle_intrinsic<'tcx>(
         "floorf64" => place_set(
             destination,
             call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::math(ctx),
                     "Floor".into(),
                     FnSig::new([Type::Float(Float::F64)].into(), Type::Float(Float::F64)),
@@ -1405,7 +1405,7 @@ pub fn handle_intrinsic<'tcx>(
         "ceilf32" => place_set(
             destination,
             call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::mathf(ctx),
                     "Ceiling".into(),
                     FnSig::new([Type::Float(Float::F32)].into(), Type::Float(Float::F32)),
@@ -1418,7 +1418,7 @@ pub fn handle_intrinsic<'tcx>(
         "ceilf64" => place_set(
             destination,
             call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::math(ctx),
                     "Ceiling".into(),
                     FnSig::new([Type::Float(Float::F64)].into(), Type::Float(Float::F64)),
@@ -1431,7 +1431,7 @@ pub fn handle_intrinsic<'tcx>(
         "maxnumf64" => place_set(
             destination,
             call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::double(ctx),
                     "MaxNumber".into(),
                     FnSig::new(
@@ -1450,7 +1450,7 @@ pub fn handle_intrinsic<'tcx>(
         "maxnumf32" => place_set(
             destination,
             call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::single(ctx),
                     "MaxNumber".into(),
                     FnSig::new(
@@ -1469,7 +1469,7 @@ pub fn handle_intrinsic<'tcx>(
         "minnumf64" => place_set(
             destination,
             call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::double(ctx),
                     "MinNumber".into(),
                     FnSig::new(
@@ -1488,7 +1488,7 @@ pub fn handle_intrinsic<'tcx>(
         "minnumf32" => place_set(
             destination,
             call!(
-                CallSite::new_extern(
+                MethodRefIdx::new_extern(
                     ClassRef::single(ctx),
                     "MinNumber".into(),
                     FnSig::new(
@@ -1527,7 +1527,7 @@ pub fn handle_intrinsic<'tcx>(
             );
 
             let ops = call!(
-                CallSite::boxed(
+                MethodRefIdx::boxed(
                     Some(ClassRef::math(ctx)),
                     "Sqrt".into(),
                     FnSig::new([Type::Float(Float::F64)].into(), Type::Float(Float::F64)),
@@ -1551,7 +1551,7 @@ pub fn handle_intrinsic<'tcx>(
             place_set(
                 destination,
                 call!(
-                    CallSite::builtin(
+                    MethodRefIdx::builtin(
                         "catch_unwind".into(),
                         FnSig::new(
                             [
@@ -1638,21 +1638,21 @@ fn intrinsic_slow<'tcx>(
         place_set(
             destination,
             call!(
-                CallSite::boxed(
+                MethodRefIdx::boxed(
                     Some(ClassRef::uint_128(ctx)),
                     "op_Implicit".into(),
                     FnSig::new([Type::Int(Int::U32)].into(), Type::Int(Int::U128)),
                     true,
                 ),
                 [conv_u32!(call_virt!(
-                    CallSite::boxed(
+                    MethodRefIdx::boxed(
                         ClassRef::object(ctx).into(),
                         "GetHashCode".into(),
                         gethash_sig,
                         false,
                     ),
                     [call!(
-                        CallSite::boxed(
+                        MethodRefIdx::boxed(
                             ClassRef::type_type(ctx).into(),
                             "GetTypeFromHandle".into(),
                             sig,
@@ -1693,7 +1693,7 @@ fn intrinsic_slow<'tcx>(
         let tpe = ctx.monomorphize(pointed_ty);
         let tpe = ctx.type_from_cache(tpe);
         CILRoot::Call {
-            site: Box::new(CallSite::builtin(
+            site: Box::new(MethodRefIdx::builtin(
                 "swap_at_generic".into(),
                 FnSig::new(
                     [

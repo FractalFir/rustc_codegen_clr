@@ -1,7 +1,10 @@
-use crate::v2::{Assembly, ClassRef, ClassRefIdx, FieldIdx, FnSig, Int, StaticFieldDesc, Type};
+use crate::v2::cilnode::MethodKind;
+use crate::v2::{
+    Assembly, ClassRef, ClassRefIdx, FieldIdx, FnSig, Int, MethodRef, MethodRefIdx,
+    StaticFieldDesc, Type,
+};
 use crate::{
     call,
-    call_site::CallSite,
     cil_iter::CILIterTrait,
     cil_root::CILRoot,
     v2::hashable::{HashableF32, HashableF64},
@@ -12,7 +15,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Eq, PartialEq, Serialize, Deserialize, Hash, Debug)]
 pub struct CallOpArgs {
     pub args: Box<[CILNode]>,
-    pub site: Box<CallSite>,
+    pub site: MethodRefIdx,
 }
 
 #[derive(Clone, Eq, PartialEq, Serialize, Deserialize, Debug, Hash)]
@@ -170,7 +173,7 @@ pub enum CILNode {
     SubTrees(Box<(Box<[CILRoot]>, Box<Self>)>),
     LoadAddresOfTMPLocal,
     LoadTMPLocal,
-    LDFtn(Box<CallSite>),
+    LDFtn(MethodRefIdx),
     LDTypeToken(Box<Type>),
     NewObj(Box<CallOpArgs>),
     // 24 bytes - too big!
@@ -238,21 +241,21 @@ impl CILNode {
         }
         let low = u128_low_u64(value);
         let high = (value >> 64) as u64;
-        let ctor_sig = FnSig::new(
-            Box::new([
-                asm.nref(Type::Int(Int::U128)),
-                Type::Int(Int::U64),
-                Type::Int(Int::U64),
-            ]),
+        let ref_u128 = asm.nref(Type::Int(Int::U128));
+        let ctor_sig = asm.sig(
+            [ref_u128, Type::Int(Int::U64), Type::Int(Int::U64)],
             Type::Void,
         );
+        let uint_128 = ClassRef::uint_128(asm);
+        let ctor = asm.alloc_string(".ctor");
         CILNode::NewObj(Box::new(CallOpArgs {
-            site: CallSite::boxed(
-                Some(ClassRef::uint_128(asm)),
-                ".ctor".into(),
+            site: asm.alloc_methodref(MethodRef::new(
+                uint_128,
+                ctor,
                 ctor_sig,
-                false,
-            ),
+                MethodKind::Constructor,
+                vec![].into(),
+            )),
             args: [
                 crate::conv_u64!(crate::ldc_u64!(high)),
                 crate::conv_u64!(crate::ldc_u64!(low)),
@@ -266,21 +269,21 @@ impl CILNode {
         }
         let low = u128_low_u64(value);
         let high = (value >> 64) as u64;
-        let ctor_sig = FnSig::new(
-            Box::new([
-                asm.nref(Type::Int(Int::U128)),
-                Type::Int(Int::U64),
-                Type::Int(Int::U64),
-            ]),
+        let ref_u128 = asm.nref(Type::Int(Int::U128));
+        let ctor_sig = asm.sig(
+            [ref_u128, Type::Int(Int::U64), Type::Int(Int::U64)],
             Type::Void,
         );
+        let ctor = asm.alloc_string(".ctor");
+        let int_128 = ClassRef::int_128(asm);
         CILNode::NewObj(Box::new(CallOpArgs {
-            site: CallSite::boxed(
-                Some(ClassRef::int_128(asm)),
-                ".ctor".into(),
+            site: asm.alloc_methodref(MethodRef::new(
+                int_128,
+                ctor,
                 ctor_sig,
-                false,
-            ),
+                MethodKind::Constructor,
+                vec![].into(),
+            )),
             args: [
                 crate::conv_u64!(crate::ldc_u64!(high)),
                 crate::conv_u64!(crate::ldc_u64!(low)),
@@ -290,105 +293,103 @@ impl CILNode {
     }
     /// Allocates a GC handle to the object, and converts that handle to a nint sized handleID.
     pub fn managed_ref_to_handle(self, asm: &mut Assembly) -> Self {
-        let gc_handle = call!(
-            CallSite::new(
-                Some(ClassRef::gc_handle(asm)),
-                "Alloc".to_owned().into(),
-                FnSig::new(
-                    Box::new([Type::PlatformObject]),
-                    Type::ClassRef(ClassRef::gc_handle(asm))
-                ),
-                true
-            ),
-            [self]
+        let gc_handle_class = Type::ClassRef(ClassRef::gc_handle(asm));
+        let mref = MethodRef::new(
+            ClassRef::gc_handle(asm),
+            asm.alloc_string("Alloc"),
+            asm.sig([Type::PlatformObject], gc_handle_class),
+            MethodKind::Static,
+            vec![].into(),
         );
-        call!(
-            CallSite::new(
-                Some(ClassRef::gc_handle(asm)),
-                "op_Explicit".to_owned().into(),
-                FnSig::new(
-                    Box::new([Type::ClassRef(ClassRef::gc_handle(asm))]),
-                    Type::Int(Int::ISize)
-                ),
-                true,
-            ),
-            [gc_handle]
-        )
+        let gc_handle = call!(asm.alloc_methodref(mref), [self]);
+        let mref = MethodRef::new(
+            ClassRef::gc_handle(asm),
+            asm.alloc_string("op_Explicit"),
+            asm.sig([gc_handle_class], Type::Int(Int::ISize)),
+            MethodKind::Instance,
+            vec![].into(),
+        );
+        call!(asm.alloc_methodref(mref), [gc_handle])
     }
     pub fn gc_handle_to_obj(self, obj: ClassRefIdx, asm: &mut Assembly) -> Self {
-        let gc_handle = call!(
-            CallSite::new(
-                Some(ClassRef::gc_handle(asm)),
-                "FromIntPtr".to_owned().into(),
-                FnSig::new(
-                    Box::new([Type::Int(Int::ISize)]),
-                    Type::ClassRef(ClassRef::gc_handle(asm))
-                ),
-                true
-            ),
-            [self]
+        let gc_handle_class = Type::ClassRef(ClassRef::gc_handle(asm));
+        let mref = MethodRef::new(
+            ClassRef::gc_handle(asm),
+            asm.alloc_string("FromIntPtr"),
+            asm.sig([Type::Int(Int::ISize)], gc_handle_class),
+            MethodKind::Static,
+            vec![].into(),
         );
+        let gc_handle = call!(asm.alloc_methodref(mref), [self]);
         let gc_handle = CILNode::TemporaryLocal(Box::new((
-            Type::ClassRef(ClassRef::gc_handle(asm)),
+            gc_handle_class,
             [CILRoot::SetTMPLocal { value: gc_handle }].into(),
             CILNode::LoadAddresOfTMPLocal,
         )));
-        let gc_handle_tpe = Type::ClassRef(ClassRef::gc_handle(asm));
-        let object = call!(
-            CallSite::new(
-                Some(ClassRef::gc_handle(asm)),
-                "get_Target".to_owned().into(),
-                FnSig::new(Box::new([asm.nref(gc_handle_tpe)]), Type::PlatformObject),
-                false,
-            ),
-            [gc_handle]
+
+        let gc_handle_ref = asm.nref(gc_handle_class);
+        let mref = MethodRef::new(
+            ClassRef::gc_handle(asm),
+            asm.alloc_string("get_Target"),
+            asm.sig([gc_handle_ref], Type::PlatformObject),
+            MethodKind::Instance,
+            vec![].into(),
         );
+        let object = call!(asm.alloc_methodref(mref), [gc_handle]);
         CILNode::CheckedCast(Box::new((object, obj)))
     }
+
     #[must_use]
     pub fn select(tpe: Type, a: Self, b: Self, predictate: Self) -> Self {
+        todo!()
+    }
+    /*
         match tpe {
             Type::Int(Int::U128) => call!(
-                CallSite::builtin(
+                MethodRefIdx::builtin(
                     "select_u128".to_owned().into(),
-                    FnSig::new(
+                    asm.sig(
                         Box::new([Type::Int(Int::U128), Type::Int(Int::U128), Type::Bool]),
                         Type::Int(Int::U128)
                     ),
-                    true
+                       MethodKind::Static,
+                vec![].into()
                 ),
                 [a, b, predictate]
             ),
             Type::Int(Int::I128) => call!(
-                CallSite::builtin(
+                MethodRefIdx::builtin(
                     "select_i128".to_owned().into(),
-                    FnSig::new(
+                    asm.sig(
                         Box::new([Type::Int(Int::I128), Type::Int(Int::I128), Type::Bool]),
                         Type::Int(Int::I128)
                     ),
-                    true
+                       MethodKind::Static,
+                vec![].into()
                 ),
                 [a, b, predictate]
             ),
             Type::Int(Int::USize) => call!(
-                CallSite::builtin(
+                MethodRefIdx::builtin(
                     "select_usize".to_owned().into(),
-                    FnSig::new(
+                    asm.sig(
                         Box::new([Type::Int(Int::USize), Type::Int(Int::USize), Type::Bool]),
                         Type::Int(Int::USize)
                     ),
-                    true
+                       MethodKind::Static,
+                vec![].into()
                 ),
                 [a, b, predictate]
             ),
             Type::Ptr(_) => call!(
-                CallSite::builtin(
+                MethodRefIdx::builtin(
                     "select_usize".to_owned().into(),
-                    FnSig::new(
+                    asm.sig(
                         Box::new([Type::Int(Int::USize), Type::Int(Int::USize), Type::Bool]),
                         Type::Int(Int::USize)
                     ),
-                    true
+                       MethodKind::Static,
+                vec![].into()
                 ),
                 [
                     a.cast_ptr(Type::Int(Int::USize)),
@@ -398,75 +399,81 @@ impl CILNode {
             )
             .cast_ptr(tpe),
             Type::Int(Int::ISize) => call!(
-                CallSite::builtin(
+                MethodRefIdx::builtin(
                     "select_isize".to_owned().into(),
-                    FnSig::new(
+                    asm.sig(
                         Box::new([Type::Int(Int::ISize), Type::Int(Int::ISize), Type::Bool]),
                         Type::Int(Int::ISize)
                     ),
-                    true
+                       MethodKind::Static,
+                vec![].into()
                 ),
                 [a, b, predictate]
             ),
             Type::Int(Int::U64) => call!(
-                CallSite::builtin(
+                MethodRefIdx::builtin(
                     "select_u64".to_owned().into(),
-                    FnSig::new(
+                    asm.sig(
                         Box::new([Type::Int(Int::U64), Type::Int(Int::U64), Type::Bool]),
                         Type::Int(Int::U64)
                     ),
-                    true
+                       MethodKind::Static,
+                vec![].into()
                 ),
                 [a, b, predictate]
             ),
             Type::Int(Int::I64) => call!(
-                CallSite::builtin(
+                MethodRefIdx::builtin(
                     "select_i64".to_owned().into(),
-                    FnSig::new(
+                    asm.sig(
                         Box::new([Type::Int(Int::I64), Type::Int(Int::I64), Type::Bool]),
                         Type::Int(Int::I64)
                     ),
-                    true
+                       MethodKind::Static,
+                vec![].into()
                 ),
                 [a, b, predictate]
             ),
             Type::Int(Int::U32) => call!(
-                CallSite::builtin(
+                MethodRefIdx::builtin(
                     "select_u32".to_owned().into(),
-                    FnSig::new(
+                    asm.sig(
                         Box::new([Type::Int(Int::U32), Type::Int(Int::U32), Type::Bool]),
                         Type::Int(Int::U32)
                     ),
-                    true
+                       MethodKind::Static,
+                vec![].into()
                 ),
                 [a, b, predictate]
             ),
             Type::Int(Int::I32) => call!(
-                CallSite::builtin(
+                MethodRefIdx::builtin(
                     "select_i32".to_owned().into(),
-                    FnSig::new(
+                    asm.sig(
                         Box::new([Type::Int(Int::I32), Type::Int(Int::I32), Type::Bool]),
                         Type::Int(Int::I32)
                     ),
-                    true
+                       MethodKind::Static,
+                vec![].into()
                 ),
                 [a, b, predictate]
             ),
             Type::Int(Int::U16) => call!(
-                CallSite::builtin(
+                MethodRef::new(
                     "select_u16".to_owned().into(),
-                    FnSig::new(
+                    asm.sig(
                         Box::new([Type::Int(Int::U16), Type::Int(Int::U16), Type::Bool]),
                         Type::Int(Int::U16)
                     ),
-                    true
+                       MethodKind::Static,
+                vec![].into()
                 ),
                 [a, b, predictate]
             ),
             Type::Int(Int::I16) => call!(
-                CallSite::builtin(
+                MethodRefIdx::builtin(
                     "select_i16".to_owned().into(),
-                    FnSig::new(
+                    asm.sig(
                         Box::new([Type::Int(Int::I16), Type::Int(Int::I16), Type::Bool]),
                         Type::Int(Int::I16)
                     ),
@@ -475,9 +482,9 @@ impl CILNode {
                 [a, b, predictate]
             ),
             Type::Int(Int::U8) | Type::Bool => call!(
-                CallSite::builtin(
+                MethodRefIdx::builtin(
                     "select_u8".to_owned().into(),
-                    FnSig::new(
+                    asm.sig(
                         Box::new([Type::Int(Int::U8), Type::Int(Int::U8), Type::Bool]),
                         Type::Int(Int::U8)
                     ),
@@ -486,9 +493,9 @@ impl CILNode {
                 [a, b, predictate]
             ),
             Type::Int(Int::I8) => call!(
-                CallSite::builtin(
+                MethodRefIdx::builtin(
                     "select_i8".to_owned().into(),
-                    FnSig::new(
+                    asm.sig(
                         Box::new([Type::Int(Int::I8), Type::Int(Int::I8), Type::Bool]),
                         Type::Int(Int::I8)
                     ),
@@ -498,7 +505,7 @@ impl CILNode {
             ),
             _ => todo!("Can't select type {tpe:?}"),
         }
-    }
+    }*/
 
     /// Checks if this node may have side effects. `false` means that the node can't have side effects, `true` means that the node *may* have side effects, but it does not have to.
     pub fn has_side_effects(&self) -> bool {

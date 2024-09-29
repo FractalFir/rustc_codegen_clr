@@ -1,7 +1,7 @@
 use crate::{assembly::MethodCompileCtx, operand::handle_operand, place::place_set};
 use cilly::{
     call,
-    call_site::CallSite,
+    call_site::MethodRefIdx,
     cil_node::CILNode,
     cil_root::CILRoot,
     v2::{ClassRef, FnSig},
@@ -32,7 +32,7 @@ pub fn bswap<'tcx>(
             TyKind::Uint(UintTy::U8) => operand,
             TyKind::Uint(_) | TyKind::Int(_) => {
                 call!(
-                    CallSite::boxed(
+                    MethodRefIdx::boxed(
                         Some(ClassRef::binary_primitives(ctx)),
                         "ReverseEndianness".into(),
                         FnSig::new([tpe].into(), tpe),

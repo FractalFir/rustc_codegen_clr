@@ -8,7 +8,7 @@ use crate::{
 };
 use cilly::{
     call,
-    call_site::CallSite,
+    call_site::MethodRefIdx,
     cil_node::CILNode,
     cil_root::CILRoot,
     conv_usize, ld_field, size_of,
@@ -183,7 +183,7 @@ pub fn place_elem_body<'tcx>(
                     let array_dotnet = array_type.as_class_ref().expect("Non array type");
                     if body_ty_is_by_adress(element, ctx) {
                         let ops = call!(
-                            CallSite::new(
+                            MethodRefIdx::new(
                                 Some(array_dotnet),
                                 "get_Address".into(),
                                 FnSig::new(
@@ -197,7 +197,7 @@ pub fn place_elem_body<'tcx>(
                         ((element).into(), ops)
                     } else {
                         let ops = call!(
-                            CallSite::new(
+                            MethodRefIdx::new(
                                 Some(array_dotnet),
                                 "get_Item".into(),
                                 FnSig::new(
@@ -256,7 +256,7 @@ pub fn place_elem_body<'tcx>(
                     let array_dotnet = array_type.as_class_ref().expect("Non array type");
                     if body_ty_is_by_adress(element_ty, ctx) {
                         let ops = call!(
-                            CallSite::new(
+                            MethodRefIdx::new(
                                 Some(array_dotnet),
                                 "get_Address".into(),
                                 FnSig::new(
@@ -270,7 +270,7 @@ pub fn place_elem_body<'tcx>(
                         ((element_ty).into(), ops)
                     } else {
                         let ops = call!(
-                            CallSite::new(
+                            MethodRefIdx::new(
                                 Some(array_dotnet),
                                 "get_Item".into(),
                                 FnSig::new(

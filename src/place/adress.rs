@@ -6,7 +6,7 @@ use crate::{
 };
 use cilly::{
     call,
-    call_site::CallSite,
+    call_site::MethodRefIdx,
     cil_node::CILNode,
     cil_root::CILRoot,
     conv_usize, ld_field, ldc_u32, ldc_u64, size_of,
@@ -237,7 +237,7 @@ pub fn place_elem_adress<'tcx>(
                     let array_dotnet = array_type.as_class_ref().expect("Non array type");
 
                     call!(
-                        CallSite::new(
+                        MethodRefIdx::new(
                             Some(array_dotnet),
                             "get_Address".into(),
                             FnSig::new(
@@ -364,7 +364,7 @@ pub fn place_elem_adress<'tcx>(
                         todo!("Can't index array from end!");
                     } else {
                         call!(
-                            CallSite::new(
+                            MethodRefIdx::new(
                                 Some(array_dotnet),
                                 "get_Address".into(),
                                 FnSig::new(

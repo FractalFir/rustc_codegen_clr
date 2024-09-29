@@ -5,7 +5,7 @@ use crate::{
 };
 use cilly::{
     call,
-    call_site::CallSite,
+    call_site::MethodRefIdx,
     cil_node::CILNode,
     cil_root::CILRoot,
     conv_usize, ld_field, ldc_u64, size_of,
@@ -106,7 +106,7 @@ pub fn place_elem_set<'a>(
                     let array_dotnet = array_type.as_class_ref().expect("Non array type");
 
                     CILRoot::Call {
-                        site: Box::new(CallSite::new(
+                        site: Box::new(MethodRefIdx::new(
                             Some(array_dotnet),
                             "set_Item".into(),
                             FnSig::new(
@@ -154,7 +154,7 @@ pub fn place_elem_set<'a>(
                     let addr = ld_field!(addr_calc.clone(), ctx.alloc_field(desc))
                         .cast_ptr(ctx.nptr(inner_type))
                         + call!(
-                            CallSite::new(
+                            MethodRefIdx::new(
                                 None,
                                 "bounds_check".into(),
                                 FnSig::new(
@@ -177,7 +177,7 @@ pub fn place_elem_set<'a>(
                     let array_type = ctx.type_from_cache(curr_ty);
                     let array_dotnet = array_type.as_class_ref().expect("Non array type");
                     CILRoot::Call {
-                        site: Box::new(CallSite::new(
+                        site: Box::new(MethodRefIdx::new(
                             Some(array_dotnet),
                             "set_Item".into(),
                             FnSig::new(
