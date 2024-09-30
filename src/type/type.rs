@@ -22,16 +22,16 @@ pub struct DotnetArray {
 #[must_use]
 pub fn max_value(tpe: &Type, asm: &mut Assembly) -> CILNode {
     match tpe {
-        Type::Int(Int::USize) => call!(
-            MethodRef::new(
+        Type::Int(Int::USize) => {
+            let mref = MethodRef::new(
                 ClassRef::usize_type(asm),
                 asm.alloc_string("get_MaxValue"),
                 asm.sig(([]), Type::Int(Int::USize)),
                 MethodKind::Static,
-                vec![].into()
-            ),
-            []
-        ),
+                vec![].into(),
+            );
+            call!(asm.alloc_methodref(mref), [])
+        }
         Type::Int(Int::U64) => ldc_u64!(u64::MAX),
         Type::Int(Int::U32) => ldc_u32!(u32::MAX),
         _ => todo!("Can't get the max value of {tpe:?}"),

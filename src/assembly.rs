@@ -107,11 +107,13 @@ fn allocation_initializer_method(
     let align = const_allocation.align.bytes().max(1);
     //trees.push(CILRoot::debug(&format!("Preparing to initialize allocation with size {}",bytes.len())).into());
     if align > 8 {
+        let aligned_alloc = MethodRef::aligned_alloc(asm);
+
         trees.push(
             CILRoot::STLoc {
                 local: 0,
                 tree: Box::new(call!(
-                    MethodRef::aligned_alloc(asm),
+                    asm.alloc_methodref(aligned_alloc),
                     [
                         conv_usize!(ldc_u64!(bytes.len() as u64)),
                         conv_usize!(ldc_u64!(align))
@@ -122,11 +124,12 @@ fn allocation_initializer_method(
             .into(),
         );
     } else {
+        let alloc = MethodRef::alloc(asm);
         trees.push(
             CILRoot::STLoc {
                 local: 0,
                 tree: Box::new(call!(
-                    MethodRef::alloc(asm),
+                    asm.alloc_methodref(alloc),
                     [ldc_i32!(
                         i32::try_from(bytes.len()).expect("Static alloc too big")
                     )]

@@ -63,9 +63,10 @@ fn call_managed<'tcx>(
             MethodKind::Static,
             vec![].into(),
         );
+        let call_site = ctx.alloc_methodref(call_site);
         if *signature.output() == cilly::Type::Void {
             CILRoot::Call {
-                site: ctx.alloc_methodref(call_site),
+                site: call_site,
                 args: [].into(),
             }
         } else {
@@ -81,7 +82,7 @@ fn call_managed<'tcx>(
         let call = MethodRef::new(
             (ctx.alloc_class_ref(tpe)),
             ctx.alloc_string(managed_fn_name),
-            ctx.alloc_sig(signature),
+            ctx.alloc_sig(signature.clone()),
             if is_static {
                 MethodKind::Static
             } else {
@@ -89,9 +90,10 @@ fn call_managed<'tcx>(
             },
             vec![].into(),
         );
+        let call = ctx.alloc_methodref(call);
         if *signature.output() == cilly::Type::Void {
             CILRoot::Call {
-                site: ctx.alloc_methodref(call),
+                site: call,
                 args: call_args.into(),
             }
         } else {
@@ -135,9 +137,10 @@ fn callvirt_managed<'tcx>(
             MethodKind::Static,
             vec![].into(),
         );
+        let call = ctx.alloc_methodref(call);
         if *signature.output() == cilly::Type::Void {
             CILRoot::CallVirt {
-                site: ctx.alloc_methodref(call),
+                site: call,
                 args: [].into(),
             }
         } else {
@@ -153,7 +156,7 @@ fn callvirt_managed<'tcx>(
         let call = MethodRef::new(
             (ctx.alloc_class_ref(tpe)),
             ctx.alloc_string(managed_fn_name),
-            ctx.alloc_sig(signature),
+            ctx.alloc_sig(signature.clone()),
             if is_static {
                 MethodKind::Static
             } else {
@@ -314,10 +317,10 @@ pub fn call_closure<'tcx>(
         vec![].into(),
     );
     // Hande the call itself
-
+    let call = ctx.alloc_methodref(call);
     if is_void {
         CILRoot::Call {
-            site: ctx.alloc_methodref(call),
+            site: call,
             args: call_args.into(),
         }
     } else {
@@ -593,13 +596,14 @@ pub fn call<'tcx>(
         vec![].into(),
     );
     // Hande
+    let site = ctx.alloc_methodref(call_site);
     if is_void {
         CILRoot::Call {
-            site: ctx.alloc_methodref(call_site),
+            site,
             args: call_args.into(),
         }
     } else {
-        let res_calc = call!(call_site, call_args);
+        let res_calc = call!(site, call_args);
         crate::place::place_set(destination, res_calc, ctx)
     }
 }

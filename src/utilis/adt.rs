@@ -335,7 +335,7 @@ pub fn get_discr<'tcx>(
                             vec![].into(),
                         );
                         call!(
-                            mref,
+                            ctx.alloc_methodref(mref),
                             [
                                 tag,
                                 CILNode::const_i128(
@@ -387,32 +387,38 @@ pub fn get_discr<'tcx>(
                     ),
                 };
                 let gt = match tag_tpe {
-                    Type::Int(Int::U128) => call!(
-                        MethodRef::new(
+                    Type::Int(Int::U128) => {
+                        let mref = MethodRef::new(
                             ClassRef::uint_128(ctx),
                             ctx.alloc_string("op_GreaterThan"),
-                            ctx.sig(([Type::Int(Int::U128), Type::Int(Int::U128)]), Type::Bool),
+                            ctx.sig([Type::Int(Int::U128), Type::Int(Int::U128)], Type::Bool),
                             MethodKind::Static,
-                            vec![].into()
-                        ),
-                        [
-                            relative_discr.clone(),
-                            CILNode::const_u128(u128::from(relative_max), ctx)
-                        ]
-                    ),
-                    Type::Int(Int::I128) => call!(
-                        MethodRef::new(
+                            vec![].into(),
+                        );
+                        call!(
+                            ctx.alloc_methodref(mref),
+                            [
+                                relative_discr.clone(),
+                                CILNode::const_u128(u128::from(relative_max), ctx)
+                            ]
+                        )
+                    }
+                    Type::Int(Int::I128) => {
+                        let mref = MethodRef::new(
                             ClassRef::int_128(ctx),
                             ctx.alloc_string("op_GreaterThan"),
-                            ctx.sig(([Type::Int(Int::I128), Type::Int(Int::I128)]), Type::Bool),
+                            ctx.sig([Type::Int(Int::I128), Type::Int(Int::I128)], Type::Bool),
                             MethodKind::Static,
-                            vec![].into()
-                        ),
-                        [
-                            relative_discr.clone(),
-                            CILNode::const_i128(u128::from(relative_max), ctx)
-                        ]
-                    ),
+                            vec![].into(),
+                        );
+                        call!(
+                            ctx.alloc_methodref(mref),
+                            [
+                                relative_discr.clone(),
+                                CILNode::const_i128(u128::from(relative_max), ctx)
+                            ]
+                        )
+                    }
 
                     _ => gt_un!(
                         relative_discr.clone(),

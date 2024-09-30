@@ -2,7 +2,7 @@ use cilly::{
     call,
     cil_node::CILNode,
     eq, gt, gt_un, lt, lt_un,
-    v2::{Assembly, ClassRef, Float, FnSig, Int, MethodRef},
+    v2::{cilnode::MethodKind, Assembly, ClassRef, Float, FnSig, Int, MethodRef},
     Type,
 };
 use rustc_middle::ty::{FloatTy, IntTy, Ty, TyKind, UintTy};
@@ -28,33 +28,29 @@ pub fn eq_unchecked(
     //vec![CILOp::Eq]
     match ty_a.kind() {
         TyKind::Uint(uint) => match uint {
-            UintTy::U128 => call!(
-                MethodRef::new(
+            UintTy::U128 => {
+                let mref = MethodRef::new(
                     ClassRef::uint_128(asm),
-                    "op_Equality".into(),
-                    FnSig::new(
-                        [Type::Int(Int::U128), Type::Int(Int::U128)].into(),
-                        Type::Bool
-                    ),
-                    true,
-                ),
-                [operand_a, operand_b]
-            ),
+                    asm.alloc_string("op_Equality"),
+                    asm.sig([Type::Int(Int::U128), Type::Int(Int::U128)], Type::Bool),
+                    MethodKind::Static,
+                    vec![].into(),
+                );
+                call!(asm.alloc_methodref(mref), [operand_a, operand_b])
+            }
             _ => eq!(operand_a, operand_b),
         },
         TyKind::Int(int) => match int {
-            IntTy::I128 => call!(
-                MethodRef::new(
+            IntTy::I128 => {
+                let mref = MethodRef::new(
                     ClassRef::int_128(asm),
-                    "op_Equality".into(),
-                    FnSig::new(
-                        [Type::Int(Int::I128), Type::Int(Int::I128)].into(),
-                        Type::Bool
-                    ),
-                    true,
-                ),
-                [operand_a, operand_b]
-            ),
+                    asm.alloc_string("op_Equality"),
+                    asm.sig([Type::Int(Int::I128), Type::Int(Int::I128)], Type::Bool),
+                    MethodKind::Static,
+                    vec![].into(),
+                );
+                call!(asm.alloc_methodref(mref), [operand_a, operand_b])
+            }
             _ => eq!(operand_a, operand_b),
         },
         TyKind::Bool
@@ -63,29 +59,32 @@ pub fn eq_unchecked(
         | TyKind::RawPtr(_, _) => {
             eq!(operand_a, operand_b)
         }
-        TyKind::Float(FloatTy::F128) => call!(
-            MethodRefIdx::builtin(
-                "__eqtf2".into(),
-                FnSig::new(
-                    [Type::Float(Float::F128), Type::Float(Float::F128)].into(),
-                    Type::Bool
+        TyKind::Float(FloatTy::F128) => {
+            let mref = MethodRef::new(
+                *asm.main_module(),
+                asm.alloc_string("__eqtf2"),
+                asm.sig(
+                    [Type::Float(Float::F128), Type::Float(Float::F128)],
+                    Type::Bool,
                 ),
-                true
-            ),
-            [operand_a, operand_b]
-        ),
-        TyKind::Float(FloatTy::F16) => call!(
-            MethodRef::new(
+                MethodKind::Static,
+                vec![].into(),
+            );
+            call!(asm.alloc_methodref(mref), [operand_a, operand_b])
+        }
+        TyKind::Float(FloatTy::F16) => {
+            let mref = MethodRef::new(
                 ClassRef::half(asm),
-                "op_Equality".into(),
-                FnSig::new(
-                    [Type::Float(Float::F16), Type::Float(Float::F16)].into(),
-                    Type::Bool
+                asm.alloc_string("op_Equality"),
+                asm.sig(
+                    [Type::Float(Float::F16), Type::Float(Float::F16)],
+                    Type::Bool,
                 ),
-                true,
-            ),
-            [operand_a, operand_b]
-        ),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            call!(asm.alloc_methodref(mref), [operand_a, operand_b])
+        }
         _ => panic!("Can't eq type  {ty_a:?}"),
     }
 }
@@ -98,33 +97,29 @@ pub fn lt_unchecked(
     //return CILOp::Lt;
     match ty_a.kind() {
         TyKind::Uint(uint) => match uint {
-            UintTy::U128 => call!(
-                MethodRef::new(
+            UintTy::U128 => {
+                let mref = MethodRef::new(
                     ClassRef::uint_128(asm),
-                    "op_LessThan".into(),
-                    FnSig::new(
-                        [Type::Int(Int::U128), Type::Int(Int::U128)].into(),
-                        Type::Bool
-                    ),
-                    true,
-                ),
-                [operand_a, operand_b]
-            ),
+                    asm.alloc_string("op_LessThan"),
+                    asm.sig([Type::Int(Int::U128), Type::Int(Int::U128)], Type::Bool),
+                    MethodKind::Static,
+                    vec![].into(),
+                );
+                call!(asm.alloc_methodref(mref), [operand_a, operand_b])
+            }
             _ => lt_un!(operand_a, operand_b),
         },
         TyKind::Int(int) => match int {
-            IntTy::I128 => call!(
-                MethodRef::new(
+            IntTy::I128 => {
+                let mref = MethodRef::new(
                     ClassRef::int_128(asm),
-                    "op_LessThan".into(),
-                    FnSig::new(
-                        [Type::Int(Int::I128), Type::Int(Int::I128)].into(),
-                        Type::Bool
-                    ),
-                    true,
-                ),
-                [operand_a, operand_b]
-            ),
+                    asm.alloc_string("op_LessThan"),
+                    asm.sig([Type::Int(Int::I128), Type::Int(Int::I128)], Type::Bool),
+                    MethodKind::Static,
+                    vec![].into(),
+                );
+                call!(asm.alloc_methodref(mref), [operand_a, operand_b])
+            }
             _ => lt!(operand_a, operand_b),
         },
         // TODO: are chars considered signed or unsigned?
@@ -132,17 +127,19 @@ pub fn lt_unchecked(
             lt!(operand_a, operand_b)
         }
         TyKind::RawPtr(_, _) | TyKind::FnPtr(_, _) => lt_un!(operand_a, operand_b),
-        TyKind::Float(FloatTy::F128) => call!(
-            MethodRefIdx::builtin(
-                "__lttf2".into(),
-                FnSig::new(
-                    [Type::Float(Float::F128), Type::Float(Float::F128)].into(),
-                    Type::Bool
+        TyKind::Float(FloatTy::F128) => {
+            let mref = MethodRef::new(
+                *asm.main_module(),
+                asm.alloc_string("__lttf2"),
+                asm.sig(
+                    [Type::Float(Float::F128), Type::Float(Float::F128)],
+                    Type::Bool,
                 ),
-                true
-            ),
-            [operand_a, operand_b]
-        ),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            call!(asm.alloc_methodref(mref), [operand_a, operand_b])
+        }
         _ => panic!("Can't eq type  {ty_a:?}"),
     }
 }
@@ -154,50 +151,48 @@ pub fn gt_unchecked(
 ) -> CILNode {
     match ty_a.kind() {
         TyKind::Uint(uint) => match uint {
-            UintTy::U128 => call!(
-                MethodRef::new(
+            UintTy::U128 => {
+                let mref = MethodRef::new(
                     ClassRef::uint_128(asm),
-                    "op_GreaterThan".into(),
-                    FnSig::new(
-                        [Type::Int(Int::U128), Type::Int(Int::U128)].into(),
-                        Type::Bool
-                    ),
-                    true,
-                ),
-                [operand_a, operand_b]
-            ),
+                    asm.alloc_string("op_GreaterThan"),
+                    asm.sig([Type::Int(Int::U128), Type::Int(Int::U128)], Type::Bool),
+                    MethodKind::Static,
+                    vec![].into(),
+                );
+                call!(asm.alloc_methodref(mref), [operand_a, operand_b])
+            }
             _ => gt_un!(operand_a, operand_b),
         },
         TyKind::Int(int) => match int {
-            IntTy::I128 => call!(
-                MethodRef::new(
+            IntTy::I128 => {
+                let mref = MethodRef::new(
                     ClassRef::int_128(asm),
-                    "op_GreaterThan".into(),
-                    FnSig::new(
-                        [Type::Int(Int::I128), Type::Int(Int::I128)].into(),
-                        Type::Bool
-                    ),
-                    true,
-                ),
-                [operand_a, operand_b]
-            ),
+                    asm.alloc_string("op_GreaterThan"),
+                    asm.sig([Type::Int(Int::I128), Type::Int(Int::I128)], Type::Bool),
+                    MethodKind::Static,
+                    vec![].into(),
+                );
+                call!(asm.alloc_methodref(mref), [operand_a, operand_b])
+            }
             _ => gt!(operand_a, operand_b),
         },
         // TODO: are chars considered signed or unsigned?
         TyKind::Bool | TyKind::Char | TyKind::Float(FloatTy::F32 | FloatTy::F64) => {
             gt!(operand_a, operand_b)
         }
-        TyKind::Float(FloatTy::F128) => call!(
-            MethodRefIdx::builtin(
-                "__gttf2".into(),
-                FnSig::new(
-                    [Type::Float(Float::F128), Type::Float(Float::F128)].into(),
-                    Type::Bool
+        TyKind::Float(FloatTy::F128) => {
+            let mref = MethodRef::new(
+                *asm.main_module(),
+                asm.alloc_string("__gttf2"),
+                asm.sig(
+                    [Type::Float(Float::F128), Type::Float(Float::F128)],
+                    Type::Bool,
                 ),
-                true
-            ),
-            [operand_a, operand_b]
-        ),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            call!(asm.alloc_methodref(mref), [operand_a, operand_b])
+        }
         TyKind::RawPtr(_, _) => gt_un!(operand_a, operand_b),
         _ => panic!("Can't eq type  {ty_a:?}"),
     }

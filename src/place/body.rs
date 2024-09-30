@@ -8,11 +8,10 @@ use crate::{
 };
 use cilly::{
     call,
-    call_site::MethodRefIdx,
     cil_node::CILNode,
     cil_root::CILRoot,
     conv_usize, ld_field, size_of,
-    v2::{FieldDesc, FnSig, Int},
+    v2::{cilnode::MethodKind, FieldDesc, FnSig, Int, MethodRef},
     Type,
 };
 use rustc_middle::mir::PlaceElem;
@@ -111,6 +110,77 @@ fn body_field<'a>(
         }
     }
 }
+pub fn place_elem_body_index<'tcx>(
+    place_elem: &PlaceElem<'tcx>,
+    curr_ty: Ty<'tcx>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
+    parrent_node: CILNode,
+    index: rustc_middle::mir::Local,
+) -> (PlaceTy<'tcx>, CILNode) {
+    let index = crate::place::local_get(index.as_usize(), ctx.body());
+    match curr_ty.kind() {
+        TyKind::Slice(inner) => {
+            let inner = ctx.monomorphize(*inner);
+            let inner_type = ctx.type_from_cache(inner);
+            let slice = fat_ptr_to(Ty::new_slice(ctx.tcx(), inner), ctx);
+            let desc = FieldDesc::new(
+                slice,
+                ctx.alloc_string(crate::DATA_PTR),
+                ctx.nptr(Type::Void),
+            );
+            let addr = ld_field!(parrent_node, ctx.alloc_field(desc))
+                .cast_ptr(ctx.nptr(inner_type))
+                + (index * CILNode::ZeroExtendToUSize(size_of!(inner_type).into()));
+
+            if body_ty_is_by_adress(inner, ctx) {
+                (inner.into(), addr)
+            } else {
+                (
+                    inner.into(),
+                    super::deref_op(super::PlaceTy::Ty(inner), ctx, addr),
+                )
+            }
+        }
+        TyKind::Array(element, _length) => {
+            let element = ctx.monomorphize(*element);
+            let element_type = ctx.type_from_cache(element);
+            let array_type = ctx.type_from_cache(curr_ty);
+            let array_dotnet = array_type.as_class_ref().expect("Non array type");
+            let arr_ref = ctx.nref(array_type);
+            if body_ty_is_by_adress(element, ctx) {
+                let elem_ptr = ctx.nptr(element_type);
+                let mref = MethodRef::new(
+                    (array_dotnet),
+                    ctx.alloc_string("get_Address"),
+                    ctx.sig([arr_ref, Type::Int(Int::USize)], elem_ptr),
+                    MethodKind::Instance,
+                    vec![].into(),
+                );
+                let ops = call!(
+                    ctx.alloc_methodref(mref),
+                    [parrent_node, CILNode::ZeroExtendToUSize(index.into())]
+                );
+                ((element).into(), ops)
+            } else {
+                let mref = MethodRef::new(
+                    (array_dotnet),
+                    ctx.alloc_string("get_Item"),
+                    ctx.sig([arr_ref, Type::Int(Int::USize)], element_type),
+                    MethodKind::Instance,
+                    vec![].into(),
+                );
+                let ops = call!(
+                    ctx.alloc_methodref(mref),
+                    [parrent_node, CILNode::ZeroExtendToUSize(index.into())]
+                );
+                ((element).into(), ops)
+            }
+        }
+        _ => {
+            rustc_middle::ty::print::with_no_trimmed_paths! {todo!("Can't index into {curr_ty}!")}
+        }
+    }
+}
 pub fn place_elem_body<'tcx>(
     place_elem: &PlaceElem<'tcx>,
     curr_type: PlaceTy<'tcx>,
@@ -148,74 +218,15 @@ pub fn place_elem_body<'tcx>(
 
             (variant_type, parrent_node)
         }
-        PlaceElem::Index(index) => {
-            let curr_ty = curr_ty
+        PlaceElem::Index(index) => place_elem_body_index(
+            place_elem,
+            curr_type
                 .as_ty()
-                .expect("INVALID PLACE: Indexing into enum variant???");
-            let index = crate::place::local_get(index.as_usize(), ctx.body());
-            match curr_ty.kind() {
-                TyKind::Slice(inner) => {
-                    let inner = ctx.monomorphize(*inner);
-                    let inner_type = ctx.type_from_cache(inner);
-                    let slice = fat_ptr_to(Ty::new_slice(ctx.tcx(), inner), ctx);
-                    let desc = FieldDesc::new(
-                        slice,
-                        ctx.alloc_string(crate::DATA_PTR),
-                        ctx.nptr(Type::Void),
-                    );
-                    let addr = ld_field!(parrent_node, ctx.alloc_field(desc))
-                        .cast_ptr(ctx.nptr(inner_type))
-                        + (index * CILNode::ZeroExtendToUSize(size_of!(inner_type).into()));
-
-                    if body_ty_is_by_adress(inner, ctx) {
-                        (inner.into(), addr)
-                    } else {
-                        (
-                            inner.into(),
-                            super::deref_op(super::PlaceTy::Ty(inner), ctx, addr),
-                        )
-                    }
-                }
-                TyKind::Array(element, _length) => {
-                    let element = ctx.monomorphize(*element);
-                    let element_type = ctx.type_from_cache(element);
-                    let array_type = ctx.type_from_cache(curr_ty);
-                    let array_dotnet = array_type.as_class_ref().expect("Non array type");
-                    if body_ty_is_by_adress(element, ctx) {
-                        let ops = call!(
-                            MethodRefIdx::new(
-                                Some(array_dotnet),
-                                "get_Address".into(),
-                                FnSig::new(
-                                    [ctx.nref(array_type), Type::Int(Int::USize)].into(),
-                                    ctx.nptr(element_type),
-                                ),
-                                false,
-                            ),
-                            [parrent_node, CILNode::ZeroExtendToUSize(index.into())]
-                        );
-                        ((element).into(), ops)
-                    } else {
-                        let ops = call!(
-                            MethodRefIdx::new(
-                                Some(array_dotnet),
-                                "get_Item".into(),
-                                FnSig::new(
-                                    [ctx.nref(array_type), Type::Int(Int::USize)].into(),
-                                    element_type,
-                                ),
-                                false,
-                            ),
-                            [parrent_node, CILNode::ZeroExtendToUSize(index.into())]
-                        );
-                        ((element).into(), ops)
-                    }
-                }
-                _ => {
-                    rustc_middle::ty::print::with_no_trimmed_paths! {todo!("Can't index into {curr_ty}!")}
-                }
-            }
-        }
+                .expect("INVALID PLACE: Indexing into enum variant???"),
+            ctx,
+            parrent_node,
+            *index,
+        ),
         PlaceElem::ConstantIndex {
             offset,
             min_length: _,
@@ -254,31 +265,31 @@ pub fn place_elem_body<'tcx>(
                     let element = ctx.type_from_cache(element_ty);
                     let array_type = ctx.type_from_cache(curr_ty);
                     let array_dotnet = array_type.as_class_ref().expect("Non array type");
+                    let arr_ref = ctx.nref(array_type);
                     if body_ty_is_by_adress(element_ty, ctx) {
+                        let elem_ptr = ctx.nptr(element);
+                        let mref = MethodRef::new(
+                            (array_dotnet),
+                            ctx.alloc_string("get_Address"),
+                            ctx.sig([arr_ref, Type::Int(Int::USize)], elem_ptr),
+                            MethodKind::Instance,
+                            vec![].into(),
+                        );
                         let ops = call!(
-                            MethodRefIdx::new(
-                                Some(array_dotnet),
-                                "get_Address".into(),
-                                FnSig::new(
-                                    [ctx.nref(array_type), Type::Int(Int::USize)].into(),
-                                    ctx.nptr(element),
-                                ),
-                                false,
-                            ),
+                            ctx.alloc_methodref(mref),
                             [parrent_node, CILNode::ZeroExtendToUSize(index.into())]
                         );
                         ((element_ty).into(), ops)
                     } else {
+                        let mref = MethodRef::new(
+                            (array_dotnet),
+                            ctx.alloc_string("get_Item"),
+                            ctx.sig([arr_ref, Type::Int(Int::USize)], element),
+                            MethodKind::Instance,
+                            vec![].into(),
+                        );
                         let ops = call!(
-                            MethodRefIdx::new(
-                                Some(array_dotnet),
-                                "get_Item".into(),
-                                FnSig::new(
-                                    [ctx.nref(array_type), Type::Int(Int::USize)].into(),
-                                    element
-                                ),
-                                false,
-                            ),
+                            ctx.alloc_methodref(mref),
                             [parrent_node, CILNode::ZeroExtendToUSize(index.into())]
                         );
                         ((element_ty).into(), ops)
