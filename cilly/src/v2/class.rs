@@ -135,6 +135,30 @@ impl ClassRef {
         let asm_name = Some(asm.alloc_string("System.Runtime"));
         asm.alloc_class_ref(ClassRef::new(name, asm_name, true, [].into()))
     }
+    /// Returns a reference to the `System.UInt32` type.
+    pub fn uint32(asm: &mut Assembly) -> ClassRefIdx {
+        let name = asm.alloc_string("System.UInt32");
+        let asm_name = Some(asm.alloc_string("System.Runtime"));
+        asm.alloc_class_ref(ClassRef::new(name, asm_name, true, [].into()))
+    }
+    /// Returns a reference to the `System.Int32` type.
+    pub fn int32(asm: &mut Assembly) -> ClassRefIdx {
+        let name = asm.alloc_string("System.Int32");
+        let asm_name = Some(asm.alloc_string("System.Runtime"));
+        asm.alloc_class_ref(ClassRef::new(name, asm_name, true, [].into()))
+    }
+    /// Returns a reference to the `System.UInt64` type.
+    pub fn uint64(asm: &mut Assembly) -> ClassRefIdx {
+        let name = asm.alloc_string("System.UInt64");
+        let asm_name = Some(asm.alloc_string("System.Runtime"));
+        asm.alloc_class_ref(ClassRef::new(name, asm_name, true, [].into()))
+    }
+    /// Returns a reference to the `System.Int64` type.
+    pub fn int64(asm: &mut Assembly) -> ClassRefIdx {
+        let name = asm.alloc_string("System.Int64");
+        let asm_name = Some(asm.alloc_string("System.Runtime"));
+        asm.alloc_class_ref(ClassRef::new(name, asm_name, true, [].into()))
+    }
     /// Returns a reference to the `System.IntPtr` type.
     pub fn isize_type(asm: &mut Assembly) -> ClassRefIdx {
         let name = asm.alloc_string("System.IntPtr");

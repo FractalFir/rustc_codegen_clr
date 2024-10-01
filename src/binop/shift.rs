@@ -3,10 +3,9 @@ use crate::utilis::compiletime_sizeof;
 
 use cilly::{
     call,
-    call_site::MethodRefIdx,
     cil_node::CILNode,
     conv_i32, conv_u32, ldc_u32, rem_un, shl, shr, shr_un,
-    v2::{ClassRef, FnSig, Int},
+    v2::{cilnode::MethodKind, ClassRef, FnSig, Int, MethodRef},
     Type,
 };
 
@@ -21,16 +20,18 @@ pub fn shr_unchecked<'tcx>(
     let type_b = ctx.type_from_cache(shift_type);
     match value_type.kind() {
         TyKind::Uint(UintTy::U128) => {
-            call!(
-                MethodRefIdx::boxed(
-                    ClassRef::uint_128(ctx).into(),
-                    "op_RightShift".into(),
-                    FnSig::new(
-                        [Type::Int(Int::U128), Type::Int(Int::I32)].into(),
-                        Type::Int(Int::U128)
-                    ),
-                    true,
+            let mref = MethodRef::new(
+                ClassRef::uint_128(ctx).into(),
+                ctx.alloc_string("op_RightShift"),
+                ctx.sig(
+                    [Type::Int(Int::U128), Type::Int(Int::I32)],
+                    Type::Int(Int::U128),
                 ),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            call!(
+                ctx.alloc_methodref(mref),
                 [
                     ops_a,
                     crate::casts::int_to_int(type_b, Type::Int(Int::I32), ops_b, ctx)
@@ -38,16 +39,18 @@ pub fn shr_unchecked<'tcx>(
             )
         }
         TyKind::Int(IntTy::I128) => {
-            call!(
-                MethodRefIdx::boxed(
-                    ClassRef::int_128(ctx).into(),
-                    "op_RightShift".into(),
-                    FnSig::new(
-                        [Type::Int(Int::I128), Type::Int(Int::I32)].into(),
-                        Type::Int(Int::I128)
-                    ),
-                    true,
+            let mref = MethodRef::new(
+                ClassRef::int_128(ctx).into(),
+                ctx.alloc_string("op_RightShift"),
+                ctx.sig(
+                    [Type::Int(Int::I128), Type::Int(Int::I32)],
+                    Type::Int(Int::I128),
                 ),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            call!(
+                ctx.alloc_methodref(mref),
                 [
                     ops_a,
                     crate::casts::int_to_int(type_b, Type::Int(Int::I32), ops_b, ctx)
@@ -89,16 +92,18 @@ pub fn shr_checked<'tcx>(
         .expect("Intiger size over 2^32 bits.");
     match value_type.kind() {
         TyKind::Uint(UintTy::U128) => {
-            call!(
-                MethodRefIdx::boxed(
-                    ClassRef::uint_128(ctx).into(),
-                    "op_RightShift".into(),
-                    FnSig::new(
-                        [Type::Int(Int::U128), Type::Int(Int::I32)].into(),
-                        Type::Int(Int::U128)
-                    ),
-                    true,
+            let mref = MethodRef::new(
+                ClassRef::uint_128(ctx).into(),
+                ctx.alloc_string("op_RightShift"),
+                ctx.sig(
+                    [Type::Int(Int::U128), Type::Int(Int::I32)],
+                    Type::Int(Int::U128),
                 ),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            let cilnode = call!(
+                ctx.alloc_methodref(mref),
                 [
                     ops_a,
                     conv_i32!(rem_un!(
@@ -106,19 +111,22 @@ pub fn shr_checked<'tcx>(
                         ldc_u32!(128)
                     ))
                 ]
-            )
+            );
+            cilnode
         }
         TyKind::Int(IntTy::I128) => {
-            call!(
-                MethodRefIdx::boxed(
-                    ClassRef::int_128(ctx).into(),
-                    "op_RightShift".into(),
-                    FnSig::new(
-                        [Type::Int(Int::I128), Type::Int(Int::I32)].into(),
-                        Type::Int(Int::I128)
-                    ),
-                    true,
+            let mref = MethodRef::new(
+                ClassRef::int_128(ctx).into(),
+                ctx.alloc_string("op_RightShift"),
+                ctx.sig(
+                    [Type::Int(Int::I128), Type::Int(Int::I32)],
+                    Type::Int(Int::I128),
                 ),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            let cilnode = call!(
+                ctx.alloc_methodref(mref),
                 [
                     ops_a,
                     conv_i32!(rem_un!(
@@ -126,7 +134,8 @@ pub fn shr_checked<'tcx>(
                         ldc_u32!(128)
                     ))
                 ]
-            )
+            );
+            cilnode
         }
         TyKind::Uint(_) => match shift_type.kind() {
             TyKind::Uint(UintTy::U128 | UintTy::U64) | TyKind::Int(IntTy::I128 | IntTy::I64) => {
@@ -182,15 +191,18 @@ pub fn shl_checked<'tcx>(
         .expect("Intiger has over 2^32 bits.");
     match value_type.kind() {
         TyKind::Uint(UintTy::U128) => {
-            call!(
-                MethodRefIdx::builtin(
-                    "shl_u128".into(),
-                    FnSig::new(
-                        [Type::Int(Int::U128), Type::Int(Int::I32)].into(),
-                        Type::Int(Int::U128)
-                    ),
-                    true
+            let mref = MethodRef::new(
+                *ctx.main_module(),
+                ctx.alloc_string("shl_u128"),
+                ctx.sig(
+                    [Type::Int(Int::U128), Type::Int(Int::I32)],
+                    Type::Int(Int::U128),
                 ),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            call!(
+                ctx.alloc_methodref(mref),
                 [
                     ops_a,
                     conv_i32!(rem_un!(
@@ -206,15 +218,18 @@ pub fn shl_checked<'tcx>(
             )
         }
         TyKind::Int(IntTy::I128) => {
-            call!(
-                MethodRefIdx::builtin(
-                    "shl_i128".into(),
-                    FnSig::new(
-                        [Type::Int(Int::I128), Type::Int(Int::I32)].into(),
-                        Type::Int(Int::I128)
-                    ),
-                    true
+            let mref = MethodRef::new(
+                *ctx.main_module(),
+                ctx.alloc_string("shl_i128"),
+                ctx.sig(
+                    [Type::Int(Int::I128), Type::Int(Int::I32)],
+                    Type::Int(Int::I128),
                 ),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            call!(
+                ctx.alloc_methodref(mref),
                 [
                     ops_a,
                     conv_i32!(rem_un!(
@@ -282,16 +297,18 @@ pub fn shl_unchecked<'tcx>(
     let type_b = ctx.type_from_cache(shift_type);
     match value_type.kind() {
         TyKind::Uint(UintTy::U128) => {
-            call!(
-                MethodRefIdx::boxed(
-                    ClassRef::uint_128(ctx).into(),
-                    "op_LeftShift".into(),
-                    FnSig::new(
-                        [Type::Int(Int::U128), Type::Int(Int::I32)].into(),
-                        Type::Int(Int::U128)
-                    ),
-                    true,
+            let mref = MethodRef::new(
+                ClassRef::uint_128(ctx).into(),
+                ctx.alloc_string("op_LeftShift"),
+                ctx.sig(
+                    [Type::Int(Int::U128), Type::Int(Int::I32)],
+                    Type::Int(Int::U128),
                 ),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            call!(
+                ctx.alloc_methodref(mref),
                 [
                     ops_a,
                     crate::casts::int_to_int(type_b, Type::Int(Int::I32), ops_b, ctx)
@@ -299,16 +316,18 @@ pub fn shl_unchecked<'tcx>(
             )
         }
         TyKind::Int(IntTy::I128) => {
-            call!(
-                MethodRefIdx::boxed(
-                    ClassRef::int_128(ctx).into(),
-                    "op_LeftShift".into(),
-                    FnSig::new(
-                        [Type::Int(Int::I128), Type::Int(Int::I32)].into(),
-                        Type::Int(Int::I128)
-                    ),
-                    true,
+            let mref = MethodRef::new(
+                ClassRef::int_128(ctx).into(),
+                ctx.alloc_string("op_LeftShift"),
+                ctx.sig(
+                    [Type::Int(Int::I128), Type::Int(Int::I32)],
+                    Type::Int(Int::I128),
                 ),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            call!(
+                ctx.alloc_methodref(mref),
                 [
                     ops_a,
                     crate::casts::int_to_int(type_b, Type::Int(Int::I32), ops_b, ctx)

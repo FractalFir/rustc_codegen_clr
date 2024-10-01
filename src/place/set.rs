@@ -5,11 +5,10 @@ use crate::{
 };
 use cilly::{
     call,
-    call_site::MethodRefIdx,
     cil_node::CILNode,
     cil_root::CILRoot,
     conv_usize, ld_field, ldc_u64, size_of,
-    v2::{ClassRef, FieldDesc, FnSig, Int},
+    v2::{cilnode::MethodKind, ClassRef, FieldDesc, FnSig, Int, MethodRef},
     Type,
 };
 use rustc_middle::{
@@ -104,17 +103,16 @@ pub fn place_elem_set<'a>(
                     let element_type = ctx.type_from_cache(element);
 
                     let array_dotnet = array_type.as_class_ref().expect("Non array type");
-
+                    let arr_ref = ctx.nref(array_type);
+                    let mref = MethodRef::new(
+                        (array_dotnet),
+                        ctx.alloc_string("set_Item"),
+                        ctx.sig([arr_ref, Type::Int(Int::USize), element_type], Type::Void),
+                        MethodKind::Instance,
+                        vec![].into(),
+                    );
                     CILRoot::Call {
-                        site: Box::new(MethodRefIdx::new(
-                            Some(array_dotnet),
-                            "set_Item".into(),
-                            FnSig::new(
-                                [ctx.nref(array_type), Type::Int(Int::USize), element_type].into(),
-                                Type::Void,
-                            ),
-                            false,
-                        )),
+                        site: ctx.alloc_methodref(mref),
                         args: [addr_calc, index, value_calc].into(),
                     }
                 }
@@ -151,18 +149,20 @@ pub fn place_elem_set<'a>(
                         ctx.alloc_string(crate::METADATA),
                         Type::Int(Int::USize),
                     );
+                    let mref = MethodRef::new(
+                        *ctx.main_module(),
+                        ctx.alloc_string("bounds_check"),
+                        ctx.sig(
+                            [Type::Int(Int::USize), Type::Int(Int::USize)],
+                            Type::Int(Int::USize),
+                        ),
+                        MethodKind::Static,
+                        vec![].into(),
+                    );
                     let addr = ld_field!(addr_calc.clone(), ctx.alloc_field(desc))
                         .cast_ptr(ctx.nptr(inner_type))
                         + call!(
-                            MethodRefIdx::new(
-                                None,
-                                "bounds_check".into(),
-                                FnSig::new(
-                                    [Type::Int(Int::USize), Type::Int(Int::USize)].into(),
-                                    Type::Int(Int::USize)
-                                ),
-                                true
-                            ),
+                            ctx.alloc_methodref(mref),
                             [
                                 conv_usize!(index),
                                 ld_field!(addr_calc, ctx.alloc_field(metadata)),
@@ -176,16 +176,16 @@ pub fn place_elem_set<'a>(
                     let element = ctx.type_from_cache(element);
                     let array_type = ctx.type_from_cache(curr_ty);
                     let array_dotnet = array_type.as_class_ref().expect("Non array type");
+                    let arr_ref = ctx.nref(array_type);
+                    let mref = MethodRef::new(
+                        (array_dotnet),
+                        ctx.alloc_string("set_Item"),
+                        ctx.sig([arr_ref, Type::Int(Int::USize), element], Type::Void),
+                        MethodKind::Instance,
+                        vec![].into(),
+                    );
                     CILRoot::Call {
-                        site: Box::new(MethodRefIdx::new(
-                            Some(array_dotnet),
-                            "set_Item".into(),
-                            FnSig::new(
-                                [ctx.nref(array_type), Type::Int(Int::USize), element].into(),
-                                Type::Void,
-                            ),
-                            false,
-                        )),
+                        site: ctx.alloc_methodref(mref),
                         args: [addr_calc, conv_usize!(index), value_calc].into(),
                     }
                 }

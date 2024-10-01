@@ -25,6 +25,56 @@ impl From<Int> for Type {
     }
 }
 impl Int {
+    /// Returns a reference to a class representing this type.
+    pub fn class(&self, asm: &mut Assembly) -> ClassRefIdx {
+        match self {
+            Int::U8 => ClassRef::byte(asm),
+            Int::U16 => ClassRef::uint16(asm),
+            Int::U32 => ClassRef::uint32(asm),
+            Int::U64 => ClassRef::uint64(asm),
+            Int::U128 => ClassRef::uint_128(asm),
+            Int::USize => ClassRef::usize_type(asm),
+            Int::I8 => ClassRef::sbyte(asm),
+            Int::I16 => ClassRef::int16(asm),
+            Int::I32 => ClassRef::int32(asm),
+            Int::I64 => ClassRef::int64(asm),
+            Int::I128 => ClassRef::int_128(asm),
+            Int::ISize => ClassRef::isize_type(asm),
+        }
+    }
+    /// Returns the unsigned version of this type.
+    /// ```
+    /// # use cilly::Int;
+    /// assert_eq!(Int::I8.as_unsigned(),Int::U8);
+    /// assert_eq!(Int::I128.as_unsigned(),Int::U128.as_unsigned());
+    /// ```
+    pub fn as_unsigned(&self) -> Self {
+        match self {
+            Int::I8 | Int::U8 => Int::U8,
+            Int::I16 | Int::U16 => Int::U16,
+            Int::I32 | Int::U32 => Int::U32,
+            Int::I64 | Int::U64 => Int::U64,
+            Int::I128 | Int::U128 => Int::U128,
+            Int::ISize | Int::USize => Int::USize,
+        }
+    }
+    /// Returns the signed version of this type.
+    /// ```
+    /// # use cilly::Int;
+    /// assert_eq!(Int::U8.as_signed(),Int::I8);
+    /// assert_eq!(Int::U128.as_signed(),Int::I128.as_signed());
+    /// ```
+    pub fn as_signed(&self) -> Self {
+        match self {
+            Int::I8 | Int::U8 => Int::I8,
+            Int::I16 | Int::U16 => Int::I16,
+            Int::I32 | Int::U32 => Int::I32,
+            Int::I64 | Int::U64 => Int::I64,
+            Int::I128 | Int::U128 => Int::I128,
+            Int::ISize | Int::USize => Int::ISize,
+        }
+    }
+
     /// Returns the minimum value of this int.
     pub fn min(&self, asm: &mut Assembly) -> CILNode {
         match self {
@@ -206,23 +256,6 @@ impl Int {
             Int::U64 | Int::I64 => Some(8),
             Int::U128 | Int::I128 => Some(16),
             Int::USize | Int::ISize => None,
-        }
-    }
-    /// Returns a class representing this intiger.
-    pub fn class(&self, asm: &mut Assembly) -> ClassRefIdx {
-        match self {
-            Int::U8 => todo!(),
-            Int::U16 => todo!(),
-            Int::U32 => todo!(),
-            Int::U64 => todo!(),
-            Int::U128 => ClassRef::uint_128(asm),
-            Int::USize => ClassRef::usize_type(asm),
-            Int::I8 => todo!(),
-            Int::I16 => todo!(),
-            Int::I32 => todo!(),
-            Int::I64 => todo!(),
-            Int::I128 => ClassRef::int_128(asm),
-            Int::ISize => ClassRef::isize_type(asm),
         }
     }
 }

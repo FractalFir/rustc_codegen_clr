@@ -1,19 +1,29 @@
 use crate::{assembly::MethodCompileCtx, operand::handle_operand, place::place_set};
 use cilly::{
     and, call,
-    call_site::MethodRefIdx,
     cil_node::CILNode,
     cil_root::CILRoot,
-    conv_i16, conv_i32, conv_i8, conv_isize, conv_u16, conv_u32, conv_u64, conv_u8, conv_usize,
-    div, ldc_i32, ldc_u32, ldc_u64, rem_un, size_of, sub,
-    v2::{ClassRef, FnSig, Int},
-    Type,
+    conv_i16, conv_i32, conv_i8, conv_isize, conv_u16, conv_u32, conv_u64, conv_u8, div, ldc_i32,
+    ldc_u32, ldc_u64, rem_un, size_of, sub,
+    v2::{cilnode::MethodKind, ClassRef, MethodRef},
+    Int, Type,
 };
 use rustc_middle::{
     mir::{Operand, Place},
     ty::Instance,
 };
 use rustc_span::source_map::Spanned;
+fn ctpop_small_int(asm: &mut cilly::v2::Assembly, operand: CILNode, int: Int) -> CILNode {
+    assert!(int.size().is_none_or(|size| size <= 8));
+    let mref = MethodRef::new(
+        ClassRef::bit_operations(asm),
+        asm.alloc_string("PopCount"),
+        asm.sig([Type::Int(int)], Type::Int(Int::I32)),
+        MethodKind::Static,
+        vec![].into(),
+    );
+    conv_u32!(call!(asm.alloc_methodref(mref), [operand]))
+}
 pub fn ctpop<'tcx>(
     args: &[Spanned<Operand<'tcx>>],
     destination: &Place<'tcx>,
@@ -33,97 +43,48 @@ pub fn ctpop<'tcx>(
                 .expect("needs_drop works only on types!"),
         ),
     );
-    let bit_operations = ClassRef::bit_operations(ctx);
-    let bit_operations = Some(bit_operations);
     let operand = handle_operand(&args[0].node, ctx);
     place_set(
         destination,
         match tpe {
-            Type::Int(Int::U64) => conv_u32!(call!(
-                MethodRefIdx::boxed(
-                    bit_operations,
-                    "PopCount".into(),
-                    FnSig::new([Type::Int(Int::U64)].into(), Type::Int(Int::I32)),
-                    true,
-                ),
-                [operand]
-            )),
-            Type::Int(Int::I64) => conv_u32!(call!(
-                MethodRefIdx::boxed(
-                    bit_operations,
-                    "PopCount".into(),
-                    FnSig::new([Type::Int(Int::U64)].into(), Type::Int(Int::I32)),
-                    true,
-                ),
-                [conv_u64!(operand)]
-            )),
-            Type::Int(Int::U32) => conv_u32!(call!(
-                MethodRefIdx::boxed(
-                    bit_operations,
-                    "PopCount".into(),
-                    FnSig::new([Type::Int(Int::U32)].into(), Type::Int(Int::I32)),
-                    true,
-                ),
-                [operand]
-            )),
-
+            Type::Int(Int::U64) => ctpop_small_int(ctx, operand, Int::U64),
+            Type::Int(Int::I64) => ctpop_small_int(ctx, conv_u64!(operand), Int::U64),
+            Type::Int(Int::U32) => ctpop_small_int(ctx, operand, Int::U32),
             Type::Int(Int::U8 | Int::U16 | Int::I8 | Int::I16 | Int::I32) => {
-                conv_u32!(call!(
-                    MethodRefIdx::boxed(
-                        bit_operations,
-                        "PopCount".into(),
-                        FnSig::new([Type::Int(Int::U32)].into(), Type::Int(Int::I32)),
-                        true,
-                    ),
-                    [conv_u32!(operand)]
-                ))
+                ctpop_small_int(ctx, conv_u32!(operand), Int::U32)
             }
-            Type::Int(Int::USize) => conv_u32!(call!(
-                MethodRefIdx::boxed(
-                    bit_operations,
-                    "PopCount".into(),
-                    FnSig::new([Type::Int(Int::USize)].into(), Type::Int(Int::I32)),
-                    true,
-                ),
-                [operand]
-            )),
-            Type::Int(Int::ISize) => conv_u32!(call!(
-                MethodRefIdx::boxed(
-                    bit_operations,
-                    "PopCount".into(),
-                    FnSig::new([Type::Int(Int::USize)].into(), Type::Int(Int::I32)),
-                    true,
-                ),
-                [conv_isize!(operand)]
-            )),
-            Type::Int(Int::U128) => crate::casts::int_to_int(
-                Type::Int(Int::U128),
-                Type::Int(Int::U32),
-                call!(
-                    MethodRefIdx::new_extern(
-                        ClassRef::uint_128(ctx),
-                        "PopCount".into(),
-                        FnSig::new([Type::Int(Int::U128)].into(), Type::Int(Int::U128)),
-                        true,
-                    ),
-                    [operand]
-                ),
-                ctx,
-            ),
-            Type::Int(Int::I128) => crate::casts::int_to_int(
-                Type::Int(Int::I128),
-                Type::Int(Int::U32),
-                call!(
-                    MethodRefIdx::new_extern(
-                        ClassRef::int_128(ctx),
-                        "PopCount".into(),
-                        FnSig::new([Type::Int(Int::I128)].into(), Type::Int(Int::I128)),
-                        true,
-                    ),
-                    [operand]
-                ),
-                ctx,
-            ),
+            Type::Int(Int::USize) => ctpop_small_int(ctx, operand, Int::USize),
+            Type::Int(Int::ISize) => ctpop_small_int(ctx, conv_isize!(operand), Int::USize),
+            Type::Int(Int::U128) => {
+                let mref = MethodRef::new(
+                    ClassRef::uint_128(ctx),
+                    ctx.alloc_string("PopCount"),
+                    ctx.sig([Type::Int(Int::U128)], Type::Int(Int::U128)),
+                    MethodKind::Static,
+                    vec![].into(),
+                );
+                crate::casts::int_to_int(
+                    Type::Int(Int::U128),
+                    Type::Int(Int::U32),
+                    call!(ctx.alloc_methodref(mref), [operand]),
+                    ctx,
+                )
+            }
+            Type::Int(Int::I128) => {
+                let mref = MethodRef::new(
+                    ClassRef::int_128(ctx),
+                    ctx.alloc_string("PopCount"),
+                    ctx.sig([Type::Int(Int::I128)], Type::Int(Int::I128)),
+                    MethodKind::Static,
+                    vec![].into(),
+                );
+                crate::casts::int_to_int(
+                    Type::Int(Int::I128),
+                    Type::Int(Int::U32),
+                    call!(ctx.alloc_methodref(mref), [operand]),
+                    ctx,
+                )
+            }
             _ => todo!("Unsported pop count type {tpe:?}"),
         },
         ctx,
@@ -140,15 +101,14 @@ pub fn ctlz<'tcx>(
         1,
         "The intrinsic `ctlz` MUST take in exactly 1 argument!"
     );
-    let bit_operations = ClassRef::bit_operations(ctx);
-    let bit_operations = Some(bit_operations);
 
-    let tpe = ctx.monomorphize(
-        call_instance.args[0]
-            .as_type()
-            .expect("needs_drop works only on types!"),
+    let tpe = ctx.type_from_cache(
+        ctx.monomorphize(
+            call_instance.args[0]
+                .as_type()
+                .expect("needs_drop works only on types!"),
+        ),
     );
-    let tpe = ctx.type_from_cache(tpe);
     // TODO: this assumes a 64 bit system!
     let sub = match tpe {
         Type::Int(Int::ISize | Int::USize) | Type::Ptr(_) => {
@@ -159,47 +119,53 @@ pub fn ctlz<'tcx>(
         Type::Int(Int::I16 | Int::U16) => ldc_i32!(48),
         Type::Int(Int::I8 | Int::U8) => ldc_i32!(56),
         Type::Int(Int::I128) => {
+            let mref = MethodRef::new(
+                ClassRef::int_128(ctx),
+                ctx.alloc_string("LeadingZeroCount"),
+                ctx.sig([Type::Int(Int::I128)], Type::Int(Int::I128)),
+                MethodKind::Static,
+                vec![].into(),
+            );
             return place_set(
                 destination,
                 conv_u32!(call!(
-                    MethodRefIdx::new_extern(
-                        ClassRef::int_128(ctx),
-                        "LeadingZeroCount".into(),
-                        FnSig::new([Type::Int(Int::I128)].into(), Type::Int(Int::I128)),
-                        true
-                    ),
+                    ctx.alloc_methodref(mref),
                     [handle_operand(&args[0].node, ctx)]
                 )),
                 ctx,
-            )
+            );
         }
         Type::Int(Int::U128) => {
+            let mref = MethodRef::new(
+                ClassRef::uint_128(ctx),
+                ctx.alloc_string("LeadingZeroCount"),
+                ctx.sig([Type::Int(Int::U128)], Type::Int(Int::U128)),
+                MethodKind::Static,
+                vec![].into(),
+            );
             return place_set(
                 destination,
                 conv_u32!(call!(
-                    MethodRefIdx::new_extern(
-                        ClassRef::uint_128(ctx),
-                        "LeadingZeroCount".into(),
-                        FnSig::new([Type::Int(Int::U128)].into(), Type::Int(Int::U128)),
-                        true
-                    ),
+                    ctx.alloc_methodref(mref),
                     [handle_operand(&args[0].node, ctx)]
                 )),
                 ctx,
-            )
+            );
         }
         _ => todo!("Can't `ctlz`  type {tpe:?} yet!"),
     };
+    let mref = MethodRef::new(
+        ClassRef::bit_operations(ctx),
+        ctx.alloc_string("LeadingZeroCount"),
+        ctx.sig([Type::Int(Int::U64)], Type::Int(Int::I32)),
+        MethodKind::Static,
+        vec![].into(),
+    );
     place_set(
         destination,
         conv_u32!(sub!(
             call!(
-                MethodRefIdx::boxed(
-                    bit_operations,
-                    "LeadingZeroCount".into(),
-                    FnSig::new([Type::Int(Int::U64)].into(), Type::Int(Int::I32)),
-                    true,
-                ),
+                ctx.alloc_methodref(mref),
                 [conv_u64!(handle_operand(&args[0].node, ctx))]
             ),
             sub
@@ -225,156 +191,147 @@ pub fn cttz<'tcx>(
             .expect("needs_drop works only on types!"),
     );
     let tpe = ctx.type_from_cache(tpe);
-    let bit_operations = Some(bit_operations);
     let operand = handle_operand(&args[0].node, ctx);
     match tpe {
         Type::Int(Int::I8) => {
-            let value_calc = conv_u32!(call!(
-                MethodRefIdx::boxed(
-                    bit_operations,
-                    "TrailingZeroCount".into(),
-                    FnSig::new([Type::Int(Int::I32)].into(), Type::Int(Int::I32)),
-                    true,
+            let ttc = MethodRef::new(
+                bit_operations,
+                ctx.alloc_string("TrailingZeroCount"),
+                ctx.sig([Type::Int(Int::I32)], Type::Int(Int::I32)),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            let value_calc = conv_u32!(call!(ctx.alloc_methodref(ttc), [conv_i32!(operand)]));
+            let min = MethodRef::new(
+                ClassRef::math(ctx),
+                ctx.alloc_string("Min"),
+                ctx.sig(
+                    [Type::Int(Int::U32), Type::Int(Int::U32)],
+                    Type::Int(Int::U32),
                 ),
-                [conv_i32!(operand)]
-            ));
+                MethodKind::Static,
+                vec![].into(),
+            );
             place_set(
                 destination,
-                call!(
-                    MethodRefIdx::new_extern(
-                        ClassRef::math(ctx),
-                        "Min".into(),
-                        FnSig::new(
-                            [Type::Int(Int::U32), Type::Int(Int::U32)].into(),
-                            Type::Int(Int::U32)
-                        ),
-                        true
-                    ),
-                    [value_calc, ldc_u32!(i8::BITS)]
-                ),
+                call!(ctx.alloc_methodref(min), [value_calc, ldc_u32!(i8::BITS)]),
                 ctx,
             )
         }
         Type::Int(Int::I16) => {
-            let value_calc = conv_u32!(call!(
-                MethodRefIdx::boxed(
-                    bit_operations,
-                    "TrailingZeroCount".into(),
-                    FnSig::new([Type::Int(Int::I32)].into(), Type::Int(Int::I32)),
-                    true,
+            let mref = MethodRef::new(
+                bit_operations,
+                ctx.alloc_string("TrailingZeroCount"),
+                ctx.sig([Type::Int(Int::I32)], Type::Int(Int::I32)),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            let value_calc = conv_u32!(call!(ctx.alloc_methodref(mref), [conv_i32!(operand)]));
+            let min = MethodRef::new(
+                ClassRef::math(ctx),
+                ctx.alloc_string("Min"),
+                ctx.sig(
+                    [Type::Int(Int::U32), Type::Int(Int::U32)],
+                    Type::Int(Int::U32),
                 ),
-                [conv_i32!(operand)]
-            ));
+                MethodKind::Static,
+                vec![].into(),
+            );
             place_set(
                 destination,
-                call!(
-                    MethodRefIdx::new_extern(
-                        ClassRef::math(ctx),
-                        "Min".into(),
-                        FnSig::new(
-                            [Type::Int(Int::U32), Type::Int(Int::U32)].into(),
-                            Type::Int(Int::U32)
-                        ),
-                        true
-                    ),
-                    [value_calc, ldc_u32!(i16::BITS)]
-                ),
+                call!(ctx.alloc_methodref(min), [value_calc, ldc_u32!(i16::BITS)]),
                 ctx,
             )
         }
         Type::Int(Int::U8) => {
-            let value_calc = conv_u32!(call!(
-                MethodRefIdx::boxed(
-                    bit_operations,
-                    "TrailingZeroCount".into(),
-                    FnSig::new([Type::Int(Int::U32)].into(), Type::Int(Int::I32)),
-                    true,
+            let mref = MethodRef::new(
+                bit_operations,
+                ctx.alloc_string("TrailingZeroCount"),
+                ctx.sig([Type::Int(Int::U32)], Type::Int(Int::I32)),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            let value_calc = conv_u32!(call!(ctx.alloc_methodref(mref), [conv_u32!(operand)]));
+            let min = MethodRef::new(
+                ClassRef::math(ctx),
+                ctx.alloc_string("Min"),
+                ctx.sig(
+                    [Type::Int(Int::U32), Type::Int(Int::U32)],
+                    Type::Int(Int::U32),
                 ),
-                [conv_u32!(operand)]
-            ));
+                MethodKind::Static,
+                vec![].into(),
+            );
             place_set(
                 destination,
-                call!(
-                    MethodRefIdx::new_extern(
-                        ClassRef::math(ctx),
-                        "Min".into(),
-                        FnSig::new(
-                            [Type::Int(Int::U32), Type::Int(Int::U32)].into(),
-                            Type::Int(Int::U32)
-                        ),
-                        true
-                    ),
-                    [value_calc, ldc_u32!(u8::BITS)]
-                ),
+                call!(ctx.alloc_methodref(min), [value_calc, ldc_u32!(u8::BITS)]),
                 ctx,
             )
         }
         Type::Int(Int::U16) => {
-            let value_calc = conv_u32!(call!(
-                MethodRefIdx::boxed(
-                    bit_operations,
-                    "TrailingZeroCount".into(),
-                    FnSig::new([Type::Int(Int::U32)].into(), Type::Int(Int::I32)),
-                    true,
+            let mref = MethodRef::new(
+                bit_operations,
+                ctx.alloc_string("TrailingZeroCount"),
+                ctx.sig([Type::Int(Int::U32)], Type::Int(Int::I32)),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            let value_calc = conv_u32!(call!(ctx.alloc_methodref(mref), [conv_u32!(operand)]));
+            let min = MethodRef::new(
+                ClassRef::math(ctx),
+                ctx.alloc_string("Min"),
+                ctx.sig(
+                    [Type::Int(Int::U32), Type::Int(Int::U32)],
+                    Type::Int(Int::U32),
                 ),
-                [conv_u32!(operand)]
-            ));
+                MethodKind::Static,
+                vec![].into(),
+            );
             place_set(
                 destination,
-                call!(
-                    MethodRefIdx::new_extern(
-                        ClassRef::math(ctx),
-                        "Min".into(),
-                        FnSig::new(
-                            [Type::Int(Int::U32), Type::Int(Int::U32)].into(),
-                            Type::Int(Int::U32)
-                        ),
-                        true
-                    ),
-                    [value_calc, ldc_u32!(u16::BITS)]
-                ),
+                call!(ctx.alloc_methodref(min), [value_calc, ldc_u32!(u16::BITS)]),
                 ctx,
             )
         }
-        Type::Int(Int::I128) => place_set(
-            destination,
-            conv_u32!(call!(
-                MethodRefIdx::new_extern(
-                    ClassRef::int_128(ctx),
-                    "TrailingZeroCount".into(),
-                    FnSig::new([Type::Int(Int::I128)].into(), Type::Int(Int::I128)),
-                    true
-                ),
+        Type::Int(Int::I128) => {
+            let mref = MethodRef::new(
+                ClassRef::int_128(ctx),
+                ctx.alloc_string("TrailingZeroCount"),
+                ctx.sig([Type::Int(Int::I128)], Type::Int(Int::I128)),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            let value_calc = conv_u32!(call!(
+                ctx.alloc_methodref(mref),
                 [handle_operand(&args[0].node, ctx)]
-            )),
-            ctx,
-        ),
-        Type::Int(Int::U128) => place_set(
-            destination,
-            conv_u32!(call!(
-                MethodRefIdx::new_extern(
-                    ClassRef::uint_128(ctx),
-                    "TrailingZeroCount".into(),
-                    FnSig::new([Type::Int(Int::U128)].into(), Type::Int(Int::U128)),
-                    true
-                ),
+            ));
+            place_set(destination, value_calc, ctx)
+        }
+        Type::Int(Int::U128) => {
+            let mref = MethodRef::new(
+                ClassRef::uint_128(ctx),
+                ctx.alloc_string("TrailingZeroCount"),
+                ctx.sig([Type::Int(Int::U128)], Type::Int(Int::U128)),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            let value_calc = conv_u32!(call!(
+                ctx.alloc_methodref(mref),
                 [handle_operand(&args[0].node, ctx)]
-            )),
-            ctx,
-        ),
-        _ => place_set(
-            destination,
-            conv_u32!(call!(
-                MethodRefIdx::boxed(
-                    bit_operations,
-                    "TrailingZeroCount".into(),
-                    FnSig::new([tpe].into(), Type::Int(Int::I32)),
-                    true,
-                ),
-                [operand]
-            )),
-            ctx,
-        ),
+            ));
+            place_set(destination, value_calc, ctx)
+        }
+        _ => {
+            let mref = MethodRef::new(
+                bit_operations,
+                ctx.alloc_string("TrailingZeroCount"),
+                ctx.sig([tpe], Type::Int(Int::I32)),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            let value_calc = conv_u32!(call!(ctx.alloc_methodref(mref), [operand]));
+            place_set(destination, value_calc, ctx)
+        }
     }
 }
 pub fn rotate_left<'tcx>(
@@ -386,7 +343,7 @@ pub fn rotate_left<'tcx>(
     debug_assert_eq!(
         args.len(),
         2,
-        "The intrinsic `rotate_left` MUST take in exactly 2 arguments!"
+        "The  `rotate_left` MUST take in exactly 2 arguments!"
     );
     let val_tpe = ctx.monomorphize(
         call_instance.args[0]
@@ -397,200 +354,42 @@ pub fn rotate_left<'tcx>(
     let val = handle_operand(&args[0].node, ctx);
     let rot = handle_operand(&args[1].node, ctx);
     match val_tpe {
-        Type::Int(Int::U8) => place_set(
-            destination,
-            call!(
-                MethodRefIdx::new_extern(
-                    ClassRef::byte(ctx),
-                    "RotateLeft".into(),
-                    FnSig::new(
-                        [Type::Int(Int::U8), Type::Int(Int::I32)].into(),
-                        Type::Int(Int::U8)
-                    ),
-                    true
-                ),
-                [val, conv_i32!(rot)]
-            ),
-            ctx,
-        ),
-        Type::Int(Int::U16) => place_set(
-            destination,
-            call!(
-                MethodRefIdx::new_extern(
-                    ClassRef::uint16(ctx),
-                    "RotateLeft".into(),
-                    FnSig::new(
-                        [Type::Int(Int::U16), Type::Int(Int::I32)].into(),
-                        Type::Int(Int::U16)
-                    ),
-                    true
-                ),
-                [val, conv_i32!(rot)]
-            ),
-            ctx,
-        ),
-        Type::Int(Int::U32) => place_set(
-            destination,
-            call!(
-                MethodRefIdx::new_extern(
-                    ClassRef::bit_operations(ctx),
-                    "RotateLeft".into(),
-                    FnSig::new(
-                        [Type::Int(Int::U32), Type::Int(Int::I32)].into(),
-                        Type::Int(Int::U32)
-                    ),
-                    true
-                ),
-                [val, conv_i32!(rot)]
-            ),
-            ctx,
-        ),
-        Type::Int(Int::U64) => place_set(
-            destination,
-            call!(
-                MethodRefIdx::new_extern(
-                    ClassRef::bit_operations(ctx),
-                    "RotateLeft".into(),
-                    FnSig::new(
-                        [Type::Int(Int::U64), Type::Int(Int::I32)].into(),
-                        Type::Int(Int::U64)
-                    ),
-                    true
-                ),
-                [val, conv_i32!(rot)]
-            ),
-            ctx,
-        ),
-        Type::Int(Int::USize) => place_set(
-            destination,
-            call!(
-                MethodRefIdx::new_extern(
-                    ClassRef::bit_operations(ctx),
-                    "RotateLeft".into(),
-                    FnSig::new(
-                        [Type::Int(Int::USize), Type::Int(Int::I32)].into(),
-                        Type::Int(Int::USize)
-                    ),
-                    true
-                ),
-                [val, conv_i32!(rot)]
-            ),
-            ctx,
-        ),
-        Type::Int(Int::I8) => place_set(
-            destination,
-            call!(
-                MethodRefIdx::new_extern(
-                    ClassRef::sbyte(ctx),
-                    "RotateLeft".into(),
-                    FnSig::new(
-                        [Type::Int(Int::I8), Type::Int(Int::I32)].into(),
-                        Type::Int(Int::I8)
-                    ),
-                    true
-                ),
-                [val, conv_i32!(rot)]
-            ),
-            ctx,
-        ),
-        Type::Int(Int::I16) => place_set(
-            destination,
-            call!(
-                MethodRefIdx::new_extern(
-                    ClassRef::int16(ctx),
-                    "RotateLeft".into(),
-                    FnSig::new(
-                        [Type::Int(Int::I16), Type::Int(Int::I32)].into(),
-                        Type::Int(Int::I16)
-                    ),
-                    true
-                ),
-                [val, conv_i32!(rot)]
-            ),
-            ctx,
-        ),
-        Type::Int(Int::I32) => place_set(
-            destination,
-            call!(
-                MethodRefIdx::new_extern(
-                    ClassRef::bit_operations(ctx),
-                    "RotateLeft".into(),
-                    FnSig::new(
-                        [Type::Int(Int::U32), Type::Int(Int::I32)].into(),
-                        Type::Int(Int::U32)
-                    ),
-                    true
-                ),
-                [conv_u32!(val), conv_i32!(rot)]
-            ),
-            ctx,
-        ),
-        Type::Int(Int::I64) => place_set(
-            destination,
-            call!(
-                MethodRefIdx::new_extern(
-                    ClassRef::bit_operations(ctx),
-                    "RotateLeft".into(),
-                    FnSig::new(
-                        [Type::Int(Int::U64), Type::Int(Int::I32)].into(),
-                        Type::Int(Int::U32)
-                    ),
-                    true
-                ),
-                [conv_u64!(val), conv_i32!(rot)]
-            ),
-            ctx,
-        ),
-        Type::Int(Int::ISize) => place_set(
-            destination,
-            call!(
-                MethodRefIdx::new_extern(
-                    ClassRef::bit_operations(ctx),
-                    "RotateLeft".into(),
-                    FnSig::new(
-                        [Type::Int(Int::USize), Type::Int(Int::I32)].into(),
-                        Type::Int(Int::U32)
-                    ),
-                    true
-                ),
-                [conv_usize!(val), conv_i32!(rot)]
-            ),
-            ctx,
-        ),
-        Type::Int(Int::U128) => place_set(
-            destination,
-            call!(
-                MethodRefIdx::new_extern(
-                    ClassRef::uint_128(ctx),
-                    "RotateLeft".into(),
-                    FnSig::new(
-                        [Type::Int(Int::U128), Type::Int(Int::I32)].into(),
-                        Type::Int(Int::U128)
-                    ),
-                    true
-                ),
-                [val, conv_i32!(rot)]
-            ),
-            ctx,
-        ),
-        Type::Int(Int::I128) => place_set(
-            destination,
-            call!(
-                MethodRefIdx::new_extern(
-                    ClassRef::int_128(ctx),
-                    "RotateLeft".into(),
-                    FnSig::new(
-                        [Type::Int(Int::I128), Type::Int(Int::I32)].into(),
-                        Type::Int(Int::I128)
-                    ),
-                    true
-                ),
-                [val, conv_i32!(rot)]
-            ),
-            ctx,
-        ),
+        Type::Int(
+            int @ (Int::U8
+            | Int::I8
+            | Int::U16
+            | Int::I16
+            | Int::U32
+            | Int::I32
+            | Int::U64
+            | Int::I64
+            | Int::U128
+            | Int::I128
+            | Int::USize
+            | Int::ISize),
+        ) => place_set(destination, rol_int(val, conv_i32!(rot), int, ctx), ctx),
         _ => todo!("Can't ror {val_tpe:?}"),
     }
+}
+pub fn rol_int(val: CILNode, rot: CILNode, int: Int, asm: &mut cilly::v2::Assembly) -> CILNode {
+    let mref = MethodRef::new(
+        int.class(asm),
+        asm.alloc_string("RotateLeft"),
+        asm.sig([Type::Int(int), Type::Int(Int::I32)], Type::Int(int)),
+        MethodKind::Static,
+        vec![].into(),
+    );
+    call!(asm.alloc_methodref(mref), [val, rot])
+}
+pub fn ror_int(val: CILNode, rot: CILNode, int: Int, asm: &mut cilly::v2::Assembly) -> CILNode {
+    let mref = MethodRef::new(
+        int.class(asm),
+        asm.alloc_string("RotateRight"),
+        asm.sig([Type::Int(int), Type::Int(Int::I32)], Type::Int(int)),
+        MethodKind::Static,
+        vec![].into(),
+    );
+    call!(asm.alloc_methodref(mref), [val, rot])
 }
 pub fn rotate_right<'tcx>(
     args: &[Spanned<Operand<'tcx>>],
@@ -612,198 +411,20 @@ pub fn rotate_right<'tcx>(
     let val = handle_operand(&args[0].node, ctx);
     let rot = handle_operand(&args[1].node, ctx);
     match val_tpe {
-        Type::Int(Int::U16) => place_set(
-            destination,
-            call!(
-                MethodRefIdx::new_extern(
-                    ClassRef::uint16(ctx),
-                    "RotateRight".into(),
-                    FnSig::new(
-                        [Type::Int(Int::U16), Type::Int(Int::I32)].into(),
-                        Type::Int(Int::U16)
-                    ),
-                    true
-                ),
-                [val, conv_i32!(rot)]
-            ),
-            ctx,
-        ),
-        Type::Int(Int::U8) => place_set(
-            destination,
-            call!(
-                MethodRefIdx::new_extern(
-                    ClassRef::byte(ctx),
-                    "RotateRight".into(),
-                    FnSig::new(
-                        [Type::Int(Int::U8), Type::Int(Int::I32)].into(),
-                        Type::Int(Int::U8)
-                    ),
-                    true
-                ),
-                [val, conv_i32!(rot)]
-            ),
-            ctx,
-        ),
-        Type::Int(Int::U32) => place_set(
-            destination,
-            call!(
-                MethodRefIdx::new_extern(
-                    ClassRef::bit_operations(ctx),
-                    "RotateRight".into(),
-                    FnSig::new(
-                        [Type::Int(Int::U32), Type::Int(Int::I32)].into(),
-                        Type::Int(Int::U32)
-                    ),
-                    true
-                ),
-                [val, conv_i32!(rot)]
-            ),
-            ctx,
-        ),
-        Type::Int(Int::U64) => place_set(
-            destination,
-            call!(
-                MethodRefIdx::new_extern(
-                    ClassRef::bit_operations(ctx),
-                    "RotateRight".into(),
-                    FnSig::new(
-                        [Type::Int(Int::U64), Type::Int(Int::I32)].into(),
-                        Type::Int(Int::U64)
-                    ),
-                    true
-                ),
-                [val, conv_i32!(rot)]
-            ),
-            ctx,
-        ),
-        Type::Int(Int::USize) => place_set(
-            destination,
-            call!(
-                MethodRefIdx::new_extern(
-                    ClassRef::bit_operations(ctx),
-                    "RotateRight".into(),
-                    FnSig::new(
-                        [Type::Int(Int::USize), Type::Int(Int::I32)].into(),
-                        Type::Int(Int::USize)
-                    ),
-                    true
-                ),
-                [val, conv_i32!(rot)]
-            ),
-            ctx,
-        ),
-        Type::Int(Int::I8) => place_set(
-            destination,
-            call!(
-                MethodRefIdx::new_extern(
-                    ClassRef::sbyte(ctx),
-                    "RotateRight".into(),
-                    FnSig::new(
-                        [Type::Int(Int::I8), Type::Int(Int::I32)].into(),
-                        Type::Int(Int::I8)
-                    ),
-                    true
-                ),
-                [val, conv_i32!(rot)]
-            ),
-            ctx,
-        ),
-        Type::Int(Int::I16) => place_set(
-            destination,
-            call!(
-                MethodRefIdx::new_extern(
-                    ClassRef::int16(ctx),
-                    "RotateRight".into(),
-                    FnSig::new(
-                        [Type::Int(Int::I16), Type::Int(Int::I32)].into(),
-                        Type::Int(Int::I16)
-                    ),
-                    true
-                ),
-                [val, conv_i32!(rot)]
-            ),
-            ctx,
-        ),
-        Type::Int(Int::I32) => place_set(
-            destination,
-            call!(
-                MethodRefIdx::new_extern(
-                    ClassRef::bit_operations(ctx),
-                    "RotateRight".into(),
-                    FnSig::new(
-                        [Type::Int(Int::U32), Type::Int(Int::I32)].into(),
-                        Type::Int(Int::U32)
-                    ),
-                    true
-                ),
-                [conv_u32!(val), conv_i32!(rot)]
-            ),
-            ctx,
-        ),
-        Type::Int(Int::I64) => place_set(
-            destination,
-            call!(
-                MethodRefIdx::new_extern(
-                    ClassRef::bit_operations(ctx),
-                    "RotateRight".into(),
-                    FnSig::new(
-                        [Type::Int(Int::U64), Type::Int(Int::I32)].into(),
-                        Type::Int(Int::U32)
-                    ),
-                    true
-                ),
-                [conv_u64!(val), conv_i32!(rot)]
-            ),
-            ctx,
-        ),
-        Type::Int(Int::ISize) => place_set(
-            destination,
-            call!(
-                MethodRefIdx::new_extern(
-                    ClassRef::bit_operations(ctx),
-                    "RotateRight".into(),
-                    FnSig::new(
-                        [Type::Int(Int::USize), Type::Int(Int::I32)].into(),
-                        Type::Int(Int::U32)
-                    ),
-                    true
-                ),
-                [conv_usize!(val), conv_i32!(rot)]
-            ),
-            ctx,
-        ),
-        Type::Int(Int::U128) => place_set(
-            destination,
-            call!(
-                MethodRefIdx::new_extern(
-                    ClassRef::uint_128(ctx),
-                    "RotateRight".into(),
-                    FnSig::new(
-                        [Type::Int(Int::U128), Type::Int(Int::I32)].into(),
-                        Type::Int(Int::U128)
-                    ),
-                    true
-                ),
-                [val, conv_i32!(rot)]
-            ),
-            ctx,
-        ),
-        Type::Int(Int::I128) => place_set(
-            destination,
-            call!(
-                MethodRefIdx::new_extern(
-                    ClassRef::int_128(ctx),
-                    "RotateRight".into(),
-                    FnSig::new(
-                        [Type::Int(Int::I128), Type::Int(Int::I32)].into(),
-                        Type::Int(Int::I128)
-                    ),
-                    true
-                ),
-                [val, conv_i32!(rot)]
-            ),
-            ctx,
-        ),
+        Type::Int(
+            int @ (Int::U8
+            | Int::I8
+            | Int::U16
+            | Int::I16
+            | Int::U32
+            | Int::I32
+            | Int::U64
+            | Int::I64
+            | Int::U128
+            | Int::I128
+            | Int::USize
+            | Int::ISize),
+        ) => place_set(destination, ror_int(val, conv_i32!(rot), int, ctx), ctx),
         _ => todo!("Can't ror {val_tpe:?}"),
     }
 }
@@ -822,6 +443,29 @@ fn bitreverse_u16(ushort: CILNode) -> CILNode {
             ushort,
             conv_u16!(ldc_u32!(256))
         ))))
+}
+pub fn bitreverse_int(val: CILNode, int: Int, asm: &mut cilly::v2::Assembly) -> CILNode {
+    let mref = MethodRef::new(
+        *asm.main_module(),
+        asm.alloc_string(format!("bitreverse{}", int.name())),
+        asm.sig([Type::Int(int.as_unsigned())], Type::Int(int.as_unsigned())),
+        MethodKind::Static,
+        vec![].into(),
+    );
+    crate::casts::int_to_int(
+        int.as_unsigned().into(),
+        int.into(),
+        call!(
+            asm.alloc_methodref(mref),
+            [crate::casts::int_to_int(
+                int.into(),
+                int.as_unsigned().into(),
+                val,
+                asm
+            )]
+        ),
+        asm,
+    )
 }
 pub fn bitreverse<'tcx>(
     args: &[Spanned<Operand<'tcx>>],
@@ -848,85 +492,9 @@ pub fn bitreverse<'tcx>(
             Type::Int(Int::I8) => conv_i8!(bitreverse_u8(val)),
             Type::Int(Int::U16) => bitreverse_u16(val),
             Type::Int(Int::I16) => conv_i16!(bitreverse_u16(conv_u16!(val))),
-            Type::Int(Int::U32) => call!(
-                MethodRefIdx::builtin(
-                    "bitreverse_u32".into(),
-                    FnSig::new([Type::Int(Int::U32)].into(), Type::Int(Int::U32)),
-                    true
-                ),
-                [val]
-            ),
-            Type::Int(Int::I32) => crate::casts::int_to_int(
-                Type::Int(Int::U32),
-                Type::Int(Int::I32),
-                call!(
-                    MethodRefIdx::builtin(
-                        "bitreverse_u32".into(),
-                        FnSig::new([Type::Int(Int::U32)].into(), Type::Int(Int::U32)),
-                        true
-                    ),
-                    [crate::casts::int_to_int(
-                        Type::Int(Int::I32),
-                        Type::Int(Int::U32),
-                        val,
-                        ctx
-                    )]
-                ),
-                ctx,
-            ),
-            Type::Int(Int::U64) => call!(
-                MethodRefIdx::builtin(
-                    "bitreverse_u64".into(),
-                    FnSig::new([Type::Int(Int::U64)].into(), Type::Int(Int::U64)),
-                    true
-                ),
-                [val]
-            ),
-            Type::Int(Int::I64) => crate::casts::int_to_int(
-                Type::Int(Int::U64),
-                Type::Int(Int::I64),
-                call!(
-                    MethodRefIdx::builtin(
-                        "bitreverse_u64".into(),
-                        FnSig::new([Type::Int(Int::U64)].into(), Type::Int(Int::U64)),
-                        true
-                    ),
-                    [crate::casts::int_to_int(
-                        Type::Int(Int::I64),
-                        Type::Int(Int::U64),
-                        val,
-                        ctx
-                    )]
-                ),
-                ctx,
-            ),
-            Type::Int(Int::U128) => call!(
-                MethodRefIdx::builtin(
-                    "bitreverse_u128".into(),
-                    FnSig::new([Type::Int(Int::U128)].into(), Type::Int(Int::U128),),
-                    true
-                ),
-                [val]
-            ),
-            Type::Int(Int::I128) => crate::casts::int_to_int(
-                Type::Int(Int::U128),
-                Type::Int(Int::I128),
-                call!(
-                    MethodRefIdx::builtin(
-                        "bitreverse_u128".into(),
-                        FnSig::new([Type::Int(Int::U128)].into(), Type::Int(Int::U128),),
-                        true
-                    ),
-                    [crate::casts::int_to_int(
-                        Type::Int(Int::I128),
-                        Type::Int(Int::U128),
-                        val,
-                        ctx
-                    )]
-                ),
-                ctx,
-            ),
-
+            Type::Int(int @ (Int::I32 | Int::U32 | Int::I64 | Int::U128 | Int::I128)) => {
+                bitreverse_int(val, int, ctx)
+            }
             _ => todo!("can't yet bitreverse {val_tpe:?}"),
         },
         ctx,

@@ -54,12 +54,12 @@ pub mod cil_node;
 pub mod cil_root;
 pub mod cil_tree;
 pub mod entrypoint;
-
 pub mod libc_fns;
 pub mod method;
 
 pub mod utilis;
 pub mod v2;
+pub use v2::*;
 
 #[must_use]
 pub fn mem_checks() -> bool {
