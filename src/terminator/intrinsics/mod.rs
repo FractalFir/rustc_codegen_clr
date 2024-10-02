@@ -5,15 +5,14 @@ use crate::{
     utilis::field_descrptor,
 };
 use cilly::{
-    call,
-    call_site::MethodRefIdx,
-    call_virt,
+    call, call_virt,
     cil_node::CILNode,
     cil_root::CILRoot,
+    cilnode::MethodKind,
     conv_f32, conv_f64, conv_i16, conv_i32, conv_i64, conv_i8, conv_isize, conv_u16, conv_u32,
     conv_u64, conv_u8, conv_usize, eq, ld_field, ldc_i32, ldc_u32, ldc_u64, size_of, sub,
     v2::{ClassRef, Float, FnSig, Int},
-    Type,
+    MethodRef, Type,
 };
 use ints::{ctlz, rotate_left, rotate_right};
 use rustc_middle::{
@@ -122,56 +121,56 @@ pub fn handle_intrinsic<'tcx>(
             let needs_drop = i32::from(needs_drop);
             place_set(destination, ldc_i32!(needs_drop), ctx)
         }
-        "fmaf32" => place_set(
-            destination,
-            call!(
-                MethodRefIdx::new_extern(
-                    ClassRef::single(ctx),
-                    "FusedMultiplyAdd".into(),
-                    FnSig::new(
-                        [
-                            Type::Float(Float::F32),
-                            Type::Float(Float::F32),
-                            Type::Float(Float::F32)
-                        ]
-                        .into(),
-                        Type::Float(Float::F32)
-                    ),
-                    true
+        "fmaf32" => {
+            let mref = MethodRef::new(
+                ClassRef::single(ctx),
+                ctx.alloc_string("FusedMultiplyAdd"),
+                ctx.sig(
+                    [
+                        Type::Float(Float::F32),
+                        Type::Float(Float::F32),
+                        Type::Float(Float::F32),
+                    ],
+                    Type::Float(Float::F32),
                 ),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            let value_calc = call!(
+                ctx.alloc_methodref(mref),
                 [
                     handle_operand(&args[0].node, ctx),
                     handle_operand(&args[1].node, ctx),
                     handle_operand(&args[2].node, ctx),
                 ]
-            ),
-            ctx,
-        ),
-        "fmaf64" => place_set(
-            destination,
-            call!(
-                MethodRefIdx::new_extern(
-                    ClassRef::double(ctx),
-                    "FusedMultiplyAdd".into(),
-                    FnSig::new(
-                        [
-                            Type::Float(Float::F64),
-                            Type::Float(Float::F64),
-                            Type::Float(Float::F64)
-                        ]
-                        .into(),
-                        Type::Float(Float::F64)
-                    ),
-                    true
+            );
+            place_set(destination, value_calc, ctx)
+        }
+        "fmaf64" => {
+            let mref = MethodRef::new(
+                ClassRef::double(ctx),
+                ctx.alloc_string("FusedMultiplyAdd"),
+                ctx.sig(
+                    [
+                        Type::Float(Float::F64),
+                        Type::Float(Float::F64),
+                        Type::Float(Float::F64),
+                    ],
+                    Type::Float(Float::F64),
                 ),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            let value_calc = call!(
+                ctx.alloc_methodref(mref),
                 [
                     handle_operand(&args[0].node, ctx),
                     handle_operand(&args[1].node, ctx),
                     handle_operand(&args[2].node, ctx),
                 ]
-            ),
-            ctx,
-        ),
+            );
+            place_set(destination, value_calc, ctx)
+        }
 
         "raw_eq" => {
             // Raw eq returns 0 if values are not equal, and 1 if they are, unlike memcmp, which does the oposite.
@@ -292,37 +291,39 @@ pub fn handle_intrinsic<'tcx>(
                     .expect("needs_drop works only on types!"),
             );
             let tpe = ctx.type_from_cache(tpe);
-            let sig = FnSig::new(
-                [ClassRef::runtime_type_hadle(ctx).into()].into(),
-                ClassRef::type_type(ctx).into(),
+            let type_type = ClassRef::type_type(ctx);
+            let runtime_handle = ClassRef::runtime_type_hadle(ctx);
+            let sig = ctx.sig([runtime_handle.into()], type_type);
+            let gethash_sig = ctx.sig([type_type.into()], Type::Int(Int::I32));
+            let op_implict = MethodRef::new(
+                (ClassRef::uint_128(ctx)),
+                ctx.alloc_string("op_Implicit"),
+                ctx.sig([Type::Int(Int::U32)], Type::Int(Int::U128)),
+                MethodKind::Static,
+                vec![].into(),
             );
-            let gethash_sig = FnSig::new(
-                [ClassRef::type_type(ctx).into()].into(),
-                Type::Int(Int::I32),
+            let get_hash_code = MethodRef::new(
+                ClassRef::object(ctx),
+                ctx.alloc_string("GetHashCode"),
+                gethash_sig,
+                MethodKind::Virtual,
+                vec![].into(),
+            );
+            let get_type_handle = MethodRef::new(
+                type_type,
+                ctx.alloc_string("GetTypeFromHandle"),
+                sig,
+                MethodKind::Static,
+                vec![].into(),
             );
             place_set(
                 destination,
                 call!(
-                    MethodRefIdx::boxed(
-                        Some(ClassRef::uint_128(ctx)),
-                        "op_Implicit".into(),
-                        FnSig::new([Type::Int(Int::U32)].into(), Type::Int(Int::U128)),
-                        true,
-                    ),
+                    ctx.alloc_methodref(op_implict),
                     [conv_u32!(call_virt!(
-                        MethodRefIdx::boxed(
-                            ClassRef::object(ctx).into(),
-                            "GetHashCode".into(),
-                            gethash_sig,
-                            false,
-                        ),
+                        ctx.alloc_methodref(get_hash_code),
                         [call!(
-                            MethodRefIdx::boxed(
-                                ClassRef::type_type(ctx).into(),
-                                "GetTypeFromHandle".into(),
-                                sig,
-                                true,
-                            ),
+                            ctx.alloc_methodref(get_type_handle),
                             [CILNode::LDTypeToken(tpe.into())]
                         )]
                     ))]
@@ -440,24 +441,21 @@ pub fn handle_intrinsic<'tcx>(
             #[allow(clippy::single_match_else)]
             let exchange_res = match &src_type {
                 Type::Ptr(_) => {
-                    let call_site = MethodRefIdx::new(
-                        Some(interlocked),
-                        "CompareExchange".into(),
-                        FnSig::new(
-                            [
-                                ctx.nref(Type::Int(Int::USize)),
-                                Type::Int(Int::USize),
-                                Type::Int(Int::USize),
-                            ]
-                            .into(),
+                    let usize_ref = ctx.nref(Type::Int(Int::USize));
+                    let call_site = MethodRef::new(
+                        (interlocked),
+                        ctx.alloc_string("CompareExchange"),
+                        ctx.sig(
+                            [usize_ref, Type::Int(Int::USize), Type::Int(Int::USize)],
                             Type::Int(Int::USize),
                         ),
-                        true,
+                        MethodKind::Static,
+                        vec![].into(),
                     );
                     call!(
-                        call_site,
+                        ctx.alloc_methodref(call_site),
                         [
-                            Box::new(dst).cast_ptr(ctx.nref(Type::Int(Int::USize))),
+                            Box::new(dst).cast_ptr(usize_ref),
                             conv_usize!(value),
                             conv_usize!(comaprand)
                         ]
@@ -467,13 +465,15 @@ pub fn handle_intrinsic<'tcx>(
                 // TODO: this is a bug, on purpose. The 1 byte compare exchange is not supported untill .NET 9. Remove after November, when .NET 9 Releases.
                 Type::Int(Int::U8) => comaprand,
                 _ => {
-                    let call_site = MethodRefIdx::new(
-                        Some(interlocked),
-                        "CompareExchange".into(),
-                        FnSig::new([ctx.nref(src_type), src_type, src_type].into(), src_type),
-                        true,
+                    let src_ref = ctx.nref(src_type);
+                    let call_site = MethodRef::new(
+                        (interlocked),
+                        ctx.alloc_string("CompareExchange"),
+                        ctx.sig([src_ref, src_type, src_type], src_type),
+                        MethodKind::Static,
+                        vec![].into(),
                     );
-                    call!(call_site, [dst, value, comaprand])
+                    call!(ctx.alloc_methodref(call_site), [dst, value, comaprand])
                 }
             };
 
@@ -581,13 +581,15 @@ pub fn handle_intrinsic<'tcx>(
         | "atomic_fence_release"
         | "atomic_fence_acqrel" => {
             let thread = ClassRef::thread(ctx);
+            let fence = MethodRef::new(
+                (thread),
+                ctx.alloc_string("MemoryBarrier"),
+                ctx.sig([], Type::Void),
+                MethodKind::Static,
+                vec![].into(),
+            );
             CILRoot::Call {
-                site: Box::new(MethodRefIdx::new(
-                    Some(thread),
-                    "MemoryBarrier".into(),
-                    FnSig::new([].into(), Type::Void),
-                    true,
-                )),
+                site: ctx.alloc_methodref(fence),
                 args: [].into(),
             }
         }
@@ -679,38 +681,35 @@ pub fn handle_intrinsic<'tcx>(
             );
             let src_type = ctx.monomorphize(args[1].node.ty(ctx.body(), ctx.tcx()));
             let src_type = ctx.type_from_cache(src_type);
+            let uint8_ref = ctx.nref(Type::Int(Int::U8));
+            let xchng = MethodRef::new(
+                *ctx.main_module(),
+                ctx.alloc_string("atomic_xchng_u8"),
+                ctx.sig([uint8_ref, Type::Int(Int::U8)], Type::Int(Int::U8)),
+                MethodKind::Static,
+                vec![].into(),
+            );
             match src_type {
                 Type::Int(Int::U8) => {
                     return place_set(
                         destination,
-                        call!(
-                            MethodRefIdx::builtin(
-                                "atomic_xchng_u8".into(),
-                                FnSig::new(
-                                    [ctx.nref(Type::Int(Int::U8)), Type::Int(Int::U8)].into(),
-                                    Type::Int(Int::U8)
-                                ),
-                                true
-                            ),
-                            [dst, new]
-                        ),
+                        call!(ctx.alloc_methodref(xchng), [dst, new]),
                         ctx,
                     )
                 }
                 Type::Ptr(_) => {
-                    let call_site = MethodRefIdx::new(
-                        Some(interlocked),
-                        "Exchange".into(),
-                        FnSig::new(
-                            [ctx.nref(Type::Int(Int::USize)), Type::Int(Int::USize)].into(),
-                            Type::Int(Int::USize),
-                        ),
-                        true,
+                    let usize_ref = ctx.nref(Type::Int(Int::USize));
+                    let call_site = MethodRef::new(
+                        (interlocked),
+                        ctx.alloc_string("Exchange"),
+                        ctx.sig([usize_ref, Type::Int(Int::USize)], Type::Int(Int::USize)),
+                        MethodKind::Static,
+                        vec![].into(),
                     );
                     return place_set(
                         destination,
                         call!(
-                            call_site,
+                            ctx.alloc_methodref(call_site),
                             [
                                 Box::new(dst).cast_ptr(ctx.nref(Type::Int(Int::USize))),
                                 conv_usize!(new),
@@ -725,14 +724,20 @@ pub fn handle_intrinsic<'tcx>(
                 }
                 _ => (),
             }
-            let call_site = MethodRefIdx::new(
-                Some(interlocked),
-                "Exchange".into(),
-                FnSig::new([ctx.nref(src_type), src_type].into(), src_type),
-                true,
+            let src_ref = ctx.nref(src_type);
+            let call_site = MethodRef::new(
+                (interlocked),
+                ctx.alloc_string("Exchange"),
+                ctx.sig([src_ref, src_type], src_type),
+                MethodKind::Static,
+                vec![].into(),
             );
             // T
-            place_set(destination, call!(call_site, [dst, new]), ctx)
+            place_set(
+                destination,
+                call!(ctx.alloc_methodref(call_site), [dst, new]),
+                ctx,
+            )
         }
         // TODO:Those are not stricly neccessary, but SHOULD be implemented at some point.
         "assert_inhabited" | "assert_zero_valid" | "const_deallocate" => CILRoot::Nop,
@@ -846,15 +851,17 @@ pub fn handle_intrinsic<'tcx>(
                 1,
                 "The intrinsic `sqrtf32` MUST take in exactly 1 argument!"
             );
+            let sqrt = MethodRef::new(
+                (ClassRef::mathf(ctx)),
+                ctx.alloc_string("Sqrt"),
+                ctx.sig([Type::Float(Float::F32)], Type::Float(Float::F32)),
+                MethodKind::Static,
+                vec![].into(),
+            );
             place_set(
                 destination,
                 call!(
-                    MethodRefIdx::boxed(
-                        Some(ClassRef::mathf(ctx)),
-                        "Sqrt".into(),
-                        FnSig::new([Type::Float(Float::F32)].into(), Type::Float(Float::F32)),
-                        true,
-                    ),
+                    ctx.alloc_methodref(sqrt),
                     [handle_operand(&args[0].node, ctx)]
                 ),
                 ctx,
@@ -867,19 +874,20 @@ pub fn handle_intrinsic<'tcx>(
                 2,
                 "The intrinsic `powif32` MUST take in exactly 2 arguments!"
             );
-
+            let pow = MethodRef::new(
+                (ClassRef::single(ctx)),
+                ctx.alloc_string("Pow"),
+                ctx.sig(
+                    [Type::Float(Float::F32), Type::Float(Float::F32)],
+                    Type::Float(Float::F32),
+                ),
+                MethodKind::Static,
+                vec![].into(),
+            );
             place_set(
                 destination,
                 call!(
-                    MethodRefIdx::boxed(
-                        Some(ClassRef::single(ctx)),
-                        "Pow".into(),
-                        FnSig::new(
-                            [Type::Float(Float::F32), Type::Float(Float::F32)].into(),
-                            Type::Float(Float::F32)
-                        ),
-                        true,
-                    ),
+                    ctx.alloc_methodref(pow),
                     [
                         handle_operand(&args[0].node, ctx),
                         conv_f32!(handle_operand(&args[1].node, ctx))
@@ -894,19 +902,20 @@ pub fn handle_intrinsic<'tcx>(
                 2,
                 "The intrinsic `powif64` MUST take in exactly 2 arguments!"
             );
-
+            let pow = MethodRef::new(
+                (ClassRef::double(ctx)),
+                ctx.alloc_string("Pow"),
+                ctx.sig(
+                    [Type::Float(Float::F64), Type::Float(Float::F64)],
+                    Type::Float(Float::F64),
+                ),
+                MethodKind::Static,
+                vec![].into(),
+            );
             place_set(
                 destination,
                 call!(
-                    MethodRefIdx::boxed(
-                        Some(ClassRef::double(ctx)),
-                        "Pow".into(),
-                        FnSig::new(
-                            [Type::Float(Float::F64), Type::Float(Float::F64)].into(),
-                            Type::Float(Float::F64)
-                        ),
-                        true,
-                    ),
+                    ctx.alloc_methodref(pow),
                     [
                         handle_operand(&args[0].node, ctx),
                         conv_f64!(handle_operand(&args[1].node, ctx))
@@ -924,23 +933,19 @@ pub fn handle_intrinsic<'tcx>(
             );
             let tpe = ctx.monomorphize(pointed_ty);
             let tpe = ctx.type_from_cache(tpe);
+            let void_ptr = ctx.nptr(Type::Void);
+            let generic = MethodRef::new(
+                *ctx.main_module(),
+                ctx.alloc_string("swap_at_generic"),
+                ctx.sig([void_ptr, void_ptr, Type::Int(Int::USize)], Type::Void),
+                MethodKind::Static,
+                vec![].into(),
+            );
             CILRoot::Call {
-                site: Box::new(MethodRefIdx::builtin(
-                    "swap_at_generic".into(),
-                    FnSig::new(
-                        [
-                            ctx.nptr(Type::Void),
-                            ctx.nptr(Type::Void),
-                            Type::Int(Int::USize),
-                        ]
-                        .into(),
-                        Type::Void,
-                    ),
-                    true,
-                )),
+                site: ctx.alloc_methodref(generic),
                 args: [
-                    handle_operand(&args[0].node, ctx).cast_ptr(ctx.nptr(Type::Void)),
-                    handle_operand(&args[1].node, ctx).cast_ptr(ctx.nptr(Type::Void)),
+                    handle_operand(&args[0].node, ctx).cast_ptr(void_ptr),
+                    handle_operand(&args[1].node, ctx).cast_ptr(void_ptr),
                     conv_usize!(size_of!(tpe)),
                 ]
                 .into(),
@@ -985,525 +990,565 @@ pub fn handle_intrinsic<'tcx>(
                 ctx,
             )
         }
-        "fabsf32" => place_set(
-            destination,
-            call!(
-                MethodRefIdx::new_extern(
-                    ClassRef::single(ctx),
-                    "Abs".into(),
-                    FnSig::new([Type::Float(Float::F32)].into(), Type::Float(Float::F32)),
-                    true
-                ),
+        "fabsf32" => {
+            let abs = MethodRef::new(
+                ClassRef::single(ctx),
+                ctx.alloc_string("Abs"),
+                ctx.sig([Type::Float(Float::F32)], Type::Float(Float::F32)),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            let value_calc = call!(
+                ctx.alloc_methodref(abs),
                 [handle_operand(&args[0].node, ctx),]
-            ),
-            ctx,
-        ),
-        "fabsf64" => place_set(
-            destination,
-            call!(
-                MethodRefIdx::new_extern(
-                    ClassRef::double(ctx),
-                    "Abs".into(),
-                    FnSig::new([Type::Float(Float::F64)].into(), Type::Float(Float::F64)),
-                    true
+            );
+            place_set(destination, value_calc, ctx)
+        }
+        "fabsf64" => {
+            let abs = MethodRef::new(
+                ClassRef::double(ctx),
+                ctx.alloc_string("Abs"),
+                ctx.sig([Type::Float(Float::F64)], Type::Float(Float::F64)),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            let place_set = place_set(
+                destination,
+                call!(
+                    ctx.alloc_methodref(abs),
+                    [handle_operand(&args[0].node, ctx),]
                 ),
+                ctx,
+            );
+            place_set
+        }
+        "expf32" => {
+            let exp = MethodRef::new(
+                ClassRef::single(ctx),
+                ctx.alloc_string("Exp"),
+                ctx.sig([Type::Float(Float::F32)], Type::Float(Float::F32)),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            let value_calc = call!(
+                ctx.alloc_methodref(exp),
                 [handle_operand(&args[0].node, ctx),]
-            ),
-            ctx,
-        ),
-        "expf32" => place_set(
-            destination,
-            call!(
-                MethodRefIdx::new_extern(
-                    ClassRef::single(ctx),
-                    "Exp".into(),
-                    FnSig::new([Type::Float(Float::F32)].into(), Type::Float(Float::F32)),
-                    true
-                ),
+            );
+            place_set(destination, value_calc, ctx)
+        }
+        "expf64" => {
+            let exp = MethodRef::new(
+                ClassRef::double(ctx),
+                ctx.alloc_string("Exp"),
+                ctx.sig([Type::Float(Float::F64)], Type::Float(Float::F64)),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            let value_calc = call!(
+                ctx.alloc_methodref(exp),
                 [handle_operand(&args[0].node, ctx),]
-            ),
-            ctx,
-        ),
-        "expf64" => place_set(
-            destination,
-            call!(
-                MethodRefIdx::new_extern(
-                    ClassRef::double(ctx),
-                    "Exp".into(),
-                    FnSig::new([Type::Float(Float::F64)].into(), Type::Float(Float::F64)),
-                    true
-                ),
+            );
+            place_set(destination, value_calc, ctx)
+        }
+        "logf32" => {
+            let log = MethodRef::new(
+                ClassRef::single(ctx),
+                ctx.alloc_string("Log"),
+                ctx.sig([Type::Float(Float::F32)], Type::Float(Float::F32)),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            let value_calc = call!(
+                ctx.alloc_methodref(log),
                 [handle_operand(&args[0].node, ctx),]
-            ),
-            ctx,
-        ),
-        "logf32" => place_set(
-            destination,
-            call!(
-                MethodRefIdx::new_extern(
-                    ClassRef::single(ctx),
-                    "Log".into(),
-                    FnSig::new([Type::Float(Float::F32)].into(), Type::Float(Float::F32)),
-                    true
+            );
+            place_set(destination, value_calc, ctx)
+        }
+        "logf64" => {
+            let log = MethodRef::new(
+                ClassRef::double(ctx),
+                ctx.alloc_string("Log"),
+                ctx.sig([Type::Float(Float::F64)], Type::Float(Float::F64)),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            let place_set = place_set(
+                destination,
+                call!(
+                    ctx.alloc_methodref(log),
+                    [handle_operand(&args[0].node, ctx),]
                 ),
+                ctx,
+            );
+            place_set
+        }
+        "log2f32" => {
+            let log = MethodRef::new(
+                ClassRef::single(ctx),
+                ctx.alloc_string("Log2"),
+                ctx.sig([Type::Float(Float::F32)], Type::Float(Float::F32)),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            let value_calc = call!(
+                ctx.alloc_methodref(log),
                 [handle_operand(&args[0].node, ctx),]
-            ),
-            ctx,
-        ),
-        "logf64" => place_set(
-            destination,
-            call!(
-                MethodRefIdx::new_extern(
-                    ClassRef::double(ctx),
-                    "Log".into(),
-                    FnSig::new([Type::Float(Float::F64)].into(), Type::Float(Float::F64)),
-                    true
-                ),
+            );
+            place_set(destination, value_calc, ctx)
+        }
+        "log2f64" => {
+            let log = MethodRef::new(
+                ClassRef::double(ctx),
+                ctx.alloc_string("Log2"),
+                ctx.sig([Type::Float(Float::F64)], Type::Float(Float::F64)),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            let value_calc = call!(
+                ctx.alloc_methodref(log),
                 [handle_operand(&args[0].node, ctx),]
-            ),
-            ctx,
-        ),
-        "log2f32" => place_set(
-            destination,
-            call!(
-                MethodRefIdx::new_extern(
-                    ClassRef::single(ctx),
-                    "Log2".into(),
-                    FnSig::new([Type::Float(Float::F32)].into(), Type::Float(Float::F32)),
-                    true
-                ),
+            );
+            place_set(destination, value_calc, ctx)
+        }
+        "log10f32" => {
+            let log = MethodRef::new(
+                ClassRef::single(ctx),
+                ctx.alloc_string("Log10"),
+                ctx.sig([Type::Float(Float::F32)], Type::Float(Float::F32)),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            let value_calc = call!(
+                ctx.alloc_methodref(log),
                 [handle_operand(&args[0].node, ctx),]
-            ),
-            ctx,
-        ),
-        "log2f64" => place_set(
-            destination,
-            call!(
-                MethodRefIdx::new_extern(
-                    ClassRef::double(ctx),
-                    "Log2".into(),
-                    FnSig::new([Type::Float(Float::F64)].into(), Type::Float(Float::F64)),
-                    true
-                ),
+            );
+            place_set(destination, value_calc, ctx)
+        }
+        "log10f64" => {
+            let log = MethodRef::new(
+                ClassRef::double(ctx),
+                ctx.alloc_string("Log10"),
+                ctx.sig([Type::Float(Float::F64)], Type::Float(Float::F64)),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            let value_calc = call!(
+                ctx.alloc_methodref(log),
                 [handle_operand(&args[0].node, ctx),]
-            ),
-            ctx,
-        ),
-        "log10f32" => place_set(
-            destination,
-            call!(
-                MethodRefIdx::new_extern(
-                    ClassRef::single(ctx),
-                    "Log10".into(),
-                    FnSig::new([Type::Float(Float::F32)].into(), Type::Float(Float::F32)),
-                    true
+            );
+            place_set(destination, value_calc, ctx)
+        }
+        "powf32" => {
+            let pow = MethodRef::new(
+                ClassRef::single(ctx),
+                ctx.alloc_string("Pow"),
+                ctx.sig(
+                    [Type::Float(Float::F32), Type::Float(Float::F32)],
+                    Type::Float(Float::F32),
                 ),
-                [handle_operand(&args[0].node, ctx),]
-            ),
-            ctx,
-        ),
-        "log10f64" => place_set(
-            destination,
-            call!(
-                MethodRefIdx::new_extern(
-                    ClassRef::double(ctx),
-                    "Log10".into(),
-                    FnSig::new([Type::Float(Float::F64)].into(), Type::Float(Float::F64)),
-                    true
-                ),
-                [handle_operand(&args[0].node, ctx),]
-            ),
-            ctx,
-        ),
-        "powf32" => place_set(
-            destination,
-            call!(
-                MethodRefIdx::new_extern(
-                    ClassRef::single(ctx),
-                    "Pow".into(),
-                    FnSig::new(
-                        [Type::Float(Float::F32), Type::Float(Float::F32)].into(),
-                        Type::Float(Float::F32)
-                    ),
-                    true
-                ),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            let value_calc = call!(
+                ctx.alloc_methodref(pow),
                 [
                     handle_operand(&args[0].node, ctx),
                     handle_operand(&args[1].node, ctx),
                 ]
-            ),
-            ctx,
-        ),
-        "powf64" => place_set(
-            destination,
-            call!(
-                MethodRefIdx::new_extern(
-                    ClassRef::double(ctx),
-                    "Pow".into(),
-                    FnSig::new(
-                        [Type::Float(Float::F64), Type::Float(Float::F64)].into(),
-                        Type::Float(Float::F64)
-                    ),
-                    true
+            );
+            place_set(destination, value_calc, ctx)
+        }
+        "powf64" => {
+            let pow = MethodRef::new(
+                ClassRef::double(ctx),
+                ctx.alloc_string("Pow"),
+                ctx.sig(
+                    [Type::Float(Float::F64), Type::Float(Float::F64)],
+                    Type::Float(Float::F64),
                 ),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            let place_set = place_set(
+                destination,
+                call!(
+                    ctx.alloc_methodref(pow),
+                    [
+                        handle_operand(&args[0].node, ctx),
+                        handle_operand(&args[1].node, ctx),
+                    ]
+                ),
+                ctx,
+            );
+            place_set
+        }
+        "copysignf32" => {
+            let copy_sign = MethodRef::new(
+                ClassRef::single(ctx),
+                ctx.alloc_string("CopySign"),
+                ctx.sig(
+                    [Type::Float(Float::F32), Type::Float(Float::F32)],
+                    Type::Float(Float::F32),
+                ),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            let value_calc = call!(
+                ctx.alloc_methodref(copy_sign),
                 [
                     handle_operand(&args[0].node, ctx),
                     handle_operand(&args[1].node, ctx),
                 ]
-            ),
-            ctx,
-        ),
-        "copysignf32" => place_set(
-            destination,
-            call!(
-                MethodRefIdx::new_extern(
-                    ClassRef::single(ctx),
-                    "CopySign".into(),
-                    FnSig::new(
-                        [Type::Float(Float::F32), Type::Float(Float::F32)].into(),
-                        Type::Float(Float::F32)
-                    ),
-                    true
+            );
+            place_set(destination, value_calc, ctx)
+        }
+        "copysignf64" => {
+            let copy_sign = MethodRef::new(
+                ClassRef::double(ctx),
+                ctx.alloc_string("CopySign"),
+                ctx.sig(
+                    [Type::Float(Float::F64), Type::Float(Float::F64)],
+                    Type::Float(Float::F64),
                 ),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            let value_calc = call!(
+                ctx.alloc_methodref(copy_sign),
                 [
                     handle_operand(&args[0].node, ctx),
                     handle_operand(&args[1].node, ctx),
                 ]
-            ),
-            ctx,
-        ),
-        "copysignf64" => place_set(
-            destination,
-            call!(
-                MethodRefIdx::new_extern(
-                    ClassRef::double(ctx),
-                    "CopySign".into(),
-                    FnSig::new(
-                        [Type::Float(Float::F64), Type::Float(Float::F64)].into(),
-                        Type::Float(Float::F64)
-                    ),
-                    true
-                ),
-                [
-                    handle_operand(&args[0].node, ctx),
-                    handle_operand(&args[1].node, ctx),
-                ]
-            ),
-            ctx,
-        ),
-        "sinf32" => place_set(
-            destination,
-            call!(
-                MethodRefIdx::new_extern(
-                    ClassRef::single(ctx),
-                    "Sin".into(),
-                    FnSig::new([Type::Float(Float::F32)].into(), Type::Float(Float::F32)),
-                    true
-                ),
+            );
+            place_set(destination, value_calc, ctx)
+        }
+        "sinf32" => {
+            let sin = MethodRef::new(
+                ClassRef::single(ctx),
+                ctx.alloc_string("Sin"),
+                ctx.sig([Type::Float(Float::F32)], Type::Float(Float::F32)),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            let value_calc = call!(
+                ctx.alloc_methodref(sin),
                 [handle_operand(&args[0].node, ctx),]
-            ),
-            ctx,
-        ),
-        "sinf64" => place_set(
-            destination,
-            call!(
-                MethodRefIdx::new_extern(
-                    ClassRef::double(ctx),
-                    "Sin".into(),
-                    FnSig::new([Type::Float(Float::F64)].into(), Type::Float(Float::F64)),
-                    true
-                ),
+            );
+            place_set(destination, value_calc, ctx)
+        }
+        "sinf64" => {
+            let sin = MethodRef::new(
+                ClassRef::double(ctx),
+                ctx.alloc_string("Sin"),
+                ctx.sig([Type::Float(Float::F64)], Type::Float(Float::F64)),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            let value_calc = call!(
+                ctx.alloc_methodref(sin),
                 [handle_operand(&args[0].node, ctx),]
-            ),
-            ctx,
-        ),
-        "cosf32" => place_set(
-            destination,
-            call!(
-                MethodRefIdx::new_extern(
-                    ClassRef::single(ctx),
-                    "Cos".into(),
-                    FnSig::new([Type::Float(Float::F32)].into(), Type::Float(Float::F32)),
-                    true
-                ),
+            );
+            place_set(destination, value_calc, ctx)
+        }
+        "cosf32" => {
+            let cos = MethodRef::new(
+                ClassRef::single(ctx),
+                ctx.alloc_string("Cos"),
+                ctx.sig([Type::Float(Float::F32)], Type::Float(Float::F32)),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            let value_calc = call!(
+                ctx.alloc_methodref(cos),
                 [handle_operand(&args[0].node, ctx),]
-            ),
-            ctx,
-        ),
-        "cosf64" => place_set(
-            destination,
-            call!(
-                MethodRefIdx::new_extern(
-                    ClassRef::double(ctx),
-                    "Cos".into(),
-                    FnSig::new([Type::Float(Float::F64)].into(), Type::Float(Float::F64)),
-                    true
-                ),
+            );
+            place_set(destination, value_calc, ctx)
+        }
+        "cosf64" => {
+            let cos = MethodRef::new(
+                ClassRef::double(ctx),
+                ctx.alloc_string("Cos"),
+                ctx.sig([Type::Float(Float::F64)], Type::Float(Float::F64)),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            let value_calc = call!(
+                ctx.alloc_methodref(cos),
                 [handle_operand(&args[0].node, ctx),]
-            ),
-            ctx,
-        ),
-        "exp2f32" => place_set(
-            destination,
-            call!(
-                MethodRefIdx::new_extern(
-                    ClassRef::single(ctx),
-                    "Exp2".into(),
-                    FnSig::new([Type::Float(Float::F32)].into(), Type::Float(Float::F32)),
-                    true
-                ),
+            );
+            place_set(destination, value_calc, ctx)
+        }
+        "exp2f32" => {
+            let exp = MethodRef::new(
+                ClassRef::single(ctx),
+                ctx.alloc_string("Exp2"),
+                ctx.sig([Type::Float(Float::F32)], Type::Float(Float::F32)),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            let value_calc = call!(
+                ctx.alloc_methodref(exp),
                 [handle_operand(&args[0].node, ctx),]
-            ),
-            ctx,
-        ),
-        "exp2f64" => place_set(
-            destination,
-            call!(
-                MethodRefIdx::new_extern(
-                    ClassRef::double(ctx),
-                    "Exp2".into(),
-                    FnSig::new([Type::Float(Float::F64)].into(), Type::Float(Float::F64)),
-                    true
-                ),
+            );
+            place_set(destination, value_calc, ctx)
+        }
+        "exp2f64" => {
+            let exp = MethodRef::new(
+                ClassRef::double(ctx),
+                ctx.alloc_string("Exp2"),
+                ctx.sig([Type::Float(Float::F64)], Type::Float(Float::F64)),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            let value_calc = call!(
+                ctx.alloc_methodref(exp),
                 [handle_operand(&args[0].node, ctx),]
-            ),
-            ctx,
-        ),
-        "truncf32" => place_set(
-            destination,
-            call!(
-                MethodRefIdx::new_extern(
-                    ClassRef::mathf(ctx),
-                    "Truncate".into(),
-                    FnSig::new([Type::Float(Float::F32)].into(), Type::Float(Float::F32)),
-                    true
-                ),
+            );
+            place_set(destination, value_calc, ctx)
+        }
+        "truncf32" => {
+            let trunc = MethodRef::new(
+                ClassRef::mathf(ctx),
+                ctx.alloc_string("Truncate"),
+                ctx.sig([Type::Float(Float::F32)], Type::Float(Float::F32)),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            let value_calc = call!(
+                ctx.alloc_methodref(trunc),
                 [handle_operand(&args[0].node, ctx),]
-            ),
-            ctx,
-        ),
-        "truncf64" => place_set(
-            destination,
-            call!(
-                MethodRefIdx::new_extern(
-                    ClassRef::math(ctx),
-                    "Truncate".into(),
-                    FnSig::new([Type::Float(Float::F64)].into(), Type::Float(Float::F64)),
-                    true
-                ),
+            );
+            place_set(destination, value_calc, ctx)
+        }
+        "truncf64" => {
+            let trunc = MethodRef::new(
+                ClassRef::math(ctx),
+                ctx.alloc_string("Truncate"),
+                ctx.sig([Type::Float(Float::F64)], Type::Float(Float::F64)),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            let value_calc = call!(
+                ctx.alloc_methodref(trunc),
                 [handle_operand(&args[0].node, ctx),]
-            ),
-            ctx,
-        ),
+            );
+            place_set(destination, value_calc, ctx)
+        }
         // `roundf32` should be a differnt intrinsics, but it requires some .NET fuckery to implement(.NET enums are **wierd**)
-        "nearbyintf32" | "rintf32" | "roundevenf32" => place_set(
-            destination,
-            call!(
-                MethodRefIdx::new_extern(
-                    ClassRef::mathf(ctx),
-                    "Round".into(),
-                    FnSig::new([Type::Float(Float::F32)].into(), Type::Float(Float::F32)),
-                    true
-                ),
+        "nearbyintf32" | "rintf32" | "roundevenf32" => {
+            let round = MethodRef::new(
+                ClassRef::mathf(ctx),
+                ctx.alloc_string("Round"),
+                ctx.sig([Type::Float(Float::F32)], Type::Float(Float::F32)),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            let value_calc = call!(
+                ctx.alloc_methodref(round),
                 [handle_operand(&args[0].node, ctx),]
-            ),
-            ctx,
-        ),
-        "roundf32" => place_set(
-            destination,
-            call!(
-                MethodRefIdx::new_extern(
-                    ClassRef::mathf(ctx),
-                    "Round".into(),
-                    FnSig::new(
-                        [
-                            Type::Float(Float::F32),
-                            Type::ClassRef(ClassRef::midpoint_rounding(ctx)),
-                        ]
-                        .into(),
-                        Type::Float(Float::F32)
-                    ),
-                    true
+            );
+            place_set(destination, value_calc, ctx)
+        }
+        "roundf32" => {
+            let rounding = ClassRef::midpoint_rounding(ctx);
+            let round = MethodRef::new(
+                ClassRef::mathf(ctx),
+                ctx.alloc_string("Round"),
+                ctx.sig(
+                    [Type::Float(Float::F32), Type::ClassRef(rounding)],
+                    Type::Float(Float::F32),
                 ),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            let value_calc = call!(
+                ctx.alloc_methodref(round),
                 [
                     handle_operand(&args[0].node, ctx),
                     ldc_i32!(1).transmute_on_stack(
                         Type::Int(Int::I32),
-                        Type::ClassRef(ClassRef::midpoint_rounding(ctx)),
+                        Type::ClassRef(rounding),
                         ctx
                     )
                 ]
-            ),
-            ctx,
-        ),
-        "nearbyintf64" | "rintf64" | "roundevenf64" => place_set(
-            destination,
-            call!(
-                MethodRefIdx::new_extern(
-                    ClassRef::math(ctx),
-                    "Round".into(),
-                    FnSig::new([Type::Float(Float::F64)].into(), Type::Float(Float::F64)),
-                    true
-                ),
+            );
+            place_set(destination, value_calc, ctx)
+        }
+        "nearbyintf64" | "rintf64" | "roundevenf64" => {
+            let round = MethodRef::new(
+                ClassRef::math(ctx),
+                ctx.alloc_string("Round"),
+                ctx.sig([Type::Float(Float::F64)], Type::Float(Float::F64)),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            let value_calc = call!(
+                ctx.alloc_methodref(round),
                 [handle_operand(&args[0].node, ctx),]
-            ),
-            ctx,
-        ),
-        "roundf64" => place_set(
-            destination,
-            call!(
-                MethodRefIdx::new_extern(
-                    ClassRef::math(ctx),
-                    "Round".into(),
-                    FnSig::new(
-                        [
-                            Type::Float(Float::F64),
-                            Type::ClassRef(ClassRef::midpoint_rounding(ctx))
-                        ]
-                        .into(),
-                        Type::Float(Float::F64)
-                    ),
-                    true
+            );
+            place_set(destination, value_calc, ctx)
+        }
+        "roundf64" => {
+            let rounding = ClassRef::midpoint_rounding(ctx);
+            let round = MethodRef::new(
+                ClassRef::math(ctx),
+                ctx.alloc_string("Round"),
+                ctx.sig(
+                    [Type::Float(Float::F64), Type::ClassRef(rounding)],
+                    Type::Float(Float::F64),
                 ),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            let value_calc = call!(
+                ctx.alloc_methodref(round),
                 [
                     handle_operand(&args[0].node, ctx),
                     ldc_i32!(1).transmute_on_stack(
                         Type::Int(Int::I32),
-                        Type::ClassRef(ClassRef::midpoint_rounding(ctx)),
+                        Type::ClassRef(rounding),
                         ctx
                     )
                 ]
-            ),
-            ctx,
-        ),
-        "floorf32" => place_set(
-            destination,
-            call!(
-                MethodRefIdx::new_extern(
-                    ClassRef::mathf(ctx),
-                    "Floor".into(),
-                    FnSig::new([Type::Float(Float::F32)].into(), Type::Float(Float::F32)),
-                    true
-                ),
+            );
+            place_set(destination, value_calc, ctx)
+        }
+        "floorf32" => {
+            let floor = MethodRef::new(
+                ClassRef::mathf(ctx),
+                ctx.alloc_string("Floor"),
+                ctx.sig([Type::Float(Float::F32)], Type::Float(Float::F32)),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            let value_calc = call!(
+                ctx.alloc_methodref(floor),
                 [handle_operand(&args[0].node, ctx),]
-            ),
-            ctx,
-        ),
-        "floorf64" => place_set(
-            destination,
-            call!(
-                MethodRefIdx::new_extern(
-                    ClassRef::math(ctx),
-                    "Floor".into(),
-                    FnSig::new([Type::Float(Float::F64)].into(), Type::Float(Float::F64)),
-                    true
-                ),
+            );
+            place_set(destination, value_calc, ctx)
+        }
+        "floorf64" => {
+            let floor = MethodRef::new(
+                ClassRef::math(ctx),
+                ctx.alloc_string("Floor"),
+                ctx.sig([Type::Float(Float::F64)], Type::Float(Float::F64)),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            let value_calc = call!(
+                ctx.alloc_methodref(floor),
                 [handle_operand(&args[0].node, ctx),]
-            ),
-            ctx,
-        ),
-        "ceilf32" => place_set(
-            destination,
-            call!(
-                MethodRefIdx::new_extern(
-                    ClassRef::mathf(ctx),
-                    "Ceiling".into(),
-                    FnSig::new([Type::Float(Float::F32)].into(), Type::Float(Float::F32)),
-                    true
-                ),
+            );
+            place_set(destination, value_calc, ctx)
+        }
+        "ceilf32" => {
+            let ceil = MethodRef::new(
+                ClassRef::mathf(ctx),
+                ctx.alloc_string("Ceiling"),
+                ctx.sig([Type::Float(Float::F32)], Type::Float(Float::F32)),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            let value_calc = call!(
+                ctx.alloc_methodref(ceil),
                 [handle_operand(&args[0].node, ctx),]
-            ),
-            ctx,
-        ),
-        "ceilf64" => place_set(
-            destination,
-            call!(
-                MethodRefIdx::new_extern(
-                    ClassRef::math(ctx),
-                    "Ceiling".into(),
-                    FnSig::new([Type::Float(Float::F64)].into(), Type::Float(Float::F64)),
-                    true
-                ),
+            );
+            place_set(destination, value_calc, ctx)
+        }
+        "ceilf64" => {
+            let ceil = MethodRef::new(
+                ClassRef::math(ctx),
+                ctx.alloc_string("Ceiling"),
+                ctx.sig([Type::Float(Float::F64)], Type::Float(Float::F64)),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            let value_calc = call!(
+                ctx.alloc_methodref(ceil),
                 [handle_operand(&args[0].node, ctx),]
-            ),
-            ctx,
-        ),
-        "maxnumf64" => place_set(
-            destination,
-            call!(
-                MethodRefIdx::new_extern(
-                    ClassRef::double(ctx),
-                    "MaxNumber".into(),
-                    FnSig::new(
-                        [Type::Float(Float::F64), Type::Float(Float::F64)].into(),
-                        Type::Float(Float::F64)
-                    ),
-                    true
+            );
+            place_set(destination, value_calc, ctx)
+        }
+        "maxnumf64" => {
+            let max = MethodRef::new(
+                ClassRef::double(ctx),
+                ctx.alloc_string("MaxNumber"),
+                ctx.sig(
+                    [Type::Float(Float::F64), Type::Float(Float::F64)],
+                    Type::Float(Float::F64),
                 ),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            let value_calc = call!(
+                ctx.alloc_methodref(max),
                 [
                     handle_operand(&args[0].node, ctx),
                     handle_operand(&args[1].node, ctx),
                 ]
-            ),
-            ctx,
-        ),
-        "maxnumf32" => place_set(
-            destination,
-            call!(
-                MethodRefIdx::new_extern(
-                    ClassRef::single(ctx),
-                    "MaxNumber".into(),
-                    FnSig::new(
-                        [Type::Float(Float::F32), Type::Float(Float::F32)].into(),
-                        Type::Float(Float::F32)
-                    ),
-                    true
+            );
+            place_set(destination, value_calc, ctx)
+        }
+        "maxnumf32" => {
+            let max = MethodRef::new(
+                ClassRef::single(ctx),
+                ctx.alloc_string("MaxNumber"),
+                ctx.sig(
+                    [Type::Float(Float::F32), Type::Float(Float::F32)],
+                    Type::Float(Float::F32),
                 ),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            let value_calc = call!(
+                ctx.alloc_methodref(max),
                 [
                     handle_operand(&args[0].node, ctx),
                     handle_operand(&args[1].node, ctx),
                 ]
-            ),
-            ctx,
-        ),
-        "minnumf64" => place_set(
-            destination,
-            call!(
-                MethodRefIdx::new_extern(
-                    ClassRef::double(ctx),
-                    "MinNumber".into(),
-                    FnSig::new(
-                        [Type::Float(Float::F64), Type::Float(Float::F64)].into(),
-                        Type::Float(Float::F64)
-                    ),
-                    true
+            );
+            place_set(destination, value_calc, ctx)
+        }
+        "minnumf64" => {
+            let min = MethodRef::new(
+                ClassRef::double(ctx),
+                ctx.alloc_string("MinNumber"),
+                ctx.sig(
+                    [Type::Float(Float::F64), Type::Float(Float::F64)],
+                    Type::Float(Float::F64),
                 ),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            let value_calc = call!(
+                ctx.alloc_methodref(min),
                 [
                     handle_operand(&args[0].node, ctx),
                     handle_operand(&args[1].node, ctx),
                 ]
-            ),
-            ctx,
-        ),
-        "minnumf32" => place_set(
-            destination,
-            call!(
-                MethodRefIdx::new_extern(
-                    ClassRef::single(ctx),
-                    "MinNumber".into(),
-                    FnSig::new(
-                        [Type::Float(Float::F32), Type::Float(Float::F32)].into(),
-                        Type::Float(Float::F32)
-                    ),
-                    true
+            );
+            place_set(destination, value_calc, ctx)
+        }
+        "minnumf32" => {
+            let min = MethodRef::new(
+                ClassRef::single(ctx),
+                ctx.alloc_string("MinNumber"),
+                ctx.sig(
+                    [Type::Float(Float::F32), Type::Float(Float::F32)],
+                    Type::Float(Float::F32),
                 ),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            let value_calc = call!(
+                ctx.alloc_methodref(min),
                 [
                     handle_operand(&args[0].node, ctx),
                     handle_operand(&args[1].node, ctx),
                 ]
-            ),
-            ctx,
-        ),
+            );
+            place_set(destination, value_calc, ctx)
+        }
         "variant_count" => {
             let const_val = ctx
                 .tcx()
@@ -1525,14 +1570,15 @@ pub fn handle_intrinsic<'tcx>(
                 1,
                 "The intrinsic `sqrtf64` MUST take in exactly 1 argument!"
             );
-
+            let sqrt = MethodRef::new(
+                (ClassRef::math(ctx)),
+                ctx.alloc_string("Sqrt"),
+                ctx.sig([Type::Float(Float::F64)], Type::Float(Float::F64)),
+                MethodKind::Static,
+                vec![].into(),
+            );
             let ops = call!(
-                MethodRefIdx::boxed(
-                    Some(ClassRef::math(ctx)),
-                    "Sqrt".into(),
-                    FnSig::new([Type::Float(Float::F64)].into(), Type::Float(Float::F64)),
-                    true,
-                ),
+                ctx.alloc_methodref(sqrt),
                 [handle_operand(&args[0].node, ctx)]
             );
             place_set(destination, ops, ctx)
@@ -1548,22 +1594,22 @@ pub fn handle_intrinsic<'tcx>(
             let data_ptr = handle_operand(&args[1].node, ctx);
             let catch_fn = handle_operand(&args[2].node, ctx);
             let uint8_ptr = ctx.nptr(Type::Int(Int::U8));
+            let try_ptr = ctx.sig([uint8_ptr], Type::Void);
+            let catch_ptr = ctx.sig([uint8_ptr, uint8_ptr], Type::Void);
+            let catch_unwind = MethodRef::new(
+                *ctx.main_module(),
+                ctx.alloc_string("catch_unwind"),
+                ctx.sig(
+                    [Type::FnPtr(try_ptr), uint8_ptr, Type::FnPtr(catch_ptr)],
+                    Type::Int(Int::I32),
+                ),
+                MethodKind::Static,
+                vec![].into(),
+            );
             place_set(
                 destination,
                 call!(
-                    MethodRefIdx::builtin(
-                        "catch_unwind".into(),
-                        FnSig::new(
-                            [
-                                Type::FnPtr(ctx.sig([uint8_ptr], Type::Void)),
-                                uint8_ptr,
-                                Type::FnPtr(ctx.sig([uint8_ptr, uint8_ptr], Type::Void)),
-                            ]
-                            .into(),
-                            Type::Int(Int::I32),
-                        ),
-                        true
-                    ),
+                    ctx.alloc_methodref(catch_unwind),
                     [try_fn, data_ptr, catch_fn]
                 ),
                 ctx,
@@ -1627,37 +1673,39 @@ fn intrinsic_slow<'tcx>(
                 .expect("needs_drop works only on types!"),
         );
         let tpe = ctx.type_from_cache(tpe);
-        let sig = FnSig::new(
-            [ClassRef::runtime_type_hadle(ctx).into()].into(),
-            ClassRef::type_type(ctx).into(),
+        let type_type = ClassRef::type_type(ctx);
+        let rt_type_handle = ClassRef::runtime_type_hadle(ctx);
+        let sig = ctx.sig([rt_type_handle.into()], type_type);
+        let gethash_sig = ctx.sig([type_type.into()], Type::Int(Int::I32));
+        let op_implict = MethodRef::new(
+            (ClassRef::uint_128(ctx)),
+            ctx.alloc_string("op_Implicit"),
+            ctx.sig([Type::Int(Int::U32)], Type::Int(Int::U128)),
+            MethodKind::Static,
+            vec![].into(),
         );
-        let gethash_sig = FnSig::new(
-            [ClassRef::type_type(ctx).into()].into(),
-            Type::Int(Int::I32),
+        let hash_code = MethodRef::new(
+            ClassRef::object(ctx).into(),
+            ctx.alloc_string("GetHashCode"),
+            gethash_sig,
+            MethodKind::Virtual,
+            vec![].into(),
+        );
+        let type_handle = MethodRef::new(
+            ClassRef::type_type(ctx).into(),
+            ctx.alloc_string("GetTypeFromHandle"),
+            sig,
+            MethodKind::Static,
+            vec![].into(),
         );
         place_set(
             destination,
             call!(
-                MethodRefIdx::boxed(
-                    Some(ClassRef::uint_128(ctx)),
-                    "op_Implicit".into(),
-                    FnSig::new([Type::Int(Int::U32)].into(), Type::Int(Int::U128)),
-                    true,
-                ),
+                ctx.alloc_methodref(op_implict),
                 [conv_u32!(call_virt!(
-                    MethodRefIdx::boxed(
-                        ClassRef::object(ctx).into(),
-                        "GetHashCode".into(),
-                        gethash_sig,
-                        false,
-                    ),
+                    ctx.alloc_methodref(hash_code),
                     [call!(
-                        MethodRefIdx::boxed(
-                            ClassRef::type_type(ctx).into(),
-                            "GetTypeFromHandle".into(),
-                            sig,
-                            true,
-                        ),
+                        ctx.alloc_methodref(type_handle),
                         [CILNode::LDTypeToken(tpe.into())]
                     )]
                 ))]
@@ -1692,23 +1740,19 @@ fn intrinsic_slow<'tcx>(
         );
         let tpe = ctx.monomorphize(pointed_ty);
         let tpe = ctx.type_from_cache(tpe);
+        let void_ptr = ctx.nptr(Type::Void);
+        let swap = MethodRef::new(
+            *ctx.main_module(),
+            ctx.alloc_string("swap_at_generic"),
+            ctx.sig([void_ptr, void_ptr, Type::Int(Int::USize)], Type::Void),
+            MethodKind::Static,
+            vec![].into(),
+        );
         CILRoot::Call {
-            site: Box::new(MethodRefIdx::builtin(
-                "swap_at_generic".into(),
-                FnSig::new(
-                    [
-                        ctx.nptr(Type::Void),
-                        ctx.nptr(Type::Void),
-                        Type::Int(Int::USize),
-                    ]
-                    .into(),
-                    Type::Void,
-                ),
-                true,
-            )),
+            site: ctx.alloc_methodref(swap),
             args: [
-                handle_operand(&args[0].node, ctx).cast_ptr(ctx.nptr(Type::Void)),
-                handle_operand(&args[1].node, ctx).cast_ptr(ctx.nptr(Type::Void)),
+                handle_operand(&args[0].node, ctx).cast_ptr(void_ptr),
+                handle_operand(&args[1].node, ctx).cast_ptr(void_ptr),
                 conv_usize!(size_of!(tpe)),
             ]
             .into(),
