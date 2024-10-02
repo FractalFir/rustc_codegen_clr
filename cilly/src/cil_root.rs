@@ -163,7 +163,7 @@ impl CILRoot {
                 class,
                 name,
                 signature,
-                MethodKind::Instance,
+                MethodKind::Constructor,
                 vec![].into(),
             )),
             args: [CILNode::LdStr(msg.into())].into(),

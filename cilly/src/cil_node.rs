@@ -340,173 +340,52 @@ impl CILNode {
     }
 
     #[must_use]
-    pub fn select(tpe: Type, a: Self, b: Self, predictate: Self) -> Self {
-        todo!()
-    }
-    /*
+    pub fn select(tpe: Type, a: Self, b: Self, predictate: Self, asm: &mut Assembly) -> Self {
         match tpe {
-            Type::Int(Int::U128) => call!(
-                MethodRefIdx::builtin(
-                    "select_u128".to_owned().into(),
-                    asm.sig(
-                        Box::new([Type::Int(Int::U128), Type::Int(Int::U128), Type::Bool]),
-                        Type::Int(Int::U128)
-                    ),
-                       MethodKind::Static,
-                vec![].into()
-                ),
-                [a, b, predictate]
-            ),
-            Type::Int(Int::I128) => call!(
-                MethodRefIdx::builtin(
-                    "select_i128".to_owned().into(),
-                    asm.sig(
-                        Box::new([Type::Int(Int::I128), Type::Int(Int::I128), Type::Bool]),
-                        Type::Int(Int::I128)
-                    ),
-                       MethodKind::Static,
-                vec![].into()
-                ),
-                [a, b, predictate]
-            ),
-            Type::Int(Int::USize) => call!(
-                MethodRefIdx::builtin(
-                    "select_usize".to_owned().into(),
-                    asm.sig(
-                        Box::new([Type::Int(Int::USize), Type::Int(Int::USize), Type::Bool]),
-                        Type::Int(Int::USize)
-                    ),
-                       MethodKind::Static,
-                vec![].into()
-                ),
-                [a, b, predictate]
-            ),
-            Type::Ptr(_) => call!(
-                MethodRefIdx::builtin(
-                    "select_usize".to_owned().into(),
-                    asm.sig(
-                        Box::new([Type::Int(Int::USize), Type::Int(Int::USize), Type::Bool]),
-                        Type::Int(Int::USize)
-                    ),
-                       MethodKind::Static,
-                vec![].into()
-                ),
-                [
-                    a.cast_ptr(Type::Int(Int::USize)),
-                    b.cast_ptr(Type::Int(Int::USize)),
-                    predictate
-                ]
-            )
-            .cast_ptr(tpe),
-            Type::Int(Int::ISize) => call!(
-                MethodRefIdx::builtin(
-                    "select_isize".to_owned().into(),
-                    asm.sig(
-                        Box::new([Type::Int(Int::ISize), Type::Int(Int::ISize), Type::Bool]),
-                        Type::Int(Int::ISize)
-                    ),
-                       MethodKind::Static,
-                vec![].into()
-                ),
-                [a, b, predictate]
-            ),
-            Type::Int(Int::U64) => call!(
-                MethodRefIdx::builtin(
-                    "select_u64".to_owned().into(),
-                    asm.sig(
-                        Box::new([Type::Int(Int::U64), Type::Int(Int::U64), Type::Bool]),
-                        Type::Int(Int::U64)
-                    ),
-                       MethodKind::Static,
-                vec![].into()
-                ),
-                [a, b, predictate]
-            ),
-            Type::Int(Int::I64) => call!(
-                MethodRefIdx::builtin(
-                    "select_i64".to_owned().into(),
-                    asm.sig(
-                        Box::new([Type::Int(Int::I64), Type::Int(Int::I64), Type::Bool]),
-                        Type::Int(Int::I64)
-                    ),
-                       MethodKind::Static,
-                vec![].into()
-                ),
-                [a, b, predictate]
-            ),
-            Type::Int(Int::U32) => call!(
-                MethodRefIdx::builtin(
-                    "select_u32".to_owned().into(),
-                    asm.sig(
-                        Box::new([Type::Int(Int::U32), Type::Int(Int::U32), Type::Bool]),
-                        Type::Int(Int::U32)
-                    ),
-                       MethodKind::Static,
-                vec![].into()
-                ),
-                [a, b, predictate]
-            ),
-            Type::Int(Int::I32) => call!(
-                MethodRefIdx::builtin(
-                    "select_i32".to_owned().into(),
-                    asm.sig(
-                        Box::new([Type::Int(Int::I32), Type::Int(Int::I32), Type::Bool]),
-                        Type::Int(Int::I32)
-                    ),
-                       MethodKind::Static,
-                vec![].into()
-                ),
-                [a, b, predictate]
-            ),
-            Type::Int(Int::U16) => call!(
-                MethodRef::new(
-                    "select_u16".to_owned().into(),
-                    asm.sig(
-                        Box::new([Type::Int(Int::U16), Type::Int(Int::U16), Type::Bool]),
-                        Type::Int(Int::U16)
-                    ),
-                       MethodKind::Static,
-                vec![].into()
-                ),
-                [a, b, predictate]
-            ),
-            Type::Int(Int::I16) => call!(
-                MethodRefIdx::builtin(
-                    "select_i16".to_owned().into(),
-                    asm.sig(
-                        Box::new([Type::Int(Int::I16), Type::Int(Int::I16), Type::Bool]),
-                        Type::Int(Int::I16)
-                    ),
-                    true
-                ),
-                [a, b, predictate]
-            ),
-            Type::Int(Int::U8) | Type::Bool => call!(
-                MethodRefIdx::builtin(
-                    "select_u8".to_owned().into(),
-                    asm.sig(
-                        Box::new([Type::Int(Int::U8), Type::Int(Int::U8), Type::Bool]),
-                        Type::Int(Int::U8)
-                    ),
-                    true
-                ),
-                [a, b, predictate]
-            ),
-            Type::Int(Int::I8) => call!(
-                MethodRefIdx::builtin(
-                    "select_i8".to_owned().into(),
-                    asm.sig(
-                        Box::new([Type::Int(Int::I8), Type::Int(Int::I8), Type::Bool]),
-                        Type::Int(Int::I8)
-                    ),
-                    true
-                ),
-                [a, b, predictate]
-            ),
-            _ => todo!("Can't select type {tpe:?}"),
+            Type::Int(
+                int @ (Int::I8
+                | Int::U8
+                | Int::I16
+                | Int::U16
+                | Int::I32
+                | Int::U32
+                | Int::I64
+                | Int::U64
+                | Int::I128
+                | Int::U128
+                | Int::ISize
+                | Int::USize),
+            ) => {
+                let select = MethodRef::new(
+                    *asm.main_module(),
+                    asm.alloc_string(format!("select_{}", int.name())),
+                    asm.sig([Type::Int(int), Type::Int(int), Type::Bool], Type::Int(int)),
+                    MethodKind::Static,
+                    vec![].into(),
+                );
+                call!(asm.alloc_methodref(select), [a, b, predictate])
+            }
+            Type::Ptr(_) => {
+                let int = Int::USize;
+                let select = MethodRef::new(
+                    *asm.main_module(),
+                    asm.alloc_string(format!("select_{}", int.name())),
+                    asm.sig([Type::Int(int), Type::Int(int), Type::Bool], Type::Int(int)),
+                    MethodKind::Static,
+                    vec![].into(),
+                );
+                call!(
+                    asm.alloc_methodref(select),
+                    [
+                        a.cast_ptr(Type::Int(int)),
+                        b.cast_ptr(Type::Int(int)),
+                        predictate
+                    ]
+                )
+            }
+            _ => todo!(),
         }
-    }*/
-
+    }
     /// Checks if this node may have side effects. `false` means that the node can't have side effects, `true` means that the node *may* have side effects, but it does not have to.
     pub fn has_side_effects(&self) -> bool {
         let contains_calls = self.into_iter().call_sites().next().is_some();

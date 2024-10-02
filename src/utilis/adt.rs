@@ -3,10 +3,7 @@ use cilly::{
     cil_node::CILNode,
     cil_root::CILRoot,
     eq, gt_un, ldc_u64, sub,
-    v2::{
-        cilnode::MethodKind, Assembly, ClassRef, ClassRefIdx, FieldDesc, Float, Int,
-        MethodRef,
-    },
+    v2::{cilnode::MethodKind, Assembly, ClassRef, ClassRefIdx, FieldDesc, Float, Int, MethodRef},
     Type,
 };
 use rustc_middle::ty::{AdtDef, Ty};
@@ -478,6 +475,7 @@ pub fn get_discr<'tcx>(
                     ctx,
                 ),
                 is_niche,
+                ctx,
             )
         }
     };

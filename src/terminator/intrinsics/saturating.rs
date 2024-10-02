@@ -40,7 +40,7 @@ pub fn saturating_add<'tcx>(
             let or = crate::binop::bitop::bit_or_unchecked(a_ty, a_ty, ctx, a.clone(), b.clone());
             let flag = crate::binop::cmp::lt_unchecked(a_ty, sum.clone(), or.clone(), ctx);
             let max = crate::r#type::max_value(&a_type, ctx);
-            CILNode::select(a_type, max, sum, flag)
+            CILNode::select(a_type, max, sum, flag, ctx)
         }
         Type::Int(Int::I32) => {
             let a = conv_i64!(a);
@@ -235,7 +235,7 @@ pub fn saturating_sub<'tcx>(
             let undeflow = crate::binop::cmp::lt_unchecked(a_ty, a.clone(), b.clone(), ctx);
             let diff = crate::binop::sub_unchecked(a_ty, a_ty, ctx, a, b);
             let zero = crate::binop::checked::zero(a_ty, ctx);
-            CILNode::select(a_type, zero, diff, undeflow)
+            CILNode::select(a_type, zero, diff, undeflow, ctx)
         }
         Type::Int(Int::I64) => {
             let a = crate::casts::int_to_int(Type::Int(Int::I64), Type::Int(Int::I128), a, ctx);

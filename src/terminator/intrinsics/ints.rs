@@ -492,9 +492,9 @@ pub fn bitreverse<'tcx>(
             Type::Int(Int::I8) => conv_i8!(bitreverse_u8(val)),
             Type::Int(Int::U16) => bitreverse_u16(val),
             Type::Int(Int::I16) => conv_i16!(bitreverse_u16(conv_u16!(val))),
-            Type::Int(int @ (Int::I32 | Int::U32 | Int::I64 | Int::U128 | Int::I128)) => {
-                bitreverse_int(val, int, ctx)
-            }
+            Type::Int(
+                int @ (Int::I32 | Int::U32 | Int::I64 | Int::U64 | Int::U128 | Int::I128),
+            ) => bitreverse_int(val, int, ctx),
             _ => todo!("can't yet bitreverse {val_tpe:?}"),
         },
         ctx,

@@ -16,7 +16,7 @@ use cilly::{
     cil_node::CILNode,
     cil_root::CILRoot,
     cil_tree::CILTree,
-    conv_usize, ldc_i32, ldc_u32, ldc_u64,
+    conv_isize, conv_usize, ldc_i32, ldc_u32, ldc_u64,
     method::{Method, MethodType},
     utilis::{self, encode},
     v2::{cilnode::MethodKind, FnSig, Int, MethodDef, MethodRef, MethodRefIdx, StaticFieldDesc},
@@ -108,7 +108,6 @@ fn allocation_initializer_method(
     //trees.push(CILRoot::debug(&format!("Preparing to initialize allocation with size {}",bytes.len())).into());
     if align > 8 {
         let aligned_alloc = MethodRef::aligned_alloc(asm);
-
         trees.push(
             CILRoot::STLoc {
                 local: 0,
@@ -130,9 +129,9 @@ fn allocation_initializer_method(
                 local: 0,
                 tree: Box::new(call!(
                     asm.alloc_methodref(alloc),
-                    [ldc_i32!(
+                    [conv_isize!(ldc_i32!(
                         i32::try_from(bytes.len()).expect("Static alloc too big")
-                    )]
+                    ))]
                 ))
                 .cast_ptr(asm.nptr(Type::Int(Int::U8))),
             }

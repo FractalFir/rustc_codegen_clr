@@ -1782,6 +1782,7 @@ fn intrinsic_slow<'tcx>(
                 handle_operand(&args[1].node, ctx),
                 handle_operand(&args[2].node, ctx),
                 handle_operand(&args[0].node, ctx),
+                ctx,
             ),
             ctx,
         )
