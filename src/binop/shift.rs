@@ -5,7 +5,7 @@ use cilly::{
     call,
     cil_node::CILNode,
     conv_i32, conv_u32, ldc_u32, rem_un, shl, shr, shr_un,
-    v2::{cilnode::MethodKind, ClassRef, FnSig, Int, MethodRef},
+    v2::{cilnode::MethodKind, ClassRef, Int, MethodRef},
     Type,
 };
 

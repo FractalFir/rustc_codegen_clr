@@ -2,7 +2,7 @@ use cilly::{
     call,
     cil_node::CILNode,
     cilnode::MethodKind,
-    v2::{Assembly, ClassRef, FnSig, Int},
+    v2::{Assembly, ClassRef, Int},
     MethodRef, Type,
 };
 
@@ -11,7 +11,7 @@ pub fn atomic_add(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly)
         Type::Int(Int::U64 | Int::I64) => {
             let u64_ref = asm.nref(Type::Int(Int::U64));
             let mref = MethodRef::new(
-                (ClassRef::interlocked(asm)),
+                ClassRef::interlocked(asm),
                 asm.alloc_string("Add"),
                 asm.sig([u64_ref, Type::Int(Int::U64)], Type::Int(Int::U64)),
                 MethodKind::Static,
@@ -23,9 +23,9 @@ pub fn atomic_add(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly)
         Type::Int(Int::U32 | Int::I32) => {
             let u32_ref = asm.nref(Type::Int(Int::U32));
             let mref = MethodRef::new(
-                (ClassRef::interlocked(asm)),
+                ClassRef::interlocked(asm),
                 asm.alloc_string("Add"),
-                asm.sig(([u32_ref, Type::Int(Int::U32)]), Type::Int(Int::U32)),
+                asm.sig([u32_ref, Type::Int(Int::U32)], Type::Int(Int::U32)),
                 MethodKind::Static,
                 vec![].into(),
             );
@@ -57,9 +57,9 @@ pub fn atomic_or(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly) 
         Type::Int(Int::U64 | Int::I64) => {
             let u64_ref = asm.nref(Type::Int(Int::U64));
             let mref = MethodRef::new(
-                (ClassRef::interlocked(asm)),
+                ClassRef::interlocked(asm),
                 asm.alloc_string("Or"),
-                asm.sig(([u64_ref, Type::Int(Int::U64)]), Type::Int(Int::U64)),
+                asm.sig([u64_ref, Type::Int(Int::U64)], Type::Int(Int::U64)),
                 MethodKind::Static,
                 vec![].into(),
             );
@@ -68,7 +68,7 @@ pub fn atomic_or(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly) 
         Type::Int(Int::U32 | Int::I32) => {
             let u32_ref = asm.nref(Type::Int(Int::U32));
             let mref = MethodRef::new(
-                (ClassRef::interlocked(asm)),
+                ClassRef::interlocked(asm),
                 asm.alloc_string("Or"),
                 asm.sig([u32_ref, Type::Int(Int::U32)], Type::Int(Int::U32)),
                 MethodKind::Static,
@@ -152,7 +152,7 @@ pub fn atomic_and(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly)
         Type::Int(Int::U64 | Int::I64) => {
             let u64_ref = asm.nref(Type::Int(Int::U64));
             let mref = MethodRef::new(
-                (ClassRef::interlocked(asm)),
+                ClassRef::interlocked(asm),
                 asm.alloc_string("And"),
                 asm.sig([u64_ref, Type::Int(Int::U64)], Type::Int(Int::U64)),
                 MethodKind::Static,
@@ -164,9 +164,9 @@ pub fn atomic_and(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly)
         Type::Int(Int::U32 | Int::I32) => {
             let u32_ref = asm.nref(Type::Int(Int::U32));
             let mref = MethodRef::new(
-                (ClassRef::interlocked(asm)),
+                ClassRef::interlocked(asm),
                 asm.alloc_string("And"),
-                asm.sig(([u32_ref, Type::Int(Int::U32)]), Type::Int(Int::U32)),
+                asm.sig([u32_ref, Type::Int(Int::U32)], Type::Int(Int::U32)),
                 MethodKind::Static,
                 vec![].into(),
             );
@@ -212,7 +212,7 @@ pub fn compare_bytes(a: CILNode, b: CILNode, len: CILNode, asm: &mut Assembly) -
         *asm.main_module(),
         asm.alloc_string("memcmp"),
         asm.sig(
-            ([u8_ref, u8_ref, Type::Int(Int::USize)]),
+            [u8_ref, u8_ref, Type::Int(Int::USize)],
             Type::Int(Int::I32),
         ),
         MethodKind::Static,

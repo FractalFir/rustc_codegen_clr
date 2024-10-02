@@ -57,9 +57,9 @@ fn call_managed<'tcx>(
     if argument_count == 0 {
         let ret = cilly::Type::Void;
         let call_site = MethodRef::new(
-            (ctx.alloc_class_ref(tpe)),
+            ctx.alloc_class_ref(tpe),
             ctx.alloc_string(managed_fn_name),
-            ctx.sig(([]), ret),
+            ctx.sig([], ret),
             MethodKind::Static,
             vec![].into(),
         );
@@ -80,7 +80,7 @@ fn call_managed<'tcx>(
             call_args.push(crate::operand::handle_operand(&arg.node, ctx));
         }
         let call = MethodRef::new(
-            (ctx.alloc_class_ref(tpe)),
+            ctx.alloc_class_ref(tpe),
             ctx.alloc_string(managed_fn_name),
             ctx.alloc_sig(signature.clone()),
             if is_static {
@@ -131,9 +131,9 @@ fn callvirt_managed<'tcx>(
     if argument_count == 0 {
         let ret = cilly::Type::Void;
         let call = MethodRef::new(
-            (ctx.alloc_class_ref(tpe)),
+            ctx.alloc_class_ref(tpe),
             ctx.alloc_string(managed_fn_name),
-            ctx.sig(([]), ret),
+            ctx.sig([], ret),
             MethodKind::Static,
             vec![].into(),
         );
@@ -154,7 +154,7 @@ fn callvirt_managed<'tcx>(
             call_args.push(crate::operand::handle_operand(&arg.node, ctx));
         }
         let call = MethodRef::new(
-            (ctx.alloc_class_ref(tpe)),
+            ctx.alloc_class_ref(tpe),
             ctx.alloc_string(managed_fn_name),
             ctx.alloc_sig(signature.clone()),
             if is_static {
@@ -236,7 +236,7 @@ fn call_ctor<'tcx>(
             call.push(crate::operand::handle_operand(&arg.node, ctx));
         }
         let ctor = MethodRef::new(
-            (tpe),
+            tpe,
             ctx.alloc_string(".ctor"),
             sig,
             MethodKind::Constructor,

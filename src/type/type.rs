@@ -26,7 +26,7 @@ pub fn max_value(tpe: &Type, asm: &mut Assembly) -> CILNode {
             let mref = MethodRef::new(
                 ClassRef::usize_type(asm),
                 asm.alloc_string("get_MaxValue"),
-                asm.sig(([]), Type::Int(Int::USize)),
+                asm.sig([], Type::Int(Int::USize)),
                 MethodKind::Static,
                 vec![].into(),
             );

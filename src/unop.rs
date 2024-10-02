@@ -4,7 +4,7 @@ use crate::r#type::get_type;
 use cilly::cil_node::CILNode;
 
 use cilly::v2::cilnode::MethodKind;
-use cilly::v2::{ClassRef, FieldDesc, FnSig, Int, MethodRef};
+use cilly::v2::{ClassRef, FieldDesc, Int, MethodRef};
 use cilly::{call, ld_field, Type};
 
 use rustc_middle::mir::{Operand, UnOp};
@@ -24,7 +24,7 @@ pub fn unop<'tcx>(
                 let mref = MethodRef::new(
                     ClassRef::int_128(ctx).into(),
                     ctx.alloc_string("op_UnaryNegation"),
-                    ctx.sig(([Type::Int(Int::I128)]), Type::Int(Int::I128)),
+                    ctx.sig([Type::Int(Int::I128)], Type::Int(Int::I128)),
                     MethodKind::Static,
                     vec![].into(),
                 );
@@ -36,7 +36,7 @@ pub fn unop<'tcx>(
                 let mref = MethodRef::new(
                     ClassRef::uint_128(ctx).into(),
                     ctx.alloc_string("op_UnaryNegation"),
-                    ctx.sig(([Type::Int(Int::U128)]), Type::Int(Int::U128)),
+                    ctx.sig([Type::Int(Int::U128)], Type::Int(Int::U128)),
                     MethodKind::Static,
                     vec![].into(),
                 );

@@ -3,7 +3,7 @@ use cilly::{
     call,
     cil_node::CILNode,
     conv_usize, ld_field, ldc_u32, ldc_u64,
-    v2::{cilnode::MethodKind, FieldDesc, FnSig, Int, MethodRef},
+    v2::{cilnode::MethodKind, FieldDesc, Int, MethodRef},
     Type,
 };
 use rustc_middle::{
@@ -158,7 +158,7 @@ fn place_elem_get<'a>(
                     let array_dotnet = array_type.as_class_ref().expect("Non array type");
                     let arr_ref = ctx.nref(array_type);
                     let mref = MethodRef::new(
-                        (array_dotnet),
+                        array_dotnet,
                         ctx.alloc_string("get_Item"),
                         ctx.sig([arr_ref, Type::Int(Int::USize)], element),
                         MethodKind::Instance,
@@ -227,7 +227,7 @@ fn place_elem_get<'a>(
                     } else {
                         let index = CILNode::LdcU64(*offset);
                         let mref = MethodRef::new(
-                            (array_dotnet),
+                            array_dotnet,
                             ctx.alloc_string("get_Item"),
                             ctx.sig([arr_ref, Type::Int(Int::USize)], element),
                             MethodKind::Instance,

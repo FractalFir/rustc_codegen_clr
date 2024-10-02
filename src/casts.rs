@@ -37,7 +37,7 @@ pub fn int_to_int(src: Type, target: Type, operand: CILNode, asm: &mut Assembly)
             let mref = MethodRef::new(
                 ClassRef::int_128(asm),
                 asm.alloc_string("op_Implicit"),
-                asm.sig(([Type::Int(Int::ISize)]), Type::Int(Int::I128)),
+                asm.sig([Type::Int(Int::ISize)], Type::Int(Int::I128)),
                 MethodKind::Static,
                 vec![].into(),
             );
@@ -47,7 +47,7 @@ pub fn int_to_int(src: Type, target: Type, operand: CILNode, asm: &mut Assembly)
             let mref = MethodRef::new(
                 ClassRef::int_128(asm),
                 asm.alloc_string("op_Implicit"),
-                asm.sig(([Type::Int(Int::U32)]), Type::Int(Int::I128)),
+                asm.sig([Type::Int(Int::U32)], Type::Int(Int::I128)),
                 MethodKind::Static,
                 vec![].into(),
             );
@@ -67,7 +67,7 @@ pub fn int_to_int(src: Type, target: Type, operand: CILNode, asm: &mut Assembly)
             let mref = MethodRef::new(
                 ClassRef::uint_128(asm),
                 asm.alloc_string("op_Explicit"),
-                asm.sig(([Type::Int(Int::I32)]), Type::Int(Int::U128)),
+                asm.sig([Type::Int(Int::I32)], Type::Int(Int::U128)),
                 MethodKind::Static,
                 vec![].into(),
             );
@@ -77,7 +77,7 @@ pub fn int_to_int(src: Type, target: Type, operand: CILNode, asm: &mut Assembly)
             let mref = MethodRef::new(
                 ClassRef::int_128(asm),
                 asm.alloc_string("op_Implicit"),
-                asm.sig(([Type::Int(Int::I32)]), Type::Int(Int::I128)),
+                asm.sig([Type::Int(Int::I32)], Type::Int(Int::I128)),
                 MethodKind::Static,
                 vec![].into(),
             );
@@ -96,7 +96,7 @@ pub fn int_to_int(src: Type, target: Type, operand: CILNode, asm: &mut Assembly)
             let mref = MethodRef::new(
                 ClassRef::uint_128(asm),
                 asm.alloc_string("op_Explicit"),
-                asm.sig(([src]), target),
+                asm.sig([src], target),
                 MethodKind::Static,
                 vec![].into(),
             );
@@ -106,7 +106,7 @@ pub fn int_to_int(src: Type, target: Type, operand: CILNode, asm: &mut Assembly)
             let mref = MethodRef::new(
                 ClassRef::int_128(asm),
                 asm.alloc_string("op_Implicit"),
-                asm.sig(([src]), target),
+                asm.sig([src], target),
                 MethodKind::Static,
                 vec![].into(),
             );
@@ -116,7 +116,7 @@ pub fn int_to_int(src: Type, target: Type, operand: CILNode, asm: &mut Assembly)
             let mref = MethodRef::new(
                 ClassRef::int_128(asm),
                 asm.alloc_string("op_Explicit"),
-                asm.sig(([src]), target),
+                asm.sig([src], target),
                 MethodKind::Static,
                 vec![].into(),
             );
@@ -126,7 +126,7 @@ pub fn int_to_int(src: Type, target: Type, operand: CILNode, asm: &mut Assembly)
             let mref = MethodRef::new(
                 ClassRef::uint_128(asm),
                 asm.alloc_string("op_Implicit"),
-                asm.sig(([src]), target),
+                asm.sig([src], target),
                 MethodKind::Static,
                 vec![].into(),
             );
@@ -136,7 +136,7 @@ pub fn int_to_int(src: Type, target: Type, operand: CILNode, asm: &mut Assembly)
             let mref = MethodRef::new(
                 ClassRef::int_128(asm),
                 asm.alloc_string("op_Explicit"),
-                asm.sig(([src]), target),
+                asm.sig([src], target),
                 MethodKind::Static,
                 vec![].into(),
             );
@@ -146,7 +146,7 @@ pub fn int_to_int(src: Type, target: Type, operand: CILNode, asm: &mut Assembly)
             let mref = MethodRef::new(
                 ClassRef::uint_128(asm),
                 asm.alloc_string("op_Explicit"),
-                asm.sig(([src]), target),
+                asm.sig([src], target),
                 MethodKind::Static,
                 vec![].into(),
             );
@@ -163,7 +163,7 @@ pub fn float_to_int(src: Type, target: Type, operand: CILNode, asm: &mut Assembl
             let mref = MethodRef::new(
                 ClassRef::int_128(asm),
                 asm.alloc_string("op_Explicit"),
-                asm.sig(([src]), target),
+                asm.sig([src], target),
                 MethodKind::Static,
                 vec![].into(),
             );
@@ -173,7 +173,7 @@ pub fn float_to_int(src: Type, target: Type, operand: CILNode, asm: &mut Assembl
             let mref = MethodRef::new(
                 ClassRef::uint_128(asm),
                 asm.alloc_string("op_Explicit"),
-                asm.sig(([src]), target),
+                asm.sig([src], target),
                 MethodKind::Static,
                 vec![].into(),
             );
@@ -184,7 +184,7 @@ pub fn float_to_int(src: Type, target: Type, operand: CILNode, asm: &mut Assembl
                 let mref = MethodRef::new(
                     *asm.main_module(),
                     asm.alloc_string("cast_f32_u8"),
-                    asm.sig(([Type::Float(Float::F32)]), Type::Int(Int::U8)),
+                    asm.sig([Type::Float(Float::F32)], Type::Int(Int::U8)),
                     MethodKind::Static,
                     vec![].into(),
                 );
@@ -194,7 +194,7 @@ pub fn float_to_int(src: Type, target: Type, operand: CILNode, asm: &mut Assembl
                 let mref = MethodRef::new(
                     *asm.main_module(),
                     asm.alloc_string("cast_f64_u8"),
-                    asm.sig(([Type::Float(Float::F64)]), Type::Int(Int::U8)),
+                    asm.sig([Type::Float(Float::F64)], Type::Int(Int::U8)),
                     MethodKind::Static,
                     vec![].into(),
                 );
@@ -207,7 +207,7 @@ pub fn float_to_int(src: Type, target: Type, operand: CILNode, asm: &mut Assembl
                 let mref = MethodRef::new(
                     *asm.main_module(),
                     asm.alloc_string("cast_f32_u16"),
-                    asm.sig(([Type::Float(Float::F32)]), Type::Int(Int::U16)),
+                    asm.sig([Type::Float(Float::F32)], Type::Int(Int::U16)),
                     MethodKind::Static,
                     vec![].into(),
                 );
@@ -217,7 +217,7 @@ pub fn float_to_int(src: Type, target: Type, operand: CILNode, asm: &mut Assembl
                 let mref = MethodRef::new(
                     *asm.main_module(),
                     asm.alloc_string("cast_f64_u16"),
-                    asm.sig(([Type::Float(Float::F64)]), Type::Int(Int::U16)),
+                    asm.sig([Type::Float(Float::F64)], Type::Int(Int::U16)),
                     MethodKind::Static,
                     vec![].into(),
                 );
@@ -240,7 +240,7 @@ pub fn float_to_int(src: Type, target: Type, operand: CILNode, asm: &mut Assembl
                 let mref = MethodRef::new(
                     *asm.main_module(),
                     asm.alloc_string("cast_f64_u32"),
-                    asm.sig(([Type::Float(Float::F64)]), Type::Int(Int::U32)),
+                    asm.sig([Type::Float(Float::F64)], Type::Int(Int::U32)),
                     MethodKind::Static,
                     vec![].into(),
                 );
@@ -253,7 +253,7 @@ pub fn float_to_int(src: Type, target: Type, operand: CILNode, asm: &mut Assembl
                 let mref = MethodRef::new(
                     *asm.main_module(),
                     asm.alloc_string("cast_f32_u64"),
-                    asm.sig(([Type::Float(Float::F32)]), Type::Int(Int::U64)),
+                    asm.sig([Type::Float(Float::F32)], Type::Int(Int::U64)),
                     MethodKind::Static,
                     vec![].into(),
                 );
@@ -263,7 +263,7 @@ pub fn float_to_int(src: Type, target: Type, operand: CILNode, asm: &mut Assembl
                 let mref = MethodRef::new(
                     *asm.main_module(),
                     asm.alloc_string("cast_f64_u64"),
-                    asm.sig(([Type::Float(Float::F64)]), Type::Int(Int::U64)),
+                    asm.sig([Type::Float(Float::F64)], Type::Int(Int::U64)),
                     MethodKind::Static,
                     vec![].into(),
                 );
@@ -277,7 +277,7 @@ pub fn float_to_int(src: Type, target: Type, operand: CILNode, asm: &mut Assembl
                 let mref = MethodRef::new(
                     *asm.main_module(),
                     asm.alloc_string("cast_f32_usize"),
-                    asm.sig(([Type::Float(Float::F32)]), Type::Int(Int::USize)),
+                    asm.sig([Type::Float(Float::F32)], Type::Int(Int::USize)),
                     MethodKind::Static,
                     vec![].into(),
                 );
@@ -288,7 +288,7 @@ pub fn float_to_int(src: Type, target: Type, operand: CILNode, asm: &mut Assembl
                 let mref = MethodRef::new(
                     *asm.main_module(),
                     asm.alloc_string("cast_f64_usize"),
-                    asm.sig(([Type::Float(Float::F64)]), Type::Int(Int::USize)),
+                    asm.sig([Type::Float(Float::F64)], Type::Int(Int::USize)),
                     MethodKind::Static,
                     vec![].into(),
                 );
@@ -302,7 +302,7 @@ pub fn float_to_int(src: Type, target: Type, operand: CILNode, asm: &mut Assembl
                 let mref = MethodRef::new(
                     *asm.main_module(),
                     asm.alloc_string("cast_f32_isize"),
-                    asm.sig(([Type::Float(Float::F32)]), Type::Int(Int::ISize)),
+                    asm.sig([Type::Float(Float::F32)], Type::Int(Int::ISize)),
                     MethodKind::Static,
                     vec![].into(),
                 );
@@ -312,7 +312,7 @@ pub fn float_to_int(src: Type, target: Type, operand: CILNode, asm: &mut Assembl
                 let mref = MethodRef::new(
                     *asm.main_module(),
                     asm.alloc_string("cast_f64_isize"),
-                    asm.sig(([Type::Float(Float::F64)]), Type::Int(Int::ISize)),
+                    asm.sig([Type::Float(Float::F64)], Type::Int(Int::ISize)),
                     MethodKind::Static,
                     vec![].into(),
                 );
@@ -325,7 +325,7 @@ pub fn float_to_int(src: Type, target: Type, operand: CILNode, asm: &mut Assembl
                 let mref = MethodRef::new(
                     *asm.main_module(),
                     asm.alloc_string("cast_f32_i8"),
-                    asm.sig(([Type::Float(Float::F32)]), Type::Int(Int::I8)),
+                    asm.sig([Type::Float(Float::F32)], Type::Int(Int::I8)),
                     MethodKind::Static,
                     vec![].into(),
                 );
@@ -335,7 +335,7 @@ pub fn float_to_int(src: Type, target: Type, operand: CILNode, asm: &mut Assembl
                 let mref = MethodRef::new(
                     *asm.main_module(),
                     asm.alloc_string("cast_f64_i8"),
-                    asm.sig(([Type::Float(Float::F64)]), Type::Int(Int::I8)),
+                    asm.sig([Type::Float(Float::F64)], Type::Int(Int::I8)),
                     MethodKind::Static,
                     vec![].into(),
                 );
@@ -348,7 +348,7 @@ pub fn float_to_int(src: Type, target: Type, operand: CILNode, asm: &mut Assembl
                 let mref = MethodRef::new(
                     *asm.main_module(),
                     asm.alloc_string("cast_f32_i16"),
-                    asm.sig(([Type::Float(Float::F32)]), Type::Int(Int::I16)),
+                    asm.sig([Type::Float(Float::F32)], Type::Int(Int::I16)),
                     MethodKind::Static,
                     vec![].into(),
                 );
@@ -358,7 +358,7 @@ pub fn float_to_int(src: Type, target: Type, operand: CILNode, asm: &mut Assembl
                 let mref = MethodRef::new(
                     *asm.main_module(),
                     asm.alloc_string("cast_f64_i16"),
-                    asm.sig(([Type::Float(Float::F64)]), Type::Int(Int::I16)),
+                    asm.sig([Type::Float(Float::F64)], Type::Int(Int::I16)),
                     MethodKind::Static,
                     vec![].into(),
                 );
@@ -371,7 +371,7 @@ pub fn float_to_int(src: Type, target: Type, operand: CILNode, asm: &mut Assembl
                 let mref = MethodRef::new(
                     *asm.main_module(),
                     asm.alloc_string("cast_f32_i32"),
-                    asm.sig(([Type::Float(Float::F32)]), Type::Int(Int::I32)),
+                    asm.sig([Type::Float(Float::F32)], Type::Int(Int::I32)),
                     MethodKind::Static,
                     vec![].into(),
                 );
@@ -381,7 +381,7 @@ pub fn float_to_int(src: Type, target: Type, operand: CILNode, asm: &mut Assembl
                 let mref = MethodRef::new(
                     *asm.main_module(),
                     asm.alloc_string("cast_f64_i32"),
-                    asm.sig(([Type::Float(Float::F64)]), Type::Int(Int::I32)),
+                    asm.sig([Type::Float(Float::F64)], Type::Int(Int::I32)),
                     MethodKind::Static,
                     vec![].into(),
                 );
@@ -394,7 +394,7 @@ pub fn float_to_int(src: Type, target: Type, operand: CILNode, asm: &mut Assembl
                 let mref = MethodRef::new(
                     *asm.main_module(),
                     asm.alloc_string("cast_f32_i64"),
-                    asm.sig(([Type::Float(Float::F32)]), Type::Int(Int::I64)),
+                    asm.sig([Type::Float(Float::F32)], Type::Int(Int::I64)),
                     MethodKind::Static,
                     vec![].into(),
                 );
@@ -404,7 +404,7 @@ pub fn float_to_int(src: Type, target: Type, operand: CILNode, asm: &mut Assembl
                 let mref = MethodRef::new(
                     *asm.main_module(),
                     asm.alloc_string("cast_f64_i64"),
-                    asm.sig(([Type::Float(Float::F64)]), Type::Int(Int::I64)),
+                    asm.sig([Type::Float(Float::F64)], Type::Int(Int::I64)),
                     MethodKind::Static,
                     vec![].into(),
                 );

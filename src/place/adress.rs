@@ -9,7 +9,7 @@ use cilly::{
     cil_node::CILNode,
     cil_root::CILRoot,
     conv_usize, ld_field, ldc_u32, ldc_u64, size_of,
-    v2::{cilnode::MethodKind, FieldDesc, FnSig, Int, MethodRef},
+    v2::{cilnode::MethodKind, FieldDesc, Int, MethodRef},
     Type,
 };
 use rustc_middle::{
@@ -237,7 +237,7 @@ pub fn place_elem_adress<'tcx>(
                     let arr_ref = ctx.nref(array_type);
                     let element_ptr = ctx.nptr(element_type);
                     let mref = MethodRef::new(
-                        (array_dotnet),
+                        array_dotnet,
                         ctx.alloc_string("get_Address"),
                         ctx.sig([arr_ref, Type::Int(Int::USize)], element_ptr),
                         MethodKind::Instance,
@@ -359,7 +359,7 @@ pub fn place_elem_adress<'tcx>(
                     let arr_ref = ctx.nref(array_type);
                     let element_ptr = ctx.nptr(element);
                     let mref = MethodRef::new(
-                        (array_dotnet),
+                        array_dotnet,
                         ctx.alloc_string("get_Address"),
                         ctx.sig([arr_ref, Type::Int(Int::USize)], element_ptr),
                         MethodKind::Instance,

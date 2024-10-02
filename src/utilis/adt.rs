@@ -4,7 +4,7 @@ use cilly::{
     cil_root::CILRoot,
     eq, gt_un, ldc_u64, sub,
     v2::{
-        cilnode::MethodKind, Assembly, ClassRef, ClassRefIdx, FieldDesc, Float, FnSig, Int,
+        cilnode::MethodKind, Assembly, ClassRef, ClassRefIdx, FieldDesc, Float, Int,
         MethodRef,
     },
     Type,
@@ -311,7 +311,7 @@ pub fn get_discr<'tcx>(
                         let mref = MethodRef::new(
                             ClassRef::uint_128(ctx),
                             ctx.alloc_string("op_Equality"),
-                            ctx.sig(([Type::Int(Int::U128), Type::Int(Int::U128)]), Type::Bool),
+                            ctx.sig([Type::Int(Int::U128), Type::Int(Int::U128)], Type::Bool),
                             MethodKind::Static,
                             vec![].into(),
                         );
@@ -330,7 +330,7 @@ pub fn get_discr<'tcx>(
                         let mref = MethodRef::new(
                             ClassRef::int_128(ctx),
                             ctx.alloc_string("op_Equality"),
-                            ctx.sig(([Type::Int(Int::I128), Type::Int(Int::I128)]), Type::Bool),
+                            ctx.sig([Type::Int(Int::I128), Type::Int(Int::I128)], Type::Bool),
                             MethodKind::Static,
                             vec![].into(),
                         );

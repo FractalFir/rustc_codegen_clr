@@ -11,7 +11,7 @@ use cilly::{
     cil_node::CILNode,
     cil_root::CILRoot,
     conv_usize, ld_field, size_of,
-    v2::{cilnode::MethodKind, FieldDesc, FnSig, Int, MethodRef},
+    v2::{cilnode::MethodKind, FieldDesc, Int, MethodRef},
     Type,
 };
 use rustc_middle::mir::PlaceElem;
@@ -150,7 +150,7 @@ pub fn place_elem_body_index<'tcx>(
             if body_ty_is_by_adress(element, ctx) {
                 let elem_ptr = ctx.nptr(element_type);
                 let mref = MethodRef::new(
-                    (array_dotnet),
+                    array_dotnet,
                     ctx.alloc_string("get_Address"),
                     ctx.sig([arr_ref, Type::Int(Int::USize)], elem_ptr),
                     MethodKind::Instance,
@@ -163,7 +163,7 @@ pub fn place_elem_body_index<'tcx>(
                 ((element).into(), ops)
             } else {
                 let mref = MethodRef::new(
-                    (array_dotnet),
+                    array_dotnet,
                     ctx.alloc_string("get_Item"),
                     ctx.sig([arr_ref, Type::Int(Int::USize)], element_type),
                     MethodKind::Instance,
@@ -269,7 +269,7 @@ pub fn place_elem_body<'tcx>(
                     if body_ty_is_by_adress(element_ty, ctx) {
                         let elem_ptr = ctx.nptr(element);
                         let mref = MethodRef::new(
-                            (array_dotnet),
+                            array_dotnet,
                             ctx.alloc_string("get_Address"),
                             ctx.sig([arr_ref, Type::Int(Int::USize)], elem_ptr),
                             MethodKind::Instance,
@@ -282,7 +282,7 @@ pub fn place_elem_body<'tcx>(
                         ((element_ty).into(), ops)
                     } else {
                         let mref = MethodRef::new(
-                            (array_dotnet),
+                            array_dotnet,
                             ctx.alloc_string("get_Item"),
                             ctx.sig([arr_ref, Type::Int(Int::USize)], element),
                             MethodKind::Instance,

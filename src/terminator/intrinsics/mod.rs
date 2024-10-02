@@ -11,7 +11,7 @@ use cilly::{
     cilnode::MethodKind,
     conv_f32, conv_f64, conv_i16, conv_i32, conv_i64, conv_i8, conv_isize, conv_u16, conv_u32,
     conv_u64, conv_u8, conv_usize, eq, ld_field, ldc_i32, ldc_u32, ldc_u64, size_of, sub,
-    v2::{ClassRef, Float, FnSig, Int},
+    v2::{ClassRef, Float, Int},
     MethodRef, Type,
 };
 use ints::{ctlz, rotate_left, rotate_right};
@@ -296,7 +296,7 @@ pub fn handle_intrinsic<'tcx>(
             let sig = ctx.sig([runtime_handle.into()], type_type);
             let gethash_sig = ctx.sig([type_type.into()], Type::Int(Int::I32));
             let op_implict = MethodRef::new(
-                (ClassRef::uint_128(ctx)),
+                ClassRef::uint_128(ctx),
                 ctx.alloc_string("op_Implicit"),
                 ctx.sig([Type::Int(Int::U32)], Type::Int(Int::U128)),
                 MethodKind::Static,
@@ -443,7 +443,7 @@ pub fn handle_intrinsic<'tcx>(
                 Type::Ptr(_) => {
                     let usize_ref = ctx.nref(Type::Int(Int::USize));
                     let call_site = MethodRef::new(
-                        (interlocked),
+                        interlocked,
                         ctx.alloc_string("CompareExchange"),
                         ctx.sig(
                             [usize_ref, Type::Int(Int::USize), Type::Int(Int::USize)],
@@ -467,7 +467,7 @@ pub fn handle_intrinsic<'tcx>(
                 _ => {
                     let src_ref = ctx.nref(src_type);
                     let call_site = MethodRef::new(
-                        (interlocked),
+                        interlocked,
                         ctx.alloc_string("CompareExchange"),
                         ctx.sig([src_ref, src_type, src_type], src_type),
                         MethodKind::Static,
@@ -582,7 +582,7 @@ pub fn handle_intrinsic<'tcx>(
         | "atomic_fence_acqrel" => {
             let thread = ClassRef::thread(ctx);
             let fence = MethodRef::new(
-                (thread),
+                thread,
                 ctx.alloc_string("MemoryBarrier"),
                 ctx.sig([], Type::Void),
                 MethodKind::Static,
@@ -700,7 +700,7 @@ pub fn handle_intrinsic<'tcx>(
                 Type::Ptr(_) => {
                     let usize_ref = ctx.nref(Type::Int(Int::USize));
                     let call_site = MethodRef::new(
-                        (interlocked),
+                        interlocked,
                         ctx.alloc_string("Exchange"),
                         ctx.sig([usize_ref, Type::Int(Int::USize)], Type::Int(Int::USize)),
                         MethodKind::Static,
@@ -726,7 +726,7 @@ pub fn handle_intrinsic<'tcx>(
             }
             let src_ref = ctx.nref(src_type);
             let call_site = MethodRef::new(
-                (interlocked),
+                interlocked,
                 ctx.alloc_string("Exchange"),
                 ctx.sig([src_ref, src_type], src_type),
                 MethodKind::Static,
@@ -852,7 +852,7 @@ pub fn handle_intrinsic<'tcx>(
                 "The intrinsic `sqrtf32` MUST take in exactly 1 argument!"
             );
             let sqrt = MethodRef::new(
-                (ClassRef::mathf(ctx)),
+                ClassRef::mathf(ctx),
                 ctx.alloc_string("Sqrt"),
                 ctx.sig([Type::Float(Float::F32)], Type::Float(Float::F32)),
                 MethodKind::Static,
@@ -875,7 +875,7 @@ pub fn handle_intrinsic<'tcx>(
                 "The intrinsic `powif32` MUST take in exactly 2 arguments!"
             );
             let pow = MethodRef::new(
-                (ClassRef::single(ctx)),
+                ClassRef::single(ctx),
                 ctx.alloc_string("Pow"),
                 ctx.sig(
                     [Type::Float(Float::F32), Type::Float(Float::F32)],
@@ -903,7 +903,7 @@ pub fn handle_intrinsic<'tcx>(
                 "The intrinsic `powif64` MUST take in exactly 2 arguments!"
             );
             let pow = MethodRef::new(
-                (ClassRef::double(ctx)),
+                ClassRef::double(ctx),
                 ctx.alloc_string("Pow"),
                 ctx.sig(
                     [Type::Float(Float::F64), Type::Float(Float::F64)],
@@ -1571,7 +1571,7 @@ pub fn handle_intrinsic<'tcx>(
                 "The intrinsic `sqrtf64` MUST take in exactly 1 argument!"
             );
             let sqrt = MethodRef::new(
-                (ClassRef::math(ctx)),
+                ClassRef::math(ctx),
                 ctx.alloc_string("Sqrt"),
                 ctx.sig([Type::Float(Float::F64)], Type::Float(Float::F64)),
                 MethodKind::Static,
@@ -1678,7 +1678,7 @@ fn intrinsic_slow<'tcx>(
         let sig = ctx.sig([rt_type_handle.into()], type_type);
         let gethash_sig = ctx.sig([type_type.into()], Type::Int(Int::I32));
         let op_implict = MethodRef::new(
-            (ClassRef::uint_128(ctx)),
+            ClassRef::uint_128(ctx),
             ctx.alloc_string("op_Implicit"),
             ctx.sig([Type::Int(Int::U32)], Type::Int(Int::U128)),
             MethodKind::Static,

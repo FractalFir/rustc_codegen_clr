@@ -5,7 +5,7 @@ use cilly::{
     cil_root::CILRoot,
     cilnode::MethodKind,
     conv_i16, conv_i32, conv_i64, conv_i8, ldc_i32, ldc_i64,
-    v2::{ClassRef, FnSig, Int},
+    v2::{ClassRef, Int},
     MethodRef, Type,
 };
 
@@ -50,11 +50,11 @@ pub fn saturating_add<'tcx>(
                 ClassRef::math(ctx),
                 ctx.alloc_string("Clamp"),
                 ctx.sig(
-                    ([
+                    [
                         Type::Int(Int::I64),
                         Type::Int(Int::I64),
                         Type::Int(Int::I64),
-                    ]),
+                    ],
                     Type::Int(Int::I64),
                 ),
                 MethodKind::Static,
@@ -78,7 +78,7 @@ pub fn saturating_add<'tcx>(
                 ClassRef::int_128(ctx),
                 ctx.alloc_string("op_Addition"),
                 ctx.sig(
-                    ([Type::Int(Int::I128), Type::Int(Int::I128)]),
+                    [Type::Int(Int::I128), Type::Int(Int::I128)],
                     Type::Int(Int::I128),
                 ),
                 MethodKind::Static,
@@ -89,11 +89,11 @@ pub fn saturating_add<'tcx>(
                 ClassRef::int_128(ctx),
                 ctx.alloc_string("Clamp"),
                 ctx.sig(
-                    ([
+                    [
                         Type::Int(Int::I128),
                         Type::Int(Int::I128),
                         Type::Int(Int::I128),
-                    ]),
+                    ],
                     Type::Int(Int::I128),
                 ),
                 MethodKind::Static,
@@ -118,7 +118,7 @@ pub fn saturating_add<'tcx>(
                 ClassRef::int_128(ctx),
                 ctx.alloc_string("op_Addition"),
                 ctx.sig(
-                    ([Type::Int(Int::I128), Type::Int(Int::I128)]),
+                    [Type::Int(Int::I128), Type::Int(Int::I128)],
                     Type::Int(Int::I128),
                 ),
                 MethodKind::Static,
@@ -129,11 +129,11 @@ pub fn saturating_add<'tcx>(
                 ClassRef::int_128(ctx),
                 ctx.alloc_string("Clamp"),
                 ctx.sig(
-                    ([
+                    [
                         Type::Int(Int::I128),
                         Type::Int(Int::I128),
                         Type::Int(Int::I128),
-                    ]),
+                    ],
                     Type::Int(Int::I128),
                 ),
                 MethodKind::Static,
@@ -164,11 +164,11 @@ pub fn saturating_add<'tcx>(
                 ClassRef::math(ctx),
                 ctx.alloc_string("Clamp"),
                 ctx.sig(
-                    ([
+                    [
                         Type::Int(Int::I32),
                         Type::Int(Int::I32),
                         Type::Int(Int::I32),
-                    ]),
+                    ],
                     Type::Int(Int::I32),
                 ),
                 MethodKind::Static,
@@ -192,11 +192,11 @@ pub fn saturating_add<'tcx>(
                 ClassRef::math(ctx),
                 ctx.alloc_string("Clamp"),
                 ctx.sig(
-                    ([
+                    [
                         Type::Int(Int::I32),
                         Type::Int(Int::I32),
                         Type::Int(Int::I32),
-                    ]),
+                    ],
                     Type::Int(Int::I32),
                 ),
                 MethodKind::Static,
@@ -244,7 +244,7 @@ pub fn saturating_sub<'tcx>(
                 ClassRef::int_128(ctx),
                 ctx.alloc_string("op_Subtraction"),
                 ctx.sig(
-                    ([Type::Int(Int::I128), Type::Int(Int::I128)]),
+                    [Type::Int(Int::I128), Type::Int(Int::I128)],
                     Type::Int(Int::I128),
                 ),
                 MethodKind::Static,
@@ -255,11 +255,11 @@ pub fn saturating_sub<'tcx>(
                 ClassRef::int_128(ctx),
                 ctx.alloc_string("Clamp"),
                 ctx.sig(
-                    ([
+                    [
                         Type::Int(Int::I128),
                         Type::Int(Int::I128),
                         Type::Int(Int::I128),
-                    ]),
+                    ],
                     Type::Int(Int::I128),
                 ),
                 MethodKind::Static,
@@ -283,7 +283,7 @@ pub fn saturating_sub<'tcx>(
                 ClassRef::int_128(ctx),
                 ctx.alloc_string("op_Subtraction"),
                 ctx.sig(
-                    ([Type::Int(Int::I128), Type::Int(Int::I128)]),
+                    [Type::Int(Int::I128), Type::Int(Int::I128)],
                     Type::Int(Int::I128),
                 ),
                 MethodKind::Static,
@@ -294,11 +294,11 @@ pub fn saturating_sub<'tcx>(
                 ClassRef::int_128(ctx),
                 ctx.alloc_string("Clamp"),
                 ctx.sig(
-                    ([
+                    [
                         Type::Int(Int::I128),
                         Type::Int(Int::I128),
                         Type::Int(Int::I128),
-                    ]),
+                    ],
                     Type::Int(Int::I128),
                 ),
                 MethodKind::Static,
@@ -329,11 +329,11 @@ pub fn saturating_sub<'tcx>(
                 ClassRef::math(ctx),
                 ctx.alloc_string("Clamp"),
                 ctx.sig(
-                    ([
+                    [
                         Type::Int(Int::I64),
                         Type::Int(Int::I64),
                         Type::Int(Int::I64),
-                    ]),
+                    ],
                     Type::Int(Int::I64),
                 ),
                 MethodKind::Static,
@@ -357,11 +357,11 @@ pub fn saturating_sub<'tcx>(
                 ClassRef::math(ctx),
                 ctx.alloc_string("Clamp"),
                 ctx.sig(
-                    ([
+                    [
                         Type::Int(Int::I32),
                         Type::Int(Int::I32),
                         Type::Int(Int::I32),
-                    ]),
+                    ],
                     Type::Int(Int::I32),
                 ),
                 MethodKind::Static,
@@ -385,11 +385,11 @@ pub fn saturating_sub<'tcx>(
                 ClassRef::math(ctx),
                 ctx.alloc_string("Clamp"),
                 ctx.sig(
-                    ([
+                    [
                         Type::Int(Int::I32),
                         Type::Int(Int::I32),
                         Type::Int(Int::I32),
-                    ]),
+                    ],
                     Type::Int(Int::I32),
                 ),
                 MethodKind::Static,

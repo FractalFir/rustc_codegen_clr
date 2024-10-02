@@ -2,7 +2,7 @@ use cilly::{
     call,
     cil_node::CILNode,
     eq, gt, gt_un, lt, lt_un,
-    v2::{cilnode::MethodKind, Assembly, ClassRef, Float, FnSig, Int, MethodRef},
+    v2::{cilnode::MethodKind, Assembly, ClassRef, Float, Int, MethodRef},
     Type,
 };
 use rustc_middle::ty::{FloatTy, IntTy, Ty, TyKind, UintTy};

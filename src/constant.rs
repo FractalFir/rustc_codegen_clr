@@ -10,7 +10,7 @@ use cilly::{
     v2::{
         cilnode::MethodKind,
         hashable::{HashableF32, HashableF64},
-        Assembly, ClassRef, FieldDesc, Float, FnSig, Int, MethodRef, MethodRefIdx, StaticFieldDesc,
+        Assembly, ClassRef, FieldDesc, Float, Int, MethodRef, MethodRefIdx, StaticFieldDesc,
     },
     Type,
 };
@@ -340,11 +340,11 @@ fn load_const_float(value: u128, float_type: FloatTy, asm: &mut Assembly) -> CIL
             let high = (value >> 64) as u64;
             let f128_ref = asm.nref(Type::Float(Float::F128));
             let ctor_sig = asm.sig(
-                ([f128_ref, Type::Int(Int::U64), Type::Int(Int::U64)]),
+                [f128_ref, Type::Int(Int::U64), Type::Int(Int::U64)],
                 Type::Void,
             );
             let cctor = MethodRef::new(
-                (ClassRef::int_128(asm)),
+                ClassRef::int_128(asm),
                 asm.alloc_string(".ctor"),
                 ctor_sig,
                 MethodKind::Constructor,
@@ -398,7 +398,7 @@ pub fn load_const_int(value: u128, int_type: IntTy, asm: &mut Assembly) -> CILNo
             let high = (value >> 64) as u64;
             let int128_ref = asm.nref(Type::Int(Int::I128));
             let ctor_sig = asm.sig(
-                ([int128_ref, Type::Int(Int::U64), Type::Int(Int::U64)]),
+                [int128_ref, Type::Int(Int::U64), Type::Int(Int::U64)],
                 Type::Void,
             );
             let mref = MethodRef::new(
@@ -437,7 +437,7 @@ pub fn load_const_uint(value: u128, int_type: UintTy, asm: &mut Assembly) -> CIL
             let high = (value >> 64) as u64;
             let u128_ptr = asm.nref(Type::Int(Int::U128));
             let ctor_sig = asm.sig(
-                ([u128_ptr, Type::Int(Int::U64), Type::Int(Int::U64)]),
+                [u128_ptr, Type::Int(Int::U64), Type::Int(Int::U64)],
                 Type::Void,
             );
             let mref = MethodRef::new(
@@ -464,78 +464,78 @@ fn get_fn_from_static_name(name: &str, ctx: &mut MethodCompileCtx<'_, '_>) -> Me
     let int8_ptr_ptr = ctx.nptr(int8_ptr);
     let mref = match name {
         "statx" => {
-            (MethodRef::new(
+            MethodRef::new(
                 *ctx.main_module(),
                 ctx.alloc_string("statx"),
                 ctx.sig(
-                    ([
+                    [
                         Type::Int(Int::I32),
                         int8_ptr,
                         Type::Int(Int::I32),
                         Type::Int(Int::U32),
                         void_ptr,
-                    ]),
+                    ],
                     Type::Int(Int::I32),
                 ),
                 MethodKind::Static,
                 vec![].into(),
-            ))
+            )
         }
         "getrandom" => {
-            (MethodRef::new(
+            MethodRef::new(
                 *ctx.main_module(),
                 ctx.alloc_string("getrandom"),
                 ctx.sig(
-                    ([int8_ptr, Type::Int(Int::USize), Type::Int(Int::U32)]),
+                    [int8_ptr, Type::Int(Int::USize), Type::Int(Int::U32)],
                     Type::Int(Int::USize),
                 ),
                 MethodKind::Static,
                 vec![].into(),
-            ))
+            )
         }
         "posix_spawn" => {
-            (MethodRef::new(
+            MethodRef::new(
                 *ctx.main_module(),
                 ctx.alloc_string("posix_spawn"),
                 ctx.sig(
-                    ([int8_ptr, int8_ptr, int8_ptr, int8_ptr, int8_ptr, int8_ptr]),
+                    [int8_ptr, int8_ptr, int8_ptr, int8_ptr, int8_ptr, int8_ptr],
                     Type::Int(Int::I32),
                 ),
                 MethodKind::Static,
                 vec![].into(),
-            ))
+            )
         }
         "posix_spawn_file_actions_addchdir_np" => {
-            (MethodRef::new(
+            MethodRef::new(
                 *ctx.main_module(),
                 ctx.alloc_string("posix_spawn_file_actions_addchdir_np"),
-                ctx.sig(([int8_ptr, int8_ptr]), Type::Int(Int::I32)),
+                ctx.sig([int8_ptr, int8_ptr], Type::Int(Int::I32)),
                 MethodKind::Static,
                 vec![].into(),
-            ))
+            )
         }
         "__dso_handle" => {
-            (MethodRef::new(
+            MethodRef::new(
                 *ctx.main_module(),
                 ctx.alloc_string("__dso_handle"),
-                ctx.sig(([]), Type::Void),
+                ctx.sig([], Type::Void),
                 MethodKind::Static,
                 vec![].into(),
-            ))
+            )
         }
         "__cxa_thread_atexit_impl" => {
             let fn_ptr_sig = Type::FnPtr(ctx.sig([void_ptr], Type::Void));
-            (MethodRef::new(
+            MethodRef::new(
                 *ctx.main_module(),
                 ctx.alloc_string("__cxa_thread_atexit_impl"),
                 ctx.sig([fn_ptr_sig, void_ptr, void_ptr], Type::Void),
                 MethodKind::Static,
                 vec![].into(),
-            ))
+            )
         }
         "copy_file_range" => {
             let i64_ptr = ctx.nptr(Type::Int(Int::I64));
-            (MethodRef::new(
+            MethodRef::new(
                 *ctx.main_module(),
                 ctx.alloc_string("copy_file_range"),
                 ctx.sig(
@@ -551,12 +551,12 @@ fn get_fn_from_static_name(name: &str, ctx: &mut MethodCompileCtx<'_, '_>) -> Me
                 ),
                 MethodKind::Static,
                 vec![].into(),
-            ))
+            )
         }
         "pidfd_spawnp" => {
             let i32_ptr = ctx.nptr(Type::Int(Int::I32));
             let i8_ptr = ctx.nptr(Type::Int(Int::I8));
-            (MethodRef::new(
+            MethodRef::new(
                 *ctx.main_module(),
                 ctx.alloc_string("pidfd_spawnp"),
                 ctx.sig(
@@ -572,16 +572,16 @@ fn get_fn_from_static_name(name: &str, ctx: &mut MethodCompileCtx<'_, '_>) -> Me
                 ),
                 MethodKind::Static,
                 vec![].into(),
-            ))
+            )
         }
         "pidfd_getpid" => {
-            (MethodRef::new(
+            MethodRef::new(
                 *ctx.main_module(),
                 ctx.alloc_string("pidfd_getpid"),
                 ctx.sig([Type::Int(Int::I32)], Type::Int(Int::I32)),
                 MethodKind::Static,
                 vec![].into(),
-            ))
+            )
         }
         _ => {
             todo!("Unsuported function refered to using a weak static. Function name is {name:?}.")
