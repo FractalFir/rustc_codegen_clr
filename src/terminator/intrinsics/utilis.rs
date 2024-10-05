@@ -90,7 +90,7 @@ pub fn atomic_or(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly) 
         }
 
         Type::Ptr(inner) => {
-            let int = Int::ISize;
+            let int = Int::USize;
             let int_ref = asm.nref(Type::Int(int));
             let mref = MethodRef::new(
                 *asm.main_module(),
@@ -211,10 +211,7 @@ pub fn compare_bytes(a: CILNode, b: CILNode, len: CILNode, asm: &mut Assembly) -
     let mref = MethodRef::new(
         *asm.main_module(),
         asm.alloc_string("memcmp"),
-        asm.sig(
-            [u8_ref, u8_ref, Type::Int(Int::USize)],
-            Type::Int(Int::I32),
-        ),
+        asm.sig([u8_ref, u8_ref, Type::Int(Int::USize)], Type::Int(Int::I32)),
         MethodKind::Static,
         vec![].into(),
     );

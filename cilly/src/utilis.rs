@@ -408,7 +408,7 @@ pub fn get_environ(asm: &mut Assembly) -> MethodRefIdx {
         ClassRef::i_enumerator(asm),
         asm.alloc_string("MoveNext"),
         asm.sig([Type::ClassRef(dictionary_iterator)], Type::Bool),
-        MethodKind::Instance,
+        MethodKind::Virtual,
         vec![].into(),
     );
     loop_body.trees_mut().push(
@@ -423,7 +423,7 @@ pub fn get_environ(asm: &mut Assembly) -> MethodRefIdx {
         ClassRef::i_enumerator(asm),
         asm.alloc_string("get_Current"),
         asm.sig([Type::ClassRef(dictionary_iterator)], Type::PlatformObject),
-        MethodKind::Instance,
+        MethodKind::Virtual,
         vec![].into(),
     );
     loop_body.trees_mut().push(
