@@ -334,7 +334,7 @@ pub fn get_environ(asm: &mut Assembly) -> MethodRefIdx {
         ClassRef::i_collection(asm),
         asm.alloc_string("get_Count"),
         asm.sig([i_dictionary], Type::Int(Int::I32)),
-        MethodKind::Instance,
+        MethodKind::Virtual,
         vec![].into(),
     );
     init.trees_mut().push(
@@ -371,7 +371,7 @@ pub fn get_environ(asm: &mut Assembly) -> MethodRefIdx {
         ClassRef::i_dictionary(asm),
         asm.alloc_string("GetEnumerator"),
         asm.sig([i_dictionary], Type::ClassRef(dictionary_iterator)),
-        MethodKind::Instance,
+        MethodKind::Virtual,
         vec![].into(),
     );
     init.trees_mut().push(

@@ -107,7 +107,7 @@ impl MethodRef {
         let sig = asm.sig([Type::Int(Int::USize), Type::Int(Int::USize)], void_ptr);
         MethodRef::new(
             ClassRef::native_mem(asm),
-            asm.alloc_string("AllignedAlloc"),
+            asm.alloc_string("AlignedAlloc"),
             sig,
             MethodKind::Static,
             vec![].into(),
