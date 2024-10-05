@@ -4,8 +4,8 @@ use serde::{Deserialize, Serialize};
 use super::{
     bimap::{BiMapIndex, IntoBiMapIndex},
     cilnode::MethodKind,
-    Access, Assembly, BasicBlock, CILIterElem, CILNode, ClassDefIdx, ClassRefIdx, SigIdx,
-    StringIdx, Type, TypeIdx,
+    Access, Assembly, BasicBlock, CILIterElem, CILNode, ClassDefIdx, ClassRef, ClassRefIdx, Int,
+    SigIdx, StringIdx, Type, TypeIdx,
 };
 use crate::v2::iter::TpeIter;
 use crate::v2::CILRoot;
@@ -100,6 +100,28 @@ impl MethodRef {
             MethodKind::Virtual => *sig.output(),
             MethodKind::Constructor => Type::ClassRef(self.class()),
         }
+    }
+
+    pub fn aligned_alloc(asm: &mut crate::v2::Assembly) -> MethodRef {
+        let void_ptr = asm.nptr(Type::Void);
+        let sig = asm.sig([Type::Int(Int::USize), Type::Int(Int::USize)], void_ptr);
+        MethodRef::new(
+            ClassRef::native_mem(asm),
+            asm.alloc_string("AlignedAlloc"),
+            sig,
+            MethodKind::Static,
+            vec![].into(),
+        )
+    }
+    pub fn alloc(asm: &mut crate::v2::Assembly) -> MethodRef {
+        let sig = asm.sig([Type::Int(Int::ISize)], Type::Int(Int::ISize));
+        MethodRef::new(
+            ClassRef::marshal(asm),
+            asm.alloc_string("AllocHGlobal"),
+            sig,
+            MethodKind::Static,
+            vec![].into(),
+        )
     }
 }
 
@@ -241,21 +263,23 @@ impl MethodDef {
         asm: &mut super::Assembly,
         class: ClassDefIdx,
     ) -> Self {
-        let sig = asm.alloc_sig(v1.call_site().signature().clone());
+        let site = v1.call_site(asm);
+        let sig = v1.sig().clone();
+        let sig_idx = asm.alloc_sig(v1.sig().clone());
         let acceess = match v1.access() {
             crate::access_modifier::AccessModifer::Private => Access::Private,
             crate::access_modifier::AccessModifer::Public => Access::Public,
             crate::access_modifier::AccessModifer::Extern => Access::Extern,
         };
 
-        let kind = if v1.call_site().is_static() {
+        let kind = if v1.is_static() {
             MethodKind::Static
-        } else if v1.call_site().name() == ".ctor" {
+        } else if v1.name() == ".ctor" {
             MethodKind::Constructor
         } else {
             MethodKind::Instance
         };
-        let name = asm.alloc_string(v1.call_site().name());
+        let name = asm.alloc_string(v1.name());
         let blocks = v1
             .blocks()
             .iter()
@@ -278,14 +302,14 @@ impl MethodDef {
             .map(|name| name.as_ref().map(|name| asm.alloc_string(name.clone())))
             .collect();
         let arg_debug_count = arg_names.len();
-        let arg_sig_count = v1.call_site().signature().inputs().len();
+        let arg_sig_count = sig.inputs().len();
         match arg_debug_count.cmp(&arg_sig_count) {
             std::cmp::Ordering::Less => {
                 println!(
                     "WARNING: argument debug info count invalid(Too few). Expected {}, got {}. fn name:{}",
                     arg_sig_count,
                     arg_debug_count,
-                    v1.call_site().name()
+                    v1.name()
                 );
                 arg_names.extend((arg_debug_count..arg_sig_count).map(|_| None));
             }
@@ -295,7 +319,7 @@ impl MethodDef {
                 "WARNING: argument debug info count invalid(Too many). Expected {}, got {}. fn name:{}",
                 arg_sig_count,
                 arg_debug_count,
-                v1.call_site().name()
+                v1.name()
                 );
                 for arg in &arg_names {
                     println!("{:?}", arg.map(|arg| &asm[arg]));
@@ -303,8 +327,16 @@ impl MethodDef {
                 arg_names.truncate(arg_sig_count);
             }
         }
-        assert_eq!(arg_names.len(), v1.call_site().signature().inputs().len());
-        MethodDef::new(acceess, class, name, sig, kind, implementation, arg_names)
+        assert_eq!(arg_names.len(), v1.sig().inputs().len());
+        MethodDef::new(
+            acceess,
+            class,
+            name,
+            sig_idx,
+            kind,
+            implementation,
+            arg_names,
+        )
     }
 
     #[must_use]

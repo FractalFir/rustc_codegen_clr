@@ -1,4 +1,4 @@
-use crate::{call_site::CallSite, cil_node::CILNode, cil_root::CILRoot};
+use crate::{cil_node::CILNode, cil_root::CILRoot, v2::MethodRefIdx};
 
 #[derive(Debug, Clone, Copy)]
 pub enum CILIterElem<'a> {
@@ -488,22 +488,22 @@ impl<'a> CILIter<'a> {
     }
 }
 pub trait CILIterTrait<'a> {
-    fn call_sites(self) -> impl Iterator<Item = &'a CallSite>;
+    fn call_sites(self) -> impl Iterator<Item = MethodRefIdx>;
     fn nodes(self) -> impl Iterator<Item = &'a CILNode>;
     fn roots(self) -> impl Iterator<Item = &'a CILRoot>;
 }
 impl<'a, T: Iterator<Item = CILIterElem<'a>>> CILIterTrait<'a> for T {
-    fn call_sites(self) -> impl Iterator<Item = &'a CallSite> {
+    fn call_sites(self) -> impl Iterator<Item = MethodRefIdx> {
         self.filter_map(|node| match node {
             CILIterElem::Node(
                 CILNode::Call(call_op_args)
                 | CILNode::CallVirt(call_op_args)
                 | CILNode::NewObj(call_op_args),
-            ) => Some(call_op_args.site.as_ref()),
-            CILIterElem::Node(CILNode::LDFtn(site)) => Some(site.as_ref()),
+            ) => Some(call_op_args.site),
+            CILIterElem::Node(CILNode::LDFtn(site)) => Some(*site),
             CILIterElem::Root(
                 CILRoot::Call { site, args: _ } | CILRoot::CallVirt { site, args: _ },
-            ) => Some(site),
+            ) => Some(*site),
             _ => None,
         })
     }
@@ -537,67 +537,4 @@ impl<'a> IntoIterator for &'a CILRoot {
     fn into_iter(self) -> Self::IntoIter {
         CILIter::new_root(self)
     }
-}
-#[test]
-fn iter() {
-    use crate::{
-        call_site::CallSite,
-        v2::{hashable::HashableF32, Float, FnSig, Int},
-        Type,
-    };
-    let node = CILNode::Add(
-        Box::new(CILNode::Mul(
-            Box::new(CILNode::LDLoc(0)),
-            Box::new(CILNode::SizeOf(Box::new(Type::Int(Int::U8)))),
-        )),
-        Box::new(CILNode::LDLoc(1)),
-    );
-    let mut iter = node.into_iter();
-    assert!(matches!(
-        iter.next(),
-        Some(CILIterElem::Node(CILNode::Add(_, _)))
-    ));
-    assert!(matches!(
-        iter.next(),
-        Some(CILIterElem::Node(CILNode::Mul(_, _)))
-    ));
-    assert!(matches!(
-        iter.next(),
-        Some(CILIterElem::Node(CILNode::LDLoc(_)))
-    ));
-    assert!(matches!(
-        iter.next(),
-        Some(CILIterElem::Node(CILNode::SizeOf(_)))
-    ));
-    assert!(matches!(
-        iter.next(),
-        Some(CILIterElem::Node(CILNode::LDLoc(1)))
-    ));
-    assert!(iter.next().is_none());
-    let root = CILRoot::Call {
-        site: Box::new(CallSite::new(
-            None,
-            "bob".to_owned().into(),
-            FnSig::new(
-                Box::new([Type::Int(Int::I32), Type::Float(Float::F32)]),
-                Type::Void,
-            ),
-            true,
-        )),
-        args: [CILNode::LdcI32(-77), CILNode::LdcF32(HashableF32(3.119765))].into(),
-    };
-    let mut iter = root.into_iter();
-    assert!(matches!(
-        iter.next(),
-        Some(CILIterElem::Root(CILRoot::Call { .. }))
-    ));
-    assert!(matches!(
-        iter.next(),
-        Some(CILIterElem::Node(CILNode::LdcI32(-77)))
-    ));
-    assert!(matches!(
-        iter.next(),
-        Some(CILIterElem::Node(CILNode::LdcF32(HashableF32(3.119765))))
-    ));
-    assert!(iter.next().is_none());
 }

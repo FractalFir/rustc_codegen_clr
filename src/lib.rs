@@ -161,7 +161,10 @@ pub mod config;
 mod unsize;
 // rustc functions used here.
 use crate::rustc_middle::dep_graph::DepContext;
-use cilly::asm::Assembly;
+use cilly::{
+    asm::Assembly,
+    v2::{cilnode::MethodKind, MethodRef},
+};
 use fn_ctx::MethodCompileCtx;
 use rustc_codegen_ssa::{
     back::archive::{ArArchiveBuilder, ArchiveBuilder, ArchiveBuilderBuilder},
@@ -228,8 +231,15 @@ impl CodegenBackend for MyBackend {
                     .expect("Could not get the signature of the entrypoint.");
                 let symbol = tcx.symbol_name(entrypoint);
                 let symbol = format!("{symbol:?}");
-                let cs = cilly::call_site::CallSite::new(None, symbol.into(), sig, true);
-                asm.set_entrypoint(&cs);
+                let cs = MethodRef::new(
+                    *asm.main_module(),
+                    asm.alloc_string(symbol),
+                    asm.alloc_sig(sig),
+                    MethodKind::Static,
+                    vec![].into(),
+                );
+                let cs = asm.alloc_methodref(cs);
+                asm.set_entrypoint(cs);
             }
 
             let ffi_compile_timer = tcx

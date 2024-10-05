@@ -6,11 +6,10 @@ use crate::{
     utilis::{adt::set_discr, field_name},
 };
 use cilly::{
-    call_site::CallSite,
     cil_node::CILNode,
     cil_root::CILRoot,
     conv_usize, ldc_u64,
-    v2::{ClassRef, FieldDesc, FnSig, Int},
+    v2::{cilnode::MethodKind, ClassRef, FieldDesc, FnSig, Int, MethodRef},
     Type,
 };
 use rustc_index::IndexVec;
@@ -69,7 +68,6 @@ pub fn handle_aggregate<'tcx>(
                 // This array is created from uninitalized data, so it itsefl is uninitialzed, so we can skip initializing it.
                 return super::place::place_get(target_location, ctx);
             }
-
             let element = ctx.monomorphize(*element);
             let element = ctx.type_from_cache(element);
             let array_type = ClassRef::fixed_array(element, value_index.len(), ctx);
@@ -78,11 +76,17 @@ pub fn handle_aggregate<'tcx>(
                 Box::new([ctx.nref(array_type.into()), Type::Int(Int::USize), element]),
                 Type::Void,
             );
-            let site = CallSite::new(Some(array_type), "set_Item".into(), sig, false);
+            let site = MethodRef::new(
+                array_type,
+                ctx.alloc_string("set_Item"),
+                ctx.alloc_sig(sig),
+                MethodKind::Instance,
+                vec![].into(),
+            );
             let mut sub_trees = Vec::new();
             for value in values {
                 sub_trees.push(CILRoot::Call {
-                    site: Box::new(site.clone()),
+                    site: ctx.alloc_methodref(site.clone()),
                     args: [
                         array_getter.clone(),
                         conv_usize!(ldc_u64!(u64::from(value.0))),

@@ -1,10 +1,9 @@
 use crate::{assembly::MethodCompileCtx, operand::handle_operand, place::place_set};
 use cilly::{
     call,
-    call_site::CallSite,
     cil_node::CILNode,
     cil_root::CILRoot,
-    v2::{ClassRef, FnSig},
+    v2::{cilnode::MethodKind, ClassRef, MethodRef},
 };
 use rustc_middle::{
     mir::{Operand, Place},
@@ -31,15 +30,14 @@ pub fn bswap<'tcx>(
         match ty.kind() {
             TyKind::Uint(UintTy::U8) => operand,
             TyKind::Uint(_) | TyKind::Int(_) => {
-                call!(
-                    CallSite::boxed(
-                        Some(ClassRef::binary_primitives(ctx)),
-                        "ReverseEndianness".into(),
-                        FnSig::new([tpe].into(), tpe),
-                        true,
-                    ),
-                    [operand]
-                )
+                let mref = MethodRef::new(
+                    ClassRef::binary_primitives(ctx),
+                    ctx.alloc_string("ReverseEndianness"),
+                    ctx.sig([tpe], tpe),
+                    MethodKind::Static,
+                    vec![].into(),
+                );
+                call!(ctx.alloc_methodref(mref), [operand])
             }
 
             _ => todo!("Can't bswap {tpe:?}"),

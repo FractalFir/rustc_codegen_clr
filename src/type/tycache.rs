@@ -636,7 +636,7 @@ pub fn validity_check<'tcx>(
             rustc_middle::ty::AdtKind::Struct | rustc_middle::ty::AdtKind::Enum => {
                 if let Some(d_tpe) = tpe.as_class_ref() {
                     cilly::call!(
-                        cilly::call_site::CallSite::new(
+                        cilly::call_site::MethodRefIdx::new(
                             Some(d_tpe),
                             "check_valid".into(),
                             FnSig::new(&[tpe.clone()], tpe),
@@ -722,7 +722,7 @@ fn enum_bound_check<'tcx>(
     let discr = get_discr(layout, addr, enum_tpe.as_class_ref().unwrap(), tcx, ty);
     let root = cilly::cil_root::CILRoot::Pop {
         tree: cilly::call!(
-            cilly::call_site::CallSite::new(
+            cilly::call_site::MethodRefIdx::new(
                 None,
                 "bounds_check".into(),
                 FnSig::new(

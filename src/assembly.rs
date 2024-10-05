@@ -13,14 +13,13 @@ use cilly::{
     asm::Assembly,
     basic_block::BasicBlock,
     call,
-    call_site::CallSite,
     cil_node::CILNode,
     cil_root::CILRoot,
     cil_tree::CILTree,
-    conv_usize, ldc_i32, ldc_u32, ldc_u64,
+    conv_isize, conv_usize, ldc_i32, ldc_u32, ldc_u64,
     method::{Method, MethodType},
     utilis::{self, encode},
-    v2::{FnSig, Int, MethodDef, StaticFieldDesc},
+    v2::{cilnode::MethodKind, FnSig, Int, MethodDef, MethodRef, MethodRefIdx, StaticFieldDesc},
     Type,
 };
 use rustc_middle::{
@@ -108,11 +107,12 @@ fn allocation_initializer_method(
     let align = const_allocation.align.bytes().max(1);
     //trees.push(CILRoot::debug(&format!("Preparing to initialize allocation with size {}",bytes.len())).into());
     if align > 8 {
+        let aligned_alloc = MethodRef::aligned_alloc(asm);
         trees.push(
             CILRoot::STLoc {
                 local: 0,
                 tree: Box::new(call!(
-                    CallSite::aligned_alloc(asm),
+                    asm.alloc_methodref(aligned_alloc),
                     [
                         conv_usize!(ldc_u64!(bytes.len() as u64)),
                         conv_usize!(ldc_u64!(align))
@@ -123,14 +123,15 @@ fn allocation_initializer_method(
             .into(),
         );
     } else {
+        let alloc = MethodRef::alloc(asm);
         trees.push(
             CILRoot::STLoc {
                 local: 0,
                 tree: Box::new(call!(
-                    CallSite::alloc(asm),
-                    [ldc_i32!(
+                    asm.alloc_methodref(alloc),
+                    [conv_isize!(ldc_i32!(
                         i32::try_from(bytes.len()).expect("Static alloc too big")
-                    )]
+                    ))]
                 ))
                 .cast_ptr(asm.nptr(Type::Int(Int::U8))),
             }
@@ -208,16 +209,18 @@ fn allocation_initializer_method(
                 let mut ctx = MethodCompileCtx::new(tcx, None, finstance, asm);
                 let call_info = crate::call_info::CallInfo::sig_from_instance_(finstance, &mut ctx);
                 let function_name = crate::utilis::function_name(tcx.symbol_name(finstance));
-
+                let mref = MethodRef::new(
+                    *asm.main_module(),
+                    asm.alloc_string(function_name),
+                    asm.alloc_sig(call_info.sig().clone()),
+                    MethodKind::Static,
+                    vec![].into(),
+                );
                 trees.push(
                     CILRoot::STIndISize(
                         (CILNode::LDLoc(0) + conv_usize!(ldc_u32!(offset)))
                             .cast_ptr(asm.nptr(Type::Int(Int::USize))),
-                        CILNode::LDFtn(
-                            CallSite::new(None, function_name, call_info.sig().clone(), true)
-                                .into(),
-                        )
-                        .cast_ptr(Type::Int(Int::USize)),
+                        CILNode::LDFtn(asm.alloc_methodref(mref)).cast_ptr(Type::Int(Int::USize)),
                     )
                     .into(),
                 );
@@ -565,10 +568,10 @@ pub fn add_item<'tcx>(
                 if section.to_string().contains(".init_array") {
                     let argc = utilis::argc_argv_init_method(asm);
                     asm.add_initialzer(CILRoot::Call {
-                        site: Box::new(argc),
+                        site: argc,
                         args: [].into(),
                     });
-                    let get_environ: CallSite = utilis::get_environ(asm);
+                    let get_environ: MethodRefIdx = utilis::get_environ(asm);
                     let fn_ptr = alloc.0.provenance().ptrs().iter().next().unwrap();
                     let fn_ptr = tcx.global_alloc(fn_ptr.1.alloc_id());
                     let init_call_site = if let GlobalAlloc::Function {
@@ -581,7 +584,13 @@ pub fn add_item<'tcx>(
                             crate::call_info::CallInfo::sig_from_instance_(finstance, &mut ctx);
                         let function_name =
                             crate::utilis::function_name(tcx.symbol_name(finstance));
-                        CallSite::new(None, function_name, call_info.sig().clone(), true)
+                        MethodRef::new(
+                            *asm.main_module(),
+                            asm.alloc_string(function_name),
+                            asm.alloc_sig(call_info.sig().clone()),
+                            MethodKind::Static,
+                            vec![].into(),
+                        )
                     } else {
                         panic!()
                     };
@@ -589,8 +598,9 @@ pub fn add_item<'tcx>(
                     let argv = asm.alloc_string("argv");
                     let argc = asm.alloc_string("argc");
                     let main_module = asm.main_module();
+                    let mref = asm.alloc_methodref(init_call_site);
                     asm.add_initialzer(CILRoot::Call {
-                        site: Box::new(init_call_site),
+                        site: mref,
                         args: [
                             CILNode::LDStaticField(Box::new(StaticFieldDesc::new(
                                 *main_module,

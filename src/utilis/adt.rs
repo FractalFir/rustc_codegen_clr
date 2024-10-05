@@ -1,10 +1,9 @@
 use cilly::{
     call,
-    call_site::CallSite,
     cil_node::CILNode,
     cil_root::CILRoot,
     eq, gt_un, ldc_u64, sub,
-    v2::{Assembly, ClassRef, ClassRefIdx, FieldDesc, Float, FnSig, Int},
+    v2::{cilnode::MethodKind, Assembly, ClassRef, ClassRefIdx, FieldDesc, Float, Int, MethodRef},
     Type,
 };
 use rustc_middle::ty::{AdtDef, Ty};
@@ -305,36 +304,44 @@ pub fn get_discr<'tcx>(
                 // }
 
                 let is_niche = match tag_tpe {
-                    Type::Int(Int::U128) => call!(
-                        CallSite::new_extern(
+                    Type::Int(Int::U128) => {
+                        let mref = MethodRef::new(
                             ClassRef::uint_128(ctx),
-                            "op_Equality".into(),
-                            FnSig::new(
-                                Box::new([Type::Int(Int::U128), Type::Int(Int::U128)]),
-                                Type::Bool
-                            ),
-                            true
-                        ),
-                        [
-                            tag,
-                            CILNode::const_u128(u128::from(niche_variants.start().as_u32(),), ctx)
-                        ]
-                    ),
-                    Type::Int(Int::I128) => call!(
-                        CallSite::new_extern(
+                            ctx.alloc_string("op_Equality"),
+                            ctx.sig([Type::Int(Int::U128), Type::Int(Int::U128)], Type::Bool),
+                            MethodKind::Static,
+                            vec![].into(),
+                        );
+                        call!(
+                            ctx.alloc_methodref(mref),
+                            [
+                                tag,
+                                CILNode::const_u128(
+                                    u128::from(niche_variants.start().as_u32(),),
+                                    ctx
+                                )
+                            ]
+                        )
+                    }
+                    Type::Int(Int::I128) => {
+                        let mref = MethodRef::new(
                             ClassRef::int_128(ctx),
-                            "op_Equality".into(),
-                            FnSig::new(
-                                Box::new([Type::Int(Int::I128), Type::Int(Int::I128)]),
-                                Type::Bool
-                            ),
-                            true
-                        ),
-                        [
-                            tag,
-                            CILNode::const_i128(u128::from(niche_variants.start().as_u32()), ctx)
-                        ]
-                    ),
+                            ctx.alloc_string("op_Equality"),
+                            ctx.sig([Type::Int(Int::I128), Type::Int(Int::I128)], Type::Bool),
+                            MethodKind::Static,
+                            vec![].into(),
+                        );
+                        call!(
+                            ctx.alloc_methodref(mref),
+                            [
+                                tag,
+                                CILNode::const_i128(
+                                    u128::from(niche_variants.start().as_u32()),
+                                    ctx
+                                )
+                            ]
+                        )
+                    }
 
                     _ => eq!(
                         tag,
@@ -377,36 +384,38 @@ pub fn get_discr<'tcx>(
                     ),
                 };
                 let gt = match tag_tpe {
-                    Type::Int(Int::U128) => call!(
-                        CallSite::new_extern(
+                    Type::Int(Int::U128) => {
+                        let mref = MethodRef::new(
                             ClassRef::uint_128(ctx),
-                            "op_GreaterThan".into(),
-                            FnSig::new(
-                                Box::new([Type::Int(Int::U128), Type::Int(Int::U128)]),
-                                Type::Bool
-                            ),
-                            true
-                        ),
-                        [
-                            relative_discr.clone(),
-                            CILNode::const_u128(u128::from(relative_max), ctx)
-                        ]
-                    ),
-                    Type::Int(Int::I128) => call!(
-                        CallSite::new_extern(
+                            ctx.alloc_string("op_GreaterThan"),
+                            ctx.sig([Type::Int(Int::U128), Type::Int(Int::U128)], Type::Bool),
+                            MethodKind::Static,
+                            vec![].into(),
+                        );
+                        call!(
+                            ctx.alloc_methodref(mref),
+                            [
+                                relative_discr.clone(),
+                                CILNode::const_u128(u128::from(relative_max), ctx)
+                            ]
+                        )
+                    }
+                    Type::Int(Int::I128) => {
+                        let mref = MethodRef::new(
                             ClassRef::int_128(ctx),
-                            "op_GreaterThan".into(),
-                            FnSig::new(
-                                Box::new([Type::Int(Int::I128), Type::Int(Int::I128)]),
-                                Type::Bool
-                            ),
-                            true
-                        ),
-                        [
-                            relative_discr.clone(),
-                            CILNode::const_i128(u128::from(relative_max), ctx)
-                        ]
-                    ),
+                            ctx.alloc_string("op_GreaterThan"),
+                            ctx.sig([Type::Int(Int::I128), Type::Int(Int::I128)], Type::Bool),
+                            MethodKind::Static,
+                            vec![].into(),
+                        );
+                        call!(
+                            ctx.alloc_methodref(mref),
+                            [
+                                relative_discr.clone(),
+                                CILNode::const_i128(u128::from(relative_max), ctx)
+                            ]
+                        )
+                    }
 
                     _ => gt_un!(
                         relative_discr.clone(),
@@ -466,6 +475,7 @@ pub fn get_discr<'tcx>(
                     ctx,
                 ),
                 is_niche,
+                ctx,
             )
         }
     };

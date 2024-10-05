@@ -6,11 +6,10 @@ use crate::{
 };
 use cilly::{
     call,
-    call_site::CallSite,
     cil_node::CILNode,
     cil_root::CILRoot,
     conv_usize, ld_field, ldc_u32, ldc_u64, size_of,
-    v2::{FieldDesc, FnSig, Int},
+    v2::{cilnode::MethodKind, FieldDesc, Int, MethodRef},
     Type,
 };
 use rustc_middle::{
@@ -235,19 +234,16 @@ pub fn place_elem_adress<'tcx>(
                     let element_type = ctx.type_from_cache(element);
                     let array_type = ctx.type_from_cache(curr_ty);
                     let array_dotnet = array_type.as_class_ref().expect("Non array type");
-
-                    call!(
-                        CallSite::new(
-                            Some(array_dotnet),
-                            "get_Address".into(),
-                            FnSig::new(
-                                [ctx.nref(array_type), Type::Int(Int::USize)].into(),
-                                ctx.nptr(element_type),
-                            ),
-                            false,
-                        ),
-                        [addr_calc, index]
-                    )
+                    let arr_ref = ctx.nref(array_type);
+                    let element_ptr = ctx.nptr(element_type);
+                    let mref = MethodRef::new(
+                        array_dotnet,
+                        ctx.alloc_string("get_Address"),
+                        ctx.sig([arr_ref, Type::Int(Int::USize)], element_ptr),
+                        MethodKind::Instance,
+                        vec![].into(),
+                    );
+                    call!(ctx.alloc_methodref(mref), [addr_calc, index])
                 }
                 _ => {
                     rustc_middle::ty::print::with_no_trimmed_paths! {todo!("Can't index into {curr_ty}!")}
@@ -360,19 +356,20 @@ pub fn place_elem_adress<'tcx>(
                     let element = ctx.type_from_cache(element_ty);
                     let array_type = ctx.type_from_cache(curr_ty);
                     let array_dotnet = array_type.as_class_ref().expect("Non array type");
+                    let arr_ref = ctx.nref(array_type);
+                    let element_ptr = ctx.nptr(element);
+                    let mref = MethodRef::new(
+                        array_dotnet,
+                        ctx.alloc_string("get_Address"),
+                        ctx.sig([arr_ref, Type::Int(Int::USize)], element_ptr),
+                        MethodKind::Instance,
+                        vec![].into(),
+                    );
                     if *from_end {
                         todo!("Can't index array from end!");
                     } else {
                         call!(
-                            CallSite::new(
-                                Some(array_dotnet),
-                                "get_Address".into(),
-                                FnSig::new(
-                                    [ctx.nref(array_type), Type::Int(Int::USize)].into(),
-                                    ctx.nptr(element),
-                                ),
-                                false,
-                            ),
+                            ctx.alloc_methodref(mref),
                             [
                                 addr_calc,
                                 CILNode::ZeroExtendToUSize(ldc_u64!(*offset).into()),

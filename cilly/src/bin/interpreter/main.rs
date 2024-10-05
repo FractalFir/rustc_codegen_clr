@@ -5,7 +5,7 @@ fn main() {}
 use std::io::Write;
 use cilly::{
     asm::Assembly,
-    call_site::CallSite,
+    call_site::MethodRefIdx,
     cil_node::CILNode,
     cil_root::{CILRoot, SFI},
     method::Method,
@@ -17,7 +17,7 @@ use fxhash::{FxBuildHasher, FxHashMap};
 use value::Value;
 #[derive(Debug)]
 enum Exception {
-    MethodNotFound(CallSite),
+    MethodNotFound(MethodRefIdx),
     LocalOutOfRange { loc: usize, lcount: usize },
     ArgOutOfRange { arg: usize, lcount: usize },
     AllocOffsetOutOfRange,
@@ -25,13 +25,13 @@ enum Exception {
 type AllocID = u32;
 struct InterpreterState<'asm> {
     asm: &'asm Assembly,
-    call_stack: Vec<(&'asm CallSite, usize, usize, cilly::cil_root::SFI)>,
+    call_stack: Vec<(&'asm MethodRefIdx, usize, usize, cilly::cil_root::SFI)>,
     locals: Vec<Box<[Value]>>,
     mem: FxHashMap<AllocID, Box<[u8]>>,
     last_alloc: AllocID,
     fields: FxHashMap<StaticFieldDesc, Value>,
-    methods: FxHashMap<AllocID, CallSite>,
-    inv_methods: FxHashMap<CallSite, AllocID>,
+    methods: FxHashMap<AllocID, MethodRefIdx>,
+    inv_methods: FxHashMap<MethodRefIdx, AllocID>,
     last_alloc_method: AllocID,
 }
 
@@ -341,7 +341,7 @@ fn eval_node<'asm>(
     }
 }
 impl<'asm> InterpreterState<'asm> {
-    pub fn get_fn_ptr_alloc(&mut self, site: &CallSite) -> AllocID {
+    pub fn get_fn_ptr_alloc(&mut self, site: &MethodRefIdx) -> AllocID {
         *self.inv_methods.entry(site.clone()).or_insert_with(|| {
             let new_method = self.last_alloc_method;
             self.methods.insert(new_method, site.clone());
@@ -357,7 +357,7 @@ impl<'asm> InterpreterState<'asm> {
     }
     pub fn try_call_extern(
         &mut self,
-        call: &'asm CallSite,
+        call: &'asm MethodRefIdx,
         args: &mut Box<[Value]>,
         string_map: &AsmStringContainer,
     ) -> Result<Value, Exception> {
@@ -412,7 +412,7 @@ impl<'asm> InterpreterState<'asm> {
     pub fn run_cctor(&mut self) -> Result<Value, Exception> {
         match self.asm.cctor() {
             Some(_) => self.run(
-                Box::<CallSite>::leak(Box::new(CallSite::builtin(
+                Box::<MethodRefIdx>::leak(Box::new(MethodRefIdx::builtin(
                     ".cctor".into(),
                     FnSig::new(&[], Type::Void),
                     true,
@@ -426,7 +426,7 @@ impl<'asm> InterpreterState<'asm> {
         let entry = self.asm.methods().find(|method| method.is_entrypoint());
         match entry {
             Some(entry) => self.run(
-                Box::<CallSite>::leak(Box::new(entry.call_site())),
+                Box::<MethodRefIdx>::leak(Box::new(entry.call_site())),
                 &mut vec![Value::StringArray(
                     std::env::args().map(|arg| arg.into()).collect(),
                 )]
@@ -435,7 +435,7 @@ impl<'asm> InterpreterState<'asm> {
             None => Ok(Value::Undef),
         }
     }
-    pub fn method(&self, site: &'asm CallSite) -> Result<&'asm Method, Exception> {
+    pub fn method(&self, site: &'asm MethodRefIdx) -> Result<&'asm Method, Exception> {
         self.asm
             .functions()
             .get(site)
@@ -443,7 +443,7 @@ impl<'asm> InterpreterState<'asm> {
     }
     pub fn run(
         &mut self,
-        call: &'asm CallSite,
+        call: &'asm MethodRefIdx,
         args: &mut Box<[Value]>,
     ) -> Result<Value, Exception> {
         assert_eq!(self.locals.len(), self.call_stack.len());

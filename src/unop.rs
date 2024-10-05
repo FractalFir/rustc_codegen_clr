@@ -1,9 +1,10 @@
 use crate::assembly::MethodCompileCtx;
 use crate::r#type::get_type;
-use cilly::call_site::CallSite;
+
 use cilly::cil_node::CILNode;
 
-use cilly::v2::{ClassRef, FieldDesc, FnSig, Int};
+use cilly::v2::cilnode::MethodKind;
+use cilly::v2::{ClassRef, FieldDesc, Int, MethodRef};
 use cilly::{call, ld_field, Type};
 
 use rustc_middle::mir::{Operand, UnOp};
@@ -19,50 +20,52 @@ pub fn unop<'tcx>(
     let ty = operand.ty(&ctx.body().local_decls, ctx.tcx());
     match unnop {
         UnOp::Neg => match ty.kind() {
-            TyKind::Int(IntTy::I128) => call!(
-                CallSite::boxed(
+            TyKind::Int(IntTy::I128) => {
+                let mref = MethodRef::new(
                     ClassRef::int_128(ctx).into(),
-                    "op_UnaryNegation".into(),
-                    FnSig::new(Box::new([Type::Int(Int::I128)]), Type::Int(Int::I128)),
-                    true,
-                ),
-                [parrent_node]
-            ),
+                    ctx.alloc_string("op_UnaryNegation"),
+                    ctx.sig([Type::Int(Int::I128)], Type::Int(Int::I128)),
+                    MethodKind::Static,
+                    vec![].into(),
+                );
+                call!(ctx.alloc_methodref(mref), [parrent_node])
+            }
             TyKind::Int(IntTy::I8) => CILNode::Neg(CILNode::ConvI8(parrent_node.into()).into()),
             TyKind::Int(IntTy::I16) => CILNode::Neg(CILNode::ConvI16(parrent_node.into()).into()),
-            TyKind::Uint(UintTy::U128) => call!(
-                CallSite::boxed(
+            TyKind::Uint(UintTy::U128) => {
+                let mref = MethodRef::new(
                     ClassRef::uint_128(ctx).into(),
-                    "op_UnaryNegation".into(),
-                    FnSig::new(Box::new([Type::Int(Int::U128)]), Type::Int(Int::U128)),
-                    true,
-                ),
-                [parrent_node]
-            ),
+                    ctx.alloc_string("op_UnaryNegation"),
+                    ctx.sig([Type::Int(Int::U128)], Type::Int(Int::U128)),
+                    MethodKind::Static,
+                    vec![].into(),
+                );
+                call!(ctx.alloc_methodref(mref), [parrent_node])
+            }
             _ => CILNode::Neg(parrent_node.into()),
         },
         UnOp::Not => match ty.kind() {
             TyKind::Bool => CILNode::Eq(CILNode::LdFalse.into(), parrent_node.into()),
-            TyKind::Uint(UintTy::U128) => call!(
-                CallSite::boxed(
+            TyKind::Uint(UintTy::U128) => {
+                let mref = MethodRef::new(
                     ClassRef::uint_128(ctx).into(),
-                    "op_OnesComplement".into(),
-                    FnSig::new(Box::new([Type::Int(Int::U128)]), Type::Int(Int::U128)),
-                    true,
-                ),
-                [parrent_node]
-            ),
-            TyKind::Int(IntTy::I128) => call!(
-                CallSite::boxed(
+                    ctx.alloc_string("op_OnesComplement"),
+                    ctx.sig([Type::Int(Int::U128)], Type::Int(Int::U128)),
+                    MethodKind::Static,
+                    vec![].into(),
+                );
+                call!(ctx.alloc_methodref(mref), [parrent_node])
+            }
+            TyKind::Int(IntTy::I128) => {
+                let mref = MethodRef::new(
                     ClassRef::int_128(ctx).into(),
-                    "op_OnesComplement".into(),
-                    FnSig::new(Box::new([Type::Int(Int::I128)]), Type::Int(Int::I128)),
-                    true,
-                ),
-                [parrent_node]
-            ),
-
-            //TyKind::U128 => ops.extend([CILOp::LdcI32(0), CILOp::Eq]),
+                    ctx.alloc_string("op_OnesComplement"),
+                    ctx.sig([Type::Int(Int::I128)], Type::Int(Int::I128)),
+                    MethodKind::Static,
+                    vec![].into(),
+                );
+                call!(ctx.alloc_methodref(mref), [parrent_node])
+            }
             _ => CILNode::Not(parrent_node.into()),
         },
         rustc_middle::mir::UnOp::PtrMetadata => {

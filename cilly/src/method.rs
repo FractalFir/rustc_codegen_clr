@@ -8,13 +8,12 @@ use std::{
 use crate::{
     access_modifier::AccessModifer,
     basic_block::BasicBlock,
-    call_site::CallSite,
     cil_iter::{CILIterElem, CILIterTrait},
     cil_iter_mut::CILIterElemMut,
     cil_node::CILNode,
     cil_root::CILRoot,
     cil_tree::CILTree,
-    v2::{Assembly, FnSig},
+    v2::{cilnode::MethodKind, Assembly, FnSig, MethodRef, MethodRefIdx},
     IString, Type,
 };
 
@@ -46,11 +45,11 @@ pub enum Attribute {
     /// Set if the function is the assemblys entrypoint.
     EntryPoint,
     /// This method is nothing more than an alias for another method.
-    AliasFor(Box<CallSite>),
+    AliasFor(Box<MethodRef>),
 }
 
 impl Attribute {
-    pub fn as_alias_for(&self) -> Option<&CallSite> {
+    pub fn as_alias_for(&self) -> Option<&MethodRef> {
         if let Self::AliasFor(v) = self {
             Some(v)
         } else {
@@ -60,23 +59,6 @@ impl Attribute {
 }
 
 impl Method {
-    pub fn alias_for(
-        access: AccessModifer,
-        method_type: MethodType,
-        name: IString,
-        alias_for: CallSite,
-    ) -> Self {
-        Self {
-            access,
-            method_type,
-            sig: alias_for.signature().clone(),
-            name,
-            locals: vec![],
-            blocks: vec![],
-            attributes: vec![Attribute::AliasFor(Box::new(alias_for))],
-            arg_names: vec![],
-        }
-    }
     pub fn maxstack(&self) -> usize {
         let trees = self.blocks().iter().flat_map(|block| block.trees());
         let max = trees.map(|tree| tree.root().into_iter().count() + 3).max();
@@ -276,7 +258,7 @@ impl Method {
     }
     /// Returns the list of external calls this function preforms. Calls may repeat.
     // TODO: make this not call `into_ops`
-    pub fn calls(&self) -> impl Iterator<Item = &CallSite> {
+    pub fn calls(&self) -> impl Iterator<Item = MethodRefIdx> + '_ {
         self.blocks
             .iter()
             .flat_map(|block| block.iter_cil())
@@ -298,13 +280,21 @@ impl Method {
     }*/
 
     /// Returns a call site that describes this method.
-    pub fn call_site(&self) -> CallSite {
-        CallSite::new(
-            None,
-            self.name().to_owned().into(),
-            self.sig().clone(),
-            self.is_static(),
-        )
+    pub fn call_site(&self, asm: &mut crate::v2::Assembly) -> MethodRefIdx {
+        let mref = MethodRef::new(
+            *asm.main_module(),
+            asm.alloc_string(self.name()),
+            asm.alloc_sig(self.sig().clone()),
+            if self.is_static() {
+                MethodKind::Static
+            } else if self.name() == ".ctor" {
+                MethodKind::Constructor
+            } else {
+                MethodKind::Instance
+            },
+            vec![].into(),
+        );
+        asm.alloc_methodref(mref)
     }
     /// Alocates all temporary variables within this method.
     pub fn allocate_temporaries(&mut self) {

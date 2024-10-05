@@ -1,12 +1,11 @@
 use crate::{assembly::MethodCompileCtx, casts};
 use cilly::{
     and, call,
-    call_site::CallSite,
     cil_node::CILNode,
     cil_root::CILRoot,
     conv_i16, conv_i32, conv_i64, conv_i8, conv_isize, conv_u64, conv_usize, gt, gt_un, ldc_i32,
     ldc_i64, ldc_u32, ldc_u64, lt, mul, or,
-    v2::{Assembly, ClassRef, FieldDesc, FnSig, Int},
+    v2::{cilnode::MethodKind, Assembly, ClassRef, FieldDesc, Int, MethodRef},
     Type,
 };
 use rustc_middle::ty::{IntTy, Ty, TyKind, UintTy};
@@ -46,24 +45,26 @@ pub fn zero(ty: Ty, asm: &mut Assembly) -> CILNode {
         TyKind::Int(IntTy::I64) => ldc_i64!(0),
         TyKind::Uint(UintTy::Usize) => conv_usize!(ldc_u32!(0)),
         TyKind::Int(IntTy::Isize) => conv_isize!(ldc_u32!(0)),
-        TyKind::Uint(UintTy::U128) => call!(
-            CallSite::new_extern(
+        TyKind::Uint(UintTy::U128) => {
+            let mref = MethodRef::new(
                 ClassRef::uint_128(asm),
-                "op_Implicit".into(),
-                FnSig::new([Type::Int(Int::U32)].into(), Type::Int(Int::U128)),
-                true
-            ),
-            [ldc_u32!(0)]
-        ),
-        TyKind::Int(IntTy::I128) => call!(
-            CallSite::new_extern(
+                asm.alloc_string("op_Implicit"),
+                asm.sig([Type::Int(Int::U32)], Type::Int(Int::U128)),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            call!(asm.alloc_methodref(mref), [ldc_u32!(0)])
+        }
+        TyKind::Int(IntTy::I128) => {
+            let mref = MethodRef::new(
                 ClassRef::int_128(asm),
-                "op_Implicit".into(),
-                FnSig::new([Type::Int(Int::I32)].into(), Type::Int(Int::I128)),
-                true
-            ),
-            [ldc_i32!(0)]
-        ),
+                asm.alloc_string("op_Implicit"),
+                asm.sig([Type::Int(Int::I32)], Type::Int(Int::I128)),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            call!(asm.alloc_methodref(mref), [ldc_i32!(0)])
+        }
         _ => todo!("Can't get zero of {ty:?}"),
     }
 }
@@ -77,42 +78,48 @@ fn min(ty: Ty, asm: &mut Assembly) -> CILNode {
         TyKind::Int(IntTy::I32) => ldc_i32!(i32::MIN),
         TyKind::Uint(UintTy::U64) => ldc_u64!(u64::MIN),
         TyKind::Int(IntTy::I64) => ldc_i64!(i64::MIN),
-        TyKind::Uint(UintTy::Usize) => call!(
-            CallSite::new_extern(
+        TyKind::Uint(UintTy::Usize) => {
+            let mref = MethodRef::new(
                 ClassRef::usize_type(asm),
-                "get_MinValue".into(),
-                FnSig::new([].into(), Type::Int(Int::USize)),
-                true
-            ),
-            []
-        ),
-        TyKind::Int(IntTy::Isize) => call!(
-            CallSite::new_extern(
+                asm.alloc_string("get_MinValue"),
+                asm.sig([], Type::Int(Int::USize)),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            let cilnode = call!(asm.alloc_methodref(mref), []);
+            cilnode
+        }
+        TyKind::Int(IntTy::Isize) => {
+            let mref = MethodRef::new(
                 ClassRef::isize_type(asm),
-                "get_MinValue".into(),
-                FnSig::new([].into(), Type::Int(Int::ISize)),
-                true
-            ),
-            []
-        ),
-        TyKind::Uint(UintTy::U128) => call!(
-            CallSite::new_extern(
+                asm.alloc_string("get_MinValue"),
+                asm.sig([], Type::Int(Int::ISize)),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            let cilnode = call!(asm.alloc_methodref(mref), []);
+            cilnode
+        }
+        TyKind::Uint(UintTy::U128) => {
+            let mref = MethodRef::new(
                 ClassRef::uint_128(asm),
-                "get_MinValue".into(),
-                FnSig::new([].into(), Type::Int(Int::U128)),
-                true
-            ),
-            []
-        ),
-        TyKind::Int(IntTy::I128) => call!(
-            CallSite::new_extern(
+                asm.alloc_string("get_MinValue"),
+                asm.sig([], Type::Int(Int::U128)),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            call!(asm.alloc_methodref(mref), [])
+        }
+        TyKind::Int(IntTy::I128) => {
+            let mref = MethodRef::new(
                 ClassRef::int_128(asm),
-                "get_MinValue".into(),
-                FnSig::new([].into(), Type::Int(Int::I128)),
-                true
-            ),
-            []
-        ),
+                asm.alloc_string("get_MinValue"),
+                asm.sig([], Type::Int(Int::I128)),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            call!(asm.alloc_methodref(mref), [])
+        }
         _ => todo!("Can't get min of {ty:?}"),
     }
 }
@@ -126,42 +133,46 @@ fn max(ty: Ty, asm: &mut Assembly) -> CILNode {
         TyKind::Int(IntTy::I32) => ldc_i32!(i32::MAX),
         TyKind::Uint(UintTy::U64) => ldc_u64!(u64::MAX),
         TyKind::Int(IntTy::I64) => ldc_i64!(i64::MAX),
-        TyKind::Uint(UintTy::Usize) => call!(
-            CallSite::new_extern(
+        TyKind::Uint(UintTy::Usize) => {
+            let mref = MethodRef::new(
                 ClassRef::usize_type(asm),
-                "get_MaxValue".into(),
-                FnSig::new([].into(), Type::Int(Int::USize)),
-                true
-            ),
-            []
-        ),
-        TyKind::Int(IntTy::Isize) => call!(
-            CallSite::new_extern(
+                asm.alloc_string("get_MaxValue"),
+                asm.sig([], Type::Int(Int::USize)),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            call!(asm.alloc_methodref(mref), [])
+        }
+        TyKind::Int(IntTy::Isize) => {
+            let mref = MethodRef::new(
                 ClassRef::isize_type(asm),
-                "get_MaxValue".into(),
-                FnSig::new([].into(), Type::Int(Int::ISize)),
-                true
-            ),
-            []
-        ),
-        TyKind::Uint(UintTy::U128) => call!(
-            CallSite::new_extern(
+                asm.alloc_string("get_MaxValue"),
+                asm.sig([], Type::Int(Int::ISize)),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            call!(asm.alloc_methodref(mref), [])
+        }
+        TyKind::Uint(UintTy::U128) => {
+            let mref = MethodRef::new(
                 ClassRef::uint_128(asm),
-                "get_MaxValue".into(),
-                FnSig::new([].into(), Type::Int(Int::U128)),
-                true
-            ),
-            []
-        ),
-        TyKind::Int(IntTy::I128) => call!(
-            CallSite::new_extern(
+                asm.alloc_string("get_MaxValue"),
+                asm.sig([], Type::Int(Int::U128)),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            call!(asm.alloc_methodref(mref), [])
+        }
+        TyKind::Int(IntTy::I128) => {
+            let mref = MethodRef::new(
                 ClassRef::int_128(asm),
-                "get_MaxValue".into(),
-                FnSig::new([].into(), Type::Int(Int::I128)),
-                true
-            ),
-            []
-        ),
+                asm.alloc_string("get_MaxValue"),
+                asm.sig([], Type::Int(Int::I128)),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            call!(asm.alloc_methodref(mref), [])
+        }
         _ => todo!("Can't get max of {ty:?}"),
     }
 }
@@ -198,16 +209,18 @@ pub fn mul<'tcx>(
         }
         // Use 128 bit ints, not supported in mono.
         TyKind::Uint(UintTy::U64) => {
-            let mul = call!(
-                CallSite::new_extern(
-                    ClassRef::uint_128(ctx),
-                    "op_Multiply".into(),
-                    FnSig::new(
-                        [Type::Int(Int::U128), Type::Int(Int::U128)].into(),
-                        Type::Int(Int::U128)
-                    ),
-                    true
+            let op_mul = MethodRef::new(
+                ClassRef::uint_128(ctx),
+                ctx.alloc_string("op_Multiply"),
+                ctx.sig(
+                    [Type::Int(Int::U128), Type::Int(Int::U128)],
+                    Type::Int(Int::U128),
                 ),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            let mul = call!(
+                ctx.alloc_methodref(op_mul),
                 [
                     casts::int_to_int(
                         Type::Int(Int::U64),
@@ -223,16 +236,15 @@ pub fn mul<'tcx>(
                     )
                 ]
             );
+            let op_gt = MethodRef::new(
+                ClassRef::uint_128(ctx),
+                ctx.alloc_string("op_GreaterThan"),
+                ctx.sig([Type::Int(Int::U128), Type::Int(Int::U128)], Type::Bool),
+                MethodKind::Static,
+                vec![].into(),
+            );
             call!(
-                CallSite::new_extern(
-                    ClassRef::uint_128(ctx),
-                    "op_GreaterThan".into(),
-                    FnSig::new(
-                        [Type::Int(Int::U128), Type::Int(Int::U128)].into(),
-                        Type::Bool
-                    ),
-                    true
-                ),
+                ctx.alloc_methodref(op_gt),
                 [
                     mul.clone(),
                     casts::int_to_int(Type::Int(Int::U64), Type::Int(Int::U128), max(ty, ctx), ctx)
@@ -240,16 +252,18 @@ pub fn mul<'tcx>(
             )
         }
         TyKind::Int(IntTy::I64) => {
-            let mul = call!(
-                CallSite::new_extern(
-                    ClassRef::int_128(ctx),
-                    "op_Multiply".into(),
-                    FnSig::new(
-                        [Type::Int(Int::I128), Type::Int(Int::I128)].into(),
-                        Type::Int(Int::I128)
-                    ),
-                    true
+            let op_mul = MethodRef::new(
+                ClassRef::int_128(ctx),
+                ctx.alloc_string("op_Multiply"),
+                ctx.sig(
+                    [Type::Int(Int::I128), Type::Int(Int::I128)],
+                    Type::Int(Int::I128),
                 ),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            let mul = call!(
+                ctx.alloc_methodref(op_mul),
                 [
                     casts::int_to_int(
                         Type::Int(Int::I64),
@@ -265,31 +279,29 @@ pub fn mul<'tcx>(
                     )
                 ]
             );
+            let op_gt = MethodRef::new(
+                ClassRef::int_128(ctx),
+                ctx.alloc_string("op_GreaterThan"),
+                ctx.sig([Type::Int(Int::I128), Type::Int(Int::I128)], Type::Bool),
+                MethodKind::Static,
+                vec![].into(),
+            );
             let gt = call!(
-                CallSite::new_extern(
-                    ClassRef::int_128(ctx),
-                    "op_GreaterThan".into(),
-                    FnSig::new(
-                        [Type::Int(Int::I128), Type::Int(Int::I128)].into(),
-                        Type::Bool
-                    ),
-                    true
-                ),
+                ctx.alloc_methodref(op_gt),
                 [
                     mul.clone(),
                     casts::int_to_int(Type::Int(Int::I64), Type::Int(Int::I128), max(ty, ctx), ctx)
                 ]
             );
+            let op_lt = MethodRef::new(
+                ClassRef::int_128(ctx),
+                ctx.alloc_string("op_LessThan"),
+                ctx.sig([Type::Int(Int::I128), Type::Int(Int::I128)], Type::Bool),
+                MethodKind::Static,
+                vec![].into(),
+            );
             let lt = call!(
-                CallSite::new_extern(
-                    ClassRef::int_128(ctx),
-                    "op_LessThan".into(),
-                    FnSig::new(
-                        [Type::Int(Int::I128), Type::Int(Int::I128)].into(),
-                        Type::Bool
-                    ),
-                    true
-                ),
+                ctx.alloc_methodref(op_lt),
                 [
                     mul.clone(),
                     casts::int_to_int(Type::Int(Int::I64), Type::Int(Int::I128), min(ty, ctx), ctx)
@@ -299,16 +311,18 @@ pub fn mul<'tcx>(
         }
 
         TyKind::Uint(UintTy::Usize) => {
-            let mul = call!(
-                CallSite::new_extern(
-                    ClassRef::uint_128(ctx),
-                    "op_Multiply".into(),
-                    FnSig::new(
-                        [Type::Int(Int::U128), Type::Int(Int::U128)].into(),
-                        Type::Int(Int::U128)
-                    ),
-                    true
+            let op_mul = MethodRef::new(
+                ClassRef::uint_128(ctx),
+                ctx.alloc_string("op_Multiply"),
+                ctx.sig(
+                    [Type::Int(Int::U128), Type::Int(Int::U128)],
+                    Type::Int(Int::U128),
                 ),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            let mul = call!(
+                ctx.alloc_methodref(op_mul),
                 [
                     casts::int_to_int(
                         Type::Int(Int::USize),
@@ -324,17 +338,15 @@ pub fn mul<'tcx>(
                     )
                 ]
             );
-
+            let op_gt = MethodRef::new(
+                ClassRef::uint_128(ctx),
+                ctx.alloc_string("op_GreaterThan"),
+                ctx.sig([Type::Int(Int::U128), Type::Int(Int::U128)], Type::Bool),
+                MethodKind::Static,
+                vec![].into(),
+            );
             call!(
-                CallSite::new_extern(
-                    ClassRef::uint_128(ctx),
-                    "op_GreaterThan".into(),
-                    FnSig::new(
-                        [Type::Int(Int::U128), Type::Int(Int::U128)].into(),
-                        Type::Bool
-                    ),
-                    true
-                ),
+                ctx.alloc_methodref(op_gt),
                 [
                     mul.clone(),
                     casts::int_to_int(
@@ -347,16 +359,18 @@ pub fn mul<'tcx>(
             )
         }
         TyKind::Int(IntTy::Isize) => {
-            let mul = call!(
-                CallSite::new_extern(
-                    ClassRef::int_128(ctx),
-                    "op_Multiply".into(),
-                    FnSig::new(
-                        [Type::Int(Int::I128), Type::Int(Int::I128)].into(),
-                        Type::Int(Int::I128)
-                    ),
-                    true
+            let op_mul = MethodRef::new(
+                ClassRef::int_128(ctx),
+                ctx.alloc_string("op_Multiply"),
+                ctx.sig(
+                    [Type::Int(Int::I128), Type::Int(Int::I128)],
+                    Type::Int(Int::I128),
                 ),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            let mul = call!(
+                ctx.alloc_methodref(op_mul),
                 [
                     casts::int_to_int(
                         Type::Int(Int::ISize),
@@ -372,16 +386,15 @@ pub fn mul<'tcx>(
                     )
                 ]
             );
+            let op_gt = MethodRef::new(
+                ClassRef::int_128(ctx),
+                ctx.alloc_string("op_GreaterThan"),
+                ctx.sig([Type::Int(Int::I128), Type::Int(Int::I128)], Type::Bool),
+                MethodKind::Static,
+                vec![].into(),
+            );
             let gt = call!(
-                CallSite::new_extern(
-                    ClassRef::int_128(ctx),
-                    "op_GreaterThan".into(),
-                    FnSig::new(
-                        [Type::Int(Int::I128), Type::Int(Int::I128)].into(),
-                        Type::Bool
-                    ),
-                    true
-                ),
+                ctx.alloc_methodref(op_gt),
                 [
                     mul.clone(),
                     casts::int_to_int(
@@ -392,16 +405,15 @@ pub fn mul<'tcx>(
                     )
                 ]
             );
+            let op_lt = MethodRef::new(
+                ClassRef::int_128(ctx),
+                ctx.alloc_string("op_LessThan"),
+                ctx.sig([Type::Int(Int::I128), Type::Int(Int::I128)], Type::Bool),
+                MethodKind::Static,
+                vec![].into(),
+            );
             let lt = call!(
-                CallSite::new_extern(
-                    ClassRef::int_128(ctx),
-                    "op_LessThan".into(),
-                    FnSig::new(
-                        [Type::Int(Int::I128), Type::Int(Int::I128)].into(),
-                        Type::Bool
-                    ),
-                    true
-                ),
+                ctx.alloc_methodref(op_lt),
                 [
                     mul.clone(),
                     casts::int_to_int(

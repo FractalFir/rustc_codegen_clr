@@ -6,7 +6,7 @@ use super::field::StaticFieldIdx;
 use super::{bimap::IntoBiMapIndex, Assembly, Const, Int, MethodRefIdx, SigIdx, TypeIdx};
 use super::{ClassRef, FieldIdx, Float};
 use crate::cil_node::CILNode as V1Node;
-use crate::v2::{MethodRef, Type};
+use crate::v2::Type;
 
 #[derive(Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct NodeIdx(BiMapIndex);
@@ -736,17 +736,7 @@ impl CILNode {
                         asm.alloc_node(node)
                     })
                     .collect();
-                let sig = asm.alloc_sig(callargs.site.signature().clone());
-                let generics: Box<[_]> = (callargs.site.generics()).into();
-                let class = callargs.site.class().unwrap_or_else(|| *asm.main_module());
-                let name = asm.alloc_string(callargs.site.name());
-                let method_ref = if callargs.site.is_static() {
-                    MethodRef::new(class, name, sig, MethodKind::Static, generics)
-                } else {
-                    MethodRef::new(class, name, sig, MethodKind::Instance, generics)
-                };
-                let method_ref = asm.alloc_methodref(method_ref);
-                Self::Call(Box::new((method_ref, args)))
+                Self::Call(Box::new((callargs.site, args)))
             }
             V1Node::CallVirt(callargs) => {
                 let args: Box<[_]> = callargs
@@ -757,14 +747,8 @@ impl CILNode {
                         asm.alloc_node(node)
                     })
                     .collect();
-                let sig = asm.alloc_sig(callargs.site.signature().clone());
-                let generics: Box<[_]> = (callargs.site.generics()).into();
-                let class = callargs.site.class().unwrap_or_else(|| *asm.main_module());
-                let name = asm.alloc_string(callargs.site.name());
-                assert!(!callargs.site.is_static());
-                let method_ref = MethodRef::new(class, name, sig, MethodKind::Virtual, generics);
-                let method_ref = asm.alloc_methodref(method_ref);
-                Self::Call(Box::new((method_ref, args)))
+
+                Self::Call(Box::new((callargs.site, args)))
             }
             V1Node::NewObj(callargs) => {
                 let args: Box<[_]> = callargs
@@ -775,19 +759,7 @@ impl CILNode {
                         asm.alloc_node(node)
                     })
                     .collect();
-                let sig = asm.alloc_sig(callargs.site.signature().clone());
-                let generics: Box<[_]> = (callargs.site.generics()).into();
-                let class = callargs.site.class().unwrap_or_else(|| *asm.main_module());
-                let name = asm.alloc_string(callargs.site.name());
-                assert!(
-                    !callargs.site.is_static(),
-                    "Newobj site invalid(is static):{:?}",
-                    callargs.site
-                );
-                let method_ref =
-                    MethodRef::new(class, name, sig, MethodKind::Constructor, generics);
-                let method_ref = asm.alloc_methodref(method_ref);
-                Self::Call(Box::new((method_ref, args)))
+                Self::Call(Box::new((callargs.site, args)))
             }
             // Special
             V1Node::GetException => Self::GetException,
@@ -851,20 +823,7 @@ impl CILNode {
             }
             V1Node::AddressOfStaticField(sfld) => Self::LdStaticFieldAdress(asm.alloc_sfld(**sfld)),
             V1Node::LDStaticField(sfld) => Self::LdStaticField(asm.alloc_sfld(**sfld)),
-            V1Node::LDFtn(site) => {
-                let sig = asm.alloc_sig(site.signature().clone());
-                let generics: Box<[_]> = (site.generics()).into();
-                let class = site.class().unwrap_or_else(|| *asm.main_module());
-                let name = asm.alloc_string(site.name());
-
-                let method_ref = if site.is_static() {
-                    MethodRef::new(class, name, sig, MethodKind::Static, generics)
-                } else {
-                    MethodRef::new(class, name, sig, MethodKind::Instance, generics)
-                };
-                let method_ref = asm.alloc_methodref(method_ref);
-                Self::LdFtn(method_ref)
-            }
+            V1Node::LDFtn(method_ref) => Self::LdFtn(*method_ref),
             V1Node::Volatile(inner) => {
                 let mut tmp = Self::from_v1(inner, asm);
                 if let Self::LdInd { volitale, .. } = &mut tmp {

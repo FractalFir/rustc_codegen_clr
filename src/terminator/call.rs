@@ -14,9 +14,9 @@ use cilly::{
     cil_node::{CILNode, CallOpArgs},
     cil_root::CILRoot,
     conv_usize, ld_field, ldc_i32, size_of,
-    v2::{ClassRef, FieldDesc, FnSig, Int},
+    v2::{cilnode::MethodKind, ClassRef, FieldDesc, FnSig, Int},
 };
-use cilly::{call_site::CallSite, Type};
+use cilly::{v2::MethodRef, Type};
 use rustc_middle::ty::InstanceKind;
 use rustc_middle::{
     mir::{Operand, Place},
@@ -56,15 +56,17 @@ fn call_managed<'tcx>(
 
     if argument_count == 0 {
         let ret = cilly::Type::Void;
-        let call_site = CallSite::new(
-            Some(ctx.alloc_class_ref(tpe)),
-            managed_fn_name,
-            FnSig::new(Box::new([]), ret),
-            true,
+        let call_site = MethodRef::new(
+            ctx.alloc_class_ref(tpe),
+            ctx.alloc_string(managed_fn_name),
+            ctx.sig([], ret),
+            MethodKind::Static,
+            vec![].into(),
         );
+        let call_site = ctx.alloc_methodref(call_site);
         if *signature.output() == cilly::Type::Void {
             CILRoot::Call {
-                site: Box::new(call_site),
+                site: call_site,
                 args: [].into(),
             }
         } else {
@@ -77,15 +79,21 @@ fn call_managed<'tcx>(
         for arg in args {
             call_args.push(crate::operand::handle_operand(&arg.node, ctx));
         }
-        let call = CallSite::new(
-            Some(ctx.alloc_class_ref(tpe)),
-            managed_fn_name,
-            signature.clone(),
-            is_static,
+        let call = MethodRef::new(
+            ctx.alloc_class_ref(tpe),
+            ctx.alloc_string(managed_fn_name),
+            ctx.alloc_sig(signature.clone()),
+            if is_static {
+                MethodKind::Static
+            } else {
+                MethodKind::Instance
+            },
+            vec![].into(),
         );
+        let call = ctx.alloc_methodref(call);
         if *signature.output() == cilly::Type::Void {
             CILRoot::Call {
-                site: Box::new(call),
+                site: call,
                 args: call_args.into(),
             }
         } else {
@@ -122,15 +130,17 @@ fn callvirt_managed<'tcx>(
         .expect("Can't get the function signature");
     if argument_count == 0 {
         let ret = cilly::Type::Void;
-        let call = CallSite::new(
-            Some(ctx.alloc_class_ref(tpe)),
-            managed_fn_name,
-            FnSig::new(Box::new([]), ret),
-            true,
+        let call = MethodRef::new(
+            ctx.alloc_class_ref(tpe),
+            ctx.alloc_string(managed_fn_name),
+            ctx.sig([], ret),
+            MethodKind::Static,
+            vec![].into(),
         );
+        let call = ctx.alloc_methodref(call);
         if *signature.output() == cilly::Type::Void {
             CILRoot::CallVirt {
-                site: Box::new(call),
+                site: call,
                 args: [].into(),
             }
         } else {
@@ -143,19 +153,28 @@ fn callvirt_managed<'tcx>(
         for arg in args {
             call_args.push(crate::operand::handle_operand(&arg.node, ctx));
         }
-        let call = CallSite::new(
-            Some(ctx.alloc_class_ref(tpe)),
-            managed_fn_name,
-            signature.clone(),
-            is_static,
+        let call = MethodRef::new(
+            ctx.alloc_class_ref(tpe),
+            ctx.alloc_string(managed_fn_name),
+            ctx.alloc_sig(signature.clone()),
+            if is_static {
+                MethodKind::Static
+            } else {
+                MethodKind::Instance
+            },
+            vec![].into(),
         );
         if *signature.output() == cilly::Type::Void {
             CILRoot::CallVirt {
-                site: Box::new(call),
+                site: ctx.alloc_methodref(call),
                 args: call_args.into(),
             }
         } else {
-            crate::place::place_set(destination, call_virt!(call, call_args), ctx)
+            crate::place::place_set(
+                destination,
+                call_virt!(ctx.alloc_methodref(call), call_args),
+                ctx,
+            )
         }
     }
 }
@@ -184,15 +203,17 @@ fn call_ctor<'tcx>(
     let tpe = ctx.alloc_class_ref(tpe);
     // If no arguments, inputs don't have to be handled, so a simpler call handling is used.
     if argument_count == 0 {
+        let mref = MethodRef::new(
+            tpe,
+            ctx.alloc_string(".ctor"),
+            ctx.sig([Type::ClassRef(tpe)], Type::Void),
+            MethodKind::Constructor,
+            vec![].into(),
+        );
         crate::place::place_set(
             destination,
             CILNode::NewObj(Box::new(CallOpArgs {
-                site: CallSite::boxed(
-                    Some(tpe),
-                    ".ctor".into(),
-                    FnSig::new(Box::new([Type::ClassRef(tpe)]), Type::Void),
-                    false,
-                ),
+                site: ctx.alloc_methodref(mref),
                 args: [].into(),
             })),
             ctx,
@@ -209,16 +230,22 @@ fn call_ctor<'tcx>(
             })
             .collect();
         inputs.insert(0, Type::ClassRef(tpe));
-        let sig = FnSig::new(inputs.into(), cilly::Type::Void);
+        let sig = ctx.sig(inputs, cilly::Type::Void);
         let mut call = Vec::new();
         for arg in args {
             call.push(crate::operand::handle_operand(&arg.node, ctx));
         }
-
+        let ctor = MethodRef::new(
+            tpe,
+            ctx.alloc_string(".ctor"),
+            sig,
+            MethodKind::Constructor,
+            vec![].into(),
+        );
         crate::place::place_set(
             destination,
             CILNode::NewObj(Box::new(CallOpArgs {
-                site: CallSite::boxed(Some(tpe), ".ctor".into(), sig, false),
+                site: ctx.alloc_methodref(ctor),
                 args: call.into(),
             })),
             ctx,
@@ -281,12 +308,19 @@ pub fn call_closure<'tcx>(
     //panic!("Last arg:{last_arg:?}last_arg_type:{last_arg_type:?}");
     //assert_eq!(args.len(),signature.inputs().len(),"CALL SIGNATURE ARG COUNT MISMATCH!");
     let is_void = matches!(sig.output(), cilly::Type::Void);
-    let call = CallSite::new(None, function_name.into(), sig, true);
-    // Hande the call itself
 
+    let call = MethodRef::new(
+        *ctx.main_module(),
+        ctx.alloc_string(function_name),
+        ctx.alloc_sig(sig),
+        MethodKind::Static,
+        vec![].into(),
+    );
+    // Hande the call itself
+    let call = ctx.alloc_methodref(call);
     if is_void {
         CILRoot::Call {
-            site: Box::new(call),
+            site: call,
             args: call_args.into(),
         }
     } else {
@@ -554,15 +588,22 @@ pub fn call<'tcx>(
     if let InstanceKind::DropGlue(_def, None) = instance.def {
         return CILRoot::Nop;
     };
-    let call_site = CallSite::new(None, function_name, signature, true);
+    let call_site = MethodRef::new(
+        *ctx.main_module(),
+        ctx.alloc_string(function_name),
+        ctx.alloc_sig(signature),
+        MethodKind::Static,
+        vec![].into(),
+    );
     // Hande
+    let site = ctx.alloc_methodref(call_site);
     if is_void {
         CILRoot::Call {
-            site: Box::new(call_site),
+            site,
             args: call_args.into(),
         }
     } else {
-        let res_calc = call!(call_site, call_args);
+        let res_calc = call!(site, call_args);
         crate::place::place_set(destination, res_calc, ctx)
     }
 }

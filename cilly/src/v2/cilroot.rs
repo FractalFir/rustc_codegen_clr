@@ -2,10 +2,9 @@ use serde::{Deserialize, Serialize};
 
 use super::{
     bimap::{BiMapIndex, IntoBiMapIndex},
-    cilnode::MethodKind,
     field::FieldIdx,
-    Assembly, CILNode, Float, Int, MethodRef, MethodRefIdx, NodeIdx, SigIdx, StaticFieldIdx,
-    StringIdx, Type, TypeIdx,
+    Assembly, CILNode, Float, Int, MethodRefIdx, NodeIdx, SigIdx, StaticFieldIdx, StringIdx, Type,
+    TypeIdx,
 };
 use crate::cil_root::CILRoot as V1Root;
 //use crate::cil_node::CILNode as V1Node;
@@ -322,17 +321,7 @@ impl CILRoot {
                         asm.alloc_node(node)
                     })
                     .collect();
-                let sig = asm.alloc_sig(site.signature().clone());
-                let generics: Box<[_]> = (site.generics()).into();
-                let class = site.class().unwrap_or_else(|| *asm.main_module());
-                let name = asm.alloc_string(site.name());
-                let method_ref = if site.is_static() {
-                    MethodRef::new(class, name, sig, MethodKind::Static, generics)
-                } else {
-                    MethodRef::new(class, name, sig, MethodKind::Instance, generics)
-                };
-                let method_ref = asm.alloc_methodref(method_ref);
-                Self::Call(Box::new((method_ref, args)))
+                Self::Call(Box::new((*site, args)))
             }
             V1Root::CallVirt { site, args } => {
                 let args: Box<[_]> = args
@@ -342,14 +331,7 @@ impl CILRoot {
                         asm.alloc_node(node)
                     })
                     .collect();
-                let sig = asm.alloc_sig(site.signature().clone());
-                let generics: Box<[_]> = (site.generics()).into();
-                let class = site.class().unwrap_or_else(|| *asm.main_module());
-                let name = asm.alloc_string(site.name());
-                assert!(!site.is_static());
-                let method_ref = MethodRef::new(class, name, sig, MethodKind::Virtual, generics);
-                let method_ref = asm.alloc_methodref(method_ref);
-                Self::Call(Box::new((method_ref, args)))
+                Self::Call(Box::new((*site, args)))
             }
             V1Root::SetField { value, addr, desc } => {
                 let value = CILNode::from_v1(value, asm);

@@ -4,7 +4,7 @@ use cilly::{
     asm::Assembly,
     basic_block::{BasicBlock, Handler},
     call,
-    call_site::CallSite,
+    call_site::MethodRefIdx,
     call_virt,
     cil_node::{CILNode, CallOpArgs},
     cil_root::CILRoot,
@@ -85,7 +85,7 @@ add_method_from_trees!(
                 }
                 .into(),
                 CILRoot::Call {
-                    site: Box::new(CallSite::new_extern(
+                    site: Box::new(MethodRefIdx::new_extern(
                         ClassRef::console(),
                         "Write".into(),
                         FnSig::new(&[ClassRef::string_type().into()], Type::Void),
@@ -95,7 +95,7 @@ add_method_from_trees!(
                 }
                 .into(),
                 CILRoot::Call {
-                    site: Box::new(CallSite::new_extern(
+                    site: Box::new(MethodRefIdx::new_extern(
                         ClassRef::console(),
                         "Write".into(),
                         FnSig::new(&[Type::Int(Int::U64)], Type::Void),
@@ -105,7 +105,7 @@ add_method_from_trees!(
                 }
                 .into(),
                 CILRoot::Call {
-                    site: Box::new(CallSite::new_extern(
+                    site: Box::new(MethodRefIdx::new_extern(
                         ClassRef::console(),
                         "Write".into(),
                         FnSig::new(&[ClassRef::string_type().into()], Type::Void),
@@ -115,7 +115,7 @@ add_method_from_trees!(
                 }
                 .into(),
                 CILRoot::Call {
-                    site: Box::new(CallSite::new_extern(
+                    site: Box::new(MethodRefIdx::new_extern(
                         ClassRef::console(),
                         "WriteLine".into(),
                         FnSig::new(&[Type::Int(Int::U64)], Type::Void),
@@ -125,7 +125,7 @@ add_method_from_trees!(
                 }
                 .into(),
                 CILRoot::Throw(CILNode::NewObj(Box::new(CallOpArgs {
-                    site: CallSite::boxed(
+                    site: MethodRefIdx::boxed(
                         Some(
                             ClassRef::new(
                                 Some("System.Runtime"),
@@ -256,7 +256,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
                     CILRoot::STLoc {
                         local: 0,
                         tree: call!(
-                            CallSite::aligned_alloc(),
+                            MethodRefIdx::aligned_alloc(),
                             [CILNode::LDArg(0), CILNode::LDArg(1)]
                         )
                         .cast_ptr(ptr!(Type::Int(Int::U8))),
@@ -335,7 +335,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
                         CILRoot::STLoc {
                             local: 0,
                             tree: call!(
-                                CallSite::aligned_alloc(),
+                                MethodRefIdx::aligned_alloc(),
                                 [CILNode::LDArg(0), CILNode::LDArg(1)]
                             ),
                         }
@@ -367,7 +367,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
             vec![BasicBlock::new(
                 vec![CILRoot::Ret {
                     tree: call!(
-                        CallSite::aligned_alloc(),
+                        MethodRefIdx::aligned_alloc(),
                         [CILNode::LDArg(0), CILNode::LDArg(1)]
                     )
                     .cast_ptr(ptr!(Type::Int(Int::U8))),
@@ -397,7 +397,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
         vec![BasicBlock::new(
             vec![
                 CILRoot::Call {
-                    site: Box::new(CallSite::new_extern(
+                    site: Box::new(MethodRefIdx::new_extern(
                         native_mem,
                         "AlignedFree".into(),
                         FnSig::new(&[Type::Ptr(Type::Void.into())], Type::Void),
@@ -428,7 +428,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
         vec![BasicBlock::new(
             vec![
                 CILRoot::Call {
-                    site: Box::new(CallSite::new_extern(
+                    site: Box::new(MethodRefIdx::new_extern(
                         marshal,
                         "FreeHGlobal".into(),
                         FnSig::new(&[Type::Int(Int::ISize)], Type::Void),
@@ -473,7 +473,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
                 BasicBlock::new(
                     vec![CILRoot::Ret {
                         tree: call!(
-                            CallSite::realloc(),
+                            MethodRefIdx::realloc(),
                             [
                                 CILNode::LDArg(0).cast_ptr(ptr!(Type::Void)),
                                 CILNode::LDArg(3),
@@ -499,7 +499,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
             vec![BasicBlock::new(
                 vec![CILRoot::Ret {
                     tree: call!(
-                        CallSite::realloc(),
+                        MethodRefIdx::realloc(),
                         [
                             CILNode::LDArg(0).cast_ptr(ptr!(Type::Void)),
                             CILNode::LDArg(3),
@@ -552,7 +552,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
             "thread_results".into(),
         )),
         value: CILNode::NewObj(Box::new(CallOpArgs {
-            site: Box::new(CallSite::new_extern(
+            site: Box::new(MethodRefIdx::new_extern(
                 ClassRef::dictionary(Type::Int(Int::I32), Type::Int(Int::ISize)),
                 ".ctor".into(),
                 FnSig::new(
@@ -631,7 +631,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
         vec![BasicBlock::new(
             vec![
                 CILRoot::Call {
-                    site: Box::new(CallSite::new(
+                    site: Box::new(MethodRefIdx::new(
                         None,
                         ".tcctor".into(),
                         FnSig::new(&[], Type::Void),
@@ -671,7 +671,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
                 .into(),
                 source_info!(),
                 CILRoot::Call {
-                    site: Box::new(CallSite::new_extern(
+                    site: Box::new(MethodRefIdx::new_extern(
                         ClassRef::dictionary(Type::Int(Int::I32), Type::Int(Int::ISize)),
                         "set_Item".into(),
                         FnSig::new(
@@ -697,7 +697,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
                             "thread_results".into(),
                         ))),
                         CILNode::CallVirt(Box::new(CallOpArgs {
-                            site: Box::new(CallSite::new_extern(
+                            site: Box::new(MethodRefIdx::new_extern(
                                 ClassRef::thread(),
                                 "get_ManagedThreadId".into(),
                                 FnSig::new(
@@ -707,7 +707,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
                                 false,
                             )),
                             args: [call!(
-                                CallSite::new_extern(
+                                MethodRefIdx::new_extern(
                                     ClassRef::thread(),
                                     "get_CurrentThread".into(),
                                     FnSig::new([], Type::ClassRef(Box::new(ClassRef::thread())),),
@@ -833,7 +833,7 @@ add_method_from_trees!(
     vec![BasicBlock::new(
         vec![CILRoot::Throw(CILNode::NewObj(Box::new(CallOpArgs {
             args: Box::new([conv_usize!(CILNode::LDArg(0))]),
-            site: Box::new(CallSite::new(
+            site: Box::new(MethodRefIdx::new(
                 Some(ClassRef::new::<&str, _>(None, "RustException").with_valuetype(false),),
                 ".ctor".into(),
                 FnSig::new(
@@ -872,7 +872,7 @@ add_method_from_trees!(
                     args: [CILNode::NewObj(Box::new(CallOpArgs {
                         args: [
                             CILNode::NewObj(Box::new(CallOpArgs {
-                                site: Box::new(CallSite::new(
+                                site: Box::new(MethodRefIdx::new(
                                     Some(unmanaged_start()),
                                     ".ctor".into(),
                                     FnSig::new(
@@ -890,7 +890,7 @@ add_method_from_trees!(
                                 )),
                                 args: [CILNode::LDArg(2), CILNode::LDArg(3),].into()
                             })),
-                            CILNode::LDFtn(Box::new(CallSite::new(
+                            CILNode::LDFtn(Box::new(MethodRefIdx::new(
                                 Some(unmanaged_start()),
                                 "Start".into(),
                                 FnSig::new(
@@ -901,7 +901,7 @@ add_method_from_trees!(
                             )))
                         ]
                         .into(),
-                        site: Box::new(CallSite::new(
+                        site: Box::new(MethodRefIdx::new(
                             Some(ClassRef::thread_start()),
                             ".ctor".into(),
                             FnSig::new(
@@ -916,7 +916,7 @@ add_method_from_trees!(
                         )),
                     }))]
                     .into(),
-                    site: Box::new(CallSite::new(
+                    site: Box::new(MethodRefIdx::new(
                         Some(ClassRef::thread()),
                         ".ctor".into(),
                         FnSig::new(
@@ -932,7 +932,7 @@ add_method_from_trees!(
             }
             .into(),
             CILRoot::CallVirt {
-                site: Box::new(CallSite::new(
+                site: Box::new(MethodRefIdx::new(
                     Some(ClassRef::thread()),
                     "Start".into(),
                     FnSig::new(&[Type::ClassRef(Box::new(ClassRef::thread()))], Type::Void),
@@ -1020,7 +1020,7 @@ add_method_from_trees!(
             CILRoot::STLoc {
                 local: 0,
                 tree: call!(
-                    CallSite::new_extern(
+                    MethodRefIdx::new_extern(
                         ClassRef::gc_handle(),
                         "FromIntPtr".into(),
                         FnSig::new(
@@ -1034,7 +1034,7 @@ add_method_from_trees!(
             }
             .into(),
             CILRoot::Call {
-                site: Box::new(CallSite::new_extern(
+                site: Box::new(MethodRefIdx::new_extern(
                     ClassRef::gc_handle(),
                     "Free".into(),
                     FnSig::new(
@@ -1190,7 +1190,7 @@ add_method_from_trees!(
                 BasicBlock::new(
                     vec![
                         CILRoot::Call {
-                            site: Box::new(CallSite::new_extern(
+                            site: Box::new(MethodRefIdx::new_extern(
                                 ClassRef::console(),
                                 "WriteLine".into(),
                                 FnSig::new(
@@ -1211,7 +1211,7 @@ add_method_from_trees!(
                             args: Box::new([
                                 CILNode::LDArg(1),
                                 call!(
-                                    CallSite::builtin(
+                                    MethodRefIdx::builtin(
                                         "exception_to_native".into(),
                                         FnSig::new(
                                             vec![Type::ClassRef(Box::new(
@@ -1272,7 +1272,7 @@ add_method_from_trees!(
                 .into(),
                 source_info!(),
                 CILRoot::CallVirt {
-                    site: Box::new(CallSite::new_extern(
+                    site: Box::new(MethodRefIdx::new_extern(
                         ClassRef::thread(),
                         "Join".into(),
                         FnSig::new([Type::ClassRef(Box::new(ClassRef::thread()))], Type::Void),
@@ -1292,7 +1292,7 @@ add_method_from_trees!(
                 CILRoot::STIndPtr(
                     CILNode::LDArg(1),
                     call_virt!(
-                        CallSite::new_extern(
+                        MethodRefIdx::new_extern(
                             ClassRef::dictionary(Type::Int(Int::I32), Type::Int(Int::ISize)),
                             "get_Item".into(),
                             FnSig::new(
@@ -1317,7 +1317,7 @@ add_method_from_trees!(
                                 "thread_results".into()
                             ))),
                             call_virt!(
-                                CallSite::new_extern(
+                                MethodRefIdx::new_extern(
                                     ClassRef::thread(),
                                     "get_ManagedThreadId".into(),
                                     FnSig::new(
@@ -1351,7 +1351,7 @@ add_method_from_trees!(
 
 fn shr_u128(value: CILNode, shift: CILNode) -> CILNode {
     call!(
-        CallSite::boxed(
+        MethodRefIdx::boxed(
             ClassRef::uint_128(asm).into(),
             "op_RightShift".into(),
             FnSig::new(
@@ -1365,7 +1365,7 @@ fn shr_u128(value: CILNode, shift: CILNode) -> CILNode {
 }
 fn or_u128(lhs: CILNode, rhs: CILNode) -> CILNode {
     call!(
-        CallSite::boxed(
+        MethodRefIdx::boxed(
             ClassRef::uint_128(asm).into(),
             "op_BitwiseOr".into(),
             FnSig::new(
@@ -1379,7 +1379,7 @@ fn or_u128(lhs: CILNode, rhs: CILNode) -> CILNode {
 }
 fn and_u128(lhs: CILNode, rhs: CILNode) -> CILNode {
     call!(
-        CallSite::boxed(
+        MethodRefIdx::boxed(
             ClassRef::uint_128(asm).into(),
             "op_BitwiseAnd".into(),
             FnSig::new(
@@ -1393,7 +1393,7 @@ fn and_u128(lhs: CILNode, rhs: CILNode) -> CILNode {
 }
 fn shl_u128(value: CILNode, shift: CILNode) -> CILNode {
     call!(
-        CallSite::boxed(
+        MethodRefIdx::boxed(
             ClassRef::uint_128(asm).into(),
             "op_LeftShift".into(),
             FnSig::new(

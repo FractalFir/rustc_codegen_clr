@@ -1,10 +1,9 @@
 use crate::{assembly::MethodCompileCtx, r#type::fat_ptr_to};
 use cilly::{
     call,
-    call_site::CallSite,
     cil_node::CILNode,
     conv_usize, ld_field, ldc_u32, ldc_u64,
-    v2::{FieldDesc, FnSig, Int},
+    v2::{cilnode::MethodKind, FieldDesc, Int, MethodRef},
     Type,
 };
 use rustc_middle::{
@@ -157,16 +156,16 @@ fn place_elem_get<'a>(
                     let element = ctx.type_from_cache(element);
                     let array_type = ctx.type_from_cache(curr_ty);
                     let array_dotnet = array_type.as_class_ref().expect("Non array type");
+                    let arr_ref = ctx.nref(array_type);
+                    let mref = MethodRef::new(
+                        array_dotnet,
+                        ctx.alloc_string("get_Item"),
+                        ctx.sig([arr_ref, Type::Int(Int::USize)], element),
+                        MethodKind::Instance,
+                        vec![].into(),
+                    );
                     call!(
-                        CallSite::new(
-                            Some(array_dotnet),
-                            "get_Item".into(),
-                            FnSig::new(
-                                [ctx.nref(array_type), Type::Int(Int::USize)].into(),
-                                element
-                            ),
-                            false,
-                        ),
+                        ctx.alloc_methodref(mref),
                         [addr_calc, CILNode::ZeroExtendToUSize(index.into())]
                     )
                 }
@@ -222,20 +221,20 @@ fn place_elem_get<'a>(
                     let array_type = ctx.type_from_cache(curr_ty);
                     let array_dotnet = array_type.as_class_ref().expect("Non array type");
                     //eprintln!("WARNING: ConstantIndex has required min_length of {min_length}, but bounds checking on const access not supported yet!");
+                    let arr_ref = ctx.nref(array_type);
                     if *from_end {
                         todo!("Can't index array from end!");
                     } else {
                         let index = CILNode::LdcU64(*offset);
+                        let mref = MethodRef::new(
+                            array_dotnet,
+                            ctx.alloc_string("get_Item"),
+                            ctx.sig([arr_ref, Type::Int(Int::USize)], element),
+                            MethodKind::Instance,
+                            vec![].into(),
+                        );
                         call!(
-                            CallSite::new(
-                                Some(array_dotnet),
-                                "get_Item".into(),
-                                FnSig::new(
-                                    [ctx.nref(array_type), Type::Int(Int::USize)].into(),
-                                    element
-                                ),
-                                false,
-                            ),
+                            ctx.alloc_methodref(mref),
                             [addr_calc, CILNode::ZeroExtendToUSize(index.into())]
                         )
                     }

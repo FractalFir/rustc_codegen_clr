@@ -5,10 +5,9 @@ use crate::{
 };
 use cilly::{
     call,
-    call_site::CallSite,
     cil_node::CILNode,
     ldc_u32, ldc_u64,
-    v2::{Assembly, ClassRef, ClassRefIdx, FnSig, Int},
+    v2::{cilnode::MethodKind, Assembly, ClassRef, ClassRefIdx, Int, MethodRef},
     Type,
 };
 use rustc_middle::ty::{AdtDef, ConstKind, GenericArg, ParamEnv, Ty, TyCtxt, TyKind};
@@ -23,15 +22,16 @@ pub struct DotnetArray {
 #[must_use]
 pub fn max_value(tpe: &Type, asm: &mut Assembly) -> CILNode {
     match tpe {
-        Type::Int(Int::USize) => call!(
-            CallSite::new_extern(
+        Type::Int(Int::USize) => {
+            let mref = MethodRef::new(
                 ClassRef::usize_type(asm),
-                "get_MaxValue".into(),
-                FnSig::new(Box::new([]), Type::Int(Int::USize)),
-                true
-            ),
-            []
-        ),
+                asm.alloc_string("get_MaxValue"),
+                asm.sig([], Type::Int(Int::USize)),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            call!(asm.alloc_methodref(mref), [])
+        }
         Type::Int(Int::U64) => ldc_u64!(u64::MAX),
         Type::Int(Int::U32) => ldc_u32!(u32::MAX),
         _ => todo!("Can't get the max value of {tpe:?}"),

@@ -2,7 +2,6 @@
 #![allow(clippy::module_name_repetitions)]
 use cilly::{
     asm::DEAD_CODE_ELIMINATION,
-    call_site::CallSite,
     conv_usize,
     libc_fns::{self, LIBC_FNS, LIBC_MODIFIES_ERRNO},
     v2::{
@@ -11,6 +10,7 @@ use cilly::{
         Assembly, BasicBlock, CILNode, CILRoot, ClassDef, ClassRef, Const, FnSig, IlasmFlavour,
         Int, MethodImpl, Type,
     },
+    MethodRef,
 };
 //use assembly::Assembly;
 use lazy_static::lazy_static;
@@ -258,6 +258,18 @@ fn main() {
             final_assembly.alloc_string("_Unwind_RaiseException"),
             Box::new(|_, asm| {
                 let rust_exception = asm.alloc_string("RustException");
+                let exception_class =
+                    asm.alloc_class_ref(ClassRef::new(rust_exception, None, false, [].into()));
+                let exception_ctor = MethodRef::new(
+                    (asm.alloc_class_ref(ClassRef::new(rust_exception, None, false, [].into()))),
+                    asm.alloc_string(".ctor"),
+                    asm.sig(
+                        ([Type::ClassRef(exception_class), Type::Int(Int::USize)]),
+                        Type::Void,
+                    ),
+                    MethodKind::Constructor,
+                    vec![].into(),
+                );
                 MethodImpl::MethodBody {
                     blocks: vec![cilly::v2::BasicBlock::from_v1(
                         &cilly::basic_block::BasicBlock::new(
@@ -267,30 +279,7 @@ fn main() {
                                         args: Box::new([conv_usize!(
                                             cilly::cil_node::CILNode::LDArg(0)
                                         )]),
-                                        site: Box::new(CallSite::new(
-                                            Some(asm.alloc_class_ref(ClassRef::new(
-                                                rust_exception,
-                                                None,
-                                                false,
-                                                [].into(),
-                                            ))),
-                                            ".ctor".into(),
-                                            FnSig::new(
-                                                Box::new([
-                                                    Type::ClassRef(asm.alloc_class_ref(
-                                                        ClassRef::new(
-                                                            rust_exception,
-                                                            None,
-                                                            false,
-                                                            [].into(),
-                                                        ),
-                                                    )),
-                                                    Type::Int(Int::USize),
-                                                ]),
-                                                Type::Void,
-                                            ),
-                                            false,
-                                        )),
+                                        site: asm.alloc_methodref(exception_ctor),
                                     },
                                 )),
                             )
@@ -608,7 +597,7 @@ fn override_errno(asm: &mut Assembly) {
                 vec![BasicBlock::new(
                     vec![CILRoot::Ret {
                         tree: cilly::call!(
-                            CallSite::new(
+                            MethodRefIdx::new(
                                 Some(ClassRef::marshal()),
                                 "GetLastWin32Error".into(),
                                 FnSig::new(&[], Type::Int(Int::I32)),

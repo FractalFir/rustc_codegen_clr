@@ -1,12 +1,12 @@
 use crate::{assembly::MethodCompileCtx, operand::handle_operand, place::place_set};
 use cilly::{
     call,
-    call_site::CallSite,
     cil_node::CILNode,
     cil_root::CILRoot,
+    cilnode::MethodKind,
     conv_i16, conv_i32, conv_i64, conv_i8, ldc_i32, ldc_i64,
-    v2::{ClassRef, FnSig, Int},
-    Type,
+    v2::{ClassRef, Int},
+    MethodRef, Type,
 };
 
 use rustc_middle::{
@@ -40,26 +40,28 @@ pub fn saturating_add<'tcx>(
             let or = crate::binop::bitop::bit_or_unchecked(a_ty, a_ty, ctx, a.clone(), b.clone());
             let flag = crate::binop::cmp::lt_unchecked(a_ty, sum.clone(), or.clone(), ctx);
             let max = crate::r#type::max_value(&a_type, ctx);
-            CILNode::select(a_type, max, sum, flag)
+            CILNode::select(a_type, max, sum, flag, ctx)
         }
         Type::Int(Int::I32) => {
             let a = conv_i64!(a);
             let b = conv_i64!(b);
             let diff = a + b;
-            let diff_capped = call!(
-                CallSite::new_extern(
-                    ClassRef::math(ctx),
-                    "Clamp".into(),
-                    FnSig::new(
-                        Box::new([
-                            Type::Int(Int::I64),
-                            Type::Int(Int::I64),
-                            Type::Int(Int::I64)
-                        ]),
-                        Type::Int(Int::I64)
-                    ),
-                    true
+            let clamp = MethodRef::new(
+                ClassRef::math(ctx),
+                ctx.alloc_string("Clamp"),
+                ctx.sig(
+                    [
+                        Type::Int(Int::I64),
+                        Type::Int(Int::I64),
+                        Type::Int(Int::I64),
+                    ],
+                    Type::Int(Int::I64),
                 ),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            let diff_capped = call!(
+                ctx.alloc_methodref(clamp),
                 [
                     diff,
                     ldc_i64!(i64::from(i32::MIN)),
@@ -72,33 +74,34 @@ pub fn saturating_add<'tcx>(
         Type::Int(Int::I64) => {
             let a = crate::casts::int_to_int(Type::Int(Int::I64), Type::Int(Int::I128), a, ctx);
             let b = crate::casts::int_to_int(Type::Int(Int::I64), Type::Int(Int::I128), b, ctx);
-            let diff = call!(
-                CallSite::new_extern(
-                    ClassRef::int_128(ctx),
-                    "op_Addition".into(),
-                    FnSig::new(
-                        Box::new([Type::Int(Int::I128), Type::Int(Int::I128)]),
-                        Type::Int(Int::I128)
-                    ),
-                    true,
+            let add = MethodRef::new(
+                ClassRef::int_128(ctx),
+                ctx.alloc_string("op_Addition"),
+                ctx.sig(
+                    [Type::Int(Int::I128), Type::Int(Int::I128)],
+                    Type::Int(Int::I128),
                 ),
-                [a, b]
+                MethodKind::Static,
+                vec![].into(),
+            );
+            let diff = call!(ctx.alloc_methodref(add), [a, b]);
+            let clamp = MethodRef::new(
+                ClassRef::int_128(ctx),
+                ctx.alloc_string("Clamp"),
+                ctx.sig(
+                    [
+                        Type::Int(Int::I128),
+                        Type::Int(Int::I128),
+                        Type::Int(Int::I128),
+                    ],
+                    Type::Int(Int::I128),
+                ),
+                MethodKind::Static,
+                vec![].into(),
             );
             #[allow(clippy::cast_sign_loss)]
             let diff_capped = call!(
-                CallSite::new_extern(
-                    ClassRef::int_128(ctx),
-                    "Clamp".into(),
-                    FnSig::new(
-                        Box::new([
-                            Type::Int(Int::I128),
-                            Type::Int(Int::I128),
-                            Type::Int(Int::I128)
-                        ]),
-                        Type::Int(Int::I128)
-                    ),
-                    true
-                ),
+                ctx.alloc_methodref(clamp),
                 [
                     diff,
                     CILNode::const_i128(i128::from(i64::MIN) as u128, ctx),
@@ -111,33 +114,34 @@ pub fn saturating_add<'tcx>(
         Type::Int(Int::ISize) => {
             let a = crate::casts::int_to_int(Type::Int(Int::ISize), Type::Int(Int::I128), a, ctx);
             let b = crate::casts::int_to_int(Type::Int(Int::ISize), Type::Int(Int::I128), b, ctx);
-            let diff = call!(
-                CallSite::new_extern(
-                    ClassRef::int_128(ctx),
-                    "op_Addition".into(),
-                    FnSig::new(
-                        Box::new([Type::Int(Int::I128), Type::Int(Int::I128)]),
-                        Type::Int(Int::I128)
-                    ),
-                    true,
+            let sum = MethodRef::new(
+                ClassRef::int_128(ctx),
+                ctx.alloc_string("op_Addition"),
+                ctx.sig(
+                    [Type::Int(Int::I128), Type::Int(Int::I128)],
+                    Type::Int(Int::I128),
                 ),
-                [a, b]
+                MethodKind::Static,
+                vec![].into(),
+            );
+            let diff = call!(ctx.alloc_methodref(sum), [a, b]);
+            let clamp = MethodRef::new(
+                ClassRef::int_128(ctx),
+                ctx.alloc_string("Clamp"),
+                ctx.sig(
+                    [
+                        Type::Int(Int::I128),
+                        Type::Int(Int::I128),
+                        Type::Int(Int::I128),
+                    ],
+                    Type::Int(Int::I128),
+                ),
+                MethodKind::Static,
+                vec![].into(),
             );
             #[allow(clippy::cast_sign_loss)]
             let diff_capped = call!(
-                CallSite::new_extern(
-                    ClassRef::int_128(ctx),
-                    "Clamp".into(),
-                    FnSig::new(
-                        Box::new([
-                            Type::Int(Int::I128),
-                            Type::Int(Int::I128),
-                            Type::Int(Int::I128)
-                        ]),
-                        Type::Int(Int::I128)
-                    ),
-                    true
-                ),
+                ctx.alloc_methodref(clamp),
                 [
                     diff,
                     // TODO: this assumes isize::MAX == i64::MAX
@@ -156,20 +160,22 @@ pub fn saturating_add<'tcx>(
             let a = conv_i32!(a);
             let b = conv_i32!(b);
             let diff = a + b;
-            let diff_capped = call!(
-                CallSite::new_extern(
-                    ClassRef::math(ctx),
-                    "Clamp".into(),
-                    FnSig::new(
-                        Box::new([
-                            Type::Int(Int::I32),
-                            Type::Int(Int::I32),
-                            Type::Int(Int::I32)
-                        ]),
-                        Type::Int(Int::I32)
-                    ),
-                    true
+            let mref = MethodRef::new(
+                ClassRef::math(ctx),
+                ctx.alloc_string("Clamp"),
+                ctx.sig(
+                    [
+                        Type::Int(Int::I32),
+                        Type::Int(Int::I32),
+                        Type::Int(Int::I32),
+                    ],
+                    Type::Int(Int::I32),
                 ),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            let diff_capped = call!(
+                ctx.alloc_methodref(mref),
                 [
                     diff,
                     ldc_i32!(i32::from(i16::MIN)),
@@ -182,20 +188,22 @@ pub fn saturating_add<'tcx>(
             let a = conv_i32!(a);
             let b = conv_i32!(b);
             let diff = a + b;
-            let diff_capped = call!(
-                CallSite::new_extern(
-                    ClassRef::math(ctx),
-                    "Clamp".into(),
-                    FnSig::new(
-                        Box::new([
-                            Type::Int(Int::I32),
-                            Type::Int(Int::I32),
-                            Type::Int(Int::I32)
-                        ]),
-                        Type::Int(Int::I32)
-                    ),
-                    true
+            let mref = MethodRef::new(
+                ClassRef::math(ctx),
+                ctx.alloc_string("Clamp"),
+                ctx.sig(
+                    [
+                        Type::Int(Int::I32),
+                        Type::Int(Int::I32),
+                        Type::Int(Int::I32),
+                    ],
+                    Type::Int(Int::I32),
                 ),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            let diff_capped = call!(
+                ctx.alloc_methodref(mref),
                 [
                     diff,
                     ldc_i32!(i32::from(i8::MIN)),
@@ -227,38 +235,39 @@ pub fn saturating_sub<'tcx>(
             let undeflow = crate::binop::cmp::lt_unchecked(a_ty, a.clone(), b.clone(), ctx);
             let diff = crate::binop::sub_unchecked(a_ty, a_ty, ctx, a, b);
             let zero = crate::binop::checked::zero(a_ty, ctx);
-            CILNode::select(a_type, zero, diff, undeflow)
+            CILNode::select(a_type, zero, diff, undeflow, ctx)
         }
         Type::Int(Int::I64) => {
             let a = crate::casts::int_to_int(Type::Int(Int::I64), Type::Int(Int::I128), a, ctx);
             let b = crate::casts::int_to_int(Type::Int(Int::I64), Type::Int(Int::I128), b, ctx);
-            let diff = call!(
-                CallSite::new_extern(
-                    ClassRef::int_128(ctx),
-                    "op_Subtraction".into(),
-                    FnSig::new(
-                        Box::new([Type::Int(Int::I128), Type::Int(Int::I128)]),
-                        Type::Int(Int::I128)
-                    ),
-                    true,
+            let sub = MethodRef::new(
+                ClassRef::int_128(ctx),
+                ctx.alloc_string("op_Subtraction"),
+                ctx.sig(
+                    [Type::Int(Int::I128), Type::Int(Int::I128)],
+                    Type::Int(Int::I128),
                 ),
-                [a, b]
+                MethodKind::Static,
+                vec![].into(),
+            );
+            let diff = call!(ctx.alloc_methodref(sub), [a, b]);
+            let clamp = MethodRef::new(
+                ClassRef::int_128(ctx),
+                ctx.alloc_string("Clamp"),
+                ctx.sig(
+                    [
+                        Type::Int(Int::I128),
+                        Type::Int(Int::I128),
+                        Type::Int(Int::I128),
+                    ],
+                    Type::Int(Int::I128),
+                ),
+                MethodKind::Static,
+                vec![].into(),
             );
             #[allow(clippy::cast_sign_loss)]
             let diff_capped = call!(
-                CallSite::new_extern(
-                    ClassRef::int_128(ctx),
-                    "Clamp".into(),
-                    FnSig::new(
-                        Box::new([
-                            Type::Int(Int::I128),
-                            Type::Int(Int::I128),
-                            Type::Int(Int::I128)
-                        ]),
-                        Type::Int(Int::I128)
-                    ),
-                    true
-                ),
+                ctx.alloc_methodref(clamp),
                 [
                     diff,
                     CILNode::const_i128(i128::from(i64::MIN) as u128, ctx),
@@ -270,33 +279,34 @@ pub fn saturating_sub<'tcx>(
         Type::Int(Int::ISize) => {
             let a = crate::casts::int_to_int(Type::Int(Int::ISize), Type::Int(Int::I128), a, ctx);
             let b = crate::casts::int_to_int(Type::Int(Int::ISize), Type::Int(Int::I128), b, ctx);
-            let diff = call!(
-                CallSite::new_extern(
-                    ClassRef::int_128(ctx),
-                    "op_Subtraction".into(),
-                    FnSig::new(
-                        Box::new([Type::Int(Int::I128), Type::Int(Int::I128)]),
-                        Type::Int(Int::I128)
-                    ),
-                    true,
+            let sub = MethodRef::new(
+                ClassRef::int_128(ctx),
+                ctx.alloc_string("op_Subtraction"),
+                ctx.sig(
+                    [Type::Int(Int::I128), Type::Int(Int::I128)],
+                    Type::Int(Int::I128),
                 ),
-                [a, b]
+                MethodKind::Static,
+                vec![].into(),
+            );
+            let diff = call!(ctx.alloc_methodref(sub), [a, b]);
+            let clamp = MethodRef::new(
+                ClassRef::int_128(ctx),
+                ctx.alloc_string("Clamp"),
+                ctx.sig(
+                    [
+                        Type::Int(Int::I128),
+                        Type::Int(Int::I128),
+                        Type::Int(Int::I128),
+                    ],
+                    Type::Int(Int::I128),
+                ),
+                MethodKind::Static,
+                vec![].into(),
             );
             #[allow(clippy::cast_sign_loss)]
             let diff_capped = call!(
-                CallSite::new_extern(
-                    ClassRef::int_128(ctx),
-                    "Clamp".into(),
-                    FnSig::new(
-                        Box::new([
-                            Type::Int(Int::I128),
-                            Type::Int(Int::I128),
-                            Type::Int(Int::I128)
-                        ]),
-                        Type::Int(Int::I128)
-                    ),
-                    true
-                ),
+                ctx.alloc_methodref(clamp),
                 [
                     diff,
                     // TODO: this assumes isize::MAX == i64::MAX
@@ -315,20 +325,22 @@ pub fn saturating_sub<'tcx>(
             let a = conv_i64!(a);
             let b = conv_i64!(b);
             let diff = a - b;
-            let diff_capped = call!(
-                CallSite::new_extern(
-                    ClassRef::math(ctx),
-                    "Clamp".into(),
-                    FnSig::new(
-                        Box::new([
-                            Type::Int(Int::I64),
-                            Type::Int(Int::I64),
-                            Type::Int(Int::I64)
-                        ]),
-                        Type::Int(Int::I64)
-                    ),
-                    true
+            let clamp = MethodRef::new(
+                ClassRef::math(ctx),
+                ctx.alloc_string("Clamp"),
+                ctx.sig(
+                    [
+                        Type::Int(Int::I64),
+                        Type::Int(Int::I64),
+                        Type::Int(Int::I64),
+                    ],
+                    Type::Int(Int::I64),
                 ),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            let diff_capped = call!(
+                ctx.alloc_methodref(clamp),
                 [
                     diff,
                     ldc_i64!(i64::from(i32::MIN)),
@@ -341,20 +353,22 @@ pub fn saturating_sub<'tcx>(
             let a = conv_i32!(a);
             let b = conv_i32!(b);
             let diff = a - b;
-            let diff_capped = call!(
-                CallSite::new_extern(
-                    ClassRef::math(ctx),
-                    "Clamp".into(),
-                    FnSig::new(
-                        Box::new([
-                            Type::Int(Int::I32),
-                            Type::Int(Int::I32),
-                            Type::Int(Int::I32)
-                        ]),
-                        Type::Int(Int::I32)
-                    ),
-                    true
+            let clamp = MethodRef::new(
+                ClassRef::math(ctx),
+                ctx.alloc_string("Clamp"),
+                ctx.sig(
+                    [
+                        Type::Int(Int::I32),
+                        Type::Int(Int::I32),
+                        Type::Int(Int::I32),
+                    ],
+                    Type::Int(Int::I32),
                 ),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            let diff_capped = call!(
+                ctx.alloc_methodref(clamp),
                 [
                     diff,
                     ldc_i32!(i32::from(i16::MIN)),
@@ -367,20 +381,22 @@ pub fn saturating_sub<'tcx>(
             let a = conv_i32!(a);
             let b = conv_i32!(b);
             let diff = a - b;
-            let diff_capped = call!(
-                CallSite::new_extern(
-                    ClassRef::math(ctx),
-                    "Clamp".into(),
-                    FnSig::new(
-                        Box::new([
-                            Type::Int(Int::I32),
-                            Type::Int(Int::I32),
-                            Type::Int(Int::I32)
-                        ]),
-                        Type::Int(Int::I32)
-                    ),
-                    true
+            let clamp = MethodRef::new(
+                ClassRef::math(ctx),
+                ctx.alloc_string("Clamp"),
+                ctx.sig(
+                    [
+                        Type::Int(Int::I32),
+                        Type::Int(Int::I32),
+                        Type::Int(Int::I32),
+                    ],
+                    Type::Int(Int::I32),
                 ),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            let diff_capped = call!(
+                ctx.alloc_methodref(clamp),
                 [
                     diff,
                     ldc_i32!(i32::from(i8::MIN)),
