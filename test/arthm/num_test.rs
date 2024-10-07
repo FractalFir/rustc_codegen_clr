@@ -40,6 +40,7 @@ pub fn test_variadic_fnptr() {
     test!(!(p < q));
 }
 fn main() {
+    isqrt_test();
     unsafe { black_box(ldexpf(black_box(434.43), 1232.3434)) };
     check_float_nan();
     const A: u32 = 0b0101100;
@@ -386,4 +387,35 @@ pub fn checked_next_multiple_of(lhs: i8, rhs: i8) -> Option<i8> {
 #[no_mangle]
 pub fn add_signed(a: i8, b: i8) -> bool {
     a.checked_add(b).is_none()
+}
+struct I128W(i64, i64);
+fn isqrt_test() {
+    let val = i128::MAX;
+    let bytes = val.to_le_bytes();
+    for i in bytes {
+        unsafe { printf(c"i:%u\n".as_ptr(), i as u32) };
+    }
+    test_eq!(bytes[15], 127);
+    for n in i128::MAX - 127..=i128::MAX {
+        /*   .chain()
+        .chain((0..i128::MAX.count_ones()).map(|exponent| (1 << exponent) - 1))
+        .chain((0..i128::MAX.count_ones()).map(|exponent| 1 << exponent)) */
+        let isqrt_n = n.isqrt();
+        unsafe {
+            printf(
+                c"n:%lld isqrt_n:%lld\n".as_ptr(),
+                core::mem::transmute::<i128, I128W>(n),
+                core::mem::transmute::<i128, I128W>(isqrt_n),
+            )
+        };
+        test!(isqrt_n
+            .checked_mul(isqrt_n)
+            .map(|isqrt_n_squared| isqrt_n_squared <= n)
+            .unwrap_or(false));
+
+        test!((isqrt_n + 1)
+            .checked_mul(isqrt_n + 1)
+            .map(|isqrt_n_plus_1_squared| n < isqrt_n_plus_1_squared)
+            .unwrap_or(true));
+    }
 }

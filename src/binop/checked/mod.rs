@@ -3,8 +3,8 @@ use cilly::{
     and, call,
     cil_node::CILNode,
     cil_root::CILRoot,
-    conv_i16, conv_i32, conv_i64, conv_i8, conv_isize, conv_u64, conv_usize, gt, gt_un, ldc_i32,
-    ldc_i64, ldc_u32, ldc_u64, lt, mul, or,
+    conv_i16, conv_i32, conv_i64, conv_i8, conv_isize, conv_u64, conv_usize, eq, gt, gt_un,
+    ldc_i32, ldc_i64, ldc_u32, ldc_u64, lt, mul, or,
     v2::{cilnode::MethodKind, Assembly, ClassRef, FieldDesc, Int, MethodRef},
     Type,
 };
@@ -426,6 +426,20 @@ pub fn mul<'tcx>(
             );
             or!(gt, lt)
         }
+        TyKind::Int(IntTy::I128) => {
+            let op_mul = MethodRef::new(
+                *ctx.main_module(),
+                ctx.alloc_string("i128_mul_ovf_check"),
+                ctx.sig([Type::Int(Int::I128), Type::Int(Int::I128)], Type::Bool),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            eq!(
+                call!(ctx.alloc_methodref(op_mul), [ops_a.clone(), ops_b.clone()]),
+                CILNode::LdFalse
+            )
+        }
+
         _ => {
             eprintln!("WARINING: can't checked mul type {ty:?}");
             CILNode::LdFalse

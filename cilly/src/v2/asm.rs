@@ -842,18 +842,23 @@ impl Assembly {
 
     pub fn patch_missing_methods(
         &mut self,
-        externs: FxHashMap<&str, String>,
-        modifies_errno: FxHashSet<&str>,
-        override_methods: MissingMethodPatcher,
+        externs: &FxHashMap<&str, String>,
+        modifies_errno: &FxHashSet<&str>,
+        override_methods: &MissingMethodPatcher,
     ) {
         let mref_count = self.method_refs.0.len();
         let externs: FxHashMap<_, _> = externs
             .into_iter()
-            .map(|(fn_name, lib_name)| (self.alloc_string(fn_name), self.alloc_string(lib_name)))
+            .map(|(fn_name, lib_name)| {
+                (
+                    self.alloc_string(fn_name.clone()),
+                    self.alloc_string(lib_name.clone()),
+                )
+            })
             .collect();
         let preserve_errno: FxHashSet<_> = modifies_errno
             .into_iter()
-            .map(|fn_name| self.alloc_string(fn_name))
+            .map(|fn_name| self.alloc_string(fn_name.clone()))
             .collect();
         for index in 0..mref_count {
             // Get the full method refernce

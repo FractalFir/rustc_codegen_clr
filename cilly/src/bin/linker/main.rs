@@ -369,6 +369,7 @@ fn main() {
     cilly::v2::builtins::casts::insert_casts(&mut final_assembly, &mut overrides);
     cilly::v2::builtins::insert_heap(&mut final_assembly, &mut overrides);
     cilly::v2::builtins::generate_int128_ops(&mut final_assembly, &mut overrides, *C_MODE);
+    cilly::v2::builtins::i128_mul_ovf_check(&mut final_assembly, &mut overrides);
     if !*C_MODE {
         cilly::v2::builtins::atomics::generate_all_atomics(&mut final_assembly, &mut overrides);
         cilly::v2::builtins::instert_threading(&mut final_assembly, &mut overrides);
@@ -389,7 +390,8 @@ fn main() {
         NonZeroU32::new(16),
     ));
 
-    final_assembly.patch_missing_methods(externs, modifies_errno, overrides);
+    final_assembly.patch_missing_methods(&externs, &modifies_errno, &overrides);
+    final_assembly.patch_missing_methods(&externs, &modifies_errno, &overrides);
 
     add_mandatory_statics(&mut final_assembly);
     if *DEAD_CODE_ELIMINATION {
