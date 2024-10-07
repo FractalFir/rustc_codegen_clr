@@ -2,7 +2,7 @@ use crate::{
     v2::{
         asm::MissingMethodPatcher, Assembly, BasicBlock, BinOp, CILNode, CILRoot, Int, MethodImpl,
     },
-    Type,
+    BranchCond, ClassRef, Const, Type,
 };
 
 pub fn op_direct(
@@ -98,4 +98,76 @@ pub fn generate_int128_ops(asm: &mut Assembly, patcher: &mut MissingMethodPatche
             }
         }
     }
+}
+pub fn i128_mul_ovf_check(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
+    let name = asm.alloc_string("i128_mul_ovf_check");
+    let generator = move |_, asm: &mut Assembly| {
+        let lhs = asm.alloc_node(CILNode::LdArg(0));
+        let rhs = asm.alloc_node(CILNode::LdArg(1));
+        let i128_class = ClassRef::int_128(asm);
+        let get_zero = asm.alloc_string("get_Zero");
+        let op_equality = asm.alloc_string("eq_i128");
+        let op_mul = asm.alloc_string("mul_i128");
+        let op_div = asm.alloc_string("div_i128");
+        let i128_classref = asm[i128_class].clone();
+        let main_module = *asm.main_module();
+        let main_module = asm[main_module].clone();
+        let const_zero = i128_classref.static_mref(&[], Type::Int(Int::I128), get_zero, asm);
+        let const_zero = asm.alloc_node(CILNode::Call(Box::new((const_zero, [].into()))));
+        let i128_eq = main_module.static_mref(
+            &[Type::Int(Int::I128), Type::Int(Int::I128)],
+            Type::Bool,
+            op_equality,
+            asm,
+        );
+        let i128_mul = main_module.static_mref(
+            &[Type::Int(Int::I128), Type::Int(Int::I128)],
+            Type::Int(Int::I128),
+            op_mul,
+            asm,
+        );
+        let i128_div = main_module.static_mref(
+            &[Type::Int(Int::I128), Type::Int(Int::I128)],
+            Type::Int(Int::I128),
+            op_div,
+            asm,
+        );
+        let rhs_zero = asm.alloc_node(CILNode::Call(Box::new((i128_eq, [rhs, const_zero].into()))));
+        let jmp_nz = asm.alloc_root(CILRoot::Branch(Box::new((
+            0,
+            1,
+            Some(BranchCond::False(rhs_zero)),
+        ))));
+        let ret_false = asm.alloc_node(Const::Bool(false));
+        let ret_false = asm.alloc_root(CILRoot::Ret(ret_false));
+        let lhs_mul_rhs = asm.alloc_node(CILNode::Call(Box::new((i128_mul, [lhs, rhs].into()))));
+        let recomputed_rhs = asm.alloc_node(CILNode::Call(Box::new((
+            i128_div,
+            [lhs_mul_rhs, rhs].into(),
+        ))));
+        let ovf = asm.alloc_node(CILNode::Call(Box::new((
+            i128_eq,
+            [recomputed_rhs, rhs].into(),
+        ))));
+        let ret_ovf = asm.alloc_root(CILRoot::Ret(ovf));
+
+        MethodImpl::MethodBody {
+            blocks: vec![
+                BasicBlock::new(vec![jmp_nz, ret_false], 0, None),
+                BasicBlock::new(vec![ret_ovf], 1, None),
+            ],
+            locals: vec![],
+        }
+    };
+    patcher.insert(name, Box::new(generator));
+}
+#[test]
+fn test() {
+    let op = BinOp::Eq;
+    let lhs_type = Int::I128;
+    panic!(
+        "{op}_{lhs_type}",
+        op = op.name(),
+        lhs_type = lhs_type.name()
+    );
 }
