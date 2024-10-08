@@ -281,6 +281,10 @@ impl BasicBlock {
                         if cache.has_side_effects(tree, asm) {
                             break 'm;
                         }
+                        // Check that the tree is not too big
+                        if CILIter::new(asm.get_node(tree).clone(), asm).count() > 16 {
+                            break 'm;
+                        }
                         // Check that it does not depend on itself
                         if CILIter::new(asm.get_node(tree).clone(), asm)
                             .any(|node| node == CILIterElem::Node(CILNode::LdLoc(loc)))

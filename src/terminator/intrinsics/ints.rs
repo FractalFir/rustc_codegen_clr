@@ -447,7 +447,7 @@ fn bitreverse_u16(ushort: CILNode) -> CILNode {
 pub fn bitreverse_int(val: CILNode, int: Int, asm: &mut cilly::v2::Assembly) -> CILNode {
     let mref = MethodRef::new(
         *asm.main_module(),
-        asm.alloc_string(format!("bitreverse{}", int.name())),
+        asm.alloc_string(format!("bitreverse_{}", int.as_unsigned().name())),
         asm.sig([Type::Int(int.as_unsigned())], Type::Int(int.as_unsigned())),
         MethodKind::Static,
         vec![].into(),

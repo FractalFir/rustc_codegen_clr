@@ -130,11 +130,6 @@ fn main() {
         n = (n >> 16) | (n << 16);
         n
     }
-    #[cfg(not(debug_assertions))]
-    for b in 0..u16::MAX {
-        let b = b as u128 + b as u128 * (u64::MAX as u128);
-        test_eq!(bitreverse_u128(b), core::intrinsics::bitreverse(b));
-    }
 
     for b in 0..u16::MAX {
         let b = b as u64 + b as u64 * (u32::MAX as u64);
@@ -143,6 +138,11 @@ fn main() {
     for b in 0..u16::MAX {
         let b = b as u32 + b as u32 * (u16::MAX as u32);
         test_eq!(bitreverse_u32(b), core::intrinsics::bitreverse(b));
+    }
+    #[cfg(not(debug_assertions))]
+    for b in 0..u16::MAX {
+        let b = b as u128 + b as u128 * (u64::MAX as u128);
+        test_eq!(bitreverse_u128(b), core::intrinsics::bitreverse(b));
     }
     #[cfg(not(debug_assertions))]
     for b in 0..u16::MAX {
