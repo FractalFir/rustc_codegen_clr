@@ -400,10 +400,16 @@ impl ClassRef {
         ))
     }
     // Returns a `System.Collections.Concurrent.ConcurrentDictionary` of key,value
-    pub fn dictionary(key: Type, value: Type, asm: &mut Assembly) -> ClassRefIdx {
+    pub fn concurent_dictionary(key: Type, value: Type, asm: &mut Assembly) -> ClassRefIdx {
         let name: StringIdx =
             asm.alloc_string("System.Collections.Concurrent.ConcurrentDictionary");
         let asm_name = Some(asm.alloc_string("System.Collections.Concurrent"));
+        asm.alloc_class_ref(ClassRef::new(name, asm_name, false, [key, value].into()))
+    }
+    // Returns a `System.Collections.Generic.Dictionary` of key,value
+    pub fn dictionary(key: Type, value: Type, asm: &mut Assembly) -> ClassRefIdx {
+        let name: StringIdx = asm.alloc_string("System.Collections.Generic.Dictionary");
+        let asm_name = Some(asm.alloc_string("System.Collections"));
         asm.alloc_class_ref(ClassRef::new(name, asm_name, false, [key, value].into()))
     }
 }

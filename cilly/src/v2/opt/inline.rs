@@ -117,7 +117,7 @@ fn trivial_inline_root(
         return None;
     }
     let root = root.clone().map(asm, &mut |root,_|{
-        assert!(matches!(root,CILRoot::Nop | CILRoot::Break |CILRoot::Call(_) | CILRoot::CallI(_) | CILRoot::SetField(_) | CILRoot::SetStaticField { .. } | CILRoot::StInd(_) | CILRoot::Pop(_) | CILRoot::InitBlk(_) | CILRoot::CpBlk(_)), "Can't inline root {root:?}");
+        assert!(matches!(root,CILRoot::Nop | CILRoot::Break |CILRoot::Call(_) | CILRoot::CallI(_) | CILRoot::SetField(_) | CILRoot::SetStaticField { .. } | CILRoot::StInd(_) | CILRoot::Pop(_) | CILRoot::InitBlk(_) | CILRoot::CpBlk(_) | CILRoot::Throw(_)), "Can't inline root {root:?}");
         root
     },&mut |node, asm| match node {
         CILNode::LdArg(arg) => asm.get_node(call_args[arg as usize]).clone(),

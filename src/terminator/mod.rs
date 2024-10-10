@@ -264,6 +264,7 @@ pub fn handle_terminator<'tcx>(
             line_spans: _,
             unwind: _,
             targets: _,
+            asm_macro: _,
         } => {
             eprintln!("Inline assembly is not yet supported!");
             vec![CILRoot::throw("Inline assembly is not yet supported!", ctx).into()]

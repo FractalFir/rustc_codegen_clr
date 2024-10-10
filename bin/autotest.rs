@@ -32,6 +32,7 @@ fn main() {
         );
         let out = cmd.output().unwrap();
         let stderr = str::from_utf8(&out.stderr).unwrap().to_string();
+        eprintln!("stderr:{stderr}");
         let stdout = str::from_utf8(&out.stdout).unwrap().to_string();
         for line in stdout.lines() {
             if !line.contains("test ") || line.contains("finished in") {
