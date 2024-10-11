@@ -9,7 +9,7 @@ trait PrintFDebug{
 }
 impl PrintFDebug for i8{
 	unsafe fn printf_debug(&self){
-		printf("%i\0".as_ptr() as *const c_char,*self as i8 as c_int);
+		printf(c"%i".as_ptr(),*self as i8 as c_int);
 	}
 }
 impl PrintFDebug for u8{
@@ -22,7 +22,7 @@ impl PrintFDebug for i16{
 }
 impl PrintFDebug for u16{
 	unsafe fn printf_debug(&self){
-		printf("%u\0".as_ptr() as *const c_char,*self as u16 as c_int);
+		printf(c"%u".as_ptr(),*self as u16 as c_int);
 	}
 } 
 impl<T:PrintFDebug,const N:usize> PrintFDebug for [T;N]{
@@ -33,12 +33,12 @@ impl<T:PrintFDebug,const N:usize> PrintFDebug for [T;N]{
 }
 impl PrintFDebug for u32{
 	unsafe fn printf_debug(&self){
-		printf("%u\0".as_ptr() as *const c_char,*self);
+		printf(c"%u".as_ptr(),*self);
 	}
 } 
 impl PrintFDebug for char{
 	unsafe fn printf_debug(&self){
-		printf("%u\0".as_ptr() as *const c_char,*self as u64);
+		printf(c"%u".as_ptr(),*self as u64);
 	}
 } 
 impl PrintFDebug for i64{
@@ -56,12 +56,12 @@ impl PrintFDebug for i128{
 } 
 impl PrintFDebug for u128{
 	unsafe fn printf_debug(&self){
-		printf("%lx%lx\0".as_ptr() as *const c_char, (*self >> 64) as u64,*self as u64);
+		printf(c"%lx%lx".as_ptr(), (*self >> 64) as u64,*self as u64);
 	}
 } 
 impl PrintFDebug for isize{
 	unsafe fn printf_debug(&self){
-		printf("%li\0".as_ptr() as *const c_char,*self as isize);
+		printf(c"%li".as_ptr(),*self as isize);
 	}
 }
 impl PrintFDebug for usize{
@@ -78,18 +78,18 @@ impl PrintFDebug for (){
 } 
 impl<A:PrintFDebug> PrintFDebug for (A,){
 	unsafe fn printf_debug(&self){
-		printf("(\0".as_ptr() as *const c_char);
+		printf(c"(".as_ptr());
 		self.0.printf_debug();
-		printf(",)\0".as_ptr() as *const c_char);
+		printf(c",)".as_ptr());
 	}
 }
 impl<A:PrintFDebug,B:PrintFDebug> PrintFDebug for (A,B){
 	unsafe fn printf_debug(&self){
-		printf("(\0".as_ptr() as *const c_char);
+		printf(c"(".as_ptr());
 		self.0.printf_debug();
-		printf(",\0".as_ptr() as *const c_char);
+		printf(c",".as_ptr());
 		self.1.printf_debug();
-		printf(")\0".as_ptr() as *const c_char);
+		printf(c")".as_ptr());
 	}
 }
 impl<A:PrintFDebug,B:PrintFDebug,C:PrintFDebug> PrintFDebug for (A,B,C){
@@ -98,15 +98,15 @@ impl<A:PrintFDebug,B:PrintFDebug,C:PrintFDebug> PrintFDebug for (A,B,C){
 }
 impl<A:PrintFDebug,B:PrintFDebug,C:PrintFDebug,D:PrintFDebug> PrintFDebug for (A,B,C,D){
 	unsafe fn printf_debug(&self){
-		printf("(\0".as_ptr() as *const c_char);
+		printf(c"(".as_ptr());
 		self.0.printf_debug();
-		printf(",\0".as_ptr() as *const c_char);
+		printf(c",".as_ptr());
 		self.1.printf_debug();
-		printf(",\0".as_ptr() as *const c_char);
+		printf(c",".as_ptr());
 		self.2.printf_debug();
-		printf(",\0".as_ptr() as *const c_char);
+		printf(c",".as_ptr());
 		self.3.printf_debug();
-		printf(")\0".as_ptr() as *const c_char);
+		printf(c")".as_ptr());
 	}
 }
 fn dump_var(
@@ -117,11 +117,11 @@ fn dump_var(
 	var3: usize, val3: impl PrintFDebug,
 ) {
 	unsafe{
-		printf("fn%u:_%u = \0".as_ptr() as *const c_char,f,var0);
+		printf(c"fn%u:_%u = ".as_ptr(),f,var0);
 		val0.printf_debug();
-		printf("\n_%u = \0".as_ptr() as *const c_char,var1);
+		printf(c"\n_%u = ".as_ptr(),var1);
 		val1.printf_debug();
-		printf("\n_%u = \0".as_ptr() as *const c_char,var2);
+		printf(c"\n_%u = ".as_ptr(),var2);
 		val2.printf_debug();
 	}
 }
@@ -291,7 +291,7 @@ pub fn main() {
 			fn0(std::hint::black_box(false), std::hint::black_box('\u{589ea}'), std::hint::black_box((-15_isize)), std::hint::black_box((-88_i8)), std::hint::black_box(7435_i16), std::hint::black_box((-472870630_i32)), std::hint::black_box(7675076535321132781_i64), std::hint::black_box((-25529925778249855087585504095293304169_i128)), std::hint::black_box(9773957077793597678_usize), std::hint::black_box(96_u8), std::hint::black_box(32550_u16), std::hint::black_box(328278619_u32), std::hint::black_box(9100384109035215234_u64), std::hint::black_box(204224232034591802215192571262808178036_u128));
 		}
 impl PrintFDebug for Adt40{
-unsafe fn printf_debug(&self){unsafe{printf("Adt40::\0".as_ptr()  as *const c_char)};match self{
+unsafe fn printf_debug(&self){unsafe{printf(c"Adt40::".as_ptr()  as *const c_char)};match self{
 Self::Variant0{fld0,fld1,fld2,}=>{
 },
 Self::Variant1{fld0,fld1,fld2,fld3,}=>{
@@ -325,7 +325,7 @@ unsafe{printf("}".as_ptr() as *const c_char)};}
 #[derive(Copy,Clone)]pub struct Adt41 {
 }
 impl PrintFDebug for Adt42{
-unsafe fn printf_debug(&self){unsafe{printf("Adt42::\0".as_ptr()  as *const c_char)};match self{
+unsafe fn printf_debug(&self){unsafe{printf(c"Adt42::".as_ptr()  as *const c_char)};match self{
 Self::Variant0{fld0,fld1,fld2,fld3,}=>{
 },
 Self::Variant1{fld0,fld1,fld2,fld3,fld4,}=>{
@@ -348,7 +348,7 @@ fld3: u16,
 fld4: [bool; 2],
 }}
 impl PrintFDebug for Adt43{
-unsafe fn printf_debug(&self){unsafe{printf("Adt43::\0".as_ptr()  as *const c_char)};match self{
+unsafe fn printf_debug(&self){unsafe{printf(c"Adt43::".as_ptr()  as *const c_char)};match self{
 Self::Variant0{fld0,fld1,fld2,}=>{
 },
 Self::Variant1{fld0,}=>{
@@ -372,7 +372,7 @@ unsafe{printf("}".as_ptr() as *const c_char)};}
 #[derive(Copy,Clone)]pub struct Adt44 {
 }
 impl PrintFDebug for Adt45{
-unsafe fn printf_debug(&self){unsafe{printf("Adt45::\0".as_ptr()  as *const c_char)};match self{
+unsafe fn printf_debug(&self){unsafe{printf(c"Adt45::".as_ptr()  as *const c_char)};match self{
 Self::Variant0{fld0,fld1,fld2,fld3,}=>{
 },
 Self::Variant1{fld0,fld1,fld2,fld3,fld4,}=>{
@@ -409,7 +409,7 @@ fld0: ((u128, (i128, i8, i8, u16)), (isize,), char, i128),
 fld1: i8,
 }}
 impl PrintFDebug for Adt46{
-unsafe fn printf_debug(&self){unsafe{printf("Adt46::\0".as_ptr()  as *const c_char)};match self{
+unsafe fn printf_debug(&self){unsafe{printf(c"Adt46::".as_ptr()  as *const c_char)};match self{
 Self::Variant0{fld0,fld1,}=>{
 },
 Self::Variant1{fld0,fld1,fld2,fld3,}=>{
@@ -444,7 +444,7 @@ fld1: [bool; 2],
 fld2: f32,
 }}
 impl PrintFDebug for Adt47{
-unsafe fn printf_debug(&self){unsafe{printf("Adt47::\0".as_ptr()  as *const c_char)};match self{
+unsafe fn printf_debug(&self){unsafe{printf(c"Adt47::".as_ptr()  as *const c_char)};match self{
 Self::Variant0{fld0,fld1,fld2,fld3,fld4,fld5,}=>{
 },
 Self::Variant1{fld0,fld1,fld2,fld3,}=>{
@@ -487,7 +487,7 @@ fld2: (u64, f32),
 fld3: *mut [u32; 5],
 }}
 impl PrintFDebug for Adt48{
-unsafe fn printf_debug(&self){unsafe{printf("Adt48::\0".as_ptr()  as *const c_char)};match self{
+unsafe fn printf_debug(&self){unsafe{printf(c"Adt48::".as_ptr()  as *const c_char)};match self{
 Self::Variant0{fld0,fld1,fld2,fld3,}=>{
 },
 Self::Variant1{fld0,}=>{
@@ -525,7 +525,7 @@ unsafe{printf("}".as_ptr() as *const c_char)};}
 fld0: u64,
 }
 impl PrintFDebug for Adt50{
-unsafe fn printf_debug(&self){unsafe{printf("Adt50::\0".as_ptr()  as *const c_char)};match self{
+unsafe fn printf_debug(&self){unsafe{printf(c"Adt50::".as_ptr()  as *const c_char)};match self{
 Self::Variant0{fld0,fld1,fld2,fld3,fld4,fld5,fld6,fld7,}=>{
 },
 Self::Variant1{fld0,}=>{
@@ -564,7 +564,7 @@ fld5: [i64; 7],
 fld6: *mut [u32; 5],
 }}
 impl PrintFDebug for Adt51{
-unsafe fn printf_debug(&self){unsafe{printf("Adt51::\0".as_ptr()  as *const c_char)};match self{
+unsafe fn printf_debug(&self){unsafe{printf(c"Adt51::".as_ptr()  as *const c_char)};match self{
 Self::Variant0{fld0,fld1,fld2,fld3,fld4,fld5,}=>{
 },
 Self::Variant1{fld0,}=>{
@@ -596,7 +596,7 @@ fld5: (u128, (i128, i8, i8, u16)),
 fld6: ([bool; 8], i128, (isize,)),
 }}
 impl PrintFDebug for Adt52{
-unsafe fn printf_debug(&self){unsafe{printf("Adt52::\0".as_ptr()  as *const c_char)};match self{
+unsafe fn printf_debug(&self){unsafe{printf(c"Adt52::".as_ptr()  as *const c_char)};match self{
 Self::Variant0{fld0,fld1,fld2,fld3,fld4,}=>{
 },
 Self::Variant1{fld0,fld1,fld2,fld3,}=>{
@@ -619,7 +619,7 @@ fld2: (bool, i16, i8),
 fld3: usize,
 }}
 impl PrintFDebug for Adt53{
-unsafe fn printf_debug(&self){unsafe{printf("Adt53::\0".as_ptr()  as *const c_char)};match self{
+unsafe fn printf_debug(&self){unsafe{printf(c"Adt53::".as_ptr()  as *const c_char)};match self{
 Self::Variant0{fld0,fld1,fld2,fld3,}=>{
 },
 Self::Variant1{fld0,fld1,fld2,fld3,fld4,fld5,fld6,}=>{
@@ -650,7 +650,7 @@ fld0: *mut u32,
 fld1: ([bool; 8], i128, (isize,)),
 }}
 impl PrintFDebug for Adt54{
-unsafe fn printf_debug(&self){unsafe{printf("Adt54::\0".as_ptr()  as *const c_char)};match self{
+unsafe fn printf_debug(&self){unsafe{printf(c"Adt54::".as_ptr()  as *const c_char)};match self{
 Self::Variant0{fld0,}=>{
 },
 Self::Variant1{fld0,}=>{
@@ -690,7 +690,7 @@ unsafe{printf("}".as_ptr() as *const c_char)};}
 #[derive(Copy,Clone)]pub struct Adt55 {
 }
 impl PrintFDebug for Adt56{
-unsafe fn printf_debug(&self){unsafe{printf("Adt56::\0".as_ptr()  as *const c_char)};match self{
+unsafe fn printf_debug(&self){unsafe{printf(c"Adt56::".as_ptr()  as *const c_char)};match self{
 Self::Variant0{fld0,fld1,fld2,fld3,}=>{
 },
 Self::Variant1{fld0,fld1,fld2,fld3,fld4,}=>{

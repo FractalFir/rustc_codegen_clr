@@ -247,10 +247,7 @@ fn println(msg: &str) {
         let tmp_slice: &mut [u8] = core::slice::from_raw_parts_mut(tmp, msg.len() + 1);
         tmp_slice[..msg.len()].clone_from_slice(msg.as_bytes());
         tmp_slice[msg.len()] = b'\0';
-        printf(
-            "%s\n\0".as_ptr() as *const i8,
-            tmp_slice.as_ptr() as *const i8,
-        );
+        printf(c"%s\n".as_ptr(), tmp_slice.as_ptr() as *const i8);
         free(tmp as *mut core::ffi::c_void);
     }
 }

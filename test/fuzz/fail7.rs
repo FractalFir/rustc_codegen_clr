@@ -28,7 +28,7 @@ impl<T:PrintFDebug> PrintFDebug for *const T{
 }
 impl PrintFDebug for isize{
     unsafe fn printf_debug(&self){
-        printf("%li\0".as_ptr() as *const c_char,*self as isize);
+        printf(c"%li".as_ptr(),*self as isize);
     }
 }
 impl PrintFDebug for (){
@@ -40,7 +40,7 @@ fn dump_var(
     var2: usize, val2: impl PrintFDebug,
 ) {
     unsafe{
-        printf("\n_%u = \0".as_ptr() as *const c_char,var2);
+        printf(c"\n_%u = ".as_ptr(),var2);
         val2.printf_debug();
     }
 }

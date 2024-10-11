@@ -30,15 +30,15 @@ fn dump_var(
     val3: impl PrintFDebug,
 ) {
     unsafe {
-        printf("fn%u:_%u = \0".as_ptr() as *const c_char, f, var0);
+        printf(c"fn%u:_%u = ".as_ptr(), f, var0);
         val0.printf_debug();
-        printf("\n_%u = \0".as_ptr() as *const c_char, var1);
+        printf(c"\n_%u = ".as_ptr(), var1);
         val1.printf_debug();
-        printf("\n_%u = \0".as_ptr() as *const c_char, var2);
+        printf(c"\n_%u = ".as_ptr(), var2);
         val2.printf_debug();
-        printf("\n_%u = \0".as_ptr() as *const c_char, var3);
+        printf(c"\n_%u = ".as_ptr(), var3);
         val3.printf_debug();
-        printf("\n\0".as_ptr() as *const c_char);
+        printf(c"\n".as_ptr());
     }
 }
 extern "C" {
@@ -49,42 +49,42 @@ trait PrintFDebug {
 }
 impl PrintFDebug for () {
     unsafe fn printf_debug(&self) {
-        printf("()\0".as_ptr() as *const c_char);
+        printf(c"()".as_ptr());
     }
 }
 impl PrintFDebug for bool {
     unsafe fn printf_debug(&self) {
         if *self {
-            printf("true\0".as_ptr() as *const c_char);
+            printf(c"true".as_ptr());
         } else {
-            printf("false\0".as_ptr() as *const c_char);
+            printf(c"false".as_ptr());
         }
     }
 }
 impl<T: PrintFDebug, const N: usize> PrintFDebug for [T; N] {
     unsafe fn printf_debug(&self) {
-        printf("[\0".as_ptr() as *const c_char);
+        printf(c"[".as_ptr());
         for b in self {
             b.printf_debug();
-            printf(",\0".as_ptr() as *const c_char);
+            printf(c",".as_ptr());
         }
-        printf("]\0".as_ptr() as *const c_char);
+        printf(c"]".as_ptr());
     }
 }
 impl PrintFDebug for u32 {
     unsafe fn printf_debug(&self) {
-        printf("%u\0".as_ptr() as *const c_char, *self);
+        printf(c"%u".as_ptr(), *self);
     }
 }
 impl<A: PrintFDebug> PrintFDebug for (A,) {
     unsafe fn printf_debug(&self) {
-        printf("(\0".as_ptr() as *const c_char);
+        printf(c"(".as_ptr());
         self.0.printf_debug();
-        printf(",)\0".as_ptr() as *const c_char);
+        printf(c",)".as_ptr());
     }
 }
 impl PrintFDebug for isize {
     unsafe fn printf_debug(&self) {
-        printf("%li\0".as_ptr() as *const c_char, *self as isize);
+        printf(c"%li".as_ptr(), *self as isize);
     }
 }

@@ -10,22 +10,22 @@ trait PrintFDebug {
 }
 impl PrintFDebug for i64 {
     unsafe fn printf_debug(&self) {
-        printf("%li\0".as_ptr() as *const c_char, *self);
+        printf(c"%li".as_ptr(), *self);
     }
 }
 impl PrintFDebug for char {
     unsafe fn printf_debug(&self) {
-        printf("%u\0".as_ptr() as *const c_char, *self as u64);
+        printf(c"%u".as_ptr(), *self as u64);
     }
 }
 impl PrintFDebug for usize {
     unsafe fn printf_debug(&self) {
-        printf("%lu\0".as_ptr() as *const c_char, *self as usize);
+        printf(c"%lu".as_ptr(), *self as usize);
     }
 }
 impl PrintFDebug for i32 {
     unsafe fn printf_debug(&self) {
-        printf("%i\0".as_ptr() as *const c_char, *self);
+        printf(c"%i".as_ptr(), *self);
     }
 }
 #[inline(never)]
@@ -41,15 +41,15 @@ fn dump_var(
     val3: impl PrintFDebug,
 ) {
     unsafe {
-        printf("fn%u:_%u = \0".as_ptr() as *const c_char, f, var0);
+        printf(c"fn%u:_%u = ".as_ptr(), f, var0);
         val0.printf_debug();
-        printf("\n_%u = \0".as_ptr() as *const c_char, var1);
+        printf(c"\n_%u = ".as_ptr(), var1);
         val1.printf_debug();
-        printf("\n_%u = \0".as_ptr() as *const c_char, var2);
+        printf(c"\n_%u = ".as_ptr(), var2);
         val2.printf_debug();
-        printf("\n_%u = \0".as_ptr() as *const c_char, var3);
+        printf(c"\n_%u = ".as_ptr(), var3);
         val3.printf_debug();
-        printf("\n\0".as_ptr() as *const c_char);
+        printf(c"\n".as_ptr());
     }
 }
 #[derive(Copy, Clone)]

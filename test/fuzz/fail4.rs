@@ -13,58 +13,58 @@ trait PrintFDebug {
 }
 impl PrintFDebug for usize {
     unsafe fn printf_debug(&self) {
-        printf("%lu\0".as_ptr() as *const c_char, *self as usize);
+        printf(c"%lu".as_ptr(), *self as usize);
     }
 }
 impl PrintFDebug for u64 {
     unsafe fn printf_debug(&self) {
-        printf("%lu\0".as_ptr() as *const c_char, *self);
+        printf(c"%lu".as_ptr(), *self);
     }
 }
 impl PrintFDebug for () {
     unsafe fn printf_debug(&self) {
-        printf("()\0".as_ptr() as *const c_char);
+        printf(c"()".as_ptr());
     }
 }
 impl PrintFDebug for u32 {
     unsafe fn printf_debug(&self) {
-        printf("%u\0".as_ptr() as *const c_char, *self);
+        printf(c"%u".as_ptr(), *self);
     }
 }
 impl PrintFDebug for u16 {
     unsafe fn printf_debug(&self) {
-        printf("%u\0".as_ptr() as *const c_char, *self as u16 as c_int);
+        printf(c"%u".as_ptr(), *self as u16 as c_int);
     }
 }
 impl PrintFDebug for f64{
     unsafe fn printf_debug(&self){
-        printf("%f\0".as_ptr() as *const c_char,*self as core::ffi::c_double);
+        printf(c"%f".as_ptr(),*self as core::ffi::c_double);
     }
 }
 impl<A: PrintFDebug> PrintFDebug for (A,) {
     unsafe fn printf_debug(&self) {
-        printf("(\0".as_ptr() as *const c_char);
+        printf(c"(".as_ptr());
         self.0.printf_debug();
-        printf(",)\0".as_ptr() as *const c_char);
+        printf(c",)".as_ptr());
     }
 }
 impl<A: PrintFDebug, B: PrintFDebug> PrintFDebug for (A, B) {
     unsafe fn printf_debug(&self) {
-        printf("(\0".as_ptr() as *const c_char);
+        printf(c"(".as_ptr());
         self.0.printf_debug();
-        printf(",\0".as_ptr() as *const c_char);
+        printf(c",".as_ptr());
         self.1.printf_debug();
-        printf(")\0".as_ptr() as *const c_char);
+        printf(c")".as_ptr());
     }
 }
 impl<T: PrintFDebug, const N: usize> PrintFDebug for [T; N] {
     unsafe fn printf_debug(&self) {
-        printf("[\0".as_ptr() as *const c_char);
+        printf(c"[".as_ptr());
         for b in self {
             b.printf_debug();
-            printf(",\0".as_ptr() as *const c_char);
+            printf(c",".as_ptr());
         }
-        printf("]\0".as_ptr() as *const c_char);
+        printf(c"]".as_ptr());
     }
 }
 #[inline(never)]
@@ -80,15 +80,15 @@ fn dump_var(
     val3: impl PrintFDebug,
 ) {
     unsafe {
-        printf("fn%u:_%u = \0".as_ptr() as *const c_char, f, var0);
+        printf(c"fn%u:_%u = ".as_ptr(), f, var0);
         val0.printf_debug();
-        printf("\n_%u = \0".as_ptr() as *const c_char, var1);
+        printf(c"\n_%u = ".as_ptr(), var1);
         val1.printf_debug();
-        printf("\n_%u = \0".as_ptr() as *const c_char, var2);
+        printf(c"\n_%u = ".as_ptr(), var2);
         val2.printf_debug();
-        printf("\n_%u = \0".as_ptr() as *const c_char, var3);
+        printf(c"\n_%u = ".as_ptr(), var3);
         val3.printf_debug();
-        printf("\n\0".as_ptr() as *const c_char);
+        printf(c"\n".as_ptr());
     }
 }
 
