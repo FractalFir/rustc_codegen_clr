@@ -45,6 +45,7 @@ fn body_ty_is_by_adress<'tcx>(last_ty: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx
         //TODO: check if slices are handled propely
         TyKind::Adt(_, _)
         | TyKind::Closure(_, _)
+        | TyKind::Coroutine(_,_)
         | TyKind::Array(_, _)
         | TyKind::Slice(_)
         | TyKind::Str => true,

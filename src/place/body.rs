@@ -13,6 +13,7 @@ use cilly::{
     conv_usize, ld_field, size_of,
     v2::{cilnode::MethodKind, FieldDesc, Int, MethodRef},
     Type,
+    ldc_u32
 };
 use rustc_middle::mir::PlaceElem;
 use rustc_middle::ty::{Ty, TyKind};
@@ -61,7 +62,33 @@ fn body_field<'a>(
                     }
                 }
                 (false, true) => panic!("Sized type {curr_type:?} contains an unsized field of type {field_type}. This is a bug."),
-                (true,false)=>todo!("Can't yet handle access of a sized field of an unsized type. "),
+                (true,false)=>
+                {
+                    let mut explicit_offset_iter = crate::utilis::adt::FieldOffsetIterator::fields(
+                        ctx.layout_of(curr_type).layout.0 .0.clone(),
+                    );
+                    let offset = explicit_offset_iter
+                        .nth(field_index as usize)
+                        .expect("Field index not in field offset iterator");
+                    let curr_type_fat_ptr = ctx.type_from_cache(Ty::new_ptr(
+                        ctx.tcx(),
+                        curr_type,
+                        rustc_middle::ty::Mutability::Mut,
+                    ));
+                    let addr_descr = FieldDesc::new(curr_type_fat_ptr.as_class_ref().unwrap(),ctx.alloc_string(crate::DATA_PTR),ctx.nptr(Type::Void),);
+                    // Get the address of the unsized object.
+                    let obj_addr = ld_field!(parrent_node, ctx.alloc_field(addr_descr));
+                    let obj = ctx.type_from_cache(field_type);
+                    let field_addr = obj_addr + conv_usize!(ldc_u32!(offset));
+                    if body_ty_is_by_adress(field_type, ctx) {
+                        (field_type.into(),CILNode::LdObj{ ptr: Box::new(field_addr), obj: Box::new(obj) })
+                    }else{
+                        (field_type.into(),field_addr)
+     
+                    }
+                    // Add the offset to the object.
+                   
+                }
                 (true,true)=>{
                     assert_eq!(
                         field_index,

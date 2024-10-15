@@ -223,7 +223,10 @@ fn load_scalar_ptr(
             );
             CILNode::LDFtn(ctx.alloc_methodref(mref))
         }
-        GlobalAlloc::VTable(..) => todo!("Unhandled global alloc {global_alloc:?}"),
+        GlobalAlloc::VTable(_,_) => {
+            let (ty, polyref) = global_alloc.unwrap_vtable();
+            crate::unsize::get_vtable(ctx,ctx.monomorphize(ty),(polyref))
+        }
     }
     //panic!("alloc_id:{alloc_id:?}")
 }

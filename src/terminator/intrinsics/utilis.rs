@@ -108,7 +108,7 @@ pub fn atomic_or(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly) 
             );
             cilnode.cast_ptr(Type::Ptr(inner))
         }
-        _ => todo!(),
+        _ => todo!("Can't atomic or {tpe:?}"),
     }
 }
 pub fn atomic_xor(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly) -> CILNode {
@@ -144,7 +144,7 @@ pub fn atomic_xor(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly)
             )
             .cast_ptr(Type::Ptr(inner))
         }
-        _ => todo!(),
+        _ => todo!("Can't atomic xor {tpe:?}"),
     }
 }
 pub fn atomic_and(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly) -> CILNode {
@@ -203,7 +203,7 @@ pub fn atomic_and(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly)
             );
             cilnode.cast_ptr(Type::Ptr(inner))
         }
-        _ => todo!(),
+        _ => todo!("Can't atomic and {tpe:?}"),
     }
 }
 pub fn compare_bytes(a: CILNode, b: CILNode, len: CILNode, asm: &mut Assembly) -> CILNode {
@@ -250,7 +250,8 @@ pub fn atomic_nand(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly
             )
             .cast_ptr(Type::Ptr(inner))
         }
-        _ => todo!(),
+        _ => todo!("Can't atomic nand {tpe:?}"),
+
     }
 }
 pub fn atomic_min(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly) -> CILNode {
@@ -286,7 +287,7 @@ pub fn atomic_min(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly)
             )
             .cast_ptr(Type::Ptr(inner))
         }
-        _ => todo!(),
+        _ => todo!("Can't atomic min {tpe:?}"),
     }
 }
 pub fn atomic_max(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly) -> CILNode {

@@ -90,8 +90,9 @@ pub fn handle_rvalue<'tcx>(
                 )))
             }
             NullOp::OffsetOf(fields) => {
-                assert_eq!(fields.len(), 1);
-                todo!("Can't calc offset of yet!");
+                let layout = ctx.layout_of(*ty);
+                let offset = ctx.tcx().offset_of_subfield(ParamEnv::reveal_all(), layout, fields.iter()).bytes();
+                ldc_u64!(offset)
             }
             rustc_middle::mir::NullOp::UbChecks => {
                 if ctx.tcx().sess.ub_checks() {
