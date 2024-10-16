@@ -122,7 +122,7 @@ pub fn enum_field_descriptor<'tcx>(
     variant_idx: u32,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> FieldIdx {
-    let (adt, subst) = as_adt(owner_ty).expect("Tried to get a field of a non ADT or tuple type!");
+    let (adt, subst) = as_adt(owner_ty).expect("Tried to get a field of a non ADT type!");
     let variant = adt
         .variants()
         .iter()
@@ -184,7 +184,24 @@ pub fn field_descrptor<'tcx>(
             field_name,
             field_type,
         ));
-    }
+    } else if let TyKind::Coroutine(_, args) = owner_ty.kind() {
+        let coroutine = args.as_coroutine();
+        let field_type = coroutine
+            .upvar_tys()
+            .iter()
+            .nth(field_idx as usize)
+            .expect("Could not find coroutine fields!");
+        let field_type = ctx.monomorphize(field_type);
+        let field_type = ctx.type_from_cache(field_type);
+        let owner_ty = ctx.monomorphize(owner_ty);
+        let owner_type = ctx.type_from_cache(owner_ty);
+        let field_name = ctx.alloc_string(format!("f_{field_idx}"));
+        return ctx.alloc_field(FieldDesc::new(
+            owner_type.as_class_ref().expect("Coroutine type invalid!"),
+            field_name,
+            field_type,
+        ));
+    };
     let (adt, subst) = as_adt(owner_ty).expect("Tried to get a field of a non ADT or tuple type!");
     let field = adt
         .all_fields()

@@ -25,8 +25,11 @@ fn main() {
         }
     }
     //test_indirect(&animal);*/
-    let x = black_box(async_fn(8, black_box(9.9)));
+    let x = black_box(async_fn2(8, black_box(9.9)));
 }
 async fn async_fn(a: i32, b: f32) -> f32 {
     a as f32 + black_box(b)
+}
+async fn async_fn2(a: i32, b: f32) -> f32 {
+   b
 }

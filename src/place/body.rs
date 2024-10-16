@@ -125,6 +125,7 @@ fn body_field<'a>(
         }
         super::PlaceTy::EnumVariant(enm, var_idx) => {
             let owner = ctx.monomorphize(enm);
+            
             let field_desc = crate::utilis::enum_field_descriptor(owner, field_index, var_idx, ctx);
 
             (
@@ -241,6 +242,10 @@ pub fn place_elem_body<'tcx>(
                 .as_ty()
                 .expect("Can't get enum variant of an enum varaint!");
             let curr_type = ctx.monomorphize(curr_type);
+            if matches!(curr_ty.as_ty().unwrap().kind(), TyKind::Coroutine(_,_)){
+                eprintln!("UNTESTED:  downcaststing coroutines is not fully supported, and the behaviour of corrutines is not yet fully tested! variant:{variant:?} curr_type:{curr_type:?}");
+                return (curr_type.into(), parrent_node);
+            }
             let variant_type = PlaceTy::EnumVariant(curr_type, variant.as_u32());
 
             (variant_type, parrent_node)

@@ -320,12 +320,11 @@ pub fn add_fn<'tcx, 'asm, 'a: 'asm>(
     name: &str,
     ctx: &'a mut MethodCompileCtx<'tcx, 'asm>,
 ) -> Result<(), MethodCodegenError> {
-    if let TyKind::FnDef(_, _) = ctx.instance().ty(ctx.tcx(), ParamEnv::reveal_all()).kind() {
+    let kind = ctx.instance().ty(ctx.tcx(), ParamEnv::reveal_all()).kind();
+    if let TyKind::FnDef(_, _) = kind {
         //ALL OK.
-    } else if let TyKind::Closure(_, _) =
-        ctx.instance().ty(ctx.tcx(), ParamEnv::reveal_all()).kind()
-    {
-        //println!("CLOSURE")
+    } else if let TyKind::Closure(_, _) = kind {
+    } else if let TyKind::Coroutine(_, _) = kind {
     } else {
         println!(
             "fn item {instance:?} is not a function definition type or a closure. Skippping.",

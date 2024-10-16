@@ -162,6 +162,46 @@ pub fn handle_aggregate<'tcx>(
                 Box::new(place_get(target_location, ctx)),
             )))
         }
+        AggregateKind::Coroutine(_def_id, _args) => {
+            let coroutine_ty = ctx
+                .monomorphize(target_location.ty(ctx.body(), ctx.tcx()))
+                .ty;
+            let coroutine_type = get_type(coroutine_ty, ctx);
+            let closure_dotnet = coroutine_type
+                .as_class_ref()
+                .expect("Invalid closure type!");
+            let closure_getter = super::place::place_adress(target_location, ctx);
+            let mut sub_trees = vec![];
+            for (index, value) in value_index.iter_enumerated() {
+                let field_ty = ctx.monomorphize(value.ty(ctx.body(), ctx.tcx()));
+                let field_type = get_type(field_ty, ctx);
+                if field_type == cilly::v2::Type::Void {
+                    continue;
+                }
+                let field_name = ctx.alloc_string(format!("f_{}", index.as_u32()));
+                sub_trees.push(CILRoot::SetField {
+                    addr: Box::new(closure_getter.clone()),
+                    value: Box::new(handle_operand(value, ctx)),
+                    desc: ctx.alloc_field(FieldDesc::new(closure_dotnet, field_name, field_type)),
+                });
+            }
+            let layout = ctx.layout_of(coroutine_ty);
+            let (disrc_type, _) = crate::utilis::adt::enum_tag_info(layout.layout, ctx);
+            if disrc_type != Type::Void {
+                sub_trees.push(set_discr(
+                    layout.layout,
+                    rustc_target::abi::VariantIdx::from_u32(0), // TODO: this assumes all coroutines start with a tag of 0
+                    closure_getter,
+                    closure_dotnet,
+                    layout.ty,
+                    ctx,
+                ));
+            }
+            CILNode::SubTrees(Box::new((
+                sub_trees.into(),
+                Box::new(place_get(target_location, ctx)),
+            )))
+        }
         AggregateKind::RawPtr(pointee, mutability) => {
             let pointee = ctx.monomorphize(*pointee);
             let [data, meta] = &*value_index.raw else {

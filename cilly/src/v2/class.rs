@@ -480,7 +480,9 @@ impl ClassDef {
     pub fn static_fields_mut(&mut self) -> &mut Vec<(Type, StringIdx, bool)> {
         &mut self.static_fields
     }
-
+    pub fn fields_mut(&mut self) -> &mut Vec<(Type, StringIdx, Option<u32>)> {
+        &mut self.fields
+    }
     #[must_use]
     pub fn access(&self) -> &Access {
         &self.access

@@ -373,13 +373,30 @@ pub fn get_type<'tcx>(ty: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_>) -> Typ
             Type::ClassRef(cref)
         }
         TyKind::Alias(_, _) => panic!("Attempted to get the .NET type of an unmorphized type"),
-        TyKind::Coroutine(_, _) => {
-            if *crate::config::ABORT_ON_ERROR {
-                panic!("Corutine {ty:?} is not yet supported")
-            } else {
-                eprintln!("WARNING: Corutine {ty:?} is not yet supported. Replacing it with Void to continue anyway, this can cause UB.");
-                Type::Void
+        TyKind::Coroutine(defid, coroutine_args) => {
+            let coroutine_args = coroutine_args.as_coroutine();
+
+            // Extract the closure fields
+            let fields: Box<[_]> = coroutine_args
+                .upvar_tys()
+                .iter()
+                .map(|ty| get_type(ty, ctx))
+                .collect();
+            // Get a coroutine name.
+            let name = coroutine_name(*defid, &fields, ctx);
+            let name = ctx.alloc_string(name);
+            // Get the layout of the coroutine
+            let layout = ctx.layout_of(ty);
+            // Allocate a class reference to the coroutine
+            let cref = ctx.alloc_class_ref(ClassRef::new(name, None, true, [].into()));
+            // If there is no defition of this coroutine present, create the coroutine.
+            if ctx.asm().class_ref_to_def(cref).is_none() {
+                let mut type_def = closure_typedef(&fields, layout.layout, ctx, name);
+                handle_tag(&layout.layout, ctx, ty, type_def.fields_mut());
+                ctx.class_def(type_def);
             }
+
+            Type::ClassRef(cref)
         }
         _ => todo!("Can't yet get type {ty:?} from type cache."),
     }
@@ -428,6 +445,18 @@ pub fn closure_name(
     let mangled_fields: String = fields.iter().map(|tpe| tpe.mangle(ctx.asm())).collect();
     format!(
         "Closure{field_count}{mangled_fields}",
+        field_count = fields.len()
+    )
+}
+/// Returns the name of a coroutine with a given id, fields, and signature.
+pub fn coroutine_name(
+    def_id: DefId,
+    fields: &[Type],
+    ctx: &mut MethodCompileCtx<'_, '_>,
+) -> String {
+    let mangled_fields: String = fields.iter().map(|tpe| tpe.mangle(ctx.asm())).collect();
+    format!(
+        "Coroutine{def_id:?}{field_count}{mangled_fields}",
         field_count = fields.len()
     )
 }
@@ -525,20 +554,15 @@ fn struct_<'tcx>(
         NonZeroU32::new(size),
     )
 }
-/// Turns an adt enum defintion into a [`ClassDef`]
-fn enum_<'tcx>(
-    enum_name: StringIdx,
-    adt: AdtDef<'tcx>,
-    adt_ty: Ty<'tcx>,
-    subst: &'tcx List<rustc_middle::ty::GenericArg<'tcx>>,
+fn handle_tag<'tcx>(
+    layout: &Layout,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-) -> ClassDef {
-    let layout = ctx.layout_of(adt_ty);
-    let mut fields: Vec<(Type, StringIdx, Option<u32>)> = vec![];
-    // Handle the enum tag.
+    adt_ty: Ty<'tcx>,
+    fields: &mut Vec<(Type, StringIdx, Option<u32>)>,
+) {
     match &layout.variants {
         rustc_target::abi::Variants::Single { index: _ } => {
-            let (tag_type, offset) = crate::utilis::adt::enum_tag_info(layout.layout, ctx);
+            let (tag_type, offset) = crate::utilis::adt::enum_tag_info(*layout, ctx);
 
             if tag_type != Type::Void {
                 fields.push((tag_type, ctx.alloc_string(crate::ENUM_TAG), Some(offset)));
@@ -576,6 +600,19 @@ fn enum_<'tcx>(
             }
         }
     };
+}
+/// Turns an adt enum defintion into a [`ClassDef`]
+fn enum_<'tcx>(
+    enum_name: StringIdx,
+    adt: AdtDef<'tcx>,
+    adt_ty: Ty<'tcx>,
+    subst: &'tcx List<rustc_middle::ty::GenericArg<'tcx>>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
+) -> ClassDef {
+    let layout = ctx.layout_of(adt_ty);
+    let mut fields: Vec<(Type, StringIdx, Option<u32>)> = vec![];
+    // Handle the enum tag.
+    handle_tag(&layout.layout, ctx, adt_ty, &mut fields);
     // Handle enum variants
     for (vidx, variant) in adt.variants().iter_enumerated() {
         let variant_name = variant.name.to_string();

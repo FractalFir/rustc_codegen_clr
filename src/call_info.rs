@@ -38,11 +38,11 @@ impl CallInfo {
         // There are 2 ABI enums for some reasons(they differ in what memebers they have)
         let fn_ty = function.ty(ctx.tcx(), ParamEnv::reveal_all());
         let internal_abi = match fn_ty.kind() {
-            TyKind::FnDef(_, _) => fn_ty.fn_sig(ctx.tcx()),
-            TyKind::Closure(_, args) => args.as_closure().sig(),
+            TyKind::FnDef(_, _) => fn_ty.fn_sig(ctx.tcx()).abi(),
+            TyKind::Closure(_, args) => args.as_closure().sig().abi(),
+            TyKind::Coroutine(_, _) => rustc_target::spec::abi::Abi::Rust, // TODO: this assumes all coroutines have the ABI Rust. This *should* be correct.
             _ => todo!("Can't get signature of {fn_ty}"),
-        }
-        .abi();
+        };
         // Only those ABIs are supported
         let split_last_tuple = match internal_abi {
             TargetAbi::C { unwind: _ }
