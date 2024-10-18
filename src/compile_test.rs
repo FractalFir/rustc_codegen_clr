@@ -767,6 +767,7 @@ run_test! {intrinsics,pow_sqrt,stable}
 run_test! {intrinsics,printf,stable}
 run_test! {intrinsics,ptr_offset_from_unsigned,stable}
 run_test! {intrinsics,round,stable}
+run_test! {intrinsics,simd,stable}
 run_test! {intrinsics,size_of_val,stable}
 run_test! {intrinsics,transmute,stable}
 run_test! {intrinsics,trigonometry,stable}

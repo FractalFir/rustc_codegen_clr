@@ -21,7 +21,8 @@ impl Assembly {
             | Type::Bool
             | Type::Void
             | Type::PlatformObject
-            | Type::PlatformGeneric(_, _) => tpe,
+            | Type::PlatformGeneric(_, _)
+            | Type::SMIDVector(_) => tpe,
             Type::ClassRef(class_ref) => {
                 Type::ClassRef(self.translate_class_ref(source, class_ref))
             }

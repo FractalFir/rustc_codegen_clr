@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use super::{
+use super::super::{
     cilnode::MethodKind,
     hashable::{HashableF32, HashableF64},
     Assembly, CILNode, ClassRef, ClassRefIdx, Const, MethodRef, NodeIdx, Type,
@@ -114,6 +114,15 @@ impl Float {
             [].into(),
         ));
         asm.alloc_node(CILNode::Call(Box::new((mref, Box::new([base, exp])))))
+    }
+
+    pub fn bits(&self) -> u8 {
+        match self {
+            Float::F16 => 16,
+            Float::F32 => 32,
+            Float::F64 => 64,
+            Float::F128 => 128,
+        }
     }
 }
 impl From<Float> for Type {

@@ -1072,15 +1072,14 @@ pub fn handle_intrinsic<'tcx>(
                 MethodKind::Static,
                 vec![].into(),
             );
-            let place_set = place_set(
+            place_set(
                 destination,
                 call!(
                     ctx.alloc_methodref(log),
                     [handle_operand(&args[0].node, ctx),]
                 ),
                 ctx,
-            );
-            place_set
+            )
         }
         "log2f32" => {
             let log = MethodRef::new(
@@ -1642,6 +1641,163 @@ pub fn handle_intrinsic<'tcx>(
                 },
                 ctx,
             )
+        }
+        "simd_eq" => {
+            let comparands = ctx.type_from_cache(
+                call_instance.args[0]
+                    .as_type()
+                    .expect("simd_eq works only on types!"),
+            );
+            let result = ctx.type_from_cache(
+                call_instance.args[1]
+                    .as_type()
+                    .expect("simd_eq works only on types!"),
+            );
+            let lhs = handle_operand(&args[0].node, ctx);
+            let rhs = handle_operand(&args[1].node, ctx);
+            let name = ctx.alloc_string("simd_eq");
+            let main_module = ctx.main_module();
+            let main_module = ctx[*main_module].clone();
+            let eq = main_module.static_mref(&[comparands, comparands], result, name, ctx);
+            place_set(destination, call!(eq, [lhs, rhs]), ctx)
+        }
+        "simd_or" => {
+            let vec = ctx.type_from_cache(
+                call_instance.args[0]
+                    .as_type()
+                    .expect("simd_or works only on types!"),
+            );
+
+            let lhs = handle_operand(&args[0].node, ctx);
+            let rhs = handle_operand(&args[1].node, ctx);
+            let name = ctx.alloc_string("simd_or");
+            let main_module = ctx.main_module();
+            let main_module = ctx[*main_module].clone();
+            let eq = main_module.static_mref(&[vec, vec], vec, name, ctx);
+            place_set(destination, call!(eq, [lhs, rhs]), ctx)
+        }
+        "simd_add" => {
+            let vec = ctx.type_from_cache(
+                call_instance.args[0]
+                    .as_type()
+                    .expect("simd_add works only on types!"),
+            );
+
+            let lhs = handle_operand(&args[0].node, ctx);
+            let rhs = handle_operand(&args[1].node, ctx);
+            let name = ctx.alloc_string("simd_add");
+            let main_module = ctx.main_module();
+            let main_module = ctx[*main_module].clone();
+            let eq = main_module.static_mref(&[vec, vec], vec, name, ctx);
+            place_set(destination, call!(eq, [lhs, rhs]), ctx)
+        }
+        "simd_sub" => {
+            let vec = ctx.type_from_cache(
+                call_instance.args[0]
+                    .as_type()
+                    .expect("simd_sub works only on types!"),
+            );
+
+            let lhs = handle_operand(&args[0].node, ctx);
+            let rhs = handle_operand(&args[1].node, ctx);
+            let name = ctx.alloc_string("simd_sub");
+            let main_module = ctx.main_module();
+            let main_module = ctx[*main_module].clone();
+            let eq = main_module.static_mref(&[vec, vec], vec, name, ctx);
+            place_set(destination, call!(eq, [lhs, rhs]), ctx)
+        }
+        "simd_shuffle" => {
+            let t_type = ctx.type_from_cache(
+                call_instance.args[0]
+                    .as_type()
+                    .expect("simd_eq works only on types!"),
+            );
+            let u_type = ctx.type_from_cache(
+                call_instance.args[1]
+                    .as_type()
+                    .expect("simd_eq works only on types!"),
+            );
+            let v_type = ctx.type_from_cache(
+                call_instance.args[2]
+                    .as_type()
+                    .expect("simd_eq works only on types!"),
+            );
+            let x = handle_operand(&args[0].node, ctx);
+            let y = handle_operand(&args[1].node, ctx);
+            // When the two vectors provided to simd shuffles are always the same, and have a length of 1(are scalar), the shuffle is equivalent to creating a vector [scalar,scalar].
+            if x == y && matches!(t_type, Type::Int(_) | Type::Float(_)) {
+                let name = ctx.alloc_string("simd_vec_from_val");
+                let main_module = ctx.main_module();
+                let main_module = ctx[*main_module].clone();
+                let shuffle = main_module.static_mref(&[t_type], v_type, name, ctx);
+                // SANITY: for this optimzation to work, the u(index vector) and v(result vector) both have to have be vectors.
+                let (_u_type, _v_type) = (
+                    u_type.as_simdvector().unwrap(),
+                    v_type.as_simdvector().unwrap(),
+                );
+                return place_set(destination, call!(shuffle, [x]), ctx);
+            }
+            let idx = handle_operand(&args[2].node, ctx);
+            let name = ctx.alloc_string("simd_shuffle");
+            let main_module = ctx.main_module();
+            let main_module = ctx[*main_module].clone();
+            let shuffle = main_module.static_mref(&[t_type, t_type, u_type], v_type, name, ctx);
+            place_set(destination, call!(shuffle, [x, y, idx]), ctx)
+        }
+        "simd_ne" => {
+            let comparands = ctx.type_from_cache(
+                call_instance.args[0]
+                    .as_type()
+                    .expect("simd_eq works only on types!"),
+            );
+            let result = ctx.type_from_cache(
+                call_instance.args[1]
+                    .as_type()
+                    .expect("simd_eq works only on types!"),
+            );
+            let lhs = handle_operand(&args[0].node, ctx);
+            let rhs = handle_operand(&args[1].node, ctx);
+            let eq = ctx.alloc_string("simd_eq");
+            let ones_compliment = ctx.alloc_string("simd_ones_compliment");
+            let main_module = ctx.main_module();
+            let main_module = ctx[*main_module].clone();
+            let eq = main_module.static_mref(&[comparands, comparands], result, eq, ctx);
+            let eq = call!(eq, [lhs, rhs]);
+            let ones_compliment = main_module.static_mref(&[result], result, ones_compliment, ctx);
+            let ne = call!(ones_compliment, [eq]);
+            place_set(destination, ne, ctx)
+        }
+        "simd_reduce_any" => {
+            let vec = ctx.type_from_cache(
+                call_instance.args[0]
+                    .as_type()
+                    .expect("simd_eq works only on types!"),
+            );
+            let x = handle_operand(&args[0].node, ctx);
+            let simd_eq = ctx.alloc_string("simd_eq_any");
+            let allset = ctx.alloc_string("simd_allset");
+            let main_module = ctx.main_module();
+            let main_module = ctx[*main_module].clone();
+            let eq = main_module.static_mref(&[vec, vec], Type::Bool, simd_eq, ctx);
+            let allset = main_module.static_mref(&[], vec, allset, ctx);
+            let allset = call!(allset, []);
+            place_set(destination, call!(eq, [x, allset]), ctx)
+        }
+        "simd_reduce_all" => {
+            let vec = ctx.type_from_cache(
+                call_instance.args[0]
+                    .as_type()
+                    .expect("simd_eq works only on types!"),
+            );
+            let x = handle_operand(&args[0].node, ctx);
+            let simd_eq = ctx.alloc_string("simd_eq_all");
+            let allset = ctx.alloc_string("simd_allset");
+            let main_module = ctx.main_module();
+            let main_module = ctx[*main_module].clone();
+            let eq = main_module.static_mref(&[vec, vec], Type::Bool, simd_eq, ctx);
+            let allset = main_module.static_mref(&[], vec, allset, ctx);
+            let allset = call!(allset, []);
+            place_set(destination, call!(eq, [x, allset]), ctx)
         }
         _ => intrinsic_slow(fn_name, args, destination, ctx, call_instance, span),
     }

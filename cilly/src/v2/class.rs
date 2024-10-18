@@ -399,6 +399,25 @@ impl ClassRef {
             [].into(),
         ))
     }
+    /// Returns a reference to an static method of this class, with a given name.
+    pub fn static_mref_generic(
+        &self,
+        inputs: &[Type],
+        output: Type,
+        fn_name: StringIdx,
+        asm: &mut Assembly,
+        generics: Box<[Type]>,
+    ) -> MethodRefIdx {
+        let this = asm.alloc_class_ref(self.clone());
+        let sig = asm.sig(inputs, output);
+        asm.alloc_methodref(MethodRef::new(
+            this,
+            fn_name,
+            sig,
+            super::cilnode::MethodKind::Static,
+            generics,
+        ))
+    }
     // Returns a `System.Collections.Concurrent.ConcurrentDictionary` of key,value
     pub fn concurent_dictionary(key: Type, value: Type, asm: &mut Assembly) -> ClassRefIdx {
         let name: StringIdx =
@@ -411,6 +430,10 @@ impl ClassRef {
         let name: StringIdx = asm.alloc_string("System.Collections.Generic.Dictionary");
         let asm_name = Some(asm.alloc_string("System.Collections"));
         asm.alloc_class_ref(ClassRef::new(name, asm_name, false, [key, value].into()))
+    }
+
+    pub fn set_generics(&mut self, generics: Vec<Type>) {
+        self.generics = generics.into();
     }
 }
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]

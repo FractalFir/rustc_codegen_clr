@@ -14,7 +14,6 @@ use super::{
     bimap::IntoBiMapIndex,
     cilnode::{ExtendKind, PtrCastRes},
     cilroot::BranchCond,
-    int,
     method::LocalDef,
     Assembly, BinOp, CILIter, CILIterElem, CILNode, CILRoot, ClassDefIdx, ClassRef, ClassRefIdx,
     Const, Exporter, Int, MethodDef, MethodRef, NodeIdx, RootIdx, SigIdx, Type,
@@ -88,6 +87,7 @@ fn c_tpe(field_tpe: Type, asm: &Assembly) -> String {
             dims = "*".repeat(dims.get() as usize)
         ),
         Type::FnPtr(_) => "void*".into(),
+        Type::SMIDVector(_) => panic!("SMID is not supported in C"),
     }
 }
 fn mref_to_name(mref: &MethodRef, asm: &Assembly) -> String {

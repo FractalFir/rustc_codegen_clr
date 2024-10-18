@@ -7,9 +7,12 @@ use crate::{
     fn_ctx::MethodCompileCtx,
     utilis::{adt::FieldOffsetIterator, garg_to_string},
 };
-use cilly::v2::{
-    cilnode::MethodKind, Access, BasicBlock, BinOp, CILNode, CILRoot, ClassDef, ClassDefIdx,
-    ClassRef, ClassRefIdx, Float, Int, MethodDef, MethodImpl, StringIdx, Type,
+use cilly::{
+    tpe::simd::SIMDVector,
+    v2::{
+        cilnode::MethodKind, Access, BasicBlock, BinOp, CILNode, CILRoot, ClassDef, ClassDefIdx,
+        ClassRef, ClassRefIdx, Float, Int, MethodDef, MethodImpl, StringIdx, Type,
+    },
 };
 pub use r#type::*;
 use rustc_middle::ty::{AdtDef, AdtKind, FloatTy, IntTy, List, ParamEnv, Ty, TyKind, UintTy};
@@ -57,7 +60,6 @@ pub fn from_float(float: &FloatTy) -> cilly::Type {
 fn get_adt<'tcx>(
     adt_ty: Ty<'tcx>,
     def: AdtDef<'tcx>,
-
     subst: &'tcx List<rustc_middle::ty::GenericArg<'tcx>>,
     name: StringIdx,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
@@ -195,6 +197,18 @@ pub fn get_type<'tcx>(ty: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_>) -> Typ
         }
         TyKind::Adt(def, subst) => {
             let name = crate::utilis::adt_name(*def, ctx.tcx(), subst);
+            if def.repr().simd() {
+                let (count, elem) = ty.simd_size_and_type(ctx.tcx());
+                let elem = ctx.type_from_cache(elem);
+                // if count == 1, then this is just a single type.
+                if count == 1 {
+                    return elem;
+                }
+                return Type::SMIDVector(SIMDVector::new(
+                    elem.try_into().unwrap(),
+                    count.try_into().unwrap(),
+                ));
+            }
             if is_name_magic(name.as_ref()) {
                 if name.contains(INTEROP_CLASS_TPE_NAME) {
                     assert!(

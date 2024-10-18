@@ -374,6 +374,7 @@ fn main() {
         cilly::v2::builtins::atomics::generate_all_atomics(&mut final_assembly, &mut overrides);
         cilly::v2::builtins::instert_threading(&mut final_assembly, &mut overrides);
         cilly::v2::builtins::math::math(&mut final_assembly, &mut overrides);
+        cilly::v2::builtins::simd::simd(&mut final_assembly, &mut overrides);
     }
     // Ensure the cctor and tcctor exist!
     let _ = final_assembly.tcctor();

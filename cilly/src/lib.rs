@@ -47,7 +47,6 @@ pub mod asm;
 
 pub mod basic_block;
 
-pub mod call_site;
 pub mod cil_iter;
 pub mod cil_iter_mut;
 pub mod cil_node;

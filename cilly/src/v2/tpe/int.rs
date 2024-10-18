@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use super::{
+use super::super::{
     cilnode::MethodKind, Assembly, CILNode, ClassRef, ClassRefIdx, Const, MethodRef, Type,
 };
 
@@ -257,6 +257,10 @@ impl Int {
             Int::U128 | Int::I128 => Some(16),
             Int::USize | Int::ISize => None,
         }
+    }
+
+    pub fn bits(&self) -> u8 {
+        self.size().unwrap() * 8
     }
 }
 #[test]

@@ -1,4 +1,4 @@
-use crate::v2::MethodImpl;
+use crate::{v2::MethodImpl, ClassRef};
 use lazy_static::lazy_static;
 use std::{io::Write, path::Path};
 
@@ -6,8 +6,8 @@ use super::{
     asm::{IlasmFlavour, ILASM_FLAVOUR, ILASM_PATH},
     cilnode::{ExtendKind, UnOp},
     cilroot::BranchCond,
-    int,
     method::LocalDef,
+    tpe::simd::{SIMDElem, SIMDVector},
     Assembly, BinOp, CILIter, CILIterElem, CILNode, ClassRefIdx, Exporter, Int, NodeIdx, RootIdx,
     SigIdx, Type,
 };
@@ -427,9 +427,23 @@ impl ILExporter {
                     .map(|tpe| non_void_type_il(tpe, asm))
                     .intersperse(",".to_owned())
                     .collect();
+                let generic = if mref.generics().is_empty() {
+                    "".to_string()
+                } else {
+                    let generic_list: String = mref
+                        .generics()
+                        .iter()
+                        .map(|tpe| type_il(tpe, asm))
+                        .intersperse(",".to_owned())
+                        .collect();
+                    format!("<{generic_list}>")
+                };
                 let name = &asm[mref.name()];
                 let class = class_ref(mref.class(), asm);
-                writeln!(out, "{call_op} {output} {class}::'{name}'({inputs})")
+                writeln!(
+                    out,
+                    "{call_op} {output} {class}::'{name}'{generic}({inputs})"
+                )
             }
             CILNode::IntCast {
                 input,
@@ -527,43 +541,43 @@ impl ILExporter {
                     (Type::Ref(_), true) => todo!(),
                     (Type::Ref(_), false) => todo!(),
                     (Type::Int(int), volitale) => match (int, volitale) {
-                        (int::Int::U8, true) => writeln!(out, "volatile. ldind.u1"),
-                        (int::Int::U8, false) => writeln!(out, "ldind.u1"),
-                        (int::Int::U16, true) => writeln!(out, "volatile. ldind.u2"),
-                        (int::Int::U16, false) => writeln!(out, "ldind.u2"),
-                        (int::Int::U32, true) => writeln!(out, "volatile. ldind.u4"),
-                        (int::Int::U32, false) => writeln!(out, "ldind.u4"),
-                        (int::Int::U64, true) => writeln!(out, "volatile. ldind.u8"),
-                        (int::Int::U64, false) => writeln!(out, "ldind.u8"),
-                        (int::Int::U128, true) => writeln!(
+                        (Int::U8, true) => writeln!(out, "volatile. ldind.u1"),
+                        (Int::U8, false) => writeln!(out, "ldind.u1"),
+                        (Int::U16, true) => writeln!(out, "volatile. ldind.u2"),
+                        (Int::U16, false) => writeln!(out, "ldind.u2"),
+                        (Int::U32, true) => writeln!(out, "volatile. ldind.u4"),
+                        (Int::U32, false) => writeln!(out, "ldind.u4"),
+                        (Int::U64, true) => writeln!(out, "volatile. ldind.u8"),
+                        (Int::U64, false) => writeln!(out, "ldind.u8"),
+                        (Int::U128, true) => writeln!(
                             out,
                             "volatile. ldobj valuetype [System.Runtime]System.UInt128"
                         ),
-                        (int::Int::U128, false) => {
+                        (Int::U128, false) => {
                             writeln!(out, "ldobj valuetype [System.Runtime]System.UInt128")
                         }
-                        (int::Int::USize, true) => writeln!(out, "volatile. ldind.i"),
-                        (int::Int::USize, false) => writeln!(out, "ldind.i"),
-                        (int::Int::I8, true) => writeln!(out, "volatile. ldind.i1"),
-                        (int::Int::I8, false) => writeln!(out, "ldind.i1"),
-                        (int::Int::I16, true) => writeln!(out, "volatile. ldind.i2"),
-                        (int::Int::I16, false) => writeln!(out, "ldind.i2"),
-                        (int::Int::I32, true) => writeln!(out, "volatile. ldind.i4"),
-                        (int::Int::I32, false) => writeln!(out, "ldind.i4"),
-                        (int::Int::I64, true) => writeln!(out, "volatile. ldind.i8"),
-                        (int::Int::I64, false) => writeln!(out, "ldind.i8"),
-                        (int::Int::I128, true) => writeln!(
+                        (Int::USize, true) => writeln!(out, "volatile. ldind.i"),
+                        (Int::USize, false) => writeln!(out, "ldind.i"),
+                        (Int::I8, true) => writeln!(out, "volatile. ldind.i1"),
+                        (Int::I8, false) => writeln!(out, "ldind.i1"),
+                        (Int::I16, true) => writeln!(out, "volatile. ldind.i2"),
+                        (Int::I16, false) => writeln!(out, "ldind.i2"),
+                        (Int::I32, true) => writeln!(out, "volatile. ldind.i4"),
+                        (Int::I32, false) => writeln!(out, "ldind.i4"),
+                        (Int::I64, true) => writeln!(out, "volatile. ldind.i8"),
+                        (Int::I64, false) => writeln!(out, "ldind.i8"),
+                        (Int::I128, true) => writeln!(
                             out,
                             "volatile. ldobj valuetype [System.Runtime]System.Int128"
                         ),
-                        (int::Int::I128, false) => {
+                        (Int::I128, false) => {
                             writeln!(
                                 out,
                                 "volatile. ldobj valuetype [System.Runtime]System.Int128"
                             )
                         }
-                        (int::Int::ISize, true) => writeln!(out, "volatile. ldind.i"),
-                        (int::Int::ISize, false) => writeln!(out, "ldind.i"),
+                        (Int::ISize, true) => writeln!(out, "volatile. ldind.i"),
+                        (Int::ISize, false) => writeln!(out, "ldind.i"),
                     },
                     (Type::ClassRef(cref), true) => {
                         writeln!(out, "volatile. ldobj {cref}", cref = class_ref(cref, asm))
@@ -608,6 +622,12 @@ impl ILExporter {
                     (Type::PlatformArray { .. }, false) => writeln!(out, "ldind.ref"),
                     (Type::FnPtr(_), true) => writeln!(out, "volatile. ldind.i"),
                     (Type::FnPtr(_), false) => writeln!(out, "ldind.i"),
+                    (Type::SMIDVector(_), true) => {
+                        writeln!(out, "volatile. ldobj {}", type_il(&tpe, asm))
+                    }
+                    (Type::SMIDVector(_), false) => {
+                        writeln!(out, "ldobj {}", type_il(&tpe, asm))
+                    }
                 }
             }
             CILNode::SizeOf(tpe) => {
@@ -1014,6 +1034,7 @@ impl ILExporter {
                     .collect();
                 let name = &asm[mref.name()];
                 let class = class_ref(mref.class(), asm);
+
                 writeln!(
                     out,
                     "{call_op} {output} {class}::'{name}'({inputs}) //mref:{:?}",
@@ -1080,6 +1101,7 @@ impl ILExporter {
                     Type::Void => writeln!(out, "pop pop ldstr \"Attempted to wrtie to a zero-sized type(void).\" newobj void [System.Runtime]System.Exception::.ctor(string) throw"), // TODO: forbid this, since this is NEVER valid.
                     Type::PlatformArray { .. } => writeln!(out, "{is_volitale} stind.ref"),
                     Type::FnPtr(_) => writeln!(out, "{is_volitale} stind.i"),
+                    Type::SMIDVector(_)=>writeln!(out, "stobj {}", type_il(&tpe, asm)),
                 }
             }
             super::CILRoot::InitBlk(blk) => {
@@ -1297,6 +1319,18 @@ fn non_void_type_il(tpe: &Type, asm: &Assembly) -> String {
 }
 fn type_il(tpe: &Type, asm: &Assembly) -> String {
     match tpe {
+        Type::SMIDVector(simdvec) => {
+            let vec_bits = simdvec.bits();
+            assert!(
+                vec_bits == 64 || vec_bits == 128 || vec_bits == 256 || vec_bits == 512,
+                "Unusported SIMD vector size"
+            );
+            let elem = match simdvec.elem() {
+                SIMDElem::Int(int) => type_il(&Type::Int(int), asm),
+                SIMDElem::Float(float) => type_il(&Type::Float(float), asm),
+            };
+            format!("valuetype [System.Runtime.Intrinsics]System.Runtime.Intrinsics.Vector{vec_bits}`1<{elem}>")
+        }
         Type::Ptr(inner) => format!("{}*", type_il(&asm[*inner], asm)),
         Type::Ref(inner) => format!("{}&", type_il(&asm[*inner], asm)),
         Type::Int(int) => match int {

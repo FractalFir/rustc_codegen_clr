@@ -13,12 +13,12 @@ pub use cilroot::{BranchCond, CILRoot, RootIdx};
 pub use class::{ClassDef, ClassDefIdx, ClassRef, ClassRefIdx};
 pub use cst::Const;
 pub use field::{FieldDesc, FieldIdx, StaticFieldDesc, StaticFieldIdx};
-pub use float::Float;
 pub use fnsig::{FnSig, SigIdx};
-pub use int::Int;
 pub use iter::{CILIter, CILIterElem};
 pub use method::{MethodDef, MethodDefIdx, MethodImpl, MethodRef, MethodRefIdx};
 pub use strings::StringIdx;
+pub use tpe::float::Float;
+pub use tpe::int::Int;
 pub use tpe::{Type, TypeIdx};
 
 pub mod access;
@@ -35,12 +35,10 @@ pub mod cilroot;
 pub mod class;
 pub mod cst;
 pub mod field;
-pub mod float;
 pub mod fnsig;
 /// Defines hashable and equable floating point types. All NaNs are compared by bits, and -0.0 != 0.0.
 pub mod hashable;
 pub mod il_exporter;
-pub mod int;
 pub mod iter;
 pub mod java_exporter;
 pub mod method;

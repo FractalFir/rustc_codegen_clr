@@ -5,8 +5,8 @@ use std::io::Write;
 use crate::v2::MethodImpl;
 
 use super::{
-    cilroot::BranchCond, int, Assembly, CILIter, CILIterElem, CILNode, ClassRefIdx, Exporter,
-    NodeIdx, RootIdx, Type,
+    cilroot::BranchCond, Assembly, CILIter, CILIterElem, CILNode, ClassRefIdx, Exporter, NodeIdx,
+    RootIdx, Type,
 };
 use lazy_static::lazy_static;
 lazy_static! {
@@ -131,7 +131,7 @@ pub(crate) fn class_ref(cref: ClassRefIdx, asm: &Assembly) -> String {
             generics = cref
                 .generics()
                 .iter()
-                .map(|tpe| type_il(tpe, asm))
+                .map(|tpe| type_string(*tpe, asm))
                 .intersperse(",".to_string())
                 .collect::<String>()
         )
@@ -146,67 +146,6 @@ pub(crate) fn class_ref(cref: ClassRefIdx, asm: &Assembly) -> String {
         format!("{prefix} [{assembly}]'{name}{generic_postfix}'{generic_list}")
     } else {
         format!("{prefix} '{name}{generic_postfix}'{generic_list}")
-    }
-}
-fn non_void_type_il(tpe: &Type, asm: &Assembly) -> String {
-    match tpe {
-        Type::Void => "valuetype RustVoid".into(),
-        _ => type_il(tpe, asm),
-    }
-}
-fn type_il(tpe: &Type, asm: &Assembly) -> String {
-    match tpe {
-        Type::Ptr(inner) => format!("{}*", type_il(&asm[*inner], asm)),
-        Type::Ref(inner) => format!("{}&", type_il(&asm[*inner], asm)),
-        Type::Int(int) => match int {
-            super::Int::U8 => "uint8".into(),
-            super::Int::U16 => "uint16".into(),
-            super::Int::U32 => "uint32".into(),
-            super::Int::U64 => "uint64".into(),
-            super::Int::U128 => "valuetype [System.Runtime]System.UInt128".into(),
-            super::Int::USize => "native uint".into(),
-            super::Int::I8 => "int8".into(),
-            super::Int::I16 => "int16".into(),
-            super::Int::I32 => "int32".into(),
-            super::Int::I64 => "int64".into(),
-            super::Int::I128 => "valuetype [System.Runtime]System.Int128".into(),
-            super::Int::ISize => "native int".into(),
-        },
-        Type::ClassRef(cref) => class_ref(*cref, asm),
-        Type::Float(float) => match float {
-            super::Float::F16 => todo!(),
-            super::Float::F32 => "float32".into(),
-            super::Float::F64 => "float64".into(),
-            super::Float::F128 => todo!(),
-        },
-        Type::PlatformChar => "char".into(),
-        Type::PlatformGeneric(arg, generic) => match generic {
-            super::tpe::GenericKind::MethodGeneric => todo!(),
-            super::tpe::GenericKind::CallGeneric => format!("!!{arg}"),
-            super::tpe::GenericKind::TypeGeneric => format!("!{arg}"),
-        },
-        Type::Bool => "bool".into(),
-        Type::Void => "void".into(),
-        Type::PlatformArray { elem, dims } => format!(
-            "{elem}[{dims}]",
-            elem = type_il(&asm[*elem], asm),
-            dims = (1..(dims.get())).map(|_| ',').collect::<String>()
-        ),
-        Type::FnPtr(sig) => {
-            let sig = &asm[*sig];
-            format!(
-                "method {output}*({inputs})",
-                output = type_il(sig.output(), asm),
-                inputs = sig
-                    .inputs()
-                    .iter()
-                    .map(|tpe| non_void_type_il(tpe, asm))
-                    .intersperse(",".to_string())
-                    .collect::<String>(),
-            )
-        }
-        Type::PlatformString => "string".into(),
-        Type::PlatformObject => "object".into(),
     }
 }
 
@@ -235,6 +174,7 @@ fn type_string(tpe: Type, asm: &Assembly) -> String {
             elem = type_string(asm[elem], asm)
         ),
         Type::FnPtr(_) => "J".into(),
+        Type::SMIDVector(_) => panic!("SMID is not supported in Java"),
     }
 }
 /*

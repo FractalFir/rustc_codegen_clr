@@ -1,12 +1,16 @@
 use std::num::NonZeroU8;
 
 use serde::{Deserialize, Serialize};
+use simd::{SIMDElem, SIMDVector};
 
 use super::{
     bimap::{BiMapIndex, IntoBiMapIndex},
     Assembly, ClassRefIdx, Float, Int, SigIdx,
 };
 
+pub mod float;
+pub mod int;
+pub mod simd;
 #[derive(Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct TypeIdx(BiMapIndex);
 impl IntoBiMapIndex for TypeIdx {
@@ -33,6 +37,7 @@ pub enum Type {
     Void,
     PlatformArray { elem: TypeIdx, dims: NonZeroU8 },
     FnPtr(SigIdx),
+    SMIDVector(SIMDVector),
 }
 #[derive(Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize)]
 pub enum GenericKind {
@@ -56,7 +61,8 @@ impl Type {
             | Type::PlatformGeneric(_, _)
             | Type::PlatformObject
             | Type::Bool
-            | Type::Void => Box::new(std::iter::empty()),
+            | Type::Void
+            | Type::SMIDVector(_) => Box::new(std::iter::empty()),
             Type::FnPtr(sig) => Box::new(
                 asm[*sig]
                     .iter_types()
@@ -78,12 +84,13 @@ impl Type {
     /// # use cilly::*;
     /// # use cilly::v2::Int;
     /// # let asm = cilly::v2::Assembly::default();
-    /// assert_eq!(Type::PlatformString.mangle(&asm),"s");
+    /// assert_eq!(Type::PlatformString.mangle(&asm),"st");
     /// assert_eq!(Type::Int(Int::I128).mangle(&asm),"i16");
     /// ```
     #[must_use]
     pub fn mangle(&self, asm: &Assembly) -> String {
         match self {
+            Type::SMIDVector(val) => val.name(),
             Type::Ptr(inner) => format!("p{}", asm[*inner].mangle(asm)),
             Type::Ref(inner) => format!("r{}", asm[*inner].mangle(asm)),
             Type::Int(int) => match int {
@@ -119,7 +126,7 @@ impl Type {
                 Float::F64 => "f8".into(),
                 Float::F128 => "f16".into(),
             },
-            Type::PlatformString => "s".into(),
+            Type::PlatformString => "st".into(),
             Type::PlatformChar => "c".into(),
             Type::PlatformGeneric(_, _) => todo!(),
             Type::PlatformObject => "o".into(),
@@ -226,6 +233,14 @@ impl Type {
     pub fn as_int(&self) -> Option<Int> {
         if let Self::Int(v) = self {
             Some(*v)
+        } else {
+            None
+        }
+    }
+
+    pub fn as_simdvector(&self) -> Option<&SIMDVector> {
+        if let Self::SMIDVector(v) = self {
+            Some(v)
         } else {
             None
         }
