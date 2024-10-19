@@ -22,7 +22,7 @@ pub fn unop<'tcx>(
         UnOp::Neg => match ty.kind() {
             TyKind::Int(IntTy::I128) => {
                 let mref = MethodRef::new(
-                    ClassRef::int_128(ctx).into(),
+                    ClassRef::int_128(ctx),
                     ctx.alloc_string("op_UnaryNegation"),
                     ctx.sig([Type::Int(Int::I128)], Type::Int(Int::I128)),
                     MethodKind::Static,
@@ -34,7 +34,7 @@ pub fn unop<'tcx>(
             TyKind::Int(IntTy::I16) => CILNode::Neg(CILNode::ConvI16(parrent_node.into()).into()),
             TyKind::Uint(UintTy::U128) => {
                 let mref = MethodRef::new(
-                    ClassRef::uint_128(ctx).into(),
+                    ClassRef::uint_128(ctx),
                     ctx.alloc_string("op_UnaryNegation"),
                     ctx.sig([Type::Int(Int::U128)], Type::Int(Int::U128)),
                     MethodKind::Static,
@@ -48,7 +48,7 @@ pub fn unop<'tcx>(
             TyKind::Bool => CILNode::Eq(CILNode::LdFalse.into(), parrent_node.into()),
             TyKind::Uint(UintTy::U128) => {
                 let mref = MethodRef::new(
-                    ClassRef::uint_128(ctx).into(),
+                    ClassRef::uint_128(ctx),
                     ctx.alloc_string("op_OnesComplement"),
                     ctx.sig([Type::Int(Int::U128)], Type::Int(Int::U128)),
                     MethodKind::Static,
@@ -58,7 +58,7 @@ pub fn unop<'tcx>(
             }
             TyKind::Int(IntTy::I128) => {
                 let mref = MethodRef::new(
-                    ClassRef::int_128(ctx).into(),
+                    ClassRef::int_128(ctx),
                     ctx.alloc_string("op_OnesComplement"),
                     ctx.sig([Type::Int(Int::I128)], Type::Int(Int::I128)),
                     MethodKind::Static,

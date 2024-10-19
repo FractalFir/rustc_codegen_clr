@@ -93,7 +93,7 @@ impl Float {
         asm.alloc_node(CILNode::Call(Box::new((mref, [val, fmin, fmax].into()))))
     }
     /// Returns a class representing this flaoting-point type.
-    fn class(&self, asm: &mut Assembly) -> ClassRefIdx {
+    pub fn class(&self, asm: &mut Assembly) -> ClassRefIdx {
         match self {
             Float::F16 => ClassRef::half(asm),
             Float::F32 => ClassRef::single(asm),

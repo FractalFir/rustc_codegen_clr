@@ -223,8 +223,8 @@ pub fn add_unchecked<'tcx>(
                 *ctx.main_module(),
                 ctx.alloc_string("add_f16"),
                 ctx.sig(
-                    [Type::Float(Float::F128), Type::Float(Float::F128)],
-                    Type::Float(Float::F128),
+                    [Type::Float(Float::F16), Type::Float(Float::F16)],
+                    Type::Float(Float::F16),
                 ),
                 MethodKind::Static,
                 vec![].into(),
@@ -291,6 +291,19 @@ pub fn sub_unchecked<'tcx>(
             );
             call!(ctx.alloc_methodref(mref), [ops_a, ops_b])
         }
+        TyKind::Float(FloatTy::F16) => {
+            let mref = MethodRef::new(
+                *ctx.main_module(),
+                ctx.alloc_string("sub_f16"),
+                ctx.sig(
+                    [Type::Float(Float::F16), Type::Float(Float::F16)],
+                    Type::Float(Float::F16),
+                ),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            call!(ctx.alloc_methodref(mref), [ops_a, ops_b,])
+        }
         _ => todo!("can't sub numbers of types {ty_a} and {ty_b}"),
     }
 }
@@ -345,6 +358,19 @@ fn rem_unchecked<'tcx>(
             );
             call!(ctx.alloc_methodref(mref), [ops_a, ops_b])
         }
+        TyKind::Float(FloatTy::F16) => {
+            let mref = MethodRef::new(
+                *ctx.main_module(),
+                ctx.alloc_string("rem_f16"),
+                ctx.sig(
+                    [Type::Float(Float::F16), Type::Float(Float::F16)],
+                    Type::Float(Float::F16),
+                ),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            call!(ctx.alloc_methodref(mref), [ops_a, ops_b,])
+        }
         TyKind::Uint(_) => rem_un!(ops_a, ops_b),
 
         _ => todo!(),
@@ -397,6 +423,19 @@ fn mul_unchecked<'tcx>(
                 vec![].into(),
             );
             call!(ctx.alloc_methodref(mref), [operand_a, operand_b])
+        }
+        TyKind::Float(FloatTy::F16) => {
+            let mref = MethodRef::new(
+                *ctx.main_module(),
+                ctx.alloc_string("mul_f16"),
+                ctx.sig(
+                    [Type::Float(Float::F16), Type::Float(Float::F16)],
+                    Type::Float(Float::F16),
+                ),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            call!(ctx.alloc_methodref(mref), [operand_a, operand_b,])
         }
         _ => operand_a * operand_b,
     }
@@ -451,6 +490,19 @@ fn div_unchecked<'tcx>(
                 vec![].into(),
             );
             call!(ctx.alloc_methodref(mref), [operand_a, operand_b])
+        }
+        TyKind::Float(FloatTy::F16) => {
+            let mref = MethodRef::new(
+                *ctx.main_module(),
+                ctx.alloc_string("div_f16"),
+                ctx.sig(
+                    [Type::Float(Float::F16), Type::Float(Float::F16)],
+                    Type::Float(Float::F16),
+                ),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            call!(ctx.alloc_methodref(mref), [operand_a, operand_b,])
         }
         _ => todo!(),
     }

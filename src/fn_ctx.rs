@@ -10,13 +10,14 @@ pub struct MethodCompileCtx<'tcx, 'asm> {
     asm: &'asm mut Assembly,
 }
 
-impl<'tcx, 'asm> std::ops::DerefMut for MethodCompileCtx<'tcx, 'asm> {
+impl std::ops::DerefMut for MethodCompileCtx<'_, '_> {
+    #[allow(clippy::mut_mut)]
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.asm
     }
 }
 
-impl<'tcx, 'asm> std::ops::Deref for MethodCompileCtx<'tcx, 'asm> {
+impl<'asm> std::ops::Deref for MethodCompileCtx<'_, 'asm> {
     type Target = &'asm mut Assembly;
 
     fn deref(&self) -> &Self::Target {

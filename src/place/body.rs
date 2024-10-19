@@ -10,10 +10,9 @@ use cilly::{
     call,
     cil_node::CILNode,
     cil_root::CILRoot,
-    conv_usize, ld_field, size_of,
+    conv_usize, ld_field, ldc_u32, size_of,
     v2::{cilnode::MethodKind, FieldDesc, Int, MethodRef},
     Type,
-    ldc_u32
 };
 use rustc_middle::mir::PlaceElem;
 use rustc_middle::ty::{Ty, TyKind};
@@ -84,10 +83,8 @@ fn body_field<'a>(
                         (field_type.into(),CILNode::LdObj{ ptr: Box::new(field_addr), obj: Box::new(obj) })
                     }else{
                         (field_type.into(),field_addr)
-     
                     }
                     // Add the offset to the object.
-                   
                 }
                 (true,true)=>{
                     assert_eq!(
@@ -125,7 +122,7 @@ fn body_field<'a>(
         }
         super::PlaceTy::EnumVariant(enm, var_idx) => {
             let owner = ctx.monomorphize(enm);
-            
+
             let field_desc = crate::utilis::enum_field_descriptor(owner, field_index, var_idx, ctx);
 
             (
@@ -241,7 +238,7 @@ pub fn place_elem_body<'tcx>(
                 .as_ty()
                 .expect("Can't get enum variant of an enum varaint!");
             let curr_type = ctx.monomorphize(curr_type);
-            if matches!(curr_ty.as_ty().unwrap().kind(), TyKind::Coroutine(_,_)){
+            if matches!(curr_ty.as_ty().unwrap().kind(), TyKind::Coroutine(_, _)) {
                 eprintln!("UNTESTED:  downcaststing coroutines is not fully supported, and the behaviour of corrutines is not yet fully tested! variant:{variant:?} curr_type:{curr_type:?}");
                 return (curr_type.into(), parrent_node);
             }

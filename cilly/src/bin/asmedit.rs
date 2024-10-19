@@ -44,6 +44,7 @@ fn main() {
         let body = body.trim().trim_matches(')').trim();
         let stem = stem.trim();
         match stem {
+            "typecheck" => asm.typecheck(),
             "simptypes" => {
                 let start = std::time::Instant::now();
                 let mut simplify_candidates = FxHashSet::default();

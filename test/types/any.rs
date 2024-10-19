@@ -20,6 +20,6 @@ fn main() {
     let mut s = black_box("starlord");
     modify_if_u32(&mut x);
     modify_if_u32(&mut s);
-    assert_eq!(x, 42);
-    assert_eq!(s, "starlord");
+    test_eq!(x, 42);
+    test_eq!(s, "starlord");
 }

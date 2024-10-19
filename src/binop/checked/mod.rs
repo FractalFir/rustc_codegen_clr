@@ -279,7 +279,7 @@ pub fn mul<'tcx>(
                     )
                 ]
             );
-            let op_gt = MethodRef::new(
+            let op_greater_than = MethodRef::new(
                 ClassRef::int_128(ctx),
                 ctx.alloc_string("op_GreaterThan"),
                 ctx.sig([Type::Int(Int::I128), Type::Int(Int::I128)], Type::Bool),
@@ -287,7 +287,7 @@ pub fn mul<'tcx>(
                 vec![].into(),
             );
             let gt = call!(
-                ctx.alloc_methodref(op_gt),
+                ctx.alloc_methodref(op_greater_than),
                 [
                     mul.clone(),
                     casts::int_to_int(Type::Int(Int::I64), Type::Int(Int::I128), max(ty, ctx), ctx)
@@ -386,7 +386,7 @@ pub fn mul<'tcx>(
                     )
                 ]
             );
-            let op_gt = MethodRef::new(
+            let op_greater_than = MethodRef::new(
                 ClassRef::int_128(ctx),
                 ctx.alloc_string("op_GreaterThan"),
                 ctx.sig([Type::Int(Int::I128), Type::Int(Int::I128)], Type::Bool),
@@ -394,7 +394,7 @@ pub fn mul<'tcx>(
                 vec![].into(),
             );
             let gt = call!(
-                ctx.alloc_methodref(op_gt),
+                ctx.alloc_methodref(op_greater_than),
                 [
                     mul.clone(),
                     casts::int_to_int(

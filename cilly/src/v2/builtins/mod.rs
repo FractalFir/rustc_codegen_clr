@@ -12,6 +12,8 @@ pub mod thread;
 pub use thread::*;
 pub mod int128;
 pub use int128::*;
+pub mod f16;
+pub use f16::*;
 pub mod simd;
 
 pub fn insert_swap_at_generic(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {

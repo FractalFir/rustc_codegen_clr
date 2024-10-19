@@ -21,7 +21,7 @@ pub fn shr_unchecked<'tcx>(
     match value_type.kind() {
         TyKind::Uint(UintTy::U128) => {
             let mref = MethodRef::new(
-                ClassRef::uint_128(ctx).into(),
+                ClassRef::uint_128(ctx),
                 ctx.alloc_string("op_RightShift"),
                 ctx.sig(
                     [Type::Int(Int::U128), Type::Int(Int::I32)],
@@ -40,7 +40,7 @@ pub fn shr_unchecked<'tcx>(
         }
         TyKind::Int(IntTy::I128) => {
             let mref = MethodRef::new(
-                ClassRef::int_128(ctx).into(),
+                ClassRef::int_128(ctx),
                 ctx.alloc_string("op_RightShift"),
                 ctx.sig(
                     [Type::Int(Int::I128), Type::Int(Int::I32)],
@@ -93,7 +93,7 @@ pub fn shr_checked<'tcx>(
     match value_type.kind() {
         TyKind::Uint(UintTy::U128) => {
             let mref = MethodRef::new(
-                ClassRef::uint_128(ctx).into(),
+                ClassRef::uint_128(ctx),
                 ctx.alloc_string("op_RightShift"),
                 ctx.sig(
                     [Type::Int(Int::U128), Type::Int(Int::I32)],
@@ -116,7 +116,7 @@ pub fn shr_checked<'tcx>(
         }
         TyKind::Int(IntTy::I128) => {
             let mref = MethodRef::new(
-                ClassRef::int_128(ctx).into(),
+                ClassRef::int_128(ctx),
                 ctx.alloc_string("op_RightShift"),
                 ctx.sig(
                     [Type::Int(Int::I128), Type::Int(Int::I32)],
@@ -298,7 +298,7 @@ pub fn shl_unchecked<'tcx>(
     match value_type.kind() {
         TyKind::Uint(UintTy::U128) => {
             let mref = MethodRef::new(
-                ClassRef::uint_128(ctx).into(),
+                ClassRef::uint_128(ctx),
                 ctx.alloc_string("op_LeftShift"),
                 ctx.sig(
                     [Type::Int(Int::U128), Type::Int(Int::I32)],
@@ -317,7 +317,7 @@ pub fn shl_unchecked<'tcx>(
         }
         TyKind::Int(IntTy::I128) => {
             let mref = MethodRef::new(
-                ClassRef::int_128(ctx).into(),
+                ClassRef::int_128(ctx),
                 ctx.alloc_string("op_LeftShift"),
                 ctx.sig(
                     [Type::Int(Int::I128), Type::Int(Int::I32)],

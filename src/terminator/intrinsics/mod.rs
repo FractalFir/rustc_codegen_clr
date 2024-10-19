@@ -1012,15 +1012,15 @@ pub fn handle_intrinsic<'tcx>(
                 MethodKind::Static,
                 vec![].into(),
             );
-            let place_set = place_set(
+
+            place_set(
                 destination,
                 call!(
                     ctx.alloc_methodref(abs),
                     [handle_operand(&args[0].node, ctx),]
                 ),
                 ctx,
-            );
-            place_set
+            )
         }
         "expf32" => {
             let exp = MethodRef::new(
@@ -1168,7 +1168,8 @@ pub fn handle_intrinsic<'tcx>(
                 MethodKind::Static,
                 vec![].into(),
             );
-            let place_set = place_set(
+
+            place_set(
                 destination,
                 call!(
                     ctx.alloc_methodref(pow),
@@ -1178,8 +1179,7 @@ pub fn handle_intrinsic<'tcx>(
                     ]
                 ),
                 ctx,
-            );
-            place_set
+            )
         }
         "copysignf32" => {
             let copy_sign = MethodRef::new(

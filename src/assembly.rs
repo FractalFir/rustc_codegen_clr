@@ -540,6 +540,7 @@ pub fn checked_add_fn<'a: 'c, 'b: 'c, 'c>(
     }*/
 }
 /// Adds a MIR item (method,inline assembly code, etc.) to the assembly.
+#[allow(clippy::similar_names)]
 pub fn add_item<'tcx>(
     asm: &mut Assembly,
     item: MonoItem<'tcx>,

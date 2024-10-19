@@ -93,12 +93,30 @@ pub fn unsize2<'tcx>(
             ctx.alloc_field(ptr_field),
         )
     };
-
+    let source_size = ctx.layout_of(source).size.bytes();
+    // Assumes a 64 bit pointer!
+    let copy_val = if source_size > 8 && !source.is_any_ptr() {
+        let addr = operand_address(operand, ctx);
+        let const_8 = CILNode::ZeroExtendToISize(Box::new(CILNode::LdcI8(8)));
+        let addr = CILNode::Add(Box::new(addr), Box::new(const_8));
+        let dst_addr = CILNode::MRefToRawPtr(Box::new(CILNode::LoadAddresOfTMPLocal));
+        let const_16 = CILNode::ZeroExtendToISize(Box::new(CILNode::LdcI8(16)));
+        let dst_addr = CILNode::Add(Box::new(dst_addr), Box::new(const_16));
+        CILRoot::CpBlk {
+            dst: Box::new(dst_addr),
+            src: Box::new(addr),
+            len: Box::new(CILNode::ZeroExtendToISize(Box::new(CILNode::LdcU64(
+                source_size - 8,
+            )))),
+        }
+    } else {
+        CILRoot::Nop
+    };
     CILNode::LdObj {
         ptr: Box::new(
             CILNode::TemporaryLocal(Box::new((
                 ctx.alloc_type(Type::ClassRef(fat_ptr_type)),
-                [init_metadata, init_ptr].into(),
+                [copy_val, init_metadata, init_ptr].into(),
                 CILNode::LoadAddresOfTMPLocal,
             )))
             .cast_ptr(ctx.nptr(target_type)),
@@ -117,10 +135,9 @@ pub(crate) fn unsized_info<'tcx>(
         ctx.tcx()
             .struct_lockstep_tails_for_codegen(source, target, ParamEnv::reveal_all());
     match (&source.kind(), &target.kind()) {
-        (&TyKind::Array(_, len), &TyKind::Slice(_)) => conv_usize!(ldc_u64!(u64::try_from(
+        (&TyKind::Array(_, len), &TyKind::Slice(_)) => conv_usize!(ldc_u64!(
             len.eval_target_usize(ctx.tcx(), ParamEnv::reveal_all())
-        )
-        .unwrap())),
+        )),
         (
             &TyKind::Dynamic(data_a, _, src_dyn_kind),
             &TyKind::Dynamic(data_b, _, target_dyn_kind),

@@ -439,7 +439,7 @@ fn to_int(target: Type, operand: CILNode) -> CILNode {
 pub fn int_to_float(src: Type, target: Type, parrent: CILNode, asm: &mut Assembly) -> CILNode {
     if matches!(src, Type::Int(Int::I128)) {
         let mref = MethodRef::new(
-            ClassRef::int_128(asm).into(),
+            ClassRef::int_128(asm),
             asm.alloc_string("op_Explicit"),
             asm.sig([src], target),
             MethodKind::Static,
@@ -449,7 +449,7 @@ pub fn int_to_float(src: Type, target: Type, parrent: CILNode, asm: &mut Assembl
         //todo!("Casting from 128 bit intiegers is not supported!")
     } else if matches!(src, Type::Int(Int::U128)) {
         let mref = MethodRef::new(
-            ClassRef::uint_128(asm).into(),
+            ClassRef::uint_128(asm),
             asm.alloc_string("op_Explicit"),
             asm.sig([src], target),
             MethodKind::Static,

@@ -19,7 +19,7 @@ pub fn bit_and_unchecked<'tcx>(
     match ty_a.kind() {
         TyKind::Uint(UintTy::U128) => {
             let mref = MethodRef::new(
-                ClassRef::uint_128(ctx).into(),
+                ClassRef::uint_128(ctx),
                 ctx.alloc_string("op_BitwiseAnd"),
                 ctx.sig(
                     [Type::Int(Int::U128), Type::Int(Int::U128)],
@@ -38,7 +38,7 @@ pub fn bit_and_unchecked<'tcx>(
         }
         TyKind::Int(IntTy::I128) => {
             let mref = MethodRef::new(
-                ClassRef::int_128(ctx).into(),
+                ClassRef::int_128(ctx),
                 ctx.alloc_string("op_BitwiseAnd"),
                 ctx.sig(
                     [Type::Int(Int::I128), Type::Int(Int::I128)],

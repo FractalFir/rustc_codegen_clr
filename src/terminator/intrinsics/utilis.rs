@@ -251,7 +251,6 @@ pub fn atomic_nand(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly
             .cast_ptr(Type::Ptr(inner))
         }
         _ => todo!("Can't atomic nand {tpe:?}"),
-
     }
 }
 pub fn atomic_min(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly) -> CILNode {

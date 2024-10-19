@@ -74,8 +74,8 @@ pub fn eq_unchecked(
         }
         TyKind::Float(FloatTy::F16) => {
             let mref = MethodRef::new(
-                ClassRef::half(asm),
-                asm.alloc_string("op_Equality"),
+                *asm.main_module(),
+                asm.alloc_string("eq_f16"),
                 asm.sig(
                     [Type::Float(Float::F16), Type::Float(Float::F16)],
                     Type::Bool,
@@ -140,6 +140,19 @@ pub fn lt_unchecked(
             );
             call!(asm.alloc_methodref(mref), [operand_a, operand_b])
         }
+        TyKind::Float(FloatTy::F16) => {
+            let mref = MethodRef::new(
+                *asm.main_module(),
+                asm.alloc_string("lt_f16"),
+                asm.sig(
+                    [Type::Float(Float::F16), Type::Float(Float::F16)],
+                    Type::Bool,
+                ),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            call!(asm.alloc_methodref(mref), [operand_a, operand_b])
+        }
         _ => panic!("Can't eq type  {ty_a:?}"),
     }
 }
@@ -186,6 +199,19 @@ pub fn gt_unchecked(
                 asm.alloc_string("__gttf2"),
                 asm.sig(
                     [Type::Float(Float::F128), Type::Float(Float::F128)],
+                    Type::Bool,
+                ),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            call!(asm.alloc_methodref(mref), [operand_a, operand_b])
+        }
+        TyKind::Float(FloatTy::F16) => {
+            let mref = MethodRef::new(
+                *asm.main_module(),
+                asm.alloc_string("gt_f16"),
+                asm.sig(
+                    [Type::Float(Float::F16), Type::Float(Float::F16)],
                     Type::Bool,
                 ),
                 MethodKind::Static,
