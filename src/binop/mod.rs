@@ -361,7 +361,7 @@ fn rem_unchecked<'tcx>(
         TyKind::Float(FloatTy::F16) => {
             let mref = MethodRef::new(
                 *ctx.main_module(),
-                ctx.alloc_string("rem_f16"),
+                ctx.alloc_string("mod_f16"),
                 ctx.sig(
                     [Type::Float(Float::F16), Type::Float(Float::F16)],
                     Type::Float(Float::F16),

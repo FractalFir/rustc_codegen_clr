@@ -115,7 +115,34 @@ impl Float {
         ));
         asm.alloc_node(CILNode::Call(Box::new((mref, Box::new([base, exp])))))
     }
+    /// Raises base to power.
+    pub fn math2(&self, base: NodeIdx, exp: NodeIdx, asm: &mut Assembly, name: &str) -> NodeIdx {
+        let pow = asm.alloc_string(name);
+        let class = self.class(asm);
+        let sig = asm.sig([Type::Float(*self), Type::Float(*self)], *self);
+        let mref = asm.alloc_methodref(MethodRef::new(
+            class,
+            pow,
+            sig,
+            MethodKind::Static,
+            [].into(),
+        ));
+        asm.alloc_node(CILNode::Call(Box::new((mref, Box::new([base, exp])))))
+    }
 
+    pub fn math1(&self, val: NodeIdx, asm: &mut Assembly, name: &str) -> NodeIdx {
+        let name = asm.alloc_string(name);
+        let class = self.class(asm);
+        let sig = asm.sig([Type::Float(*self)], *self);
+        let mref = asm.alloc_methodref(MethodRef::new(
+            class,
+            name,
+            sig,
+            MethodKind::Static,
+            [].into(),
+        ));
+        asm.alloc_node(CILNode::Call(Box::new((mref, Box::new([val])))))
+    }
     pub fn bits(&self) -> u8 {
         match self {
             Float::F16 => 16,

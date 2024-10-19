@@ -90,10 +90,10 @@ fn insert_rust_alloc(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
                 super::cilroot::CmpKind::Unsigned,
             )),
         ))));
-        let throw =
-            crate::cil_root::CILRoot::throw(&format!("Alloc limit of {ALLOC_CAP} exceeded.",), asm);
-        let throw = CILRoot::from_v1(&throw, asm);
-        let throw = asm.alloc_root(throw);
+        let zero = asm.alloc_node(Const::USize(0));
+        let ret_zero = CILRoot::Ret(zero);
+
+        let throw = asm.alloc_root(ret_zero);
         MethodImpl::MethodBody {
             blocks: vec![
                 BasicBlock::new(vec![check, ret], 0, None),

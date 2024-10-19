@@ -54,6 +54,58 @@ pub fn ldexpf(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
     };
     patcher.insert(name, Box::new(generator));
 }
+pub fn sinhf(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
+    let name = asm.alloc_string("sinhf");
+    let generator = move |_, asm: &mut Assembly| {
+        let arg = asm.alloc_node(CILNode::LdArg(0));
+        let sinh = Float::F32.math1(arg, asm, "Sinh");
+        let ret = asm.alloc_root(CILRoot::Ret(sinh));
+        MethodImpl::MethodBody {
+            blocks: vec![BasicBlock::new(vec![ret], 0, None)],
+            locals: vec![],
+        }
+    };
+    patcher.insert(name, Box::new(generator));
+}
+pub fn sinh(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
+    let name = asm.alloc_string("sinh");
+    let generator = move |_, asm: &mut Assembly| {
+        let arg = asm.alloc_node(CILNode::LdArg(0));
+        let sinh = Float::F64.math1(arg, asm, "Sinh");
+        let ret = asm.alloc_root(CILRoot::Ret(sinh));
+        MethodImpl::MethodBody {
+            blocks: vec![BasicBlock::new(vec![ret], 0, None)],
+            locals: vec![],
+        }
+    };
+    patcher.insert(name, Box::new(generator));
+}
+pub fn coshf(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
+    let name = asm.alloc_string("coshf");
+    let generator = move |_, asm: &mut Assembly| {
+        let arg = asm.alloc_node(CILNode::LdArg(0));
+        let cosh = Float::F32.math1(arg, asm, "Cosh");
+        let ret = asm.alloc_root(CILRoot::Ret(cosh));
+        MethodImpl::MethodBody {
+            blocks: vec![BasicBlock::new(vec![ret], 0, None)],
+            locals: vec![],
+        }
+    };
+    patcher.insert(name, Box::new(generator));
+}
+pub fn cosh(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
+    let name = asm.alloc_string("cosh");
+    let generator = move |_, asm: &mut Assembly| {
+        let arg = asm.alloc_node(CILNode::LdArg(0));
+        let cosh = Float::F64.math1(arg, asm, "Cosh");
+        let ret = asm.alloc_root(CILRoot::Ret(cosh));
+        MethodImpl::MethodBody {
+            blocks: vec![BasicBlock::new(vec![ret], 0, None)],
+            locals: vec![],
+        }
+    };
+    patcher.insert(name, Box::new(generator));
+}
 pub fn ldexp(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
     let name = asm.alloc_string("ldexp");
     let generator = move |_, asm: &mut Assembly| {
@@ -92,6 +144,10 @@ pub fn bitreverse_u128(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
 pub fn math(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
     ldexp(asm, patcher);
     ldexpf(asm, patcher);
+    sinhf(asm, patcher);
+    sinh(asm, patcher);
+    coshf(asm, patcher);
+    cosh(asm, patcher);
     bitreverse_u32(asm, patcher);
     bitreverse_u64(asm, patcher);
     bitreverse_u128(asm, patcher);
@@ -282,51 +338,3 @@ fn bitreverse_u128(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
     };
     patcher.insert(name, Box::new(generator));
 }
-/*
-fn bitreverse_u128(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
-    let name = asm.alloc_string("bitreverse_u64");
-    let generator = move |_, asm: &mut Assembly| {
-        let u64_max = asm.alloc_node(Const::U64(u64::MAX));
-        let u64_zero = asm.alloc_node(Const::U64(0));
-        let u128_class = ClassRef::uint_128(asm);
-        let u128_class = asm[u128_class].clone();
-        let u128_ctor = u128_class.ctor(&[Type::Int(Int::U64), Type::Int(Int::U64)], asm);
-        let mask = asm.alloc_node(CILNode::Call(Box::new((
-            u128_ctor,
-            ([u64_max, u64_zero]).into(),
-        ))));
-        let inv_mask = asm.alloc_node(CILNode::Call(Box::new((
-            u128_ctor,
-            ([u64_zero, u64_max]).into(),
-        ))));
-        let mut curr = asm.alloc_node(CILNode::LdArg(0));
-        let mut shift = 32;
-        let op_add = asm.alloc_string("op_Addition");
-        let op_and = asm.alloc_string("op_BitwiseAnd");
-        let op_or = asm.alloc_string("op_BitwiseOr");
-        let op_lshift = asm.alloc_string("op_LeftShift");
-        let op_rshift = asm.alloc_string("op_RightShift");
-        while shift > 0 {
-            let masked = asm.alloc_node(CILNode::BinOp(curr, mask, BinOp::And));
-            let inv_masked = asm.alloc_node(CILNode::BinOp(curr, inv_mask, BinOp::And));
-            let shift_ammount = asm.alloc_node(Const::I64(shift));
-            let masked_shifted =
-                asm.alloc_node(CILNode::BinOp(masked, shift_ammount, BinOp::ShrUn));
-            let inv_masked_shifted =
-                asm.alloc_node(CILNode::BinOp(inv_masked, shift_ammount, BinOp::Shl));
-            curr = asm.alloc_node(CILNode::BinOp(
-                masked_shifted,
-                inv_masked_shifted,
-                BinOp::Or,
-            ));
-            shift /= 2;
-        }
-        let ret = asm.alloc_root(CILRoot::Ret(curr));
-        MethodImpl::MethodBody {
-            blocks: vec![BasicBlock::new(vec![ret], 0, None)],
-            locals: vec![],
-        }
-    };
-    patcher.insert(name, Box::new(generator));
-}
-*/
