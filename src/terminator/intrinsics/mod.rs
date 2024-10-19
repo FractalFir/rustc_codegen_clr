@@ -1706,6 +1706,48 @@ pub fn handle_intrinsic<'tcx>(
             let eq = main_module.static_mref(&[vec, vec], vec, name, ctx);
             place_set(destination, call!(eq, [lhs, rhs]), ctx)
         }
+        "simd_mul" => {
+            let vec = ctx.type_from_cache(
+                call_instance.args[0]
+                    .as_type()
+                    .expect("simd_sub works only on types!"),
+            );
+
+            let lhs = handle_operand(&args[0].node, ctx);
+            let rhs = handle_operand(&args[1].node, ctx);
+            let name = ctx.alloc_string("simd_mul");
+            let main_module = ctx.main_module();
+            let main_module = ctx[*main_module].clone();
+            let eq = main_module.static_mref(&[vec, vec], vec, name, ctx);
+            place_set(destination, call!(eq, [lhs, rhs]), ctx)
+        }
+        "simd_fabs" => {
+            let vec = ctx.type_from_cache(
+                call_instance.args[0]
+                    .as_type()
+                    .expect("simd_sub works only on types!"),
+            );
+
+            let lhs = handle_operand(&args[0].node, ctx);
+            let name = ctx.alloc_string("simd_abs");
+            let main_module = ctx.main_module();
+            let main_module = ctx[*main_module].clone();
+            let eq = main_module.static_mref(&[vec], vec, name, ctx);
+            place_set(destination, call!(eq, [lhs,]), ctx)
+        }
+        "simd_neg" => {
+            let vec = ctx.type_from_cache(
+                call_instance.args[0]
+                    .as_type()
+                    .expect("simd_neg works only on types!"),
+            );
+            let val = handle_operand(&args[0].node, ctx);
+            let name = ctx.alloc_string("simd_neg");
+            let main_module = ctx.main_module();
+            let main_module = ctx[*main_module].clone();
+            let eq = main_module.static_mref(&[vec], vec, name, ctx);
+            place_set(destination, call!(eq, [val]), ctx)
+        }
         "simd_shuffle" => {
             let t_type = ctx.type_from_cache(
                 call_instance.args[0]
@@ -1782,6 +1824,19 @@ pub fn handle_intrinsic<'tcx>(
             let allset = main_module.static_mref(&[], vec, allset, ctx);
             let allset = call!(allset, []);
             place_set(destination, call!(eq, [x, allset]), ctx)
+        }
+        "select_unpredictable" => {
+            let tpe = ctx.type_from_cache(
+                call_instance.args[0]
+                    .as_type()
+                    .expect("simd_eq works only on types!"),
+            );
+            let cond = handle_operand(&args[0].node, ctx);
+            let true_val = handle_operand(&args[1].node, ctx);
+            let false_val = handle_operand(&args[2].node, ctx);
+
+            let select = CILNode::select(tpe, true_val, false_val, cond, ctx);
+            place_set(destination, select, ctx)
         }
         "simd_reduce_all" => {
             let vec = ctx.type_from_cache(

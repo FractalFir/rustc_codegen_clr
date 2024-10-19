@@ -50,3 +50,5 @@ macro_rules! binop {
 binop!(simd_or, "BitwiseOr");
 binop!(simd_add, "Add");
 binop!(simd_sub, "Subtract");
+binop!(simd_mul, "Multiply");
+binop!(simd_div, "Divides");

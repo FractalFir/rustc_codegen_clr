@@ -15,7 +15,8 @@ fn dotnet_vec_cast(
     if src_type == target_type {
         return src;
     }
-    todo!();
+    eprintln!("Can't cast {src_type:?} -> {target_type:?}");
+    src
 }
 
 fn simd_ones_compliment(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
@@ -58,6 +59,88 @@ fn simd_ones_compliment(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) 
     };
     patcher.insert(name, Box::new(generator));
 }
+
+fn simd_neg(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
+    let name: crate::StringIdx = asm.alloc_string("simd_neg");
+    let generator = move |mref: MethodRefIdx, asm: &mut Assembly| {
+        let sig = asm[asm[mref].sig()].clone();
+
+        let Some(vec_type) = sig.inputs()[0].as_simdvector() else {
+            todo!(
+                "Can't calc the ones compliment of {vec_type:?}",
+                vec_type = sig.inputs()[0]
+            )
+        };
+        let elem: Type = vec_type.elem().into();
+        let extension_class = vec_type.extension_class(asm);
+        let extension_class = asm[extension_class].clone();
+        let ones_compliment = asm.alloc_string("Negate");
+        // Generic vec
+        let generic_class = vec_type.class(asm);
+        let mut generic_class = asm[generic_class].clone();
+        generic_class.set_generics(vec![Type::PlatformGeneric(
+            0,
+            crate::tpe::GenericKind::CallGeneric,
+        )]);
+        let generic_class = asm.alloc_class_ref(generic_class);
+        let ones_compliment = extension_class.static_mref_generic(
+            &[Type::ClassRef(generic_class)],
+            Type::ClassRef(generic_class),
+            ones_compliment,
+            asm,
+            [elem].into(),
+        );
+        let val = asm.alloc_node(CILNode::LdArg(0));
+        let res = asm.alloc_node(CILNode::Call(Box::new((ones_compliment, [val].into()))));
+        let ret = asm.alloc_root(CILRoot::Ret(res));
+        MethodImpl::MethodBody {
+            blocks: vec![BasicBlock::new(vec![ret], 0, None)],
+            locals: vec![],
+        }
+    };
+    patcher.insert(name, Box::new(generator));
+}
+fn simd_abs(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
+    let name: crate::StringIdx = asm.alloc_string("simd_abs");
+    let generator = move |mref: MethodRefIdx, asm: &mut Assembly| {
+        let sig = asm[asm[mref].sig()].clone();
+
+        let Some(vec_type) = sig.inputs()[0].as_simdvector() else {
+            todo!(
+                "Can't calc simd_abs of {vec_type:?}",
+                vec_type = sig.inputs()[0]
+            )
+        };
+        let elem: Type = vec_type.elem().into();
+        let extension_class = vec_type.extension_class(asm);
+        let extension_class = asm[extension_class].clone();
+        let ones_compliment = asm.alloc_string("Abs");
+        // Generic vec
+        let generic_class = vec_type.class(asm);
+        let mut generic_class = asm[generic_class].clone();
+        generic_class.set_generics(vec![Type::PlatformGeneric(
+            0,
+            crate::tpe::GenericKind::CallGeneric,
+        )]);
+        let generic_class = asm.alloc_class_ref(generic_class);
+        let ones_compliment = extension_class.static_mref_generic(
+            &[Type::ClassRef(generic_class)],
+            Type::ClassRef(generic_class),
+            ones_compliment,
+            asm,
+            [elem].into(),
+        );
+        let val = asm.alloc_node(CILNode::LdArg(0));
+        let res = asm.alloc_node(CILNode::Call(Box::new((ones_compliment, [val].into()))));
+        let ret = asm.alloc_root(CILRoot::Ret(res));
+        MethodImpl::MethodBody {
+            blocks: vec![BasicBlock::new(vec![ret], 0, None)],
+            locals: vec![],
+        }
+    };
+    patcher.insert(name, Box::new(generator));
+}
+
 fn simd_shuffle(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
     let name: crate::StringIdx = asm.alloc_string("simd_shuffle");
     let generator = move |mref: MethodRefIdx, asm: &mut Assembly| {
@@ -125,6 +208,8 @@ fn simd_allset(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
 pub fn simd(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
     simd_eq(asm, patcher);
     simd_ones_compliment(asm, patcher);
+    simd_neg(asm, patcher);
+    simd_abs(asm, patcher);
     simd_vec_from_val(asm, patcher);
     simd_or(asm, patcher);
     simd_add(asm, patcher);
@@ -132,4 +217,6 @@ pub fn simd(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
     simd_allset(asm, patcher);
     simd_eq_all(asm, patcher);
     simd_eq_any(asm, patcher);
+    simd_mul(asm, patcher);
+    simd_div(asm, patcher);
 }
