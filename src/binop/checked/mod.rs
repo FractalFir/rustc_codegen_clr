@@ -15,7 +15,7 @@ pub fn result_tuple(tpe: Type, out_of_range: CILNode, val: CILNode, asm: &mut As
     let item2 = asm.alloc_string("Item2");
     let item1 = asm.alloc_string("Item1");
     CILNode::TemporaryLocal(Box::new((
-        tuple.into(),
+        asm.alloc_type(tuple),
         [
             CILRoot::SetField {
                 addr: Box::new(CILNode::LoadAddresOfTMPLocal),
@@ -185,7 +185,7 @@ pub fn mul<'tcx>(
 ) -> CILNode {
     //(b > 0 && a < INT_MIN + b) || (b < 0 && a > INT_MAX + b);
     let tpe = ctx.type_from_cache(ty);
-    let mul = super::mul_unchecked(ty, ty, ctx, ops_a.clone(), ops_b.clone());
+    let mul = super::mul_unchecked(ty, ctx, ops_a.clone(), ops_b.clone());
     let ovf = match ty.kind() {
         // Work without promotions
         TyKind::Uint(UintTy::U8 | UintTy::U16) => gt_un!(mul.clone(), max(ty, ctx)),

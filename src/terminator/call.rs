@@ -281,7 +281,7 @@ pub fn call_closure<'tcx>(
                     let element_type = ctx.type_from_cache(element);
                     if element_type == Type::Void {
                         call_args.push(CILNode::TemporaryLocal(Box::new((
-                            Type::Void,
+                            ctx.alloc_type(Type::Void),
                             [].into(),
                             CILNode::LoadTMPLocal,
                         ))));
@@ -403,7 +403,7 @@ pub fn call<'tcx>(
                             let element_type = ctx.type_from_cache(element);
                             if element_type == Type::Void {
                                 call_args.push(CILNode::TemporaryLocal(Box::new((
-                                    Type::Void,
+                                    ctx.alloc_type(Type::Void),
                                     [].into(),
                                     CILNode::LoadTMPLocal,
                                 ))));
@@ -576,7 +576,7 @@ pub fn call<'tcx>(
         // assert_eq!(signature.inputs()[signature.inputs().len() - 1],tpe);
         //FIXME:This assembles a panic location from uninitialized memory. This WILL lead to bugs once unwinding is added. The fields `file`,`col`, and `line` should be set there.
         call_args.push(CILNode::TemporaryLocal(Box::new((
-            tpe,
+            ctx.alloc_type(tpe),
             [].into(),
             CILNode::LoadTMPLocal,
         ))));

@@ -1,8 +1,10 @@
 use crate::v2::cilnode::MethodKind;
+use crate::v2::method::LocalDef;
 use crate::v2::{
     Assembly, ClassRef, ClassRefIdx, FieldIdx, FnSig, Int, MethodRef, MethodRefIdx,
     StaticFieldDesc, Type,
 };
+use crate::TypeIdx;
 use crate::{
     call,
     cil_iter::CILIterTrait,
@@ -168,7 +170,7 @@ pub enum CILNode {
     Gt(Box<Self>, Box<Self>),
     /// Compares two operands, returning true if lhs < rhs. Unsigned for intigers, unordered(in respect to NaNs) for floats.
     GtUn(Box<Self>, Box<Self>),
-    TemporaryLocal(Box<(Type, Box<[CILRoot]>, Self)>),
+    TemporaryLocal(Box<(TypeIdx, Box<[CILRoot]>, Self)>),
 
     SubTrees(Box<(Box<[CILRoot]>, Box<Self>)>),
     LoadAddresOfTMPLocal,
@@ -322,7 +324,7 @@ impl CILNode {
         );
         let gc_handle = call!(asm.alloc_methodref(mref), [self]);
         let gc_handle = CILNode::TemporaryLocal(Box::new((
-            gc_handle_class,
+            asm.alloc_type(gc_handle_class),
             [CILRoot::SetTMPLocal { value: gc_handle }].into(),
             CILNode::LoadAddresOfTMPLocal,
         )));
@@ -404,7 +406,7 @@ impl CILNode {
 
     pub fn transmute_on_stack(self, src: Type, target: Type, asm: &mut Assembly) -> Self {
         let tmp_loc = Self::TemporaryLocal(Box::new((
-            src,
+            asm.alloc_type(src),
             Box::new([CILRoot::SetTMPLocal { value: self }]),
             CILNode::LoadAddresOfTMPLocal,
         )));
@@ -431,11 +433,7 @@ impl CILNode {
             new_ptr: Box::new(new_ptr),
         }
     }
-    pub(crate) fn allocate_tmps(
-        &mut self,
-        curr_loc: Option<u32>,
-        locals: &mut Vec<(Option<IString>, Type)>,
-    ) {
+    pub(crate) fn allocate_tmps(&mut self, curr_loc: Option<u32>, locals: &mut Vec<LocalDef>) {
         match self {
             Self::AddressOfStaticField(_)=>(),
             Self::LdNull(_tpe)=>(),

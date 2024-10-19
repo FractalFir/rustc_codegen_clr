@@ -1,4 +1,5 @@
 use crate::v2::cilnode::MethodKind;
+use crate::v2::method::LocalDef;
 use crate::v2::{
     Assembly, ClassRef, FieldIdx, FnSig, MethodRef, MethodRefIdx, StaticFieldDesc, Type,
 };
@@ -272,11 +273,7 @@ impl CILRoot {
         res.push(self);
         res
     }
-    pub fn allocate_tmps(
-        &mut self,
-        curr_loc: Option<u32>,
-        locals: &mut Vec<(Option<IString>, Type)>,
-    ) {
+    pub fn allocate_tmps(&mut self, curr_loc: Option<u32>, locals: &mut Vec<LocalDef>) {
         match self {
             Self::Volatile(inner) => inner.allocate_tmps(curr_loc, locals),
             Self::SourceFileInfo(_) => (),

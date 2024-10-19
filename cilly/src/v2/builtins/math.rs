@@ -185,8 +185,6 @@ fn bitreverse_u64(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
 fn bitreverse_u128(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
     let name = asm.alloc_string("bitreverse_u128");
     let generator = move |_, asm: &mut Assembly| {
-        let u64_max = asm.alloc_node(Const::U64(u64::MAX));
-        let u64_zero = asm.alloc_node(Const::U64(0));
         let u128_class = ClassRef::uint_128(asm);
         let u128_class = asm[u128_class].clone();
         let u128_ctor = u128_class.ctor(&[Type::Int(Int::U64), Type::Int(Int::U64)], asm);

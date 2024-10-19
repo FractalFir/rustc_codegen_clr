@@ -1,4 +1,4 @@
-use crate::{v2::MethodImpl, ClassRef};
+use crate::v2::MethodImpl;
 use lazy_static::lazy_static;
 use std::{io::Write, path::Path};
 
@@ -7,7 +7,7 @@ use super::{
     cilnode::{ExtendKind, UnOp},
     cilroot::BranchCond,
     method::LocalDef,
-    tpe::simd::{SIMDElem, SIMDVector},
+    tpe::simd::SIMDElem,
     Assembly, BinOp, CILIter, CILIterElem, CILNode, ClassRefIdx, Exporter, Int, NodeIdx, RootIdx,
     SigIdx, Type,
 };
@@ -343,14 +343,8 @@ impl ILExporter {
             CILNode::BinOp(lhs, rhs, op) => {
                 self.export_node(asm, out, lhs, sig, locals)?;
                 self.export_node(asm, out, rhs, sig, locals)?;
-                let tpe = Type::Int(Int::I32); //node.typecheck(sig, locals, asm).unwrap();
                 match op {
-                    BinOp::Add => match tpe {
-                        //Type::Int(Int::I128)=>writeln!(out, "call valuetype [System.Runtime]System.Int128 [System.Runtime]System.Int128::op_Addition(valuetype [System.Runtime]System.Int128, valuetype [System.Runtime]System.Int128)"),
-                        //Type::Int(Int::U128)=>writeln!(out, "call valuetype [System.Runtime]System.UInt128 [System.Runtime]System.UInt128::op_Addition(valuetype [System.Runtime]System.UInt128, valuetype [System.Runtime]System.UInt128)"),
-                        //Type::ClassRef(_)=>panic!("Adding class refs is not valid. tpe:{}",tpe.mangle(asm)),
-                        _ => writeln!(out, "add"),
-                    },
+                    BinOp::Add => writeln!(out, "add"),
                     BinOp::Eq => writeln!(out, "ceq"),
                     BinOp::Sub => writeln!(out, "sub"),
                     BinOp::Mul => writeln!(out, "mul"),

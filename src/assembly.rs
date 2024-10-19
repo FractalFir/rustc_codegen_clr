@@ -19,8 +19,11 @@ use cilly::{
     conv_isize, conv_usize, ldc_i32, ldc_u32, ldc_u64,
     method::{Method, MethodType},
     utilis::{self, encode},
-    v2::{cilnode::MethodKind, FnSig, Int, MethodDef, MethodRef, MethodRefIdx, StaticFieldDesc},
-    Type,
+    v2::{
+        cilnode::MethodKind, method::LocalDef, FnSig, Int, MethodDef, MethodRef, MethodRefIdx,
+        StaticFieldDesc,
+    },
+    IntoAsmIndex, StringIdx, Type,
 };
 use rustc_middle::{
     mir::{
@@ -30,8 +33,8 @@ use rustc_middle::{
     },
     ty::{Instance, ParamEnv, TyCtxt, TyKind},
 };
-type LocalDefList = Vec<(Option<IString>, Type)>;
-type ArgsDebugInfo = Vec<Option<IString>>;
+type LocalDefList = Vec<LocalDef>;
+type ArgsDebugInfo = Vec<Option<StringIdx>>;
 fn check_align_adjust<'tcx>(
     locals: &rustc_index::IndexVec<Local, LocalDecl<'tcx>>,
     tcx: TyCtxt<'tcx>,
@@ -56,7 +59,7 @@ fn locals_from_mir<'tcx>(
     ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> (ArgsDebugInfo, LocalDefList) {
     use rustc_middle::mir::VarDebugInfoContents;
-    let mut local_types: Vec<(Option<IString>, _)> = Vec::with_capacity(locals.len());
+    let mut local_types: Vec<LocalDef> = Vec::with_capacity(locals.len());
     for (local_id, local) in locals.iter().enumerate() {
         if local_id == 0 || local_id > argc {
             let ty = ctx.monomorphize(local.ty);
@@ -67,11 +70,12 @@ fn locals_from_mir<'tcx>(
                 );
             }
             let name = None;
-            let tpe = get_type(ty, ctx);
+            let tpe = ctx.type_from_cache(ty);
+            let tpe = ctx.alloc_type(tpe);
             local_types.push((name, tpe));
         }
     }
-    let mut arg_names: Vec<Option<IString>> = (0..argc).map(|_| None).collect();
+    let mut arg_names: Vec<Option<StringIdx>> = (0..argc).map(|_| None).collect();
     for var in var_debuginfo {
         let mir_local = match var.value {
             VarDebugInfoContents::Place(place) => {
@@ -84,11 +88,11 @@ fn locals_from_mir<'tcx>(
             VarDebugInfoContents::Const(_) => continue,
         };
         if mir_local == 0 {
-            local_types[0].0 = Some(var.name.to_string().into());
+            local_types[0].0 = Some(var.name.to_string().into_idx(ctx));
         } else if mir_local > argc {
-            local_types[mir_local - argc].0 = Some(var.name.to_string().into());
+            local_types[mir_local - argc].0 = Some(var.name.to_string().into_idx(ctx));
         } else {
-            arg_names[mir_local - 1] = Some(var.name.to_string().into());
+            arg_names[mir_local - 1] = Some(var.name.to_string().into_idx(ctx));
         }
     }
     (arg_names, local_types)
@@ -245,15 +249,17 @@ fn allocation_initializer_method(
         }
         .into(),
     );
-
+    let uint8_ptr = asm.nptr(Type::Int(Int::U8));
+    let uint8_ptr_idx = asm.alloc_type(uint8_ptr);
     Method::new(
         AccessModifer::Private,
         MethodType::Static,
-        FnSig::new(Box::new([]), asm.nptr(Type::Int(Int::U8))),
+        FnSig::new(Box::new([]), uint8_ptr),
         &format!("init_{name}"),
-        vec![(Some("alloc_ptr".into()), asm.nptr(Type::Int(Int::U8)))],
+        vec![(Some("alloc_ptr".into_idx(asm)), uint8_ptr_idx)],
         vec![BasicBlock::new(trees, 0, None)],
         vec![],
+        asm,
     )
 }
 fn calculate_hash<T: std::hash::Hash>(t: &T) -> u64 {
@@ -363,7 +369,7 @@ pub fn add_fn<'tcx, 'asm, 'a: 'asm>(
     let (mut arg_names, mut locals) =
         locals_from_mir(&mir.local_decls, mir.arg_count, &mir.var_debug_info, ctx);
     if sig.inputs().len() > arg_names.len() {
-        arg_names.push(Some("panic_location".into()));
+        arg_names.push(Some("panic_location".into_idx(ctx)));
     }
 
     let blocks = &mir.basic_blocks;
@@ -375,7 +381,10 @@ pub fn add_fn<'tcx, 'asm, 'a: 'asm>(
         let repacked = u32::try_from(locals.len()).expect("More than 2^32 arguments of a function");
         let repacked_ty: rustc_middle::ty::Ty = ctx.monomorphize(mir.local_decls[spread_arg].ty);
         let repacked_type = get_type(repacked_ty, ctx);
-        locals.push((Some("repacked_arg".into()), repacked_type));
+        locals.push((
+            Some("repacked_arg".into_idx(ctx)),
+            ctx.alloc_type(repacked_type),
+        ));
         let mut repack_cil: Vec<CILTree> = Vec::new();
         // For each element of the tuple, get the argument spread_arg + n
         let TyKind::Tuple(packed) = repacked_ty.kind() else {
@@ -489,6 +498,7 @@ pub fn add_fn<'tcx, 'asm, 'a: 'asm>(
         locals,
         normal_bbs,
         arg_names,
+        ctx,
     );
 
     crate::method::resolve_global_allocations(&mut method, ctx);

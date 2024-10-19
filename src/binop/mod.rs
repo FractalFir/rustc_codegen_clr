@@ -64,9 +64,9 @@ pub(crate) fn binop<'tcx>(
         BinOp::Shr => shr_checked(ty_a, ty_b, ctx, ops_a, ops_b),
         BinOp::ShrUnchecked => shr_unchecked(ty_a, ty_b, ctx, ops_a, ops_b),
 
-        BinOp::Mul | BinOp::MulUnchecked => mul_unchecked(ty_a, ty_b, ctx, ops_a, ops_b),
+        BinOp::Mul | BinOp::MulUnchecked => mul_unchecked(ty_a, ctx, ops_a, ops_b),
         BinOp::MulWithOverflow => checked::mul(&ops_a, &ops_b, ty_a, ctx),
-        BinOp::Div => div_unchecked(ty_a, ty_b, ctx, ops_a, ops_b),
+        BinOp::Div => div_unchecked(ty_a, ctx, ops_a, ops_b),
 
         BinOp::Ge => match ty_a.kind() {
             // Unordered, to handle NaNs propely
@@ -139,7 +139,7 @@ pub(crate) fn binop<'tcx>(
             let res = lt | gt;
             let enum_tag = ctx.alloc_string(crate::ENUM_TAG);
             CILNode::TemporaryLocal(Box::new((
-                ordering_type,
+                ctx.alloc_type(ordering_type),
                 [CILRoot::SetField {
                     addr: Box::new(CILNode::LoadAddresOfTMPLocal),
                     value: Box::new(res),
@@ -297,7 +297,7 @@ pub fn sub_unchecked<'tcx>(
 
 fn rem_unchecked<'tcx>(
     ty_a: Ty<'tcx>,
-    ty_b: Ty<'tcx>,
+    _ty_b: Ty<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
     ops_a: CILNode,
     ops_b: CILNode,
@@ -353,7 +353,7 @@ fn rem_unchecked<'tcx>(
 
 fn mul_unchecked<'tcx>(
     ty_a: Ty<'tcx>,
-    ty_b: Ty<'tcx>,
+
     ctx: &mut MethodCompileCtx<'tcx, '_>,
     operand_a: CILNode,
     operand_b: CILNode,
@@ -403,7 +403,7 @@ fn mul_unchecked<'tcx>(
 }
 fn div_unchecked<'tcx>(
     ty_a: Ty<'tcx>,
-    ty_b: Ty<'tcx>,
+
     ctx: &mut MethodCompileCtx<'tcx, '_>,
     operand_a: CILNode,
     operand_b: CILNode,

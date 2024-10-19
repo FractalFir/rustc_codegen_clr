@@ -1,6 +1,6 @@
 use crate::{
-    tpe::simd::SIMDVector, v2::asm::MissingMethodPatcher, Assembly, BasicBlock, BranchCond,
-    CILNode, CILRoot, MethodImpl, MethodRef, MethodRefIdx, NodeIdx, Type,
+    tpe::simd::SIMDVector, v2::asm::MissingMethodPatcher, Assembly, BasicBlock, CILNode, CILRoot,
+    MethodImpl, MethodRefIdx, NodeIdx, Type,
 };
 mod eq;
 use eq::*;
@@ -16,6 +16,7 @@ fn dotnet_vec_cast(
         return src;
     }
     eprintln!("Can't cast {src_type:?} -> {target_type:?}");
+    let _ = asm;
     src
 }
 
@@ -140,16 +141,15 @@ fn simd_abs(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
     };
     patcher.insert(name, Box::new(generator));
 }
-
+#[allow(dead_code)]
 fn simd_shuffle(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
     let name: crate::StringIdx = asm.alloc_string("simd_shuffle");
-    let generator = move |mref: MethodRefIdx, asm: &mut Assembly| {
-        /* */
+    let generator = move |_mref: MethodRefIdx, _asm: &mut Assembly| {
         todo!("simd_shuffle not supported yet!");
-        MethodImpl::MethodBody {
+        /*MethodImpl::MethodBody {
             blocks: vec![BasicBlock::new(vec![], 0, None)],
             locals: vec![],
-        }
+        }*/
     };
     patcher.insert(name, Box::new(generator));
 }

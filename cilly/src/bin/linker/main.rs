@@ -7,7 +7,7 @@ use cilly::{
     v2::{
         asm::{MissingMethodPatcher, ILASM_FLAVOUR},
         cilnode::MethodKind,
-        Assembly, BasicBlock, CILNode, CILRoot, ClassDef, ClassRef, Const, FnSig, IlasmFlavour,
+        Assembly, BasicBlock, CILNode, CILRoot, ClassDef, ClassRef, Const, IlasmFlavour,
         Int, MethodImpl, Type,
     },
     MethodRef,
@@ -261,10 +261,10 @@ fn main() {
                 let exception_class =
                     asm.alloc_class_ref(ClassRef::new(rust_exception, None, false, [].into()));
                 let exception_ctor = MethodRef::new(
-                    (asm.alloc_class_ref(ClassRef::new(rust_exception, None, false, [].into()))),
+                    asm.alloc_class_ref(ClassRef::new(rust_exception, None, false, [].into())),
                     asm.alloc_string(".ctor"),
                     asm.sig(
-                        ([Type::ClassRef(exception_class), Type::Int(Int::USize)]),
+                        [Type::ClassRef(exception_class), Type::Int(Int::USize)],
                         Type::Void,
                     ),
                     MethodKind::Constructor,

@@ -164,7 +164,7 @@ fn field_address<'a>(
                             rustc_middle::ty::Mutability::Mut,
                         ));
                         CILNode::TemporaryLocal(Box::new((
-                            field_fat_ptr,
+                            ctx.alloc_type(field_fat_ptr),
                             [
                                 CILRoot::SetField {
                                     addr: Box::new(CILNode::LoadAddresOfTMPLocal),
@@ -264,7 +264,7 @@ pub fn place_elem_adress<'tcx>(
                 let void_ptr = ctx.nptr(Type::Void);
                 let ptr_field = ctx.alloc_field(FieldDesc::new(curr_type, data_ptr_name, void_ptr));
                 CILNode::TemporaryLocal(Box::new((
-                    Type::ClassRef(curr_type),
+                    ctx.alloc_type(Type::ClassRef(curr_type)),
                     [
                         CILRoot::SetField {
                             addr: Box::new(CILNode::LoadAddresOfTMPLocal),
@@ -293,7 +293,7 @@ pub fn place_elem_adress<'tcx>(
                     ctx.alloc_field(FieldDesc::new(curr_type, metadata, Type::Int(Int::USize)));
                 let ptr_field = ctx.alloc_field(FieldDesc::new(curr_type, data_ptr, void_ptr));
                 CILNode::TemporaryLocal(Box::new((
-                    Type::ClassRef(curr_type),
+                    ctx.alloc_type(Type::ClassRef(curr_type)),
                     [
                         CILRoot::SetField {
                             addr: Box::new(CILNode::LoadAddresOfTMPLocal),

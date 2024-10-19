@@ -108,7 +108,7 @@ fn body_field<'a>(
                    (
                     field_ty.into(),
                         CILNode::TemporaryLocal(Box::new((
-                            curr_type,
+                            ctx.alloc_type(curr_type),
                             [CILRoot::SetTMPLocal {
                                 value: CILNode::LdObj {
                                     ptr: Box::new(parrent_node),
@@ -139,7 +139,6 @@ fn body_field<'a>(
     }
 }
 pub fn place_elem_body_index<'tcx>(
-    place_elem: &PlaceElem<'tcx>,
     curr_ty: Ty<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
     parrent_node: CILNode,
@@ -251,7 +250,6 @@ pub fn place_elem_body<'tcx>(
             (variant_type, parrent_node)
         }
         PlaceElem::Index(index) => place_elem_body_index(
-            place_elem,
             curr_type
                 .as_ty()
                 .expect("INVALID PLACE: Indexing into enum variant???"),

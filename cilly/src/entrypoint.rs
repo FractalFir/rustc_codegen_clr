@@ -16,7 +16,10 @@ use crate::{
 pub fn wrapper(entrypoint: MethodRef, asm: &mut Assembly) -> Method {
     let uint8_ptr = asm.nptr(Type::Int(Int::U8));
     let uint8_ptr_ptr = asm.nptr(uint8_ptr);
+    let uint8_ptr_ptr_idx = asm.alloc_type(uint8_ptr_ptr);
+    let argc = asm.alloc_string("argc");
     let entry_sig = &asm[entrypoint.sig()];
+
     if entry_sig.inputs() == [Type::Int(Int::ISize), uint8_ptr_ptr]
         && entry_sig.output() == &Type::Int(Int::ISize)
     {
@@ -46,7 +49,7 @@ pub fn wrapper(entrypoint: MethodRef, asm: &mut Assembly) -> Method {
             MethodType::Static,
             sig,
             "entrypoint",
-            vec![(Some("argc".into()), uint8_ptr_ptr)],
+            vec![(Some(argc), uint8_ptr_ptr_idx)],
             vec![BasicBlock::new(
                 vec![
                     CILRoot::Call {
@@ -74,7 +77,8 @@ pub fn wrapper(entrypoint: MethodRef, asm: &mut Assembly) -> Method {
                 2,
                 None,
             )],
-            vec![Some("args".into())],
+            vec![Some(asm.alloc_string("args"))],
+            asm,
         );
         //method.set_ops(ops);
         method.add_attribute(Attribute::EntryPoint);
@@ -126,6 +130,7 @@ pub fn wrapper(entrypoint: MethodRef, asm: &mut Assembly) -> Method {
             vec![],
             blocks,
             vec![],
+            asm,
         );
 
         method.add_attribute(Attribute::EntryPoint);

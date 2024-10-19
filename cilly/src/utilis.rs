@@ -28,24 +28,26 @@ pub fn argc_argv_init_method(asm: &mut Assembly) -> MethodRefIdx {
         vec![],
         vec![],
         vec![],
+        asm,
     );
 
     // Allocate the variables necesarry for initializng args.
     let argc =
-        u32::try_from(init_method.add_local(Type::Int(Int::I32), Some("argc".into()))).unwrap();
+        u32::try_from(init_method.add_local(Type::Int(Int::I32), Some("argc"), asm)).unwrap();
     let uint8_ptr = asm.nptr(Type::Int(Int::U8));
     let argv =
-        u32::try_from(init_method.add_local(asm.nptr(uint8_ptr), Some("argv".into()))).unwrap();
+        u32::try_from(init_method.add_local(asm.nptr(uint8_ptr), Some("argv"), asm)).unwrap();
     let managed_args = u32::try_from(init_method.add_local(
         Type::PlatformArray {
             elem: asm.alloc_type(Type::PlatformString),
             dims: NonZeroU8::new(1).unwrap(),
         },
-        Some("managed_args".into()),
+        Some("managed_args"),
+        asm,
     ))
     .unwrap();
     let arg_idx =
-        u32::try_from(init_method.add_local(Type::Int(Int::I32), Some("arg_idx".into()))).unwrap();
+        u32::try_from(init_method.add_local(Type::Int(Int::I32), Some("arg_idx"), asm)).unwrap();
     // Get managed args
     let string = asm.alloc_type(Type::PlatformString);
     let mref = MethodRef::new(
@@ -269,23 +271,27 @@ pub fn get_environ(asm: &mut Assembly) -> MethodRefIdx {
         vec![],
         vec![],
         vec![],
+        asm,
     );
     let dictionary_local = get_environ.add_local(
         Type::ClassRef(ClassRef::i_dictionary(asm)),
-        Some("dict".into()),
+        Some("dict"),
+        asm,
     ) as u32;
-    let envc = get_environ.add_local(Type::Int(Int::I32), Some("envc".into())) as u32;
-    let arr_ptr = get_environ.add_local(uint8_ptr_ptr, Some("arr_ptr".into())) as u32;
-    let idx = get_environ.add_local(Type::Int(Int::I32), Some("idx".into())) as u32;
+    let envc = get_environ.add_local(Type::Int(Int::I32), Some("envc"), asm) as u32;
+    let arr_ptr = get_environ.add_local(uint8_ptr_ptr, Some("arr_ptr"), asm) as u32;
+    let idx = get_environ.add_local(Type::Int(Int::I32), Some("idx"), asm) as u32;
     let iter_local = get_environ.add_local(
         Type::ClassRef(ClassRef::dictionary_iterator(asm)),
-        Some("iter".into()),
+        Some("iter"),
+        asm,
     ) as u32;
     let keyval_tpe = ClassRef::dictionary_entry(asm);
-    let keyval = get_environ.add_local(Type::ClassRef(keyval_tpe), Some("keyval".into())) as u32;
+    let keyval = get_environ.add_local(Type::ClassRef(keyval_tpe), Some("keyval"), asm) as u32;
     let encoded_keyval = get_environ.add_local(
         Type::ClassRef(ClassRef::string(asm)),
-        Some("encoded_keyval".into()),
+        Some("encoded_keyval"),
+        asm,
     ) as u32;
     let first_check_bb = get_environ.new_bb();
     let init_bb = get_environ.new_bb();

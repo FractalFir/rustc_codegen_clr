@@ -3,8 +3,8 @@ use super::{
     cilnode::{BinOp, MethodKind, UnOp},
     opt::{OptFuel, SideEffectInfoCache},
     Access, CILNode, CILRoot, ClassDef, ClassDefIdx, ClassRef, ClassRefIdx, Const, Exporter,
-    FieldDesc, FieldIdx, FnSig, MethodDef, MethodDefIdx, MethodRef, MethodRefIdx, NodeIdx, RootIdx,
-    SigIdx, StaticFieldDesc, StaticFieldIdx, StringIdx, Type, TypeIdx,
+    FieldDesc, FieldIdx, FnSig, IntoAsmIndex, MethodDef, MethodDefIdx, MethodRef, MethodRefIdx,
+    NodeIdx, RootIdx, SigIdx, StaticFieldDesc, StaticFieldIdx, StringIdx, Type, TypeIdx,
 };
 use crate::IString;
 use crate::{asm::Assembly as V1Asm, v2::MethodImpl};
@@ -258,20 +258,25 @@ impl Assembly {
         let sig = self.sig(input, output);
         Type::FnPtr(sig)
     }
-    pub fn nptr(&mut self, inner: Type) -> Type {
-        Type::Ptr(self.types.alloc(inner))
+    pub fn nptr(&mut self, inner: impl IntoAsmIndex<TypeIdx>) -> Type {
+        Type::Ptr(inner.into_idx(self))
     }
-    pub fn nref(&mut self, inner: Type) -> Type {
-        Type::Ref(self.types.alloc(inner))
+    pub fn nref(&mut self, inner: impl IntoAsmIndex<TypeIdx>) -> Type {
+        Type::Ref(inner.into_idx(self))
     }
 
     #[must_use]
     pub fn get_root(&self, root: RootIdx) -> &CILRoot {
         self.roots.get(root)
     }
-    pub fn biop(&mut self, lhs: impl Into<CILNode>, rhs: impl Into<CILNode>, op: BinOp) -> CILNode {
-        let lhs = self.nodes.alloc(lhs.into());
-        let rhs = self.nodes.alloc(rhs.into());
+    pub fn biop(
+        &mut self,
+        lhs: impl IntoAsmIndex<NodeIdx>,
+        rhs: impl IntoAsmIndex<NodeIdx>,
+        op: BinOp,
+    ) -> CILNode {
+        let lhs = lhs.into_idx(self);
+        let rhs = rhs.into_idx(self);
         CILNode::BinOp(lhs, rhs, op)
     }
     pub fn unop(&mut self, val: impl Into<CILNode>, op: UnOp) -> CILNode {
@@ -848,17 +853,17 @@ impl Assembly {
     ) {
         let mref_count = self.method_refs.0.len();
         let externs: FxHashMap<_, _> = externs
-            .into_iter()
+            .iter()
             .map(|(fn_name, lib_name)| {
                 (
-                    self.alloc_string(fn_name.clone()),
+                    self.alloc_string(*fn_name),
                     self.alloc_string(lib_name.clone()),
                 )
             })
             .collect();
         let preserve_errno: FxHashSet<_> = modifies_errno
-            .into_iter()
-            .map(|fn_name| self.alloc_string(fn_name.clone()))
+            .iter()
+            .map(|fn_name| self.alloc_string(*fn_name))
             .collect();
         for index in 0..mref_count {
             // Get the full method refernce

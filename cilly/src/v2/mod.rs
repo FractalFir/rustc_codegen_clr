@@ -21,6 +21,8 @@ pub use tpe::float::Float;
 pub use tpe::int::Int;
 pub use tpe::{Type, TypeIdx};
 
+use crate::IString;
+
 pub mod access;
 pub mod asm;
 pub mod asm_link;
@@ -88,29 +90,79 @@ pub trait Exporter {
 
 #[test]
 fn no_collision() {
-    let mut asm = Assembly::default();
-    let mut curr: CILNode = Const::I8(1).into();
-    for _ in 0..100_000 {
-        curr = std::hint::black_box(asm.biop(curr.clone(), curr, BinOp::Add));
+    fn test_binop(asm: &mut Assembly, op: BinOp) -> CILNode {
+        let mut curr: NodeIdx = IntoAsmIndex::into_idx(Const::I8(1), asm);
+        for _ in 0..100 {
+            curr = IntoAsmIndex::into_idx(asm.biop(curr, curr, op), asm);
+        }
+        asm[curr]
+            .clone()
+            .typecheck(asm.sig(vec![], Type::Void), &[], asm)
+            .unwrap();
+        asm[curr].clone()
     }
-    asm.alloc_node(CILNode::LdLoc(0));
-    asm.alloc_node(Const::I32(0));
-    asm.alloc_node(Const::I64(0));
+    let mut asm = Assembly::default();
+    test_binop(&mut asm, BinOp::Add);
 }
 #[test]
 fn test_binops() {
     fn test_binop(asm: &mut Assembly, op: BinOp) -> CILNode {
-        let mut curr: CILNode = Const::I8(1).into();
+        let mut curr: NodeIdx = IntoAsmIndex::into_idx(Const::I8(1), asm);
         for _ in 0..10 {
-            curr = std::hint::black_box(asm.biop(curr.clone(), curr, op));
+            curr = IntoAsmIndex::into_idx(asm.biop(curr, curr, op), asm);
         }
-        curr.typecheck(asm.sig(vec![], Type::Void), &[], asm)
+        asm[curr]
+            .clone()
+            .typecheck(asm.sig(vec![], Type::Void), &[], asm)
             .unwrap();
-        curr
+        asm[curr].clone()
     }
     let mut asm = Assembly::default();
     test_binop(&mut asm, BinOp::Add);
     test_binop(&mut asm, BinOp::Sub);
     test_binop(&mut asm, BinOp::Mul);
     test_binop(&mut asm, BinOp::Rem);
+}
+pub trait IntoAsmIndex<Target> {
+    fn into_idx(self, asm: &mut Assembly) -> Target;
+}
+impl<T> IntoAsmIndex<T> for T {
+    fn into_idx(self, _: &mut Assembly) -> T {
+        self
+    }
+}
+impl IntoAsmIndex<StringIdx> for &str {
+    fn into_idx(self, asm: &mut Assembly) -> StringIdx {
+        asm.alloc_string(self)
+    }
+}
+impl IntoAsmIndex<StringIdx> for IString {
+    fn into_idx(self, asm: &mut Assembly) -> StringIdx {
+        asm.alloc_string(self)
+    }
+}
+impl IntoAsmIndex<StringIdx> for String {
+    fn into_idx(self, asm: &mut Assembly) -> StringIdx {
+        asm.alloc_string(self)
+    }
+}
+impl IntoAsmIndex<TypeIdx> for Type {
+    fn into_idx(self, asm: &mut Assembly) -> TypeIdx {
+        asm.alloc_type(self)
+    }
+}
+impl IntoAsmIndex<TypeIdx> for ClassRefIdx {
+    fn into_idx(self, asm: &mut Assembly) -> TypeIdx {
+        asm.alloc_type(Type::ClassRef(self))
+    }
+}
+impl IntoAsmIndex<NodeIdx> for CILNode {
+    fn into_idx(self, asm: &mut Assembly) -> NodeIdx {
+        asm.alloc_node(self)
+    }
+}
+impl IntoAsmIndex<NodeIdx> for Const {
+    fn into_idx(self, asm: &mut Assembly) -> NodeIdx {
+        asm.alloc_node(self)
+    }
 }

@@ -6,7 +6,7 @@ use cilly::cil_root::CILRoot;
 
 use cilly::v2::{FieldDesc, Int};
 use cilly::Type;
-use cilly::{conv_u32, conv_usize, ldc_i64, ldc_u32, size_of,ldc_u64};
+use cilly::{conv_u32, conv_usize, ldc_u32, ldc_u64, size_of};
 use rustc_middle::{
     mir::Operand,
     ty::{layout::TyAndLayout, ParamEnv, PolyExistentialTraitRef, Ty, TyKind, UintTy},
@@ -51,7 +51,7 @@ pub fn unsize2<'tcx>(
     let target_ptr = CILNode::LoadAddresOfTMPLocal;
 
     let init_metadata = CILRoot::set_field(
-        target_ptr.clone().cast_ptr(ctx.nptr(fat_ptr_type.into())),
+        target_ptr.clone().cast_ptr(ctx.nptr(fat_ptr_type)),
         metadata.cast_ptr(Type::Int(Int::USize)),
         ctx.alloc_field(metadata_field),
     );
@@ -59,7 +59,7 @@ pub fn unsize2<'tcx>(
     let init_ptr = if crate::r#type::is_fat_ptr(source, ctx.tcx(), ctx.instance()) {
         let void_ptr = ctx.nptr(Type::Void);
         CILRoot::set_field(
-            target_ptr.cast_ptr(ctx.nptr(fat_ptr_type.into())),
+            target_ptr.cast_ptr(ctx.nptr(fat_ptr_type)),
             CILNode::LDIndPtr {
                 ptr: Box::new(operand_address(operand, ctx).cast_ptr(ctx.nptr(void_ptr))),
                 loaded_ptr: Box::new(ctx.nptr(Type::Void)),
@@ -75,7 +75,7 @@ pub fn unsize2<'tcx>(
             CILNode::LDIndUSize {
                 ptr: Box::new(
                     CILNode::TemporaryLocal(Box::new((
-                        source_type,
+                        ctx.alloc_type(source_type),
                         Box::new([CILRoot::SetTMPLocal {
                             value: handle_operand(operand, ctx),
                         }]),
@@ -88,7 +88,7 @@ pub fn unsize2<'tcx>(
         // `source` is not a fat pointer, so operand should be a pointer.
 
         CILRoot::set_field(
-            target_ptr.cast_ptr(ctx.nptr(fat_ptr_type.into())),
+            target_ptr.cast_ptr(ctx.nptr(fat_ptr_type)),
             operand.cast_ptr(ctx.nptr(Type::Void)),
             ctx.alloc_field(ptr_field),
         )
@@ -97,7 +97,7 @@ pub fn unsize2<'tcx>(
     CILNode::LdObj {
         ptr: Box::new(
             CILNode::TemporaryLocal(Box::new((
-                Type::ClassRef(fat_ptr_type),
+                ctx.alloc_type(Type::ClassRef(fat_ptr_type)),
                 [init_metadata, init_ptr].into(),
                 CILNode::LoadAddresOfTMPLocal,
             )))

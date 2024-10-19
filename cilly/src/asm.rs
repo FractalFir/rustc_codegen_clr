@@ -107,20 +107,24 @@ impl Assembly {
             vec![].into(),
         );
         let mref = self.alloc_methodref(mref);
-        self.functions.entry(mref).or_insert_with(|| {
-            Method::new(
+        let uint8_ptr = self.inner.nptr(Type::Int(Int::U8));
+        let uint8_ptr = self.alloc_type(uint8_ptr);
+        if self.functions().contains_key(&mref) {
+            let val = Method::new(
                 AccessModifer::Extern,
                 MethodType::Static,
                 FnSig::new(Box::new([]), Type::Void),
                 ".tcctor",
-                vec![
-                    (None, self.inner.nptr(Type::Int(Int::U8))),
-                    (None, self.inner.nptr(Type::Int(Int::U8))),
-                ],
+                vec![(None, uint8_ptr), (None, uint8_ptr)],
                 vec![BasicBlock::new(vec![CILRoot::VoidRet.into()], 0, None)],
                 vec![],
-            )
-        })
+                self,
+            );
+            self.functions.insert(mref, val);
+        }
+        self.functions
+            .get_mut(&mref)
+            .unwrap_or_else(|| unreachable!("Key inserted, but then immedietly missing."))
     }
 
     /// Returns true if assembly contains function named `name`

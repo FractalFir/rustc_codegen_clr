@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{cil_root::CILRoot, IString, Type};
+use crate::{cil_root::CILRoot, v2::method::LocalDef};
 
 #[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
 /// A root of a CIL Tree with metadata about local variables it reads/writes into.  
@@ -45,7 +45,7 @@ impl CILTree {
     }
 
     /// Allocates the temporary variables this tree uses.
-    pub fn allocate_tmps(&mut self, locals: &mut Vec<(Option<IString>, Type)>) {
+    pub fn allocate_tmps(&mut self, locals: &mut Vec<LocalDef>) {
         // self.tree.borrow_mut().allocate_tmps(None, locals);
         self.tree.allocate_tmps(None, locals);
     }

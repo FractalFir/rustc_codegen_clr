@@ -13,8 +13,8 @@ use crate::{
     cil_node::CILNode,
     cil_root::CILRoot,
     cil_tree::CILTree,
-    v2::{cilnode::MethodKind, Assembly, FnSig, MethodRef, MethodRefIdx},
-    IString, Type,
+    v2::{cilnode::MethodKind, method::LocalDef, Assembly, FnSig, MethodRef, MethodRefIdx},
+    IString, IntoAsmIndex, StringIdx, Type, TypeIdx,
 };
 
 /// Represenation of a CIL method.
@@ -27,11 +27,9 @@ pub struct Method {
     locals: Vec<LocalDef>,
     blocks: Vec<BasicBlock>,
     attributes: Vec<Attribute>,
-    arg_names: Vec<Option<IString>>,
+    arg_names: Vec<Option<StringIdx>>,
 }
 
-/// Local varaible. Consists of an optional name and type.
-pub type LocalDef = (Option<IString>, Type);
 impl Eq for Method {}
 impl Hash for Method {
     fn hash<H: Hasher>(&self, state: &mut H) {
@@ -141,7 +139,7 @@ impl Method {
                         *loc = *new_loc;
                     } else {
                         let new_loc = locals.len() as u32;
-                        locals.push(self.locals[*loc as usize].clone());
+                        locals.push(self.locals[*loc as usize]);
                         local_map.insert(*loc, new_loc);
                         *loc = new_loc;
                     }
@@ -161,26 +159,29 @@ impl Method {
         name: &str,
         mut locals: Vec<LocalDef>,
         blocks: Vec<BasicBlock>,
-        mut arg_names: Vec<Option<IString>>,
+        mut arg_names: Vec<Option<StringIdx>>,
+        asm: &mut Assembly,
     ) -> Self {
         let mut used_names = FxHashSet::with_hasher(FxBuildHasher::default());
         for name in arg_names
             .iter_mut()
             .chain(locals.iter_mut().map(|loc| &mut loc.0))
-            .filter_map(|name| name.as_mut())
+            .flatten()
         {
             let mut postfix = 0;
             while used_names.contains(&if postfix == 0 {
-                name.clone()
+                *name
             } else {
-                format!("{name}{postfix}").into()
+                let new_name = format!("{name}{postfix}", name = &asm[*name]);
+                asm.alloc_string(new_name)
             }) {
                 postfix += 1;
             }
             if postfix != 0 {
-                *name = format!("{name}{postfix}").into();
+                let new_name = format!("{name}{postfix}", name = &asm[*name]);
+                *name = asm.alloc_string(new_name)
             }
-            used_names.insert(name.clone());
+            used_names.insert(*name);
         }
         let mut res = Self {
             access,
@@ -202,13 +203,19 @@ impl Method {
         self.name = <IString>::from(name.to_owned());
     }
     /// Adds a local variable of type `local`
-    pub fn add_local(&mut self, local: Type, name: Option<IString>) -> usize {
+    pub fn add_local(
+        &mut self,
+        local: impl IntoAsmIndex<TypeIdx>,
+        name: Option<impl IntoAsmIndex<StringIdx>>,
+        asm: &mut Assembly,
+    ) -> usize {
         let loc = self.locals.len();
-        self.locals.push((name, local));
+        self.locals
+            .push((name.map(|name| name.into_idx(asm)), local.into_idx(asm)));
         loc
     }
     /// Extends local variables by `iter`.
-    pub fn extend_locals<'a>(&mut self, iter: impl Iterator<Item = &'a Type>) {
+    pub fn extend_locals<'a>(&mut self, iter: impl Iterator<Item = &'a TypeIdx>) {
         self.locals.extend(iter.map(|tpe| (None, *tpe)));
     }
     /// Checks if the method `self` is the entrypoint.
@@ -253,7 +260,7 @@ impl Method {
     }
     /// Returns the list of local types.
     #[must_use]
-    pub fn locals(&self) -> &[(Option<IString>, Type)] {
+    pub fn locals(&self) -> &[(Option<StringIdx>, TypeIdx)] {
         &self.locals
     }
     /// Returns the list of external calls this function preforms. Calls may repeat.
@@ -264,20 +271,6 @@ impl Method {
             .flat_map(|block| block.iter_cil())
             .call_sites()
     }
-    /*
-    /// Returns the list of static fields this function references. Calls may repeat.
-    // TODO: make this not call `into_ops`
-    pub fn sflds(&self) -> impl Iterator<Item = &StaticFieldDesc> {
-        self.blocks
-            .iter()
-            .flat_map(|block| block.iter_cil())
-            .filter_map(|node| match node {
-                CILIterElem::Node(CILNode::LDStaticField(field)) => Some(field.as_ref()),
-                CILIterElem::Node(CILNode::AddressOfStaticField(field)) => Some(field.as_ref()),
-                CILIterElem::Root(CILRoot::SetStaticField { descr, value: _ }) => Some(descr),
-                _ => None,
-            })
-    }*/
 
     /// Returns a call site that describes this method.
     pub fn call_site(&self, asm: &mut crate::v2::Assembly) -> MethodRefIdx {
@@ -308,7 +301,7 @@ impl Method {
         self.attributes.push(attr);
     }
     /// Sets the list of locals of self to `locals`.
-    pub fn set_locals(&mut self, locals: impl Into<Vec<(Option<IString>, Type)>>) {
+    pub fn set_locals(&mut self, locals: impl Into<Vec<(Option<StringIdx>, TypeIdx)>>) {
         self.locals = locals.into();
     }
     /// Returns the type of this method(static, instance or virtual)
@@ -327,7 +320,7 @@ impl Method {
     }
 
     #[must_use]
-    pub fn arg_names(&self) -> &[Option<IString>] {
+    pub fn arg_names(&self) -> &[Option<StringIdx>] {
         &self.arg_names
     }
 
@@ -340,9 +333,15 @@ impl Method {
         let trees = self.blocks.iter_mut().next().unwrap().trees_mut();
         trees.insert(0, tree);
     }
-    pub fn alloc_local(&mut self, tpe: Type, name: Option<IString>) -> usize {
+    pub fn alloc_local(
+        &mut self,
+        tpe: impl IntoAsmIndex<TypeIdx>,
+        name: Option<impl IntoAsmIndex<StringIdx>>,
+        asm: &mut Assembly,
+    ) -> usize {
         let new_loc = self.locals.len();
-        self.locals.push((name, tpe));
+        self.locals
+            .push((name.map(|name| name.into_idx(asm)), tpe.into_idx(asm)));
         new_loc
     }
     pub fn adjust_aligement(&mut self, adjust: Vec<Option<u64>>, asm: &mut Assembly) {
@@ -354,10 +353,12 @@ impl Method {
             .enumerate()
             .filter_map(|(local_id, o)| o.as_ref().map(|align| (local_id, *align)))
         {
-            let (name, tpe) = &self.locals[unaligned_local];
+            let (name, tpe) = self.locals[unaligned_local];
             let unaligned_local = unaligned_local as u32;
-            let (name, tpe) = (name.clone(), *tpe);
-            let new_loc = self.alloc_local(asm.nptr(tpe), name.clone()) as u32;
+            let (name, tpe) = (name, tpe);
+            let tpe_ptr = asm.nptr(tpe);
+            let new_loc = self.alloc_local(tpe_ptr, name, asm) as u32;
+            let tpe = asm[tpe];
             self.append_preamble(
                 CILRoot::STLoc {
                     local: new_loc,
@@ -473,7 +474,7 @@ impl Method {
 pub struct BlockMutGuard<'a> {
     method: &'a mut Method,
 }
-impl<'a> Drop for BlockMutGuard<'a> {
+impl Drop for BlockMutGuard<'_> {
     fn drop(&mut self) {
         /*self.method.blocks.iter_mut().for_each(|block| {
             block
@@ -484,12 +485,12 @@ impl<'a> Drop for BlockMutGuard<'a> {
         //self.method.sheed_trees();
     }
 }
-impl<'a> DerefMut for BlockMutGuard<'a> {
+impl DerefMut for BlockMutGuard<'_> {
     fn deref_mut(&mut self) -> &mut Vec<BasicBlock> {
         &mut self.method.blocks
     }
 }
-impl<'a> Deref for BlockMutGuard<'a> {
+impl Deref for BlockMutGuard<'_> {
     type Target = Vec<BasicBlock>;
 
     fn deref(&self) -> &Self::Target {

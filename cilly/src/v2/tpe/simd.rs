@@ -16,9 +16,9 @@ impl SIMDElem {
         }
     }
 }
-impl Into<Type> for SIMDElem {
-    fn into(self) -> Type {
-        match self {
+impl From<SIMDElem> for Type {
+    fn from(val: SIMDElem) -> Self {
+        match val {
             SIMDElem::Int(int) => Type::Int(int),
             SIMDElem::Float(float) => Type::Float(float),
         }

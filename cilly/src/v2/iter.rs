@@ -42,7 +42,7 @@ impl<'asm> CILIter<'asm> {
         }
     }
 }
-impl<'asm> Iterator for CILIter<'asm> {
+impl Iterator for CILIter<'_> {
     type Item = CILIterElem;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -328,7 +328,7 @@ pub trait CILIterMutTrait {
         got
     }
 }
-impl<'start> CILIterMutTrait for CILIterMut<'start> {
+impl CILIterMutTrait for CILIterMut<'_> {
     type Ctx = Assembly;
 
     type A = CILNode;

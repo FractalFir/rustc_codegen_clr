@@ -91,7 +91,10 @@ pub fn handle_rvalue<'tcx>(
             }
             NullOp::OffsetOf(fields) => {
                 let layout = ctx.layout_of(*ty);
-                let offset = ctx.tcx().offset_of_subfield(ParamEnv::reveal_all(), layout, fields.iter()).bytes();
+                let offset = ctx
+                    .tcx()
+                    .offset_of_subfield(ParamEnv::reveal_all(), layout, fields.iter())
+                    .bytes();
                 ldc_u64!(offset)
             }
             rustc_middle::mir::NullOp::UbChecks => {
@@ -154,7 +157,7 @@ pub fn handle_rvalue<'tcx>(
 
                 (Type::Int(Int::U16), Type::PlatformChar) => handle_operand(operand, ctx),
                 (_, _) => CILNode::TemporaryLocal(Box::new((
-                    src,
+                    ctx.alloc_type(src),
                     [CILRoot::SetTMPLocal {
                         value: handle_operand(operand, ctx),
                     }]
@@ -181,7 +184,7 @@ pub fn handle_rvalue<'tcx>(
             let src = ctx.type_from_cache(src);
             let boxed_ptr = ctx.nptr(boxed_dst_type);
             CILNode::TemporaryLocal(Box::new((
-                src,
+                ctx.alloc_type(src),
                 [CILRoot::SetTMPLocal {
                     value: handle_operand(operand, ctx),
                 }]
@@ -381,7 +384,7 @@ fn repeat<'tcx>(
     // Check if the element is byte sized. If so, use initblk to quickly initialize this array.
     if crate::utilis::compiletime_sizeof(element_ty, ctx.tcx()) == 1 {
         let val = Box::new(CILNode::TemporaryLocal(Box::new((
-            element_type,
+            ctx.alloc_type(element_type),
             vec![CILRoot::SetTMPLocal { value: element }].into(),
             CILNode::LDIndU8 {
                 ptr: Box::new(CILNode::LoadAddresOfTMPLocal.cast_ptr(ctx.nptr(Type::Int(Int::U8)))),
@@ -393,7 +396,7 @@ fn repeat<'tcx>(
             count: Box::new(conv_usize!(ldc_u64!(times))),
         };
         return CILNode::TemporaryLocal(Box::new((
-            array,
+            ctx.alloc_type(array),
             vec![init].into(),
             CILNode::LoadTMPLocal,
         )));
@@ -439,7 +442,11 @@ fn repeat<'tcx>(
             curr_len *= 2;
         }
         let branches: Box<_> = branches.into();
-        CILNode::TemporaryLocal(Box::new((array, branches, CILNode::LoadTMPLocal)))
+        CILNode::TemporaryLocal(Box::new((
+            ctx.alloc_type(array),
+            branches,
+            CILNode::LoadTMPLocal,
+        )))
     } else {
         let mut branches = Vec::new();
         let arr_ref = ctx.nref(array);
@@ -463,7 +470,11 @@ fn repeat<'tcx>(
             });
         }
         let branches: Box<_> = branches.into();
-        CILNode::TemporaryLocal(Box::new((array, branches, CILNode::LoadTMPLocal)))
+        CILNode::TemporaryLocal(Box::new((
+            ctx.alloc_type(array),
+            branches,
+            CILNode::LoadTMPLocal,
+        )))
     }
 }
 fn ptr_to_ptr<'tcx>(
@@ -493,15 +504,12 @@ fn ptr_to_ptr<'tcx>(
             let parrent = handle_operand(operand, ctx);
 
             let target_ptr = ctx.nptr(target_type);
-            crate::place::deref_op(
-                crate::place::PlaceTy::Ty(target),
-                ctx,
-                CILNode::TemporaryLocal(Box::new((
-                    source_type,
-                    [CILRoot::SetTMPLocal { value: parrent }].into(),
-                    Box::new(CILNode::LoadAddresOfTMPLocal).cast_ptr(target_ptr),
-                ))),
-            )
+            let tmp = CILNode::TemporaryLocal(Box::new((
+                ctx.alloc_type(source_type),
+                [CILRoot::SetTMPLocal { value: parrent }].into(),
+                Box::new(CILNode::LoadAddresOfTMPLocal).cast_ptr(target_ptr),
+            )));
+            crate::place::deref_op(crate::place::PlaceTy::Ty(target), ctx, tmp)
         }
         (true, false) => {
             let field_desc = FieldDesc::new(
@@ -510,7 +518,7 @@ fn ptr_to_ptr<'tcx>(
                 ctx.nptr(cilly::v2::Type::Void),
             );
             CILNode::TemporaryLocal(Box::new((
-                source_type,
+                ctx.alloc_type(source_type),
                 [CILRoot::SetTMPLocal {
                     value: handle_operand(operand, ctx),
                 }]

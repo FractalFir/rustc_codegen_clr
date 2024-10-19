@@ -73,7 +73,7 @@ pub fn handle_aggregate<'tcx>(
             let array_type = ClassRef::fixed_array(element, value_index.len(), ctx);
             let array_getter = super::place::place_adress(target_location, ctx);
             let sig = FnSig::new(
-                Box::new([ctx.nref(array_type.into()), Type::Int(Int::USize), element]),
+                Box::new([ctx.nref(array_type), Type::Int(Int::USize), element]),
                 Type::Void,
             );
             let site = MethodRef::new(

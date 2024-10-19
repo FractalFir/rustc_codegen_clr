@@ -263,7 +263,6 @@ impl MethodDef {
         asm: &mut super::Assembly,
         class: ClassDefIdx,
     ) -> Self {
-        let site = v1.call_site(asm);
         let sig = v1.sig().clone();
         let sig_idx = asm.alloc_sig(v1.sig().clone());
         let acceess = match v1.access() {
@@ -285,22 +284,9 @@ impl MethodDef {
             .iter()
             .map(|block| crate::v2::BasicBlock::from_v1(block, asm))
             .collect();
-        let locals = v1
-            .locals()
-            .iter()
-            .map(|(name, tpe)| {
-                (
-                    name.as_ref().map(|name| asm.alloc_string(name.clone())),
-                    asm.alloc_type(*tpe),
-                )
-            })
-            .collect();
+        let locals = v1.locals().to_vec();
         let implementation = MethodImpl::MethodBody { blocks, locals };
-        let mut arg_names: Vec<_> = v1
-            .arg_names()
-            .iter()
-            .map(|name| name.as_ref().map(|name| asm.alloc_string(name.clone())))
-            .collect();
+        let mut arg_names: Vec<_> = v1.arg_names().to_vec();
         let arg_debug_count = arg_names.len();
         let arg_sig_count = sig.inputs().len();
         match arg_debug_count.cmp(&arg_sig_count) {

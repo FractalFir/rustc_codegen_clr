@@ -1,7 +1,7 @@
 use std::num::NonZeroU8;
 
 use serde::{Deserialize, Serialize};
-use simd::{SIMDElem, SIMDVector};
+use simd::SIMDVector;
 
 use super::{
     bimap::{BiMapIndex, IntoBiMapIndex},
