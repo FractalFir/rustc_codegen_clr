@@ -21,7 +21,7 @@ pub use tpe::float::Float;
 pub use tpe::int::Int;
 pub use tpe::{Type, TypeIdx};
 
-use crate::IString;
+use crate::{binop, gen_binop, IString};
 
 pub mod access;
 pub mod asm;
@@ -43,7 +43,9 @@ pub mod hashable;
 pub mod il_exporter;
 pub mod iter;
 pub mod java_exporter;
+pub mod macros;
 pub mod method;
+pub mod method_builder;
 pub mod opt;
 pub mod strings;
 pub mod tpe;
@@ -165,4 +167,28 @@ impl IntoAsmIndex<NodeIdx> for Const {
     fn into_idx(self, asm: &mut Assembly) -> NodeIdx {
         asm.alloc_node(self)
     }
+}
+
+macro_rules! into_asm_index_closure {
+    ($Target:ident) => {
+        impl<'a, N: 'static + IntoAsmIndex<$Target>, F: FnOnce(&mut Assembly) -> N>
+            IntoAsmIndex<$Target> for F
+        {
+            fn into_idx(self, asm: &mut Assembly) -> $Target {
+                self(asm).into_idx(asm)
+            }
+        }
+    };
+}
+into_asm_index_closure! {NodeIdx}
+into_asm_index_closure! {RootIdx}
+into_asm_index_closure! {StringIdx}
+
+#[test]
+fn add_macro() {
+    let sum = binop!(
+        CILNode::LdLoc(0),
+        |asm| { asm.alloc_node(CILNode::LdLoc(0)) },
+        crate::BinOp::Add
+    );
 }

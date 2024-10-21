@@ -118,7 +118,7 @@ pub(crate) fn binop<'tcx>(
                     * crate::casts::int_to_int(
                         Type::Int(Int::U64),
                         offset_tpe,
-                        size_of!(pointed_ty),
+                        CILNode::SizeOf(pointed_ty),
                         ctx,
                     )
         }
@@ -257,7 +257,7 @@ pub fn sub_unchecked<'tcx>(
                 );
                 call!(ctx.alloc_methodref(mref), [ops_a, ops_b])
             } else {
-                sub!(ops_a, ops_b)
+                CILNode::Sub(Box::new(ops_a), Box::new(ops_b))
             }
         }
         TyKind::Uint(uint_ty) => {
@@ -274,10 +274,12 @@ pub fn sub_unchecked<'tcx>(
                 );
                 call!(ctx.alloc_methodref(mref), [ops_a, ops_b])
             } else {
-                sub!(ops_a, ops_b)
+                CILNode::Sub(Box::new(ops_a), Box::new(ops_b))
             }
         }
-        TyKind::Float(FloatTy::F32 | FloatTy::F64) => sub!(ops_a, ops_b),
+        TyKind::Float(FloatTy::F32 | FloatTy::F64) => {
+            CILNode::Sub(Box::new(ops_a), Box::new(ops_b))
+        }
         TyKind::Float(FloatTy::F128) => {
             let mref = MethodRef::new(
                 *ctx.main_module(),
@@ -476,7 +478,7 @@ fn div_unchecked<'tcx>(
         }
         TyKind::Uint(_) => CILNode::DivUn(operand_a.into(), operand_b.into()),
         TyKind::Int(_) | TyKind::Char | TyKind::Float(FloatTy::F32 | FloatTy::F64) => {
-            div!(operand_a, operand_b)
+            CILNode::Div(Box::new(operand_a), Box::new(operand_b))
         }
         TyKind::Float(FloatTy::F128) => {
             let mref = MethodRef::new(

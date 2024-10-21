@@ -93,7 +93,8 @@ pub fn place_elem_set<'a>(
                     ptr_set_op(
                         super::PlaceTy::Ty(inner),
                         ctx,
-                        field_val.cast_ptr(inner_ptr) + index * conv_usize!(size_of!(inner_type)),
+                        field_val.cast_ptr(inner_ptr)
+                            + index * conv_usize!(CILNode::SizeOf(Box::new(inner_type))),
                         value_calc,
                     )
                 }

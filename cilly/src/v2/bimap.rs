@@ -58,6 +58,10 @@ impl<Key: IntoBiMapIndex + Eq + Hash + Clone + Debug, Value: Eq + Hash + Clone +
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
+
+    pub fn contais_val(&self, def: Value) -> bool {
+        self.1.contains_key(&def)
+    }
 }
 pub type BiMapIndex = NonZeroU32;
 pub trait IntoBiMapIndex {

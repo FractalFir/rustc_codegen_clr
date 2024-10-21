@@ -80,9 +80,9 @@ fn body_field<'a>(
                     let obj = ctx.type_from_cache(field_type);
                     let field_addr = obj_addr + conv_usize!(ldc_u32!(offset));
                     if body_ty_is_by_adress(field_type, ctx) {
-                        (field_type.into(),CILNode::LdObj{ ptr: Box::new(field_addr), obj: Box::new(obj) })
-                    }else{
                         (field_type.into(),field_addr)
+                    }else{
+                        (field_type.into(),CILNode::LdObj{ ptr: Box::new(field_addr), obj: Box::new(obj) })
                     }
                     // Add the offset to the object.
                 }
@@ -154,7 +154,8 @@ pub fn place_elem_body_index<'tcx>(
             );
             let addr = ld_field!(parrent_node, ctx.alloc_field(desc))
                 .cast_ptr(ctx.nptr(inner_type))
-                + (index * CILNode::ZeroExtendToUSize(size_of!(inner_type).into()));
+                + (index
+                    * CILNode::ZeroExtendToUSize(CILNode::SizeOf(Box::new(inner_type)).into()));
 
             if body_ty_is_by_adress(inner, ctx) {
                 (inner.into(), addr)

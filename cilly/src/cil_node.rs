@@ -639,18 +639,6 @@ macro_rules! rem_un {
     };
 }
 #[macro_export]
-macro_rules! sub {
-    ($a:expr,$b:expr) => {
-        CILNode::Sub($a.into(), $b.into())
-    };
-}
-#[macro_export]
-macro_rules! mul {
-    ($a:expr,$b:expr) => {
-        CILNode::Mul($a.into(), $b.into())
-    };
-}
-#[macro_export]
 macro_rules! eq {
     ($a:expr,$b:expr) => {
         CILNode::Eq($a.into(), $b.into())
@@ -683,17 +671,6 @@ macro_rules! gt_un {
     };
 }
 
-#[macro_export]
-macro_rules! size_of {
-    ($a:expr) => {{
-        let tmp: Box<Type> = $a.into();
-        if *tmp.as_ref() == Type::Void {
-            CILNode::LdcI32(0)
-        } else {
-            CILNode::SizeOf(tmp)
-        }
-    }};
-}
 #[macro_export]
 macro_rules! ld_field {
     ($addr_calc:expr,$field:expr) => {

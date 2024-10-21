@@ -197,11 +197,17 @@ pub fn mul<'tcx>(
         }
         // Works with 32 -> 64 size promotions
         TyKind::Uint(UintTy::U32) => {
-            let mul = mul!(conv_u64!(ops_a.clone()), conv_u64!(ops_b.clone()));
+            let mul = CILNode::Mul(
+                conv_u64!(ops_a.clone()).into(),
+                conv_u64!(ops_b.clone()).into(),
+            );
             gt_un!(mul.clone(), conv_u64!(max(ty, ctx)))
         }
         TyKind::Int(IntTy::I32) => {
-            let mul = mul!(conv_i64!(ops_a.clone()), conv_i64!(ops_b.clone()));
+            let mul = CILNode::Mul(
+                conv_i64!(ops_a.clone()).into(),
+                conv_i64!(ops_b.clone()).into(),
+            );
             or!(
                 gt!(mul.clone(), conv_i64!(max(ty, ctx))),
                 lt!(mul.clone(), conv_i64!(min(ty, ctx)))

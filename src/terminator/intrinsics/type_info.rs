@@ -74,7 +74,7 @@ pub fn size_of_val<'tcx>(
                 return place_set(
                     destination,
                     ld_field!(addr, ctx.alloc_field(descriptor))
-                        * conv_usize!(size_of!(inner_type)),
+                        * conv_usize!(CILNode::SizeOf(Box::new(inner_type))),
                     ctx,
                 );
             }
@@ -94,7 +94,7 @@ pub fn size_of_val<'tcx>(
                         ptr: Box::new(
                             ld_field!(addr, ctx.alloc_field(descriptor))
                                 .cast_ptr(ctx.nptr(Type::Int(Int::USize)))
-                                + conv_usize!((size_of!(Type::Int(Int::ISize)))),
+                                + conv_usize!((CILNode::SizeOf(Box::new(Type::Int(Int::ISize))))),
                         ),
                     },
                     ctx,
@@ -104,5 +104,9 @@ pub fn size_of_val<'tcx>(
     }
     let tpe = ctx.monomorphize(pointed_ty);
     let tpe = ctx.type_from_cache(tpe);
-    place_set(destination, conv_usize!(size_of!(tpe)), ctx)
+    place_set(
+        destination,
+        conv_usize!(CILNode::SizeOf(Box::new(tpe))),
+        ctx,
+    )
 }

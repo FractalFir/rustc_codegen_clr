@@ -227,7 +227,7 @@ pub fn place_elem_adress<'tcx>(
                     // This is a false positive
                     //    #[allow(unused_parens)]
                     (ld_field!(addr_calc.clone(), desc)).cast_ptr(ctx.nptr(inner_type))
-                        + conv_usize!(size_of!(inner_type)) * conv_usize!(index)
+                        + conv_usize!(CILNode::SizeOf(Box::new(inner_type))) * conv_usize!(index)
                 }
                 TyKind::Array(element, _length) => {
                     let element = ctx.monomorphize(*element);

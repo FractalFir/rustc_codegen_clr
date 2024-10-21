@@ -23,13 +23,11 @@ macro_rules! monitor_enter {
                 ),
                 true,
             )),
-            args: [CILNode::LDStaticField(Box::new(
-                StaticFieldDesc::new(
-                    None,
-                    Type::ClassRef(Box::new(ClassRef::object_type())),
-                    "GlobalAtomicLock".into(),
-                ),
-            ))]
+            args: [CILNode::LDStaticField(Box::new(StaticFieldDesc::new(
+                None,
+                Type::ClassRef(Box::new(ClassRef::object_type())),
+                "GlobalAtomicLock".into(),
+            )))]
             .into(),
         }
         .into()
@@ -47,13 +45,11 @@ macro_rules! monitor_exit {
                 ),
                 true,
             )),
-            args: [CILNode::LDStaticField(Box::new(
-                StaticFieldDesc::new(
-                    None,
-                    Type::ClassRef(Box::new(ClassRef::object_type())),
-                    "GlobalAtomicLock".into(),
-                ),
-            ))]
+            args: [CILNode::LDStaticField(Box::new(StaticFieldDesc::new(
+                None,
+                Type::ClassRef(Box::new(ClassRef::object_type())),
+                "GlobalAtomicLock".into(),
+            )))]
             .into(),
         }
         .into()

@@ -125,7 +125,7 @@ pub fn unsize2<'tcx>(
     }
 }
 /// Adopted from <https://github.com/rust-lang/rustc_codegen_cranelift/blob/45600348c009303847e8cddcfa8483f1f3d56625/src/unsize.rs#L64>
-pub(crate) fn unsized_info<'tcx>(
+fn unsized_info<'tcx>(
     ctx: &mut MethodCompileCtx<'tcx, '_>,
     source: Ty<'tcx>,
     target: Ty<'tcx>,
@@ -154,7 +154,8 @@ pub(crate) fn unsized_info<'tcx>(
 
             if let Some(entry_idx) = vptr_entry_idx {
                 let entry_idx = u32::try_from(entry_idx).unwrap();
-                let entry_offset = ldc_u32!(entry_idx) * conv_u32!(size_of!(ctx.nptr(Type::Void)));
+                let entry_offset = ldc_u32!(entry_idx)
+                    * conv_u32!(CILNode::SizeOf(Box::new(ctx.nptr(Type::Void))));
                 CILNode::LDIndUSize {
                     ptr: Box::new(
                         (old_info + conv_usize!(entry_offset))
@@ -177,7 +178,7 @@ fn load_scalar_pair(addr: CILNode, ctx: &mut MethodCompileCtx<'_, '_>) -> (CILNo
         },
         CILNode::LDIndUSize {
             ptr: Box::new(
-                Box::new(addr + conv_usize!(size_of!(Type::Int(Int::USize))))
+                Box::new(addr + conv_usize!(CILNode::SizeOf(Box::new(Type::Int(Int::USize)))))
                     .cast_ptr(ctx.nptr(Type::Int(Int::USize))),
             ),
         },
@@ -197,7 +198,7 @@ pub(crate) fn get_vtable<'tcx>(
 }
 /// Coerce `src`, which is a reference to a value of type `src_ty`,
 /// to a value of type `dst_ty` and store the result in `dst`
-pub(crate) fn unsize_metadata<'tcx>(
+fn unsize_metadata<'tcx>(
     fx: &mut MethodCompileCtx<'tcx, '_>,
     src_cil: CILNode,
     src_ty: TyAndLayout<'tcx>,
@@ -284,3 +285,4 @@ fn unsize_ptr_metadata<'tcx>(
         _ => panic!("unsize_ptr_metadata: called on bad types"),
     }
 }
+// New unsizing semantics should use new local allocator

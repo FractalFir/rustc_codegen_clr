@@ -5,9 +5,12 @@ use std::{
     time::Instant,
 };
 
-use cilly::v2::{
-    asm::Assembly, cillyir_exporter::CillyIRExpoter, il_exporter::ILExporter, Access, CILIter,
-    MethodImpl, MethodRefIdx,
+use cilly::{
+    v2::{
+        asm::Assembly, cillyir_exporter::CillyIRExpoter, il_exporter::ILExporter, Access, CILIter,
+        MethodImpl, MethodRefIdx,
+    },
+    BasicBlock, CILNode, CILRoot, MethodDef,
 };
 use fxhash::FxHashSet;
 
@@ -217,6 +220,47 @@ fn main() {
                 asm.modify_methodef(|_, method| method.set_access(access), id);
             }
             "" => continue,
+            "misolate" => {
+                let isolate_id = parse_id(body, &asm);
+                let externs: Vec<_> = asm
+                    .methods_with(|_, _, def| *def.access() == Access::Extern)
+                    .map(|(id, _)| id)
+                    .copied()
+                    .collect();
+                for extern_id in externs {
+                    asm.modify_methodef(|_, method| method.set_access(Access::Public), extern_id);
+                }
+                let Some(isolate_id) = asm.method_ref_to_def(isolate_id) else {
+                    eprintln!("Invalid method!");
+                    continue;
+                };
+                let main_module = asm.main_module();
+                let entrypoint = asm.alloc_string("entrypoint");
+                let sig = asm.sig([], cilly::Type::Void);
+                let fn_ptr = asm.alloc_node(CILNode::LdFtn(*isolate_id));
+                let roots = [
+                    asm.alloc_root(CILRoot::Pop(fn_ptr)),
+                    asm.alloc_root(CILRoot::VoidRet),
+                ];
+                let implementation = MethodImpl::MethodBody {
+                    blocks: vec![BasicBlock::new(roots.into(), 0, None)],
+                    locals: vec![],
+                };
+                let entrypoint = MethodDef::new(
+                    Access::Extern,
+                    main_module,
+                    entrypoint,
+                    sig,
+                    cilly::cilnode::MethodKind::Static,
+                    implementation,
+                    vec![],
+                );
+                asm.new_method(entrypoint);
+                asm.eliminate_dead_code();
+                // GC
+                asm = asm.clone().link(Assembly::default());
+                asm.remove_dead_statics();
+            }
             _ => eprintln!("unknown command {cmd:?}"),
         }
     }

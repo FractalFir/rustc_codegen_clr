@@ -4,9 +4,7 @@ use cilly::{
     basic_block::BasicBlock,
     cil_node::CILNode,
     cil_root::CILRoot,
-    conv_usize,
-    
-    ld_field_address,
+    conv_usize, ld_field_address,
     method::{Method, MethodType},
     size_of,
     v2::Assembly,
@@ -182,11 +180,7 @@ pub fn get_array_type(element_count: usize, element: Type, explict_size: u64) ->
                 vec![CILRoot::Ret {
                     tree: (conv_usize!(ld_field_address!(
                         CILNode::LDArg(0),
-                        FieldDesc::boxed(
-                            (&def).into(),
-                            element.clone(),
-                            "f0".to_string().into(),
-                        )
+                        FieldDesc::boxed((&def).into(), element.clone(), "f0".to_string().into(),)
                     )) + CILNode::LDArg(1) * conv_usize!(size_of!(element.clone())))
                     .cast_ptr(Type::Ptr(Box::new(element.clone()))),
                 }

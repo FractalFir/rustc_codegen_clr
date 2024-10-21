@@ -52,7 +52,8 @@ pub fn handle_intrinsic<'tcx>(
             place_set(
                 destination,
                 handle_operand(&args[0].node, ctx)
-                    + handle_operand(&args[1].node, ctx) * conv_isize!(size_of!(tpe)),
+                    + handle_operand(&args[1].node, ctx)
+                        * conv_isize!(CILNode::SizeOf(Box::new(tpe))),
                 ctx,
             )
         }
@@ -204,7 +205,7 @@ pub fn handle_intrinsic<'tcx>(
                         ctx,
                     );
                 }
-                _ => size_of!(tpe),
+                _ => CILNode::SizeOf(Box::new(tpe)),
             };
             place_set(
                 destination,
@@ -237,7 +238,8 @@ pub fn handle_intrinsic<'tcx>(
             let tpe = ctx.type_from_cache(tpe);
             let dst = handle_operand(&args[0].node, ctx);
             let val = handle_operand(&args[1].node, ctx);
-            let count = handle_operand(&args[2].node, ctx) * conv_usize!(size_of!(tpe));
+            let count =
+                handle_operand(&args[2].node, ctx) * conv_usize!(CILNode::SizeOf(Box::new(tpe)));
             CILRoot::InitBlk {
                 dst: Box::new(dst),
                 val: Box::new(val),
@@ -258,7 +260,8 @@ pub fn handle_intrinsic<'tcx>(
             let tpe = ctx.type_from_cache(tpe);
             let src = handle_operand(&args[0].node, ctx);
             let dst = handle_operand(&args[1].node, ctx);
-            let count = handle_operand(&args[2].node, ctx) * conv_usize!(size_of!(tpe));
+            let count =
+                handle_operand(&args[2].node, ctx) * conv_usize!(CILNode::SizeOf(Box::new(tpe)));
 
             CILRoot::CpBlk {
                 src: Box::new(src),
@@ -518,9 +521,9 @@ pub fn handle_intrinsic<'tcx>(
 
             place_set(
                 destination,
-                sub!(
-                    atomic_add(dst, add_ammount.clone(), src_type, ctx),
-                    add_ammount
+                CILNode::Sub(
+                    atomic_add(dst, add_ammount.clone(), src_type, ctx).into(),
+                    add_ammount.into(),
                 ),
                 ctx,
             )
@@ -759,7 +762,7 @@ pub fn handle_intrinsic<'tcx>(
                     (handle_operand(&args[0].node, ctx) - handle_operand(&args[1].node, ctx))
                         .cast_ptr(Type::Int(Int::USize))
                         .into(),
-                    conv_usize!(size_of!(tpe)).into(),
+                    conv_usize!(CILNode::SizeOf(Box::new(tpe))).into(),
                 ),
                 ctx,
             )
@@ -806,7 +809,7 @@ pub fn handle_intrinsic<'tcx>(
                     (handle_operand(&args[0].node, ctx) - handle_operand(&args[1].node, ctx))
                         .cast_ptr(Type::Int(Int::ISize))
                         .into(),
-                    conv_isize!(size_of!(tpe)).into(),
+                    conv_isize!(CILNode::SizeOf(Box::new(tpe))).into(),
                 ),
                 ctx,
             )
@@ -946,7 +949,7 @@ pub fn handle_intrinsic<'tcx>(
                 args: [
                     handle_operand(&args[0].node, ctx).cast_ptr(void_ptr),
                     handle_operand(&args[1].node, ctx).cast_ptr(void_ptr),
-                    conv_usize!(size_of!(tpe)),
+                    conv_usize!(CILNode::SizeOf(Box::new(tpe))),
                 ]
                 .into(),
             }
@@ -1622,8 +1625,9 @@ pub fn handle_intrinsic<'tcx>(
                 destination,
                 CILNode::LDIndUSize {
                     ptr: Box::new(
-                        (vtableptr + conv_usize!((size_of!(Type::Int(Int::ISize)))))
-                            .cast_ptr(ctx.nptr(Type::Int(Int::USize))),
+                        (vtableptr
+                            + conv_usize!((CILNode::SizeOf(Box::new(Type::Int(Int::ISize))))))
+                        .cast_ptr(ctx.nptr(Type::Int(Int::USize))),
                     ),
                 },
                 ctx,
@@ -1635,8 +1639,11 @@ pub fn handle_intrinsic<'tcx>(
                 destination,
                 CILNode::LDIndUSize {
                     ptr: Box::new(
-                        (vtableptr + conv_usize!((size_of!(Type::Int(Int::ISize))) * ldc_i32!(2)))
-                            .cast_ptr(ctx.nptr(Type::Int(Int::USize))),
+                        (vtableptr
+                            + conv_usize!(
+                                (CILNode::SizeOf(Box::new(Type::Int(Int::ISize)))) * ldc_i32!(2)
+                            ))
+                        .cast_ptr(ctx.nptr(Type::Int(Int::USize))),
                     ),
                 },
                 ctx,

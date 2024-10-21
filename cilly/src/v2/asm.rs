@@ -991,6 +991,25 @@ impl Assembly {
     ) {
         (&mut self.class_defs, &self.strings)
     }
+
+    pub fn remove_dead_statics(&mut self) {
+        let defs: Vec<_> = self.iter_class_def_ids().copied().collect();
+        for class_id in defs {
+            let class = self.get_class_def(class_id);
+            // Collect all statics which, to which there exists a corresponding static field desc.
+            let statics: Vec<_> = class
+                .static_fields()
+                .iter()
+                .copied()
+                .filter(|(tpe, name, _)| {
+                    self.statics
+                        .contais_val(StaticFieldDesc::new(*class_id, *name, *tpe))
+                })
+                .collect();
+            let class = self.class_mut(class_id);
+            *class.static_fields_mut() = statics;
+        }
+    }
 }
 /// An initializer, which runs before everything else. By convention, it is used to initialize static / const data. Should not execute any user code
 pub const CCTOR: &str = ".cctor";

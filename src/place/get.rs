@@ -79,7 +79,7 @@ fn get_field<'a>(
                 (false, true) => panic!("Sized type {curr_type:?} contains an unsized field of type {field_type}. This is a bug."),
                 (true,false)=>{
                     let mut explicit_offset_iter = crate::utilis::adt::FieldOffsetIterator::fields(
-                        ctx.layout_of(curr_type).layout.0 .0.clone(),
+                        ctx.layout_of(curr_type).layout.0 .0.clone()
                     );
                     let offset = explicit_offset_iter
                         .nth(field_index as usize)

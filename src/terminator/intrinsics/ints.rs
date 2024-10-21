@@ -112,7 +112,7 @@ pub fn ctlz<'tcx>(
     // TODO: this assumes a 64 bit system!
     let sub = match tpe {
         Type::Int(Int::ISize | Int::USize) | Type::Ptr(_) => {
-            ldc_i32!(64) - (size_of!(tpe) * ldc_i32!(8))
+            ldc_i32!(64) - (CILNode::SizeOf(Box::new(tpe)) * ldc_i32!(8))
         }
         Type::Int(Int::I64 | Int::U64) => ldc_i32!(0),
         Type::Int(Int::I32 | Int::U32) => ldc_i32!(32),
@@ -163,12 +163,12 @@ pub fn ctlz<'tcx>(
     );
     place_set(
         destination,
-        conv_u32!(sub!(
-            call!(
+        conv_u32!(CILNode::Sub(
+            Box::new(call!(
                 ctx.alloc_methodref(mref),
                 [conv_u64!(handle_operand(&args[0].node, ctx))]
-            ),
-            sub
+            )),
+            Box::new(sub)
         )),
         ctx,
     )
@@ -439,9 +439,9 @@ pub fn bitreverse_u8(byte: CILNode) -> CILNode {
 }
 fn bitreverse_u16(ushort: CILNode) -> CILNode {
     conv_u16!(bitreverse_u8(conv_u8!(ushort.clone()))) * conv_u16!(ldc_u32!(256))
-        + conv_u16!(bitreverse_u8(conv_u8!(div!(
-            ushort,
-            conv_u16!(ldc_u32!(256))
+        + conv_u16!(bitreverse_u8(conv_u8!(CILNode::Div(
+            Box::new(ushort),
+            Box::new(conv_u16!(ldc_u32!(256)))
         ))))
 }
 pub fn bitreverse_int(val: CILNode, int: Int, asm: &mut cilly::v2::Assembly) -> CILNode {

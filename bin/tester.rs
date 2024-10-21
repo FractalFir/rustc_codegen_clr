@@ -38,12 +38,12 @@ fn run_test(
     cmd.arg(test_name);
     let out = cmd.output().unwrap();
     let stdout = std::str::from_utf8(&out.stdout).unwrap();
-    if stdout.contains(" passed") && !stdout.contains("0 passed") {
+    if stdout.contains(" passed") && !stdout.contains(" 0 passed") {
         successes.push(test_name.to_owned());
         eprintln!("{test_name}: passed")
     } else if stdout.contains("1 ignored") {
         eprintln!("{test_name}: ignored")
-    } else if stdout.contains("1 failed") {
+    } else if stdout.contains(" failed") && !stdout.contains(" 0 failed") {
         failed.push(test_name.to_owned());
         eprintln!("{test_name}: failed")
     } else {
@@ -52,7 +52,7 @@ fn run_test(
     }
 }
 fn successes_from_disk(exec_name: &str) -> Vec<String> {
-    let Ok(mut file) = std::fs::File::open(format!("success_{exec_name}.txt")) else {
+    let Ok(file) = std::fs::File::open(format!("success_{exec_name}.txt")) else {
         return Vec::default();
     };
     use std::io::BufRead;
@@ -79,14 +79,20 @@ fn main() {
     let exec_path = std::env::args().nth(1).unwrap();
     let exec_name = if exec_path.contains("coretests") {
         "coretests".to_string()
+    } else if exec_path.contains("corebenches") {
+        "corebenches".to_string()
     } else if exec_path.contains("core") {
         "core".to_string()
     } else if exec_path.contains("alloctests") {
         "alloctests".to_string()
+    } else if exec_path.contains("allocbenches") {
+        "allocbenches".to_string()
     } else if exec_path.contains("alloc") {
         "alloc".to_string()
     } else if exec_path.contains("stdtests") {
         "stdtests".to_string()
+    } else if exec_path.contains("stdbenches") {
+        "stdbenches".to_string()
     } else if exec_path.contains("std") {
         "std".to_string()
     } else {

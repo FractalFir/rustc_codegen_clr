@@ -371,16 +371,16 @@ pub fn get_discr<'tcx>(
                     Type::Int(Int::I128 | Int::U128) => {
                         todo!("niche encoidng of 128 bit wide tags is not fully supported yet")
                     }
-                    _ => sub!(
-                        tag,
-                        crate::casts::int_to_int(
+                    _ => CILNode::Sub(
+                        Box::new(tag),
+                        Box::new(crate::casts::int_to_int(
                             Type::Int(Int::U64),
                             disrc_type,
                             ldc_u64!(niche_start
                                 .try_into()
                                 .expect("tag is too big to fit within u64")),
-                            ctx
-                        )
+                            ctx,
+                        )),
                     ),
                 };
                 let gt = match tag_tpe {

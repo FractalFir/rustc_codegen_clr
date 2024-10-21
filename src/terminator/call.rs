@@ -366,7 +366,8 @@ pub fn call<'tcx>(
 
         let vtable_index =
             ldc_i32!(i32::try_from(fn_idx).expect("More tahn 2^31 functions in a vtable!"));
-        let vtable_offset = conv_usize!(vtable_index * size_of!(Type::Int(Int::USize)));
+        let vtable_offset =
+            conv_usize!(vtable_index * CILNode::SizeOf(Box::new(Type::Int(Int::USize))));
         // Get the address of the function ptr, and load it
         let obj_ptr_field_desc = FieldDesc::new(
             ctx.alloc_class_ref(ClassRef::new(fat_ptr_dyn, None, true, [].into())),

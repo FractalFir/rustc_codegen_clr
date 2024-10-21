@@ -81,7 +81,7 @@ pub fn handle_rvalue<'tcx>(
         Rvalue::NullaryOp(op, ty) => match op {
             NullOp::SizeOf => {
                 let ty = ctx.type_from_cache(ctx.monomorphize(*ty));
-                conv_usize!(size_of!(ty))
+                conv_usize!(CILNode::SizeOf(Box::new(ty)))
             }
             NullOp::AlignOf => {
                 conv_usize!(ldc_u64!(crate::utilis::align_of(
@@ -432,11 +432,13 @@ fn repeat<'tcx>(
             branches.push(CILRoot::CpBlk {
                 dst: Box::new(
                     CILNode::MRefToRawPtr(Box::new(CILNode::LoadAddresOfTMPLocal))
-                        + conv_usize!(ldc_u64!(curr_len)) * conv_usize!(size_of!(element_type)),
+                        + conv_usize!(ldc_u64!(curr_len))
+                            * conv_usize!(CILNode::SizeOf(Box::new(element_type))),
                 ),
                 src: Box::new(CILNode::LoadAddresOfTMPLocal),
                 len: Box::new(
-                    conv_usize!(ldc_u64!(curr_copy_size)) * conv_usize!(size_of!(element_type)),
+                    conv_usize!(ldc_u64!(curr_copy_size))
+                        * conv_usize!(CILNode::SizeOf(Box::new(element_type))),
                 ),
             });
             curr_len *= 2;
