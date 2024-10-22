@@ -10,9 +10,9 @@ use cilly::{
     call,
     cil_node::CILNode,
     cil_root::CILRoot,
-    conv_usize, ld_field, ldc_u32,
+    conv_usize, ld_field,
     v2::{cilnode::MethodKind, FieldDesc, Int, MethodRef},
-    Type,
+    Const, Type,
 };
 use rustc_middle::mir::PlaceElem;
 use rustc_middle::ty::{Ty, TyKind};
@@ -78,7 +78,7 @@ fn body_field<'a>(
                     // Get the address of the unsized object.
                     let obj_addr = ld_field!(parrent_node, ctx.alloc_field(addr_descr));
                     let obj = ctx.type_from_cache(field_type);
-                    let field_addr = obj_addr + conv_usize!(ldc_u32!(offset));
+                    let field_addr = obj_addr + CILNode::V2(ctx.alloc_node(Const::USize((offset) as u64)));
                     if body_ty_is_by_adress(field_type, ctx) {
                         (field_type.into(),field_addr)
                     }else{
@@ -263,7 +263,7 @@ pub fn place_elem_body<'tcx>(
             let curr_ty = curr_ty
                 .as_ty()
                 .expect("INVALID PLACE: Indexing into enum variant???");
-            let index = CILNode::LdcU64(*offset);
+            let index = CILNode::V2(ctx.alloc_node(Const::USize(*offset)));
             assert!(!from_end);
             match curr_ty.kind() {
                 TyKind::Slice(inner) => {

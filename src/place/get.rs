@@ -2,9 +2,9 @@ use crate::{assembly::MethodCompileCtx, r#type::fat_ptr_to};
 use cilly::{
     call,
     cil_node::CILNode,
-    conv_usize, ld_field, ldc_u32, ldc_u64,
+    conv_usize, ld_field,
     v2::{cilnode::MethodKind, FieldDesc, Int, MethodRef},
-    Type,
+    Const, Type,
 };
 use rustc_middle::{
     mir::{Place, PlaceElem},
@@ -94,7 +94,7 @@ fn get_field<'a>(
                     let obj_addr = ld_field!(addr_calc, ctx.alloc_field(addr_descr));
                     let obj = ctx.type_from_cache(field_type);
                     // Add the offset to the object.
-                    CILNode::LdObj{ ptr: Box::new(obj_addr + conv_usize!(ldc_u32!(offset))), obj: Box::new(obj) }
+                    CILNode::LdObj{ ptr: Box::new(obj_addr + CILNode::V2(ctx.alloc_node(Const::USize((offset) as u64)))), obj: Box::new(obj) }
                 },
                 (true,true)=>panic!("Nonsensical operation: attempted to get value of the unsized type {field_type}. Unsized types can only be accessed by address."),
             }
@@ -203,10 +203,10 @@ fn place_elem_get<'a>(
                         //eprintln!("Slice index from end is:{offset}");
                         CILNode::Sub(
                             Box::new(ld_field!(addr_calc.clone(), ctx.alloc_field(metadata))),
-                            Box::new(conv_usize!(ldc_u64!(*offset))),
+                            Box::new(CILNode::V2(ctx.alloc_node(Const::USize(*offset)))),
                         )
                     } else {
-                        conv_usize!(ldc_u64!(*offset))
+                        CILNode::V2(ctx.alloc_node(Const::USize(*offset)))
                         //ops.extend(derf_op);
                     };
                     let addr = ld_field!(addr_calc.clone(), ctx.alloc_field(data_pointer))
@@ -225,7 +225,7 @@ fn place_elem_get<'a>(
                     if *from_end {
                         todo!("Can't index array from end!");
                     } else {
-                        let index = CILNode::LdcU64(*offset);
+                        let index = CILNode::V2(ctx.alloc_node(cilly::Const::USize(*offset)));
                         let mref = MethodRef::new(
                             array_dotnet,
                             ctx.alloc_string("get_Item"),

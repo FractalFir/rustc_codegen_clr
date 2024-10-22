@@ -7,9 +7,9 @@ use crate::{
 use cilly::{
     cil_node::CILNode,
     cil_root::CILRoot,
-    conv_usize, ld_field, ldc_i32, ldc_u64, size_of,
+    conv_usize, ld_field, size_of,
     v2::{cilnode::MethodKind, FieldDesc, Float, Int, MethodRef},
-    Type,
+    Const, Type,
 };
 use rustc_middle::{
     mir::{CastKind, NullOp, Operand, Place, Rvalue},
@@ -85,10 +85,8 @@ pub fn handle_rvalue<'tcx>(
                 conv_usize!(CILNode::V2(val))
             }
             NullOp::AlignOf => {
-                conv_usize!(ldc_u64!(crate::utilis::align_of(
-                    ctx.monomorphize(*ty),
-                    ctx.tcx()
-                )))
+                let algin = crate::utilis::align_of(ctx.monomorphize(*ty), ctx.tcx());
+                CILNode::V2(ctx.alloc_node(algin))
             }
             NullOp::OffsetOf(fields) => {
                 let layout = ctx.layout_of(*ty);
@@ -96,7 +94,7 @@ pub fn handle_rvalue<'tcx>(
                     .tcx()
                     .offset_of_subfield(ParamEnv::reveal_all(), layout, fields.iter())
                     .bytes();
-                ldc_u64!(offset)
+                CILNode::V2(ctx.alloc_node(offset))
             }
             rustc_middle::mir::NullOp::UbChecks => {
                 let ub_checks = ctx.tcx().sess.ub_checks();
@@ -286,12 +284,22 @@ pub fn handle_rvalue<'tcx>(
             let (disrc_type, _) = crate::utilis::adt::enum_tag_info(layout.layout, ctx);
             let Type::ClassRef(owner) = owner else {
                 eprintln!("Can't get the discirminant of type {owner_ty:?}, because it is a zst. Size:{} Discr type:{:?}",layout.layout.size.bytes(), owner_ty.discriminant_ty(ctx.tcx()));
-                return crate::casts::int_to_int(Type::Int(Int::I32), target, ldc_i32!(0), ctx);
+                return crate::casts::int_to_int(
+                    Type::Int(Int::I32),
+                    target,
+                    CILNode::V2(ctx.alloc_node(0_i32)),
+                    ctx,
+                );
             };
 
             if disrc_type == Type::Void {
                 // TODO: This always returns 0 if the discriminat type is `()` - this seems to work, but is incorrect. I should be finding the only inhabited variant instead.
-                crate::casts::int_to_int(Type::Int(Int::I32), target, ldc_i32!(0), ctx)
+                crate::casts::int_to_int(
+                    Type::Int(Int::I32),
+                    target,
+                    CILNode::V2(ctx.alloc_node(0_i32)),
+                    ctx,
+                )
             } else {
                 crate::casts::int_to_int(
                     disrc_type,
@@ -319,10 +327,9 @@ pub fn handle_rvalue<'tcx>(
                     ld_field!(addr, ctx.alloc_field(descriptor))
                 }
                 TyKind::Array(_ty, length) => {
-                    conv_usize!(ldc_u64!(crate::utilis::try_resolve_const_size(
-                        ctx.monomorphize(*length)
-                    )
-                    .unwrap() as u64))
+                    let len =
+                        crate::utilis::try_resolve_const_size(ctx.monomorphize(*length)).unwrap();
+                    CILNode::V2(ctx.alloc_node(Const::USize(len as u64)))
                 }
                 _ => todo!("Get length of type {ty:?}"),
             }
@@ -391,7 +398,7 @@ fn repeat<'tcx>(
         let init = CILRoot::InitBlk {
             dst: Box::new(CILNode::LoadAddresOfTMPLocal.cast_ptr(ctx.nptr(Type::Int(Int::U8)))),
             val,
-            count: Box::new(conv_usize!(ldc_u64!(times))),
+            count: Box::new(CILNode::V2(ctx.alloc_node(Const::USize(times)))),
         };
         return CILNode::TemporaryLocal(Box::new((
             ctx.alloc_type(array),
@@ -416,7 +423,7 @@ fn repeat<'tcx>(
                 site: mref,
                 args: [
                     CILNode::LoadAddresOfTMPLocal,
-                    conv_usize!(ldc_u64!(idx)),
+                    CILNode::V2(ctx.alloc_node(Const::USize(idx))),
                     element.clone(),
                 ]
                 .into(),
@@ -431,11 +438,13 @@ fn repeat<'tcx>(
             branches.push(CILRoot::CpBlk {
                 dst: Box::new(
                     CILNode::MRefToRawPtr(Box::new(CILNode::LoadAddresOfTMPLocal))
-                        + conv_usize!(ldc_u64!(curr_len)) * conv_usize!(CILNode::V2(elem_size)),
+                        + CILNode::V2(ctx.alloc_node(Const::USize(curr_len)))
+                            * conv_usize!(CILNode::V2(elem_size)),
                 ),
                 src: Box::new(CILNode::LoadAddresOfTMPLocal),
                 len: Box::new(
-                    conv_usize!(ldc_u64!(curr_copy_size)) * conv_usize!(CILNode::V2(elem_size)),
+                    CILNode::V2(ctx.alloc_node(Const::USize(curr_copy_size)))
+                        * conv_usize!(CILNode::V2(elem_size)),
                 ),
             });
             curr_len *= 2;
@@ -462,7 +471,7 @@ fn repeat<'tcx>(
                 site: mref,
                 args: [
                     CILNode::LoadAddresOfTMPLocal,
-                    conv_usize!(ldc_u64!(idx)),
+                    CILNode::V2(ctx.alloc_node(Const::USize(idx))),
                     element.clone(),
                 ]
                 .into(),

@@ -6,7 +6,7 @@ use crate::{
     call,
     cil_node::CILNode,
     cil_root::CILRoot,
-    conv_isize, conv_usize, ldc_u32,
+    conv_isize, conv_usize,
     method::{Attribute, Method, MethodType},
     v2::{cilnode::MethodKind, Assembly, FnSig, Int, MethodRef},
     Type,
@@ -66,8 +66,9 @@ pub fn wrapper(entrypoint: MethodRef, asm: &mut Assembly) -> Method {
                         tree: call!(
                             (asm.alloc_methodref(entrypoint)),
                             [
-                                conv_isize!(ldc_u32!(0)),
-                                conv_usize!(ldc_u32!(0)).cast_ptr(uint8_ptr_ptr)
+                                conv_isize!(CILNode::V2(asm.alloc_node(0_i32))),
+                                conv_usize!(CILNode::V2(asm.alloc_node(0_i32)))
+                                    .cast_ptr(uint8_ptr_ptr)
                             ]
                         ),
                     }

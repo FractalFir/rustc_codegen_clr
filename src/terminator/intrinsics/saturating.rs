@@ -4,7 +4,7 @@ use cilly::{
     cil_node::CILNode,
     cil_root::CILRoot,
     cilnode::MethodKind,
-    conv_i16, conv_i32, conv_i64, conv_i8, ldc_i32, ldc_i64,
+    conv_i16, conv_i32, conv_i64, conv_i8,
     v2::{ClassRef, Int},
     MethodRef, Type,
 };
@@ -64,8 +64,8 @@ pub fn saturating_add<'tcx>(
                 ctx.alloc_methodref(clamp),
                 [
                     diff,
-                    ldc_i64!(i64::from(i32::MIN)),
-                    ldc_i64!(i64::from(i32::MAX))
+                    CILNode::V2(ctx.alloc_node(i64::from(i32::MIN))),
+                    CILNode::V2(ctx.alloc_node(i64::from(i32::MAX)))
                 ]
             );
             conv_i32!(diff_capped)
@@ -178,8 +178,8 @@ pub fn saturating_add<'tcx>(
                 ctx.alloc_methodref(mref),
                 [
                     diff,
-                    ldc_i32!(i32::from(i16::MIN)),
-                    ldc_i32!(i32::from(i16::MAX))
+                    CILNode::V2(ctx.alloc_node(i32::from(i16::MIN))),
+                    CILNode::V2(ctx.alloc_node(i32::from(i16::MAX)))
                 ]
             );
             conv_i16!(diff_capped)
@@ -206,8 +206,8 @@ pub fn saturating_add<'tcx>(
                 ctx.alloc_methodref(mref),
                 [
                     diff,
-                    ldc_i32!(i32::from(i8::MIN)),
-                    ldc_i32!(i32::from(i8::MAX))
+                    CILNode::V2(ctx.alloc_node(i32::from(i8::MIN))),
+                    CILNode::V2(ctx.alloc_node(i32::from(i8::MAX)))
                 ]
             );
             conv_i8!(diff_capped)
@@ -343,8 +343,8 @@ pub fn saturating_sub<'tcx>(
                 ctx.alloc_methodref(clamp),
                 [
                     diff,
-                    ldc_i64!(i64::from(i32::MIN)),
-                    ldc_i64!(i64::from(i32::MAX))
+                    CILNode::V2(ctx.alloc_node(i64::from(i32::MIN))),
+                    CILNode::V2(ctx.alloc_node(i64::from(i32::MAX)))
                 ]
             );
             conv_i32!(diff_capped)
@@ -371,8 +371,8 @@ pub fn saturating_sub<'tcx>(
                 ctx.alloc_methodref(clamp),
                 [
                     diff,
-                    ldc_i32!(i32::from(i16::MIN)),
-                    ldc_i32!(i32::from(i16::MAX))
+                    CILNode::V2(ctx.alloc_node(i32::from(i16::MIN))),
+                    CILNode::V2(ctx.alloc_node(i32::from(i16::MAX)))
                 ]
             );
             conv_i16!(diff_capped)
@@ -399,8 +399,8 @@ pub fn saturating_sub<'tcx>(
                 ctx.alloc_methodref(clamp),
                 [
                     diff,
-                    ldc_i32!(i32::from(i8::MIN)),
-                    ldc_i32!(i32::from(i8::MAX))
+                    CILNode::V2(ctx.alloc_node(i32::from(i8::MIN))),
+                    CILNode::V2(ctx.alloc_node(i32::from(i8::MAX)))
                 ]
             );
             conv_i8!(diff_capped)

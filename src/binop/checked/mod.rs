@@ -3,8 +3,7 @@ use cilly::{
     and, call,
     cil_node::CILNode,
     cil_root::CILRoot,
-    conv_i16, conv_i32, conv_i64, conv_i8, conv_isize, conv_u64, conv_usize, eq, gt, gt_un,
-    ldc_i32, ldc_i64, ldc_u32, ldc_u64, lt, or,
+    conv_i16, conv_i32, conv_i64, conv_i8, conv_isize, conv_u64, conv_usize, eq, gt, gt_un, lt, or,
     v2::{cilnode::MethodKind, Assembly, ClassRef, FieldDesc, Int, MethodRef},
     Type,
 };
@@ -45,26 +44,8 @@ pub fn zero(ty: Ty, asm: &mut Assembly) -> CILNode {
         TyKind::Int(IntTy::I32) => CILNode::V2(asm.alloc_node(0_i32)),
         TyKind::Int(IntTy::I64) => CILNode::V2(asm.alloc_node(0_i64)),
         TyKind::Int(IntTy::Isize) => CILNode::V2(asm.alloc_node(0_isize)),
-        TyKind::Uint(UintTy::U128) => {
-            let mref = MethodRef::new(
-                ClassRef::uint_128(asm),
-                asm.alloc_string("op_Implicit"),
-                asm.sig([Type::Int(Int::U32)], Type::Int(Int::U128)),
-                MethodKind::Static,
-                vec![].into(),
-            );
-            call!(asm.alloc_methodref(mref), [ldc_u32!(0)])
-        }
-        TyKind::Int(IntTy::I128) => {
-            let mref = MethodRef::new(
-                ClassRef::int_128(asm),
-                asm.alloc_string("op_Implicit"),
-                asm.sig([Type::Int(Int::I32)], Type::Int(Int::I128)),
-                MethodKind::Static,
-                vec![].into(),
-            );
-            call!(asm.alloc_methodref(mref), [ldc_i32!(0)])
-        }
+        TyKind::Uint(UintTy::U128) => CILNode::V2(asm.alloc_node(0_u128)),
+        TyKind::Int(IntTy::I128) => CILNode::V2(asm.alloc_node(0_i128)),
         _ => todo!("Can't get zero of {ty:?}"),
     }
 }
@@ -536,8 +517,8 @@ pub fn add_signed<'tcx>(
             return result_tuple(
                 tpe,
                 or!(
-                    lt!(sum.clone(), conv_i16!(ldc_i32!(i8::MIN.into()))),
-                    gt!(sum.clone(), conv_i16!(ldc_i32!(i8::MAX.into())))
+                    lt!(sum.clone(), CILNode::V2(ctx.alloc_node(i16::from(i8::MIN)))),
+                    gt!(sum.clone(), CILNode::V2(ctx.alloc_node(i16::from(i8::MAX))))
                 ),
                 conv_i8!(sum),
                 ctx,
@@ -548,8 +529,14 @@ pub fn add_signed<'tcx>(
             return result_tuple(
                 tpe,
                 or!(
-                    lt!(sum.clone(), (ldc_i32!(i16::MIN.into()))),
-                    gt!(sum.clone(), (ldc_i32!(i16::MAX.into())))
+                    lt!(
+                        sum.clone(),
+                        (CILNode::V2(ctx.alloc_node(i32::from(i16::MIN))))
+                    ),
+                    gt!(
+                        sum.clone(),
+                        (CILNode::V2(ctx.alloc_node(i32::from(i16::MAX))))
+                    )
                 ),
                 conv_i16!(sum),
                 ctx,
@@ -558,8 +545,14 @@ pub fn add_signed<'tcx>(
         TyKind::Int(IntTy::I32) => {
             let sum = conv_i64!(ops_a.clone()) + conv_i64!(ops_b.clone());
             let out_of_range = or!(
-                lt!(sum.clone(), conv_i64!(ldc_i32!(i32::MIN))),
-                gt!(sum.clone(), conv_i64!(ldc_i32!(i32::MAX)))
+                lt!(
+                    sum.clone(),
+                    conv_i64!(CILNode::V2(ctx.alloc_node(i32::MIN)))
+                ),
+                gt!(
+                    sum.clone(),
+                    conv_i64!(CILNode::V2(ctx.alloc_node(i32::MAX)))
+                )
             );
             return result_tuple(tpe, out_of_range, conv_i32!(sum), ctx);
         }

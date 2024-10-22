@@ -6,13 +6,13 @@ use cilly::{
     call,
     cil_node::{CILNode, CallOpArgs},
     cil_root::CILRoot,
-    conv_u64, conv_usize, ldc_u64,
+    conv_u64, conv_usize,
     v2::{
         cilnode::MethodKind,
         hashable::{HashableF32, HashableF64},
         Assembly, ClassRef, FieldDesc, Float, Int, MethodRef, MethodRefIdx, StaticFieldDesc,
     },
-    NodeIdx, Type,
+    Const, NodeIdx, Type,
 };
 
 use rustc_middle::{
@@ -92,7 +92,7 @@ pub(crate) fn load_const_value<'tcx>(
                 [
                     CILRoot::SetField {
                         addr: Box::new(CILNode::LoadAddresOfTMPLocal),
-                        value: Box::new(conv_usize!(ldc_u64!(meta))),
+                        value: Box::new(CILNode::V2(ctx.alloc_node(Const::USize(meta)))),
                         desc: ctx.alloc_field(metadata_field),
                     },
                     CILRoot::SetField {
@@ -204,7 +204,9 @@ fn load_scalar_ptr(
                         alloc_id: alloc_id.alloc_id().0.into(),
                     }
                     .into(),
-                    CILNode::ZeroExtendToUSize(CILNode::LdcU64(offset.bytes()).into()).into(),
+                    Box::new(CILNode::V2(
+                        ctx.alloc_node(cilly::Const::USize(offset.bytes())),
+                    )),
                 )
             } else {
                 CILNode::LoadGlobalAllocPtr {
@@ -268,9 +270,9 @@ fn load_const_scalar<'tcx>(
         TyKind::Uint(uint_type) => CILNode::V2(load_const_uint(scalar_u128, *uint_type, ctx)),
         TyKind::Float(ftype) => load_const_float(scalar_u128, *ftype, ctx),
         TyKind::Bool => CILNode::V2(ctx.alloc_node(scalar_u128 != 0)),
-        TyKind::RawPtr(_, _) => conv_usize!(ldc_u64!(
-            u64::try_from(scalar_u128).expect("pointers must be smaller than 2^64")
-        ))
+        TyKind::RawPtr(_, _) => CILNode::V2(ctx.alloc_node(Const::USize(
+            u64::try_from(scalar_u128).expect("pointers must be smaller than 2^64"),
+        )))
         .cast_ptr(scalar_type),
         TyKind::Tuple(elements) => {
             if elements.is_empty() {
@@ -299,7 +301,7 @@ fn load_const_scalar<'tcx>(
             ),
             obj: scalar_type.into(),
         },
-        TyKind::Char => CILNode::LdcU32(u32::try_from(scalar_u128).unwrap()),
+        TyKind::Char => CILNode::V2(ctx.alloc_node(u32::try_from(scalar_u128).unwrap())),
         _ => todo!("Can't load scalar constants of type {scalar_ty:?}!"),
     }
 }
@@ -336,38 +338,18 @@ fn load_const_float(value: u128, float_type: FloatTy, asm: &mut Assembly) -> CIL
             let value = f64::from_ne_bytes((u64::try_from(value).unwrap()).to_ne_bytes());
             CILNode::LdcF64(HashableF64(value))
         }
-        FloatTy::F128 => {
-            // Int128 is used to emulate f128
-            let low = u128_low_u64(value);
-            let high = (value >> 64) as u64;
-            let f128_ref = asm.nref(Type::Float(Float::F128));
-            let ctor_sig = asm.sig(
-                [f128_ref, Type::Int(Int::U64), Type::Int(Int::U64)],
-                Type::Void,
-            );
-            let cctor = MethodRef::new(
-                ClassRef::int_128(asm),
-                asm.alloc_string(".ctor"),
-                ctor_sig,
-                MethodKind::Constructor,
-                vec![].into(),
-            );
-            CILNode::TemporaryLocal(Box::new((
-                asm.alloc_type(Type::Int(Int::I128)),
-                Box::new([CILRoot::SetTMPLocal {
-                    value: CILNode::NewObj(Box::new(CallOpArgs {
-                        site: asm.alloc_methodref(cctor),
-                        args: [conv_u64!(ldc_u64!(high)), conv_u64!(ldc_u64!(low))].into(),
-                    })),
-                }]),
-                CILNode::LdObj {
-                    ptr: Box::new(
-                        CILNode::LoadAddresOfTMPLocal.cast_ptr(asm.nptr(Type::Float(Float::F128))),
-                    ),
-                    obj: Box::new(Type::Float(Float::F128)),
-                },
-            )))
-        }
+        FloatTy::F128 => CILNode::TemporaryLocal(Box::new((
+            asm.alloc_type(Type::Int(Int::I128)),
+            Box::new([CILRoot::SetTMPLocal {
+                value: CILNode::V2(asm.alloc_node(Const::U128(value))),
+            }]),
+            CILNode::LdObj {
+                ptr: Box::new(
+                    CILNode::LoadAddresOfTMPLocal.cast_ptr(asm.nptr(Type::Float(Float::F128))),
+                ),
+                obj: Box::new(Type::Float(Float::F128)),
+            },
+        ))),
     }
 }
 pub fn load_const_int(value: u128, int_type: IntTy, asm: &mut Assembly) -> NodeIdx {
@@ -403,7 +385,7 @@ pub fn load_const_uint(value: u128, int_type: UintTy, asm: &mut Assembly) -> Nod
         UintTy::U16 => (asm.alloc_node(u16::try_from(value).unwrap())),
         UintTy::U32 => (asm.alloc_node(u32::try_from(value).unwrap())),
         UintTy::U64 => (asm.alloc_node(u64::try_from(value).unwrap())),
-        UintTy::Usize => (asm.alloc_node(cilly::Const::USize(u64::try_from(value).unwrap()))),
+        UintTy::Usize => asm.alloc_node(cilly::Const::USize(u64::try_from(value).unwrap())),
         UintTy::U128 => (asm.alloc_node(value)),
     }
 }

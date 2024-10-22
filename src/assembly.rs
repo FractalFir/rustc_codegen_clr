@@ -16,14 +16,14 @@ use cilly::{
     cil_node::CILNode,
     cil_root::CILRoot,
     cil_tree::CILTree,
-    conv_isize, conv_usize, ldc_i32, ldc_u32, ldc_u64,
+    conv_isize, conv_usize,
     method::{Method, MethodType},
     utilis::{self, encode},
     v2::{
         cilnode::MethodKind, method::LocalDef, FnSig, Int, MethodDef, MethodRef, MethodRefIdx,
         StaticFieldDesc,
     },
-    IntoAsmIndex, StringIdx, Type,
+    Const, IntoAsmIndex, StringIdx, Type,
 };
 use rustc_middle::{
     mir::{
@@ -118,8 +118,8 @@ fn allocation_initializer_method(
                 tree: Box::new(call!(
                     asm.alloc_methodref(aligned_alloc),
                     [
-                        conv_usize!(ldc_u64!(bytes.len() as u64)),
-                        conv_usize!(ldc_u64!(align))
+                        CILNode::V2(asm.alloc_node(Const::USize(bytes.len() as u64))),
+                        CILNode::V2(asm.alloc_node(Const::USize(align)))
                     ]
                 ))
                 .cast_ptr(asm.nptr(Type::Int(Int::U8))),
@@ -133,9 +133,9 @@ fn allocation_initializer_method(
                 local: 0,
                 tree: Box::new(call!(
                     asm.alloc_methodref(alloc),
-                    [conv_isize!(ldc_i32!(
+                    [conv_isize!(CILNode::V2(asm.alloc_node(
                         i32::try_from(bytes.len()).expect("Static alloc too big")
-                    ))]
+                    )))]
                 ))
                 .cast_ptr(asm.nptr(Type::Int(Int::U8))),
             }
@@ -147,8 +147,10 @@ fn allocation_initializer_method(
         trees.push(
             CILRoot::InitBlk {
                 dst: Box::new(CILNode::LDLoc(0)),
-                val: Box::new(CILNode::LdcU8(0)),
-                count: Box::new(conv_usize!(ldc_u64!(bytes.len() as u64))),
+                val: Box::new(CILNode::V2(asm.alloc_node(0_u8))),
+                count: Box::new(CILNode::V2(
+                    asm.alloc_node(Const::USize(bytes.len() as u64)),
+                )),
             }
             .into(),
         );
@@ -162,9 +164,12 @@ fn allocation_initializer_method(
                 if long != 0 {
                     trees.push(
                         CILRoot::STIndI64(
-                            (CILNode::LDLoc(0) + conv_usize!(ldc_u32!(offset.try_into().unwrap())))
-                                .cast_ptr(asm.nptr(Type::Int(Int::U64))),
-                            CILNode::LdcU64(long),
+                            (CILNode::LDLoc(0)
+                                + CILNode::V2(
+                                    asm.alloc_node(Const::USize(offset.try_into().unwrap())),
+                                ))
+                            .cast_ptr(asm.nptr(Type::Int(Int::U64))),
+                            CILNode::V2(asm.alloc_node(long)),
                         )
                         .into(),
                     );
@@ -176,9 +181,12 @@ fn allocation_initializer_method(
                 if long != 0 {
                     trees.push(
                         CILRoot::STIndI32(
-                            (CILNode::LDLoc(0) + conv_usize!(ldc_u32!(offset.try_into().unwrap())))
-                                .cast_ptr(asm.nptr(Type::Int(Int::U32))),
-                            CILNode::LdcU32(long),
+                            (CILNode::LDLoc(0)
+                                + CILNode::V2(
+                                    asm.alloc_node(Const::USize(offset.try_into().unwrap())),
+                                ))
+                            .cast_ptr(asm.nptr(Type::Int(Int::U32))),
+                            CILNode::V2(asm.alloc_node(long)),
                         )
                         .into(),
                     );
@@ -190,8 +198,11 @@ fn allocation_initializer_method(
                 if byte != 0 {
                     trees.push(
                         CILRoot::STIndI8(
-                            CILNode::LDLoc(0) + conv_usize!(ldc_u32!(offset.try_into().unwrap())),
-                            CILNode::LdcU8(byte),
+                            CILNode::LDLoc(0)
+                                + CILNode::V2(
+                                    asm.alloc_node(Const::USize(offset.try_into().unwrap())),
+                                ),
+                            CILNode::V2(asm.alloc_node(byte)),
                         )
                         .into(),
                     );
@@ -222,8 +233,9 @@ fn allocation_initializer_method(
                 );
                 trees.push(
                     CILRoot::STIndISize(
-                        (CILNode::LDLoc(0) + conv_usize!(ldc_u32!(offset)))
-                            .cast_ptr(asm.nptr(Type::Int(Int::USize))),
+                        (CILNode::LDLoc(0)
+                            + CILNode::V2(asm.alloc_node(Const::USize(offset.into()))))
+                        .cast_ptr(asm.nptr(Type::Int(Int::USize))),
                         CILNode::LDFtn(asm.alloc_methodref(mref)).cast_ptr(Type::Int(Int::USize)),
                     )
                     .into(),
@@ -233,8 +245,9 @@ fn allocation_initializer_method(
 
                 trees.push(
                     CILRoot::STIndISize(
-                        (CILNode::LDLoc(0) + conv_usize!(ldc_u32!(offset)))
-                            .cast_ptr(asm.nptr(Type::Int(Int::USize))),
+                        (CILNode::LDLoc(0)
+                            + CILNode::V2(asm.alloc_node(Const::USize(offset.into()))))
+                        .cast_ptr(asm.nptr(Type::Int(Int::USize))),
                         ptr_alloc.cast_ptr(Type::Int(Int::USize)),
                     )
                     .into(),

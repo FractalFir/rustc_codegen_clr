@@ -3,9 +3,9 @@ use cilly::{
     cil_node::CILNode,
     cil_root::CILRoot,
     cil_tree::CILTree,
-    conv_usize, ld_field, ldc_u32,
+    ld_field,
     v2::{cilnode::MethodKind, Assembly, FieldDesc, FnSig, Int, MethodRef},
-    Type,
+    Const, Type,
 };
 use rustc_middle::{
     mir::{BasicBlock, Operand, Place, SwitchTargets, Terminator, TerminatorKind},
@@ -204,7 +204,7 @@ pub fn handle_terminator<'tcx>(
                                 target: target.as_u32(),
                                 sub_target: 0,
                                 a: Box::new(drop_fn_ptr.clone().cast_ptr(Type::Int(Int::USize))),
-                                b: Box::new(conv_usize!(ldc_u32!(0))),
+                                b: Box::new(CILNode::V2(ctx.alloc_node(Const::USize(0)))),
                             }
                             .into(),
                             CILRoot::CallI {

@@ -8,9 +8,9 @@ use crate::{
 use cilly::{
     cil_node::CILNode,
     cil_root::CILRoot,
-    conv_usize, ldc_u64,
+    conv_usize,
     v2::{cilnode::MethodKind, ClassRef, FieldDesc, FnSig, Int, MethodRef},
-    Type,
+    Const, Type,
 };
 use rustc_index::IndexVec;
 use rustc_middle::{
@@ -89,7 +89,7 @@ pub fn handle_aggregate<'tcx>(
                     site: ctx.alloc_methodref(site.clone()),
                     args: [
                         array_getter.clone(),
-                        conv_usize!(ldc_u64!(u64::from(value.0))),
+                        CILNode::V2(ctx.alloc_node(Const::USize(u64::from(value.0)))),
                         value.1,
                     ]
                     .into(),

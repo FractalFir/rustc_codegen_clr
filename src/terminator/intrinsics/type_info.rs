@@ -2,8 +2,9 @@ use crate::{assembly::MethodCompileCtx, place::place_set, r#type::pointer_to_is_
 use cilly::{
     cil_node::CILNode,
     cil_root::CILRoot,
-    conv_usize, ld_field, ldc_u32,
-    v2::{FieldDesc, Int}, Type,
+    conv_usize, ld_field,
+    v2::{FieldDesc, Int},
+    Const, Type,
 };
 use rustc_middle::{
     mir::{Operand, Place},
@@ -41,7 +42,11 @@ pub fn size_of_val<'tcx>(
             .expect("needs_drop works only on types!"),
     );
     if crate::utilis::is_zst(pointed_ty, ctx.tcx()) {
-        return place_set(destination, conv_usize!(ldc_u32!(0)), ctx);
+        return place_set(
+            destination,
+            CILNode::V2(ctx.alloc_node(Const::USize(0))),
+            ctx,
+        );
     }
     if pointer_to_is_fat(pointed_ty, ctx.tcx(), ctx.instance()) {
         let ptr_ty = ctx.monomorphize(args[0].node.ty(ctx.body(), ctx.tcx()));

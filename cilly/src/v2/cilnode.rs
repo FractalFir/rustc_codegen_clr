@@ -770,14 +770,7 @@ impl CILNode {
             }
             V1Node::SizeOf(tpe) => Self::SizeOf(asm.alloc_type(*tpe.as_ref())),
             V1Node::LDTypeToken(tpe) => Self::LdTypeToken(asm.alloc_type(*tpe.as_ref())),
-            V1Node::LdcU64(val) => Const::U64(*val).into(),
-            V1Node::LdcU32(val) => Const::U32(*val).into(),
-            V1Node::LdcU16(val) => Const::U16(*val).into(),
-            V1Node::LdcU8(val) => Const::U8(*val).into(),
-            V1Node::LdcI64(val) => Const::I64(*val).into(),
-            V1Node::LdcI32(val) => Const::I32(*val).into(),
-            V1Node::LdcI16(val) => Const::I16(*val).into(),
-            V1Node::LdcI8(val) => Const::I8(*val).into(),
+
             V1Node::LdcF64(val) => Const::F64(*val).into(),
             V1Node::LdcF32(val) => Const::F32(*val).into(),
             // Special

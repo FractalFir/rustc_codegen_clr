@@ -132,7 +132,6 @@ mod comptime;
 pub mod function_sig;
 /// Interop type handling.
 mod interop;
-mod verify;
 
 /// A representation of a .NET method
 pub mod method;

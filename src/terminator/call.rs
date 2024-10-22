@@ -13,7 +13,7 @@ use cilly::{
     call, call_virt,
     cil_node::{CILNode, CallOpArgs},
     cil_root::CILRoot,
-    conv_usize, ld_field, ldc_i32,
+    conv_usize, ld_field,
     v2::{cilnode::MethodKind, ClassRef, FieldDesc, FnSig, Int},
 };
 use cilly::{v2::MethodRef, Type};
@@ -364,8 +364,9 @@ pub fn call<'tcx>(
             ctx.alloc_field(vtable_ptr_field_desc)
         );
 
-        let vtable_index =
-            ldc_i32!(i32::try_from(fn_idx).expect("More tahn 2^31 functions in a vtable!"));
+        let vtable_index = CILNode::V2(
+            ctx.alloc_node(i32::try_from(fn_idx).expect("More tahn 2^31 functions in a vtable!")),
+        );
         let vtable_offset =
             conv_usize!(vtable_index * CILNode::SizeOf(Box::new(Type::Int(Int::USize))));
         // Get the address of the function ptr, and load it

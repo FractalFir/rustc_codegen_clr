@@ -10,9 +10,9 @@ use cilly::{
     cil_root::CILRoot,
     cilnode::MethodKind,
     conv_f32, conv_f64, conv_i16, conv_i32, conv_i64, conv_i8, conv_isize, conv_u16, conv_u32,
-    conv_u64, conv_u8, conv_usize, eq, ld_field, ldc_i32, ldc_u32, ldc_u64,
+    conv_u64, conv_u8, conv_usize, eq, ld_field,
     v2::{ClassRef, Float, Int},
-    MethodRef, Type,
+    Const, MethodRef, Type,
 };
 use ints::{ctlz, rotate_left, rotate_right};
 use rustc_middle::{
@@ -120,7 +120,7 @@ pub fn handle_intrinsic<'tcx>(
             );
             let needs_drop = tpe.needs_drop(ctx.tcx(), ParamEnv::reveal_all());
             let needs_drop = i32::from(needs_drop);
-            place_set(destination, ldc_i32!(needs_drop), ctx)
+            place_set(destination, CILNode::V2(ctx.alloc_node(needs_drop)), ctx)
         }
         "fmaf32" => {
             let mref = MethodRef::new(
@@ -216,7 +216,7 @@ pub fn handle_intrinsic<'tcx>(
                         conv_usize!(size),
                         ctx
                     ),
-                    ldc_i32!(0)
+                    CILNode::V2(ctx.alloc_node(0_i32))
                 ),
                 ctx,
             )
@@ -827,9 +827,10 @@ pub fn handle_intrinsic<'tcx>(
                     .as_type()
                     .expect("needs_drop works only on types!"),
             );
+            let align = crate::utilis::align_of(tpe, ctx.tcx());
             place_set(
                 destination,
-                conv_usize!(ldc_u64!(crate::utilis::align_of(tpe, ctx.tcx()))),
+                conv_usize!(CILNode::V2(ctx.alloc_node(align))),
                 ctx,
             )
         }
@@ -1367,7 +1368,7 @@ pub fn handle_intrinsic<'tcx>(
                 ctx.alloc_methodref(round),
                 [
                     handle_operand(&args[0].node, ctx),
-                    ldc_i32!(1).transmute_on_stack(
+                    CILNode::V2(ctx.alloc_node(1_i32)).transmute_on_stack(
                         Type::Int(Int::I32),
                         Type::ClassRef(rounding),
                         ctx
@@ -1406,7 +1407,7 @@ pub fn handle_intrinsic<'tcx>(
                 ctx.alloc_methodref(round),
                 [
                     handle_operand(&args[0].node, ctx),
-                    ldc_i32!(1).transmute_on_stack(
+                    CILNode::V2(ctx.alloc_node(1_i32)).transmute_on_stack(
                         Type::Int(Int::I32),
                         Type::ClassRef(rounding),
                         ctx
@@ -1618,7 +1619,11 @@ pub fn handle_intrinsic<'tcx>(
             )
         }
         "abort" => CILRoot::throw("Called abort!", ctx),
-        "const_allocate" => place_set(destination, conv_usize!(ldc_u32!(0)), ctx),
+        "const_allocate" => place_set(
+            destination,
+            CILNode::V2(ctx.alloc_node(Const::USize(0))),
+            ctx,
+        ),
         "vtable_size" => {
             let vtableptr = handle_operand(&args[0].node, ctx);
             place_set(
@@ -1641,7 +1646,8 @@ pub fn handle_intrinsic<'tcx>(
                     ptr: Box::new(
                         (vtableptr
                             + conv_usize!(
-                                (CILNode::SizeOf(Box::new(Type::Int(Int::ISize)))) * ldc_i32!(2)
+                                (CILNode::SizeOf(Box::new(Type::Int(Int::ISize))))
+                                    * CILNode::V2(ctx.alloc_node(2_i32))
                             ))
                         .cast_ptr(ctx.nptr(Type::Int(Int::USize))),
                     ),

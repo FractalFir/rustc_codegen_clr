@@ -7,7 +7,7 @@ use cilly::{
     call,
     cil_node::CILNode,
     cil_root::CILRoot,
-    conv_usize, ld_field, ldc_u64,
+    conv_usize, ld_field,
     v2::{cilnode::MethodKind, ClassRef, FieldDesc, Int, MethodRef},
     Type,
 };
@@ -131,7 +131,7 @@ pub fn place_elem_set<'a>(
             let curr_ty = curr_type
                 .as_ty()
                 .expect("INVALID PLACE: Indexing into enum variant???");
-            let index = ldc_u64!(*offset);
+            let index = CILNode::V2(ctx.alloc_node((*offset) as u64));
             assert!(!from_end, "Indexing slice form end");
 
             match curr_ty.kind() {

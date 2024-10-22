@@ -6,7 +6,6 @@ use crate::{
 use cilly::{
     call,
     cil_node::CILNode,
-    ldc_u32, ldc_u64,
     v2::{cilnode::MethodKind, Assembly, ClassRef, ClassRefIdx, Int, MethodRef},
     Type,
 };
@@ -32,8 +31,8 @@ pub fn max_value(tpe: &Type, asm: &mut Assembly) -> CILNode {
             );
             call!(asm.alloc_methodref(mref), [])
         }
-        Type::Int(Int::U64) => ldc_u64!(u64::MAX),
-        Type::Int(Int::U32) => ldc_u32!(u32::MAX),
+        Type::Int(Int::U64) => CILNode::V2(asm.alloc_node(u64::MAX)),
+        Type::Int(Int::U32) => CILNode::V2(asm.alloc_node(u32::MAX)),
         _ => todo!("Can't get the max value of {tpe:?}"),
     }
 }

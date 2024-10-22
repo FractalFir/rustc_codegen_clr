@@ -136,14 +136,7 @@ pub enum CILNode {
     Call(Box<CallOpArgs>),
 
     CallVirt(Box<CallOpArgs>),
-    LdcI64(i64),
-    LdcU64(u64),
-    LdcU8(u8),
-    LdcU16(u16),
-    LdcI32(i32),
-    LdcU32(u32),
-    LdcI8(i8),
-    LdcI16(i16),
+  
     LdcF64(HashableF64),
     LdcF32(HashableF32),
     LoadGlobalAllocPtr {
@@ -237,60 +230,10 @@ pub enum CILNode {
 
 impl CILNode {
     pub fn const_u128(value: u128, asm: &mut Assembly) -> CILNode {
-        fn u128_low_u64(value: u128) -> u64 {
-            u64::try_from(value & u128::from(u64::MAX)).expect("trucating cast error")
-        }
-        let low = u128_low_u64(value);
-        let high = (value >> 64) as u64;
-        let ref_u128 = asm.nref(Type::Int(Int::U128));
-        let ctor_sig = asm.sig(
-            [ref_u128, Type::Int(Int::U64), Type::Int(Int::U64)],
-            Type::Void,
-        );
-        let uint_128 = ClassRef::uint_128(asm);
-        let ctor = asm.alloc_string(".ctor");
-        CILNode::NewObj(Box::new(CallOpArgs {
-            site: asm.alloc_methodref(MethodRef::new(
-                uint_128,
-                ctor,
-                ctor_sig,
-                MethodKind::Constructor,
-                vec![].into(),
-            )),
-            args: [
-                crate::conv_u64!(crate::ldc_u64!(high)),
-                crate::conv_u64!(crate::ldc_u64!(low)),
-            ]
-            .into(),
-        }))
+        CILNode::V2(asm.alloc_node(value))
     }
     pub fn const_i128(value: u128, asm: &mut Assembly) -> CILNode {
-        fn u128_low_u64(value: u128) -> u64 {
-            u64::try_from(value & u128::from(u64::MAX)).expect("trucating cast error")
-        }
-        let low = u128_low_u64(value);
-        let high = (value >> 64) as u64;
-        let ref_u128 = asm.nref(Type::Int(Int::U128));
-        let ctor_sig = asm.sig(
-            [ref_u128, Type::Int(Int::U64), Type::Int(Int::U64)],
-            Type::Void,
-        );
-        let ctor = asm.alloc_string(".ctor");
-        let int_128 = ClassRef::int_128(asm);
-        CILNode::NewObj(Box::new(CallOpArgs {
-            site: asm.alloc_methodref(MethodRef::new(
-                int_128,
-                ctor,
-                ctor_sig,
-                MethodKind::Constructor,
-                vec![].into(),
-            )),
-            args: [
-                crate::conv_u64!(crate::ldc_u64!(high)),
-                crate::conv_u64!(crate::ldc_u64!(low)),
-            ]
-            .into(),
-        }))
+        CILNode::V2(asm.alloc_node(value as i128))
     }
     /// Allocates a GC handle to the object, and converts that handle to a nint sized handleID.
     pub fn managed_ref_to_handle(self, asm: &mut Assembly) -> Self {
@@ -494,14 +437,7 @@ impl CILNode {
                 b.allocate_tmps(curr_loc, locals);
             }
             Self::Call (call_op_args)  |  Self::CallVirt (call_op_args)  |  Self::NewObj (call_op_args) =>call_op_args.args.iter_mut().for_each(|arg|arg.allocate_tmps(curr_loc, locals)),
-            Self::LdcI64(_) |
-            Self::LdcU64(_) |
-            Self::LdcI32(_)  |
-            Self::LdcU8(_) |
-            Self::LdcU16(_) |
-            Self::LdcU32(_) |
-            Self::LdcI16(_) |
-            Self::LdcI8(_) |
+            
             Self::LdcF64(_) |
             Self::LdcF32(_) =>(),
             Self::ConvF64Un(val) |
@@ -784,35 +720,7 @@ macro_rules! conv_f_un {
         CILNode::ConvF64Un($a.into())
     };
 }
-/// Loads a value of type `i32`.
-#[macro_export]
-macro_rules! ldc_i32 {
-    ($val:expr) => {
-        CILNode::LdcI32($val)
-    };
-}
 
-/// Loads a value of type `i64`.
-#[macro_export]
-macro_rules! ldc_i64 {
-    ($val:expr) => {
-        CILNode::LdcI64($val)
-    };
-}
-/// Loads a value of type `u32`.
-#[macro_export]
-macro_rules! ldc_u32 {
-    ($val:expr) => {
-        CILNode::LdcU32($val)
-    };
-}
-/// Loads a value of type `u64`.
-#[macro_export]
-macro_rules! ldc_u64 {
-    ($val:expr) => {
-        CILNode::LdcU64($val)
-    };
-}
 impl std::ops::Add<Self> for CILNode {
     type Output = Self;
 

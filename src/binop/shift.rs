@@ -4,7 +4,7 @@ use crate::utilis::compiletime_sizeof;
 use cilly::{
     call,
     cil_node::CILNode,
-    conv_i32, conv_u32, ldc_u32, rem_un, shl, shr, shr_un,
+    conv_i32, conv_u32, rem_un, shl, shr, shr_un,
     v2::{cilnode::MethodKind, ClassRef, Int, MethodRef},
     Type,
 };
@@ -108,7 +108,7 @@ pub fn shr_checked<'tcx>(
                     ops_a,
                     conv_i32!(rem_un!(
                         crate::casts::int_to_int(type_b, Type::Int(Int::U32), ops_b, ctx),
-                        ldc_u32!(128)
+                        CILNode::V2(ctx.alloc_node(128_u32))
                     ))
                 ]
             );
@@ -131,7 +131,7 @@ pub fn shr_checked<'tcx>(
                     ops_a,
                     conv_i32!(rem_un!(
                         crate::casts::int_to_int(type_b, Type::Int(Int::U32), ops_b, ctx),
-                        ldc_u32!(128)
+                        CILNode::V2(ctx.alloc_node(128_u32))
                     ))
                 ]
             );
@@ -148,12 +148,15 @@ pub fn shr_checked<'tcx>(
                             ops_b,
                             ctx
                         )),
-                        ldc_u32!(bit_cap)
+                        CILNode::V2(ctx.alloc_node(bit_cap))
                     )
                 )
             }
             _ => {
-                shr_un!(ops_a, rem_un!(conv_u32!(ops_b), ldc_u32!(bit_cap)))
+                shr_un!(
+                    ops_a,
+                    rem_un!(conv_u32!(ops_b), CILNode::V2(ctx.alloc_node(bit_cap)))
+                )
             }
         },
         TyKind::Int(_) => match shift_type.kind() {
@@ -167,12 +170,15 @@ pub fn shr_checked<'tcx>(
                             ops_b,
                             ctx
                         )),
-                        ldc_u32!(bit_cap)
+                        CILNode::V2(ctx.alloc_node(bit_cap))
                     )
                 )
             }
             _ => {
-                shr!(ops_a, rem_un!(conv_u32!(ops_b), ldc_u32!(bit_cap)))
+                shr!(
+                    ops_a,
+                    rem_un!(conv_u32!(ops_b), CILNode::V2(ctx.alloc_node(bit_cap)))
+                )
             }
         },
         _ => panic!("Can't bitshift type  {value_type:?}"),
@@ -212,7 +218,7 @@ pub fn shl_checked<'tcx>(
                             ops_b,
                             ctx
                         )),
-                        ldc_u32!(bit_cap)
+                        CILNode::V2(ctx.alloc_node(bit_cap))
                     ))
                 ]
             )
@@ -239,7 +245,7 @@ pub fn shl_checked<'tcx>(
                             ops_b,
                             ctx
                         )),
-                        ldc_u32!(bit_cap)
+                        CILNode::V2(ctx.alloc_node(bit_cap))
                     ))
                 ]
             )
@@ -255,12 +261,15 @@ pub fn shl_checked<'tcx>(
                             ops_b,
                             ctx
                         )),
-                        ldc_u32!(bit_cap)
+                        CILNode::V2(ctx.alloc_node(bit_cap))
                     )
                 )
             }
             _ => {
-                shl!(ops_a, rem_un!(conv_u32!(ops_b), ldc_u32!(bit_cap)))
+                shl!(
+                    ops_a,
+                    rem_un!(conv_u32!(ops_b), CILNode::V2(ctx.alloc_node(bit_cap)))
+                )
             }
         },
         TyKind::Int(_) => match shift_type.kind() {
@@ -274,13 +283,16 @@ pub fn shl_checked<'tcx>(
                             ops_b,
                             ctx
                         )),
-                        ldc_u32!(bit_cap)
+                        CILNode::V2(ctx.alloc_node(bit_cap))
                     )
                 )
             }
 
             _ => {
-                shl!(ops_a, rem_un!(conv_u32!(ops_b), ldc_u32!(bit_cap)))
+                shl!(
+                    ops_a,
+                    rem_un!(conv_u32!(ops_b), CILNode::V2(ctx.alloc_node(bit_cap)))
+                )
             }
         },
         _ => panic!("Can't bitshift type  {value_type:?}"),

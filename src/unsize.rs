@@ -5,8 +5,8 @@ use cilly::cil_node::CILNode;
 use cilly::cil_root::CILRoot;
 
 use cilly::v2::{FieldDesc, Int};
-use cilly::Type;
-use cilly::{conv_u32, conv_usize, ldc_u32, ldc_u64};
+use cilly::{conv_u32, conv_usize};
+use cilly::{Const, Type};
 use rustc_middle::{
     mir::Operand,
     ty::{layout::TyAndLayout, ParamEnv, PolyExistentialTraitRef, Ty, TyKind, UintTy},
@@ -96,7 +96,7 @@ pub fn unsize2<'tcx>(
     let source_size = ctx.layout_of(source).size.bytes();
     // Assumes a 64 bit pointer!
     let copy_val = if source_size > 8 && !source.is_any_ptr() {
-        let addr = operand_address(operand, ctx);
+        /*let addr = operand_address(operand, ctx);
         let const_8 = CILNode::ZeroExtendToISize(Box::new(CILNode::LdcI8(8)));
         let addr = CILNode::Add(Box::new(addr), Box::new(const_8));
         let dst_addr = CILNode::MRefToRawPtr(Box::new(CILNode::LoadAddresOfTMPLocal));
@@ -108,7 +108,8 @@ pub fn unsize2<'tcx>(
             len: Box::new(CILNode::ZeroExtendToISize(Box::new(CILNode::LdcU64(
                 source_size - 8,
             )))),
-        }
+        }*/
+        todo!("Can't unsize types with sized fields yet.")
     } else {
         CILRoot::Nop
     };
@@ -136,9 +137,10 @@ fn unsized_info<'tcx>(
             .struct_lockstep_tails_for_codegen(source, target, ParamEnv::reveal_all());
     match (&source.kind(), &target.kind()) {
         (&TyKind::Array(_, len), &TyKind::Slice(_)) => {
-            conv_usize!(ldc_u64!(len
+            let len = len
                 .try_to_target_usize(ctx.tcx())
-                .expect("Could not eval array length.")))
+                .expect("Could not eval array length.");
+            CILNode::V2(ctx.alloc_node(Const::USize(len)))
         }
         (
             &TyKind::Dynamic(data_a, _, src_dyn_kind),
@@ -156,7 +158,7 @@ fn unsized_info<'tcx>(
 
             if let Some(entry_idx) = vptr_entry_idx {
                 let entry_idx = u32::try_from(entry_idx).unwrap();
-                let entry_offset = ldc_u32!(entry_idx)
+                let entry_offset = CILNode::V2(ctx.alloc_node(entry_idx))
                     * conv_u32!(CILNode::SizeOf(Box::new(ctx.nptr(Type::Void))));
                 CILNode::LDIndUSize {
                     ptr: Box::new(
