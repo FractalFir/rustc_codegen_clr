@@ -269,6 +269,22 @@ impl ILExporter {
                     }
                     _ => writeln!(out, "ldc.i8 {val}"),
                 },
+                super::Const::I128(val) => match val {
+                    -1 => writeln!(out, "ldc.i4.m1 call valuetype [System.Runtime]System.Int128 [System.Runtime]System.Int128::op_Implicit(int32)"),
+                    0..=8 => writeln!(out, "ldc.i4.{val} call valuetype [System.Runtime]System.Int128 [System.Runtime]System.Int128::op_Implicit(int32)"),
+                    9..=127 => writeln!(out, "ldc.i4.s {val} call valuetype [System.Runtime]System.Int128 [System.Runtime]System.Int128::op_Implicit(int32)"),
+                    -2_147_483_648i128..0 | 128..=2_147_483_647i128 => {
+                        writeln!(out, "ldc.i4 {val} call valuetype [System.Runtime]System.Int128 [System.Runtime]System.Int128::op_Implicit(int32)")
+                    }
+                    -9_223_372_036_854_775_808_i128..-2_147_483_648i128 | 2_147_483_648i128..=9_223_372_036_854_775_807i128 => {
+                        writeln!(out, "ldc.i8 {val} call valuetype [System.Runtime]System.Int128 [System.Runtime]System.Int128::op_Implicit(int64)")
+                    }
+                    _ => {
+                        let low =  u64::try_from((*val as u128) & u128::from(u64::MAX)).expect("trucating cast error");
+                        let high = ((*val as u128) >> 64) as u64;
+                        writeln!(out, "ldc.i8 {high} ldc.i8 {low} newobj instance void valuetype [System.Runtime]System.Int128::.ctor(uint64,uint64)")
+                    },
+                },
                 super::Const::ISize(val) => match val {
                     -1 => writeln!(out, "ldc.i4.m1 conv.i"),
                     0..=8 => writeln!(out, "ldc.i4.{val} conv.i"),
@@ -296,7 +312,7 @@ impl ILExporter {
                 super::Const::U64(val) => match val {
                     0..=8 => writeln!(out, "ldc.i4.{val} conv.u8"),
                     9..=127 => writeln!(out, "ldc.i4.s {val} conv.u8"),
-                    128..=2_147_483_647u64 => writeln!(out, "ldc.i4 {val} conv.u8"),
+                    128..=4_294_967_295u64 => writeln!(out, "ldc.i4 {val} conv.u8"),
                     _ => writeln!(out, "ldc.i8 {val}"),
                 },
                 super::Const::USize(val) => match val {
@@ -305,6 +321,17 @@ impl ILExporter {
                     128..=2_147_483_647u64 => writeln!(out, "ldc.i4 {val} conv.u"),
                     _ => writeln!(out, "ldc.i8 {val} conv.u"),
                 },
+                super::Const::U128(val)=>match val {
+                    0..=8 => writeln!(out, "ldc.i4.{val} call valuetype [System.Runtime]System.UInt128 [System.Runtime]System.UInt128::op_Implicit(uint32)"),
+                    9..=127 => writeln!(out, "ldc.i4.s {val} call valuetype [System.Runtime]System.UInt128 [System.Runtime]System.UInt128::op_Implicit(uint32)"),
+                    128..=4_294_967_295u128 => writeln!(out, "ldc.i4 {val} call valuetype [System.Runtime]System.UInt128 [System.Runtime]System.UInt128::op_Implicit(uint32)"),
+                    4_294_967_296u128..=18_446_744_073_709_551_615u128 => writeln!(out, "ldc.i8 {val} call valuetype [System.Runtime]System.UInt128 [System.Runtime]System.UInt128::op_Implicit(uint64)"),
+                    _ => {
+                        let low =  u64::try_from({ *val } & u128::from(u64::MAX)).expect("trucating cast error");
+                        let high = ({ *val } >> 64) as u64;
+                        writeln!(out, "ldc.i8 {high} ldc.i8 {low} newobj instance void valuetype [System.Runtime]System.UInt128::.ctor(uint64,uint64)")
+                    },
+                }
                 super::Const::PlatformString(msg) => {
                     let msg = &asm[*msg];
                     writeln!(out, "ldstr {msg:?}")
@@ -567,7 +594,7 @@ impl ILExporter {
                         (Int::I128, false) => {
                             writeln!(
                                 out,
-                                "volatile. ldobj valuetype [System.Runtime]System.Int128"
+                                "ldobj valuetype [System.Runtime]System.Int128"
                             )
                         }
                         (Int::ISize, true) => writeln!(out, "volatile. ldind.i"),

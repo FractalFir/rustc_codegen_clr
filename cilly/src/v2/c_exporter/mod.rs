@@ -334,11 +334,13 @@ impl CExporter {
                 Const::I16(v) => format!("(int16_t)0x{v:x}"),
                 Const::I32(v) => format!("((int32_t)0x{v:x})"),
                 Const::I64(v) => format!("0x{v:x}L"),
+                Const::I128(v) => todo!("can't load const i128"),
                 Const::ISize(v) => format!("(intptr_t)0x{v:x}L"),
                 Const::U8(v) => format!("(uint8_t)0x{v:x}"),
                 Const::U16(v) => format!("(uint16_t)0x{v:x}"),
                 Const::U32(v) => format!("0x{v:x}u"),
                 Const::U64(v) => format!("0x{v:x}uL"),
+                Const::U128(v) => todo!("can't load const u128"),
                 Const::USize(v) => format!("(uintptr_t)0x{v:x}uL"),
                 Const::PlatformString(string_idx) => format!("{:?}", &asm[*string_idx]),
                 Const::Bool(val) => {

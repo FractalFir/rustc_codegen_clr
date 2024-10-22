@@ -4,7 +4,8 @@ use cilly::{
     cil_root::CILRoot,
     cil_tree::CILTree,
     conv_usize, ld_field, ldc_u32,
-    v2::{cilnode::MethodKind, Assembly, FieldDesc, FnSig, Int, MethodRef}, Type,
+    v2::{cilnode::MethodKind, Assembly, FieldDesc, FnSig, Int, MethodRef},
+    Type,
 };
 use rustc_middle::{
     mir::{BasicBlock, Operand, Place, SwitchTargets, Terminator, TerminatorKind},
@@ -330,15 +331,15 @@ fn handle_switch(
     for (value, target) in switch.iter() {
         //ops.extend(CILOp::debug_msg("Switchin"));
 
-        let const_val = match ty.kind() {
+        let const_val = CILNode::V2(match ty.kind() {
             TyKind::Int(int) => crate::constant::load_const_int(value, *int, asm),
             TyKind::Uint(uint) => crate::constant::load_const_uint(value, *uint, asm),
-            TyKind::Bool => CILNode::V2(asm.alloc_node(value != 0)),
+            TyKind::Bool => asm.alloc_node(value != 0),
             TyKind::Char => {
                 crate::constant::load_const_uint(value, rustc_middle::ty::UintTy::U32, asm)
             }
             _ => todo!("Unsuported switch discriminant type {ty:?}"),
-        };
+        });
         //ops.push(CILOp::LdcI64(value as i64));
         trees.push(
             CILRoot::BTrue {

@@ -1,5 +1,3 @@
-
-
 #[macro_export]
 macro_rules! binop {
     // |closure| + |closure|
@@ -325,9 +323,9 @@ macro_rules! ld_arg {
 fn macro_test() {
     let sum = add!(
         zero_extend!(size_of!(usize), usize),
-        zero_extend!(size_of!(Type::Int(Int::U8)), usize)
+        zero_extend!(size_of!(crate::Type::Int(crate::Int::U8)), usize)
     );
-    let mut asm = Assembly::default();
+    let mut asm = super::Assembly::default();
     sum(&mut asm);
 }
 /*

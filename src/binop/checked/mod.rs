@@ -35,16 +35,16 @@ pub fn result_tuple(tpe: Type, out_of_range: CILNode, val: CILNode, asm: &mut As
 }
 pub fn zero(ty: Ty, asm: &mut Assembly) -> CILNode {
     match ty.kind() {
-        TyKind::Uint(UintTy::U16) => CILNode::LdcU16(0),
-        TyKind::Uint(UintTy::U8) => CILNode::LdcU8(0),
-        TyKind::Uint(UintTy::U32) => ldc_u32!(0),
-        TyKind::Int(IntTy::I16) => CILNode::LdcI16(0),
-        TyKind::Int(IntTy::I32) => ldc_i32!(0),
-        TyKind::Int(IntTy::I8) => CILNode::LdcI8(0),
-        TyKind::Uint(UintTy::U64) => ldc_u64!(0),
-        TyKind::Int(IntTy::I64) => ldc_i64!(0),
-        TyKind::Uint(UintTy::Usize) => conv_usize!(ldc_u32!(0)),
-        TyKind::Int(IntTy::Isize) => conv_isize!(ldc_u32!(0)),
+        TyKind::Uint(UintTy::U8) => CILNode::V2(asm.alloc_node(0_u8)),
+        TyKind::Uint(UintTy::U16) => CILNode::V2(asm.alloc_node(0_u16)),
+        TyKind::Uint(UintTy::U32) => CILNode::V2(asm.alloc_node(0_u32)),
+        TyKind::Uint(UintTy::U64) => CILNode::V2(asm.alloc_node(0_u64)),
+        TyKind::Uint(UintTy::Usize) => CILNode::V2(asm.alloc_node(0_usize)),
+        TyKind::Int(IntTy::I8) => CILNode::V2(asm.alloc_node(0_i8)),
+        TyKind::Int(IntTy::I16) => CILNode::V2(asm.alloc_node(0_i16)),
+        TyKind::Int(IntTy::I32) => CILNode::V2(asm.alloc_node(0_i32)),
+        TyKind::Int(IntTy::I64) => CILNode::V2(asm.alloc_node(0_i64)),
+        TyKind::Int(IntTy::Isize) => CILNode::V2(asm.alloc_node(0_isize)),
         TyKind::Uint(UintTy::U128) => {
             let mref = MethodRef::new(
                 ClassRef::uint_128(asm),
@@ -70,14 +70,14 @@ pub fn zero(ty: Ty, asm: &mut Assembly) -> CILNode {
 }
 fn min(ty: Ty, asm: &mut Assembly) -> CILNode {
     match ty.kind() {
-        TyKind::Uint(UintTy::U8) => CILNode::LdcU8(u8::MIN),
-        TyKind::Uint(UintTy::U16) => CILNode::LdcU16(u16::MIN),
-        TyKind::Uint(UintTy::U32) => ldc_u32!(u32::MIN),
-        TyKind::Int(IntTy::I8) => CILNode::LdcI8(i8::MIN),
-        TyKind::Int(IntTy::I16) => CILNode::LdcI16(i16::MIN),
-        TyKind::Int(IntTy::I32) => ldc_i32!(i32::MIN),
-        TyKind::Uint(UintTy::U64) => ldc_u64!(u64::MIN),
-        TyKind::Int(IntTy::I64) => ldc_i64!(i64::MIN),
+        TyKind::Uint(UintTy::U8) => CILNode::V2(asm.alloc_node(u8::MIN)),
+        TyKind::Uint(UintTy::U16) => CILNode::V2(asm.alloc_node(u16::MIN)),
+        TyKind::Uint(UintTy::U32) => CILNode::V2(asm.alloc_node(u32::MIN)),
+        TyKind::Uint(UintTy::U64) => CILNode::V2(asm.alloc_node(u64::MIN)),
+        TyKind::Int(IntTy::I8) => CILNode::V2(asm.alloc_node(i8::MIN)),
+        TyKind::Int(IntTy::I16) => CILNode::V2(asm.alloc_node(i16::MIN)),
+        TyKind::Int(IntTy::I32) => CILNode::V2(asm.alloc_node(i32::MIN)),
+        TyKind::Int(IntTy::I64) => CILNode::V2(asm.alloc_node(i64::MIN)),
         TyKind::Uint(UintTy::Usize) => {
             let mref = MethodRef::new(
                 ClassRef::usize_type(asm),
@@ -125,14 +125,14 @@ fn min(ty: Ty, asm: &mut Assembly) -> CILNode {
 }
 fn max(ty: Ty, asm: &mut Assembly) -> CILNode {
     match ty.kind() {
-        TyKind::Uint(UintTy::U8) => CILNode::LdcU8(u8::MAX),
-        TyKind::Uint(UintTy::U16) => CILNode::LdcU16(u16::MAX),
-        TyKind::Uint(UintTy::U32) => ldc_u32!(u32::MAX),
-        TyKind::Int(IntTy::I8) => CILNode::LdcI8(i8::MAX),
-        TyKind::Int(IntTy::I16) => CILNode::LdcI16(i16::MAX),
-        TyKind::Int(IntTy::I32) => ldc_i32!(i32::MAX),
-        TyKind::Uint(UintTy::U64) => ldc_u64!(u64::MAX),
-        TyKind::Int(IntTy::I64) => ldc_i64!(i64::MAX),
+        TyKind::Uint(UintTy::U8) => CILNode::V2(asm.alloc_node(u8::MAX)),
+        TyKind::Uint(UintTy::U16) => CILNode::V2(asm.alloc_node(u16::MAX)),
+        TyKind::Uint(UintTy::U32) => CILNode::V2(asm.alloc_node(u32::MAX)),
+        TyKind::Uint(UintTy::U64) => CILNode::V2(asm.alloc_node(u64::MAX)),
+        TyKind::Int(IntTy::I8) => CILNode::V2(asm.alloc_node(i8::MAX)),
+        TyKind::Int(IntTy::I16) => CILNode::V2(asm.alloc_node(i16::MAX)),
+        TyKind::Int(IntTy::I32) => CILNode::V2(asm.alloc_node(i32::MAX)),
+        TyKind::Int(IntTy::I64) => CILNode::V2(asm.alloc_node(i64::MAX)),
         TyKind::Uint(UintTy::Usize) => {
             let mref = MethodRef::new(
                 ClassRef::usize_type(asm),

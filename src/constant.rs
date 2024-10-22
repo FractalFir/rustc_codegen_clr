@@ -12,7 +12,7 @@ use cilly::{
         hashable::{HashableF32, HashableF64},
         Assembly, ClassRef, FieldDesc, Float, Int, MethodRef, MethodRefIdx, StaticFieldDesc,
     },
-    Type,
+    NodeIdx, Type,
 };
 
 use rustc_middle::{
@@ -264,8 +264,8 @@ fn load_const_scalar<'tcx>(
     };
 
     match scalar_ty.kind() {
-        TyKind::Int(int_type) => load_const_int(scalar_u128, *int_type, ctx),
-        TyKind::Uint(uint_type) => load_const_uint(scalar_u128, *uint_type, ctx),
+        TyKind::Int(int_type) => CILNode::V2(load_const_int(scalar_u128, *int_type, ctx)),
+        TyKind::Uint(uint_type) => CILNode::V2(load_const_uint(scalar_u128, *uint_type, ctx)),
         TyKind::Float(ftype) => load_const_float(scalar_u128, *ftype, ctx),
         TyKind::Bool => CILNode::V2(ctx.alloc_node(scalar_u128 != 0)),
         TyKind::RawPtr(_, _) => conv_usize!(ldc_u64!(
@@ -370,90 +370,41 @@ fn load_const_float(value: u128, float_type: FloatTy, asm: &mut Assembly) -> CIL
         }
     }
 }
-pub fn load_const_int(value: u128, int_type: IntTy, asm: &mut Assembly) -> CILNode {
+pub fn load_const_int(value: u128, int_type: IntTy, asm: &mut Assembly) -> NodeIdx {
     match int_type {
-        IntTy::I8 => {
-            let value = i8::from_ne_bytes([u8::try_from(value).unwrap()]);
-            CILNode::LdcI8(value)
-        }
+        IntTy::I8 => (asm.alloc_node(i8::from_ne_bytes([u8::try_from(value).unwrap()]))),
         IntTy::I16 => {
-            let value = i16::from_ne_bytes((u16::try_from(value).unwrap()).to_ne_bytes());
-            CILNode::LdcI16(value)
+            (asm.alloc_node(i16::from_ne_bytes(
+                (u16::try_from(value).unwrap()).to_ne_bytes(),
+            )))
         }
-        IntTy::I32 => CILNode::LdcI32(i32::from_ne_bytes(
-            (u32::try_from(value).unwrap()).to_ne_bytes(),
-        )),
-        IntTy::I64 => CILNode::SignExtendToI64(
-            CILNode::LdcI64(i64::from_ne_bytes(
-                (u64::try_from(value).unwrap()).to_ne_bytes(),
-            ))
-            .into(),
-        ),
-        IntTy::Isize => CILNode::SignExtendToISize(
-            CILNode::LdcI64(i64::from_ne_bytes(
-                (u64::try_from(value).unwrap()).to_ne_bytes(),
-            ))
-            .into(),
-        ),
-        IntTy::I128 => {
-            let low = u128_low_u64(value);
-            let high = (value >> 64) as u64;
-            let int128_ref = asm.nref(Type::Int(Int::I128));
-            let ctor_sig = asm.sig(
-                [int128_ref, Type::Int(Int::U64), Type::Int(Int::U64)],
-                Type::Void,
-            );
-            let mref = MethodRef::new(
-                ClassRef::int_128(asm),
-                asm.alloc_string(".ctor"),
-                ctor_sig,
-                MethodKind::Constructor,
-                vec![].into(),
-            );
-            CILNode::NewObj(Box::new(CallOpArgs {
-                site: asm.alloc_methodref(mref),
-                args: [conv_u64!(ldc_u64!(high)), conv_u64!(ldc_u64!(low))].into(),
-            }))
+        IntTy::I32 => {
+            (asm.alloc_node(i32::from_ne_bytes(
+                (u32::try_from(value).unwrap()).to_ne_bytes(),
+            )))
         }
+        IntTy::I64 => {
+            (asm.alloc_node(i64::from_ne_bytes(
+                (u64::try_from(value).unwrap()).to_ne_bytes(),
+            )))
+        }
+        IntTy::Isize => {
+            (asm.alloc_node(cilly::Const::ISize(i64::from_ne_bytes(
+                (u64::try_from(value).unwrap()).to_ne_bytes(),
+            ))))
+        }
+        #[allow(clippy::cast_possible_wrap)]
+        IntTy::I128 => (asm.alloc_node(value as i128)),
     }
 }
-pub fn load_const_uint(value: u128, int_type: UintTy, asm: &mut Assembly) -> CILNode {
+pub fn load_const_uint(value: u128, int_type: UintTy, asm: &mut Assembly) -> NodeIdx {
     match int_type {
-        UintTy::U8 => {
-            let value = u8::try_from(value).unwrap();
-            CILNode::ConvU8(CILNode::LdcU32(u32::from(value)).into())
-        }
-        UintTy::U16 => {
-            let value = u16::try_from(value).unwrap();
-            CILNode::ConvU16(CILNode::LdcU32(u32::from(value)).into())
-        }
-        UintTy::U32 => CILNode::ConvU32(CILNode::LdcU32(u32::try_from(value).unwrap()).into()),
-        UintTy::U64 => {
-            CILNode::ZeroExtendToU64(CILNode::LdcU64(u64::try_from(value).unwrap()).into())
-        }
-        UintTy::Usize => {
-            CILNode::ZeroExtendToUSize(CILNode::LdcU64(u64::try_from(value).unwrap()).into())
-        }
-        UintTy::U128 => {
-            let low = u128_low_u64(value);
-            let high = (value >> 64) as u64;
-            let u128_ptr = asm.nref(Type::Int(Int::U128));
-            let ctor_sig = asm.sig(
-                [u128_ptr, Type::Int(Int::U64), Type::Int(Int::U64)],
-                Type::Void,
-            );
-            let mref = MethodRef::new(
-                ClassRef::uint_128(asm),
-                asm.alloc_string(".ctor"),
-                ctor_sig,
-                MethodKind::Constructor,
-                vec![].into(),
-            );
-            CILNode::NewObj(Box::new(CallOpArgs {
-                site: asm.alloc_methodref(mref),
-                args: [conv_u64!(ldc_u64!(high)), conv_u64!(ldc_u64!(low))].into(),
-            }))
-        }
+        UintTy::U8 => (asm.alloc_node(u8::try_from(value).unwrap())),
+        UintTy::U16 => (asm.alloc_node(u16::try_from(value).unwrap())),
+        UintTy::U32 => (asm.alloc_node(u32::try_from(value).unwrap())),
+        UintTy::U64 => (asm.alloc_node(u64::try_from(value).unwrap())),
+        UintTy::Usize => (asm.alloc_node(cilly::Const::USize(u64::try_from(value).unwrap()))),
+        UintTy::U128 => (asm.alloc_node(value)),
     }
 }
 fn u128_low_u64(value: u128) -> u64 {
