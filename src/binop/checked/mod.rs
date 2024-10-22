@@ -4,7 +4,7 @@ use cilly::{
     cil_node::CILNode,
     cil_root::CILRoot,
     conv_i16, conv_i32, conv_i64, conv_i8, conv_isize, conv_u64, conv_usize, eq, gt, gt_un,
-    ldc_i32, ldc_i64, ldc_u32, ldc_u64, lt, mul, or,
+    ldc_i32, ldc_i64, ldc_u32, ldc_u64, lt, or,
     v2::{cilnode::MethodKind, Assembly, ClassRef, FieldDesc, Int, MethodRef},
     Type,
 };
@@ -442,13 +442,13 @@ pub fn mul<'tcx>(
             );
             eq!(
                 call!(ctx.alloc_methodref(op_mul), [ops_a.clone(), ops_b.clone()]),
-                CILNode::LdFalse
+                CILNode::V2(ctx.alloc_node(false))
             )
         }
 
         _ => {
             eprintln!("WARINING: can't checked mul type {ty:?}");
-            CILNode::LdFalse
+            CILNode::V2(ctx.alloc_node(false))
         }
     };
     result_tuple(tpe, ovf, mul, ctx)

@@ -8,11 +8,13 @@ use crate::{
     utilis::{adt::FieldOffsetIterator, garg_to_string},
 };
 use cilly::{
+    add, ld_arg, mul, ptr_cast,
     tpe::simd::SIMDVector,
     v2::{
-        cilnode::MethodKind, Access, BasicBlock, BinOp, CILNode, CILRoot, ClassDef, ClassDefIdx,
+        cilnode::MethodKind, Access, BasicBlock, CILNode, CILRoot, ClassDef, ClassDefIdx,
         ClassRef, ClassRefIdx, Float, Int, MethodDef, MethodImpl, StringIdx, Type,
     },
+    IntoAsmIndex,
 };
 pub use r#type::*;
 use rustc_middle::ty::{AdtDef, AdtKind, FloatTy, IntTy, List, ParamEnv, Ty, TyKind, UintTy};
@@ -300,17 +302,13 @@ pub fn get_type<'tcx>(ty: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_>) -> Typ
                     Some(NonZeroU32::new(size).unwrap()),
                 ));
                 // Common nodes
-                let ldarg_0 = ctx.alloc_node(CILNode::LdArg(0));
-                let ldarg_1 = ctx.alloc_node(CILNode::LdArg(1));
-                let ldarg_2 = ctx.alloc_node(CILNode::LdArg(2));
+                let ldarg_2 = ld_arg!(2).into_idx(ctx);
                 let elem_tpe_idx = ctx.alloc_type(element);
-                let elem_size = ctx.alloc_node(CILNode::SizeOf(elem_tpe_idx));
-                let offset = ctx.alloc_node(CILNode::BinOp(ldarg_1, elem_size, BinOp::Mul));
-                let first_elem_addr = ctx.alloc_node(CILNode::PtrCast(
-                    ldarg_0,
-                    Box::new(cilly::v2::cilnode::PtrCastRes::Ptr(elem_tpe_idx)),
-                ));
-                let elem_addr = ctx.alloc_node(CILNode::BinOp(first_elem_addr, offset, BinOp::Add));
+                let elem_addr = add!(
+                    ptr_cast!(ld_arg!(0), *elem_tpe_idx),
+                    mul!(ld_arg!(1), cilly::size_of!(elem_tpe_idx))
+                )
+                .into_idx(ctx);
                 // Defintion of the set_Item method.
                 let set_item = ctx.alloc_string("set_Item");
                 let this_ref = ctx.nref(Type::ClassRef(cref));

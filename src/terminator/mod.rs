@@ -4,8 +4,7 @@ use cilly::{
     cil_root::CILRoot,
     cil_tree::CILTree,
     conv_usize, ld_field, ldc_u32,
-    v2::{cilnode::MethodKind, Assembly, FieldDesc, FnSig, Int, MethodRef},
-    Type,
+    v2::{cilnode::MethodKind, Assembly, FieldDesc, FnSig, Int, MethodRef}, Type,
 };
 use rustc_middle::{
     mir::{BasicBlock, Operand, Place, SwitchTargets, Terminator, TerminatorKind},
@@ -334,13 +333,7 @@ fn handle_switch(
         let const_val = match ty.kind() {
             TyKind::Int(int) => crate::constant::load_const_int(value, *int, asm),
             TyKind::Uint(uint) => crate::constant::load_const_uint(value, *uint, asm),
-            TyKind::Bool => {
-                if value == 0 {
-                    CILNode::LdFalse
-                } else {
-                    CILNode::LdTrue
-                }
-            }
+            TyKind::Bool => CILNode::V2(asm.alloc_node(value != 0)),
             TyKind::Char => {
                 crate::constant::load_const_uint(value, rustc_middle::ty::UintTy::U32, asm)
             }

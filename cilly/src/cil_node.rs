@@ -22,6 +22,8 @@ pub struct CallOpArgs {
 
 #[derive(Clone, Eq, PartialEq, Serialize, Deserialize, Debug, Hash)]
 pub enum CILNode {
+    /// A translated V2 node.
+    V2(crate::NodeIdx),
     /// Loads the value of local variable number `n`.
     LDLoc(u32),
     /// Loads the value of argument number `n`.
@@ -210,10 +212,7 @@ pub enum CILNode {
         val: Box<Self>,
         new_ptr: Box<Type>,
     },
-    /// Equivalent to `CILNode::LdcI32(0`), but with addtional typechecking info.
-    LdFalse,
-    /// Equivalent to `CILNode::LdcI32(1`), but with addtional typechecking info.
-    LdTrue,
+
     /// Allocates a buffer of size at least `sizeof(tpe)` with aligement of `align`
     LocAllocAligned {
         tpe: Box<Type>,
@@ -435,6 +434,7 @@ impl CILNode {
     }
     pub(crate) fn allocate_tmps(&mut self, curr_loc: Option<u32>, locals: &mut Vec<LocalDef>) {
         match self {
+            Self::V2(_)=>(),
             Self::AddressOfStaticField(_)=>(),
             Self::LdNull(_tpe)=>(),
             Self::UnboxAny(val,_tpe )=>val.allocate_tmps(curr_loc, locals),
@@ -444,8 +444,8 @@ impl CILNode {
             Self::GetException=>(),
             Self::LocAlloc{..}=>(),
             Self::LocAllocAligned {..}=>(),
-            Self::LdFalse=>(),
-            Self::LdTrue=>(),
+    
+      
             Self::CastPtr { val, new_ptr: _ }=>val.allocate_tmps(curr_loc, locals),
             Self:: PointerToConstValue(_arr)=>(),
             Self::LoadGlobalAllocPtr { alloc_id: _ } => (),
@@ -577,10 +577,7 @@ impl CILNode {
     }
 
     pub(crate) fn try_const_eval(&self) -> Option<Self> {
-        match self {
-            CILNode::LdFalse | CILNode::LdTrue => Some(self.clone()),
-            _ => None,
-        }
+        None
     }
 }
 
@@ -794,13 +791,7 @@ macro_rules! ldc_i32 {
         CILNode::LdcI32($val)
     };
 }
-/// Loads a false bool.
-#[macro_export]
-macro_rules! ld_false {
-    () => {
-        CILNode::LdFalse
-    };
-}
+
 /// Loads a value of type `i64`.
 #[macro_export]
 macro_rules! ldc_i64 {

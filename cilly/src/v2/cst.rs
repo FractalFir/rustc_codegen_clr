@@ -50,3 +50,13 @@ impl From<Const> for CILNode {
         Self::Const(Box::new(value))
     }
 }
+impl From<bool> for Const {
+    fn from(value: bool) -> Self {
+        Const::Bool(value)
+    }
+}
+impl From<bool> for CILNode {
+    fn from(value: bool) -> Self {
+        Const::Bool(value).into()
+    }
+}

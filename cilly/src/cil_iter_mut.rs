@@ -173,8 +173,6 @@ impl<'a> Iterator for CILIterMut<'a> {
                     | CILNode::LdcU32(_)
                     | CILNode::LdcU64(_)
                     | CILNode::LdStr(_)
-                    | CILNode::LdFalse
-                    | CILNode::LdTrue
                     | CILNode::LDStaticField(_)
                     | CILNode::AddressOfStaticField(_)
                     | CILNode::LDFtn(_)
@@ -184,7 +182,8 @@ impl<'a> Iterator for CILIterMut<'a> {
                     | CILNode::LocAllocAligned { tpe: _, align: _ }
                     | CILNode::LoadGlobalAllocPtr { alloc_id: _ }
                     | CILNode::PointerToConstValue(_)
-                    | CILNode::GetException => {
+                    | CILNode::GetException
+                    | CILNode::V2(_) => {
                         self.elems.pop();
                         continue;
                     }

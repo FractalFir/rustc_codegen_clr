@@ -3,8 +3,8 @@ use cilly::{
     and, call,
     cil_node::CILNode,
     cil_root::CILRoot,
-    conv_i16, conv_i32, conv_i8, conv_isize, conv_u16, conv_u32, conv_u64, conv_u8, div, ldc_i32,
-    ldc_u32, ldc_u64, rem_un, size_of, sub,
+    conv_i16, conv_i32, conv_i8, conv_isize, conv_u16, conv_u32, conv_u64, conv_u8, ldc_i32,
+    ldc_u32, ldc_u64, rem_un,
     v2::{cilnode::MethodKind, ClassRef, MethodRef},
     Int, Type,
 };

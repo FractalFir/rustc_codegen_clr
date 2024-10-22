@@ -10,7 +10,7 @@ use cilly::{
     cil_root::CILRoot,
     cilnode::MethodKind,
     conv_f32, conv_f64, conv_i16, conv_i32, conv_i64, conv_i8, conv_isize, conv_u16, conv_u32,
-    conv_u64, conv_u8, conv_usize, eq, ld_field, ldc_i32, ldc_u32, ldc_u64, size_of, sub,
+    conv_u64, conv_u8, conv_usize, eq, ld_field, ldc_i32, ldc_u32, ldc_u64,
     v2::{ClassRef, Float, Int},
     MethodRef, Type,
 };

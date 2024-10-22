@@ -4,7 +4,7 @@ use crate::method::Method;
 
 use crate::v2::cilnode::MethodKind;
 use crate::v2::{ClassRef, FnSig, Int, MethodRef, MethodRefIdx, StaticFieldDesc};
-use crate::{asm::Assembly, cil_node::CILNode, cil_root::CILRoot, eq, lt, size_of};
+use crate::{asm::Assembly, cil_node::CILNode, cil_root::CILRoot, eq, lt};
 use crate::{call, call_virt, conv_i32, conv_usize, ldc_i32, ldc_u32, Type};
 
 pub fn argc_argv_init_method(asm: &mut Assembly) -> MethodRefIdx {
@@ -169,7 +169,7 @@ pub fn argc_argv_init_method(asm: &mut Assembly) -> MethodRefIdx {
                         arr: CILNode::LDLoc(managed_args).into()
                     })
                 ),
-                CILNode::LdFalse
+                CILNode::V2(asm.alloc_node(false))
             ),
         }
         .into(),
@@ -221,7 +221,7 @@ pub fn argc_argv_init_method(asm: &mut Assembly) -> MethodRefIdx {
     loop_end_block.trees_mut().push(
         CILRoot::SetStaticField {
             descr: Box::new(status),
-            value: CILNode::LdTrue,
+            value: CILNode::V2(asm.alloc_node(true)),
         }
         .into(),
     );

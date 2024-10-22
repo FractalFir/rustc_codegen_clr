@@ -10,7 +10,7 @@ use cilly::{
     call,
     cil_node::CILNode,
     cil_root::CILRoot,
-    conv_usize, ld_field, ldc_u32, size_of,
+    conv_usize, ld_field, ldc_u32,
     v2::{cilnode::MethodKind, FieldDesc, Int, MethodRef},
     Type,
 };

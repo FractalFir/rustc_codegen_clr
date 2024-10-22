@@ -45,7 +45,10 @@ pub fn unop<'tcx>(
             _ => CILNode::Neg(parrent_node.into()),
         },
         UnOp::Not => match ty.kind() {
-            TyKind::Bool => CILNode::Eq(CILNode::LdFalse.into(), parrent_node.into()),
+            TyKind::Bool => CILNode::Eq(
+                Box::new(CILNode::V2(ctx.alloc_node(false))),
+                parrent_node.into(),
+            ),
             TyKind::Uint(UintTy::U128) => {
                 let mref = MethodRef::new(
                     ClassRef::uint_128(ctx),

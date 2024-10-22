@@ -6,7 +6,7 @@ use cilly::cil_root::CILRoot;
 
 use cilly::v2::{FieldDesc, Int};
 use cilly::Type;
-use cilly::{conv_u32, conv_usize, ldc_u32, ldc_u64, size_of};
+use cilly::{conv_u32, conv_usize, ldc_u32, ldc_u64};
 use rustc_middle::{
     mir::Operand,
     ty::{layout::TyAndLayout, ParamEnv, PolyExistentialTraitRef, Ty, TyKind, UintTy},

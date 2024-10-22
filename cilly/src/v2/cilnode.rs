@@ -778,8 +778,6 @@ impl CILNode {
             V1Node::LdcI32(val) => Const::I32(*val).into(),
             V1Node::LdcI16(val) => Const::I16(*val).into(),
             V1Node::LdcI8(val) => Const::I8(*val).into(),
-            V1Node::LdFalse => Const::Bool(false).into(),
-            V1Node::LdTrue => Const::Bool(true).into(),
             V1Node::LdcF64(val) => Const::F64(*val).into(),
             V1Node::LdcF32(val) => Const::F32(*val).into(),
             // Special
@@ -852,6 +850,7 @@ impl CILNode {
                 Self::UnboxAny { object, tpe }
             }
             V1Node::LdNull(tpe) => Self::Const(Box::new(Const::Null(*tpe))),
+            V1Node::V2(v2) => asm[*v2].clone(),
             _ => todo!("v1:{v1:?}"),
         }
     }

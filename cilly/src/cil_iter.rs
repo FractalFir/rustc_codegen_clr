@@ -153,8 +153,6 @@ impl<'a> Iterator for CILIter<'a> {
                     | CILNode::LdcU16(_)
                     | CILNode::LdcU64(_)
                     | CILNode::LdStr(_)
-                    | CILNode::LdFalse
-                    | CILNode::LdTrue
                     | CILNode::LDStaticField(_)
                     | CILNode::AddressOfStaticField(_)
                     | CILNode::LDFtn(_)
@@ -164,7 +162,8 @@ impl<'a> Iterator for CILIter<'a> {
                     | CILNode::LoadAddresOfTMPLocal
                     | CILNode::PointerToConstValue(_)
                     | CILNode::LoadTMPLocal
-                    | CILNode::GetException,
+                    | CILNode::GetException
+                    | CILNode::V2(_),
                 ) => {
                     self.elems.pop();
                     continue;

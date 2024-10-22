@@ -16,7 +16,7 @@ pub fn ne_unchecked(
     //vec![eq_unchecked(ty_a), CILOp::LdcI32(0), CILOp::Eq]
     eq!(
         eq_unchecked(ty_a, operand_a, operand_b, asm),
-        CILNode::LdFalse
+        CILNode::V2(asm.alloc_node(false))
     )
 }
 pub fn eq_unchecked(

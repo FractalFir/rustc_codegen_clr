@@ -1,10 +1,11 @@
 use super::{
     bimap::{BiMap, BiMapIndex, IntoBiMapIndex},
-    cilnode::{BinOp, MethodKind, UnOp},
+    cilnode::{BinOp, ExtendKind, MethodKind, PtrCastRes, UnOp},
     opt::{OptFuel, SideEffectInfoCache},
     Access, CILNode, CILRoot, ClassDef, ClassDefIdx, ClassRef, ClassRefIdx, Const, Exporter,
-    FieldDesc, FieldIdx, FnSig, IntoAsmIndex, MethodDef, MethodDefIdx, MethodRef, MethodRefIdx,
-    NodeIdx, RootIdx, SigIdx, StaticFieldDesc, StaticFieldIdx, StringIdx, Type, TypeIdx,
+    FieldDesc, FieldIdx, FnSig, Int, IntoAsmIndex, MethodDef, MethodDefIdx, MethodRef,
+    MethodRefIdx, NodeIdx, RootIdx, SigIdx, StaticFieldDesc, StaticFieldIdx, StringIdx, Type,
+    TypeIdx,
 };
 use crate::IString;
 use crate::{asm::Assembly as V1Asm, v2::MethodImpl};
@@ -269,6 +270,9 @@ impl Assembly {
     pub fn get_root(&self, root: RootIdx) -> &CILRoot {
         self.roots.get(root)
     }
+    pub fn size_of(&mut self, tpe: impl IntoAsmIndex<TypeIdx>) -> CILNode {
+        CILNode::SizeOf(tpe.into_idx(self))
+    }
     pub fn biop(
         &mut self,
         lhs: impl IntoAsmIndex<NodeIdx>,
@@ -282,6 +286,21 @@ impl Assembly {
     pub fn unop(&mut self, val: impl Into<CILNode>, op: UnOp) -> CILNode {
         let val = self.nodes.alloc(val.into());
         CILNode::UnOp(val, op)
+    }
+    pub fn int_cast(
+        &mut self,
+        input: impl IntoAsmIndex<NodeIdx>,
+        target: Int,
+        extend: ExtendKind,
+    ) -> CILNode {
+        CILNode::IntCast {
+            input: input.into_idx(self),
+            target,
+            extend,
+        }
+    }
+    pub fn ptr_cast(&mut self, input: impl IntoAsmIndex<NodeIdx>, res: PtrCastRes) -> CILNode {
+        CILNode::PtrCast(input.into_idx(self), Box::new(res))
     }
     pub fn ldstr(&mut self, msg: impl Into<IString>) -> CILNode {
         CILNode::Const(Box::new(Const::PlatformString(self.alloc_string(msg))))

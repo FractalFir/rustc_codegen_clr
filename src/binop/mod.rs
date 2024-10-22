@@ -5,8 +5,7 @@ use cilly::{
     call,
     cil_node::CILNode,
     cil_root::CILRoot,
-    conv_i8, conv_u16, conv_u32, conv_u64, conv_u8, div, eq, gt_un, ld_false, lt_un, rem, rem_un,
-    size_of, sub,
+    conv_i8, conv_u16, conv_u32, conv_u64, conv_u8, eq, gt_un, lt_un, rem, rem_un,
     v2::{cilnode::MethodKind, FieldDesc, Float, Int, MethodRef},
     Type,
 };
@@ -70,7 +69,9 @@ pub(crate) fn binop<'tcx>(
 
         BinOp::Ge => match ty_a.kind() {
             // Unordered, to handle NaNs propely
-            TyKind::Float(FloatTy::F32 | FloatTy::F64) => eq!(lt_un!(ops_a, ops_b), ld_false!()),
+            TyKind::Float(FloatTy::F32 | FloatTy::F64) => {
+                eq!(lt_un!(ops_a, ops_b), CILNode::V2(ctx.alloc_node(false)))
+            }
             TyKind::Float(FloatTy::F128) => {
                 let mref = MethodRef::new(
                     *ctx.main_module(),
@@ -84,11 +85,16 @@ pub(crate) fn binop<'tcx>(
                 );
                 call!(ctx.alloc_methodref(mref), [ops_a, ops_b])
             }
-            _ => eq!(lt_unchecked(ty_a, ops_a, ops_b, ctx), ld_false!()),
+            _ => eq!(
+                lt_unchecked(ty_a, ops_a, ops_b, ctx),
+                CILNode::V2(ctx.alloc_node(false))
+            ),
         },
         BinOp::Le => match ty_a.kind() {
             // Unordered, to handle NaNs propely
-            TyKind::Float(FloatTy::F32 | FloatTy::F64) => eq!(gt_un!(ops_a, ops_b), ld_false!()),
+            TyKind::Float(FloatTy::F32 | FloatTy::F64) => {
+                eq!(gt_un!(ops_a, ops_b), CILNode::V2(ctx.alloc_node(false)))
+            }
             TyKind::Float(FloatTy::F128) => {
                 let mref = MethodRef::new(
                     *ctx.main_module(),
@@ -102,7 +108,10 @@ pub(crate) fn binop<'tcx>(
                 );
                 call!(ctx.alloc_methodref(mref), [ops_a, ops_b])
             }
-            _ => eq!(gt_unchecked(ty_a, ops_a, ops_b, ctx), ld_false!()),
+            _ => eq!(
+                gt_unchecked(ty_a, ops_a, ops_b, ctx),
+                CILNode::V2(ctx.alloc_node(false))
+            ),
         },
         BinOp::Offset => {
             let pointed_ty = if let TyKind::RawPtr(inner, _) = ty_a.kind() {

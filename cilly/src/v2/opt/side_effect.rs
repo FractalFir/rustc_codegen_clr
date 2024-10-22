@@ -57,8 +57,8 @@ fn const_no_side_effect() {
         Const,
     };
     let consts = [
-        Const::Bool(true),
-        Const::Bool(false),
+        true.into(),
+        false.into(),
         Const::F32(HashableF32(std::f32::consts::PI)),
         Const::F64(HashableF64(std::f64::consts::PI)),
         Const::I8(5),

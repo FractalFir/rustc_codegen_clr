@@ -21,7 +21,7 @@ pub use tpe::float::Float;
 pub use tpe::int::Int;
 pub use tpe::{Type, TypeIdx};
 
-use crate::{binop, gen_binop, IString};
+use crate::IString;
 
 pub mod access;
 pub mod asm;
@@ -168,7 +168,22 @@ impl IntoAsmIndex<NodeIdx> for Const {
         asm.alloc_node(self)
     }
 }
-
+pub trait IntoIntType {
+    fn int_type() -> Int;
+}
+pub trait IntoCillyType {
+    fn cilly_type() -> Type;
+}
+impl<T: IntoIntType> IntoCillyType for T {
+    fn cilly_type() -> Type {
+        T::int_type().into()
+    }
+}
+impl IntoIntType for usize {
+    fn int_type() -> Int {
+        Int::USize
+    }
+}
 macro_rules! into_asm_index_closure {
     ($Target:ident) => {
         impl<'a, N: 'static + IntoAsmIndex<$Target>, F: FnOnce(&mut Assembly) -> N>

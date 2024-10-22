@@ -2,9 +2,8 @@ use cilly::{
     call,
     cil_node::CILNode,
     cil_root::CILRoot,
-    eq, gt_un, ldc_u64, sub,
-    v2::{cilnode::MethodKind, Assembly, ClassRef, ClassRefIdx, FieldDesc, Float, Int, MethodRef},
-    Type,
+    eq, gt_un, ldc_u64,
+    v2::{cilnode::MethodKind, Assembly, ClassRef, ClassRefIdx, FieldDesc, Float, Int, MethodRef}, Type,
 };
 use rustc_middle::ty::{AdtDef, Ty};
 use rustc_target::abi::{
@@ -427,7 +426,7 @@ pub fn get_discr<'tcx>(
                         )
                     ),
                 };
-                let is_niche = eq!(gt, CILNode::LdFalse);
+                let is_niche = eq!(gt, CILNode::V2(ctx.alloc_node(false)));
                 (
                     is_niche,
                     relative_discr,

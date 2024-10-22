@@ -2,9 +2,8 @@ use crate::{assembly::MethodCompileCtx, place::place_set, r#type::pointer_to_is_
 use cilly::{
     cil_node::CILNode,
     cil_root::CILRoot,
-    conv_usize, ld_field, ldc_u32, size_of,
-    v2::{FieldDesc, Int},
-    Type,
+    conv_usize, ld_field, ldc_u32,
+    v2::{FieldDesc, Int}, Type,
 };
 use rustc_middle::{
     mir::{Operand, Place},
@@ -22,7 +21,7 @@ pub fn is_val_statically_known<'tcx>(
         "The intrinsic `is_val_statically_known` MUST take in exactly 1 argument!"
     );
     // assert_eq!(args.len(),1,"The intrinsic `unlikely` MUST take in exactly 1 argument!");
-    place_set(destination, CILNode::LdFalse, ctx)
+    place_set(destination, CILNode::V2(ctx.alloc_node(false)), ctx)
 }
 pub fn size_of_val<'tcx>(
     args: &[Spanned<Operand<'tcx>>],

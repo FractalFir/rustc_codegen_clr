@@ -81,7 +81,8 @@ pub fn handle_rvalue<'tcx>(
         Rvalue::NullaryOp(op, ty) => match op {
             NullOp::SizeOf => {
                 let ty = ctx.type_from_cache(ctx.monomorphize(*ty));
-                conv_usize!(CILNode::SizeOf(Box::new(ty)))
+                let val = size_of!(ty)(ctx);
+                conv_usize!(CILNode::V2(val))
             }
             NullOp::AlignOf => {
                 conv_usize!(ldc_u64!(crate::utilis::align_of(
@@ -98,11 +99,8 @@ pub fn handle_rvalue<'tcx>(
                 ldc_u64!(offset)
             }
             rustc_middle::mir::NullOp::UbChecks => {
-                if ctx.tcx().sess.ub_checks() {
-                    CILNode::LdTrue
-                } else {
-                    CILNode::LdFalse
-                }
+                let ub_checks = ctx.tcx().sess.ub_checks();
+                CILNode::V2(ctx.alloc_node(ub_checks))
             }
         },
         Rvalue::Aggregate(aggregate_kind, field_index) => crate::aggregate::handle_aggregate(
@@ -428,17 +426,16 @@ fn repeat<'tcx>(
         while curr_len < times {
             // Copy curr_len elements if possible, otherwise this is the last iteration, so copy the reminder.
             let curr_copy_size = curr_len.min(times - curr_len);
+            let elem_size: cilly::NodeIdx = size_of!(element_type)(ctx);
             // Copy curr_copy_size elements from the start of the array, starting at curr_len(the ammount of already initialized buffers)
             branches.push(CILRoot::CpBlk {
                 dst: Box::new(
                     CILNode::MRefToRawPtr(Box::new(CILNode::LoadAddresOfTMPLocal))
-                        + conv_usize!(ldc_u64!(curr_len))
-                            * conv_usize!(CILNode::SizeOf(Box::new(element_type))),
+                        + conv_usize!(ldc_u64!(curr_len)) * conv_usize!(CILNode::V2(elem_size)),
                 ),
                 src: Box::new(CILNode::LoadAddresOfTMPLocal),
                 len: Box::new(
-                    conv_usize!(ldc_u64!(curr_copy_size))
-                        * conv_usize!(CILNode::SizeOf(Box::new(element_type))),
+                    conv_usize!(ldc_u64!(curr_copy_size)) * conv_usize!(CILNode::V2(elem_size)),
                 ),
             });
             curr_len *= 2;

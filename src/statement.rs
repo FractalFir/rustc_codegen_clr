@@ -3,7 +3,7 @@ use crate::place::place_get;
 use crate::rvalue::is_rvalue_unint;
 
 use cilly::{cil_node::CILNode, cil_root::CILRoot, cil_tree::CILTree, size_of};
-use cilly::{conv_usize, Type};
+use cilly::zero_extend;
 
 use rustc_middle::mir::{CopyNonOverlapping, NonDivergingIntrinsic, Statement, StatementKind};
 #[allow(clippy::match_same_arms)]
@@ -83,8 +83,7 @@ pub fn handle_statement<'tcx>(
                             src: Box::new(src_op),
                             dst: Box::new(dst_op),
                             len: Box::new(
-                                count_op
-                                    * conv_usize!(CILNode::SizeOf(Box::new(ctx.asm()[pointed]))),
+                                count_op * CILNode::V2(zero_extend!(size_of!(pointed), usize)(ctx)),
                             ),
                         }
                         .into(),

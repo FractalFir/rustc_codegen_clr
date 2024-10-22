@@ -13,7 +13,7 @@ use cilly::{
     call, call_virt,
     cil_node::{CILNode, CallOpArgs},
     cil_root::CILRoot,
-    conv_usize, ld_field, ldc_i32, size_of,
+    conv_usize, ld_field, ldc_i32,
     v2::{cilnode::MethodKind, ClassRef, FieldDesc, FnSig, Int},
 };
 use cilly::{v2::MethodRef, Type};

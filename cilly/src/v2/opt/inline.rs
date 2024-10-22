@@ -150,7 +150,7 @@ pub fn inline_trivial_call_root(
 fn test_inline() {
     let mut asm = Assembly::default();
     let mut fuel = OptFuel::new(0);
-    let val = asm.alloc_node(Const::Bool(false));
+    let val = asm.alloc_node(false);
     let ret = asm.alloc_root(CILRoot::Ret(val));
     assert!(trivial_inline_node(
         &MethodDef::new(

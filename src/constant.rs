@@ -267,13 +267,7 @@ fn load_const_scalar<'tcx>(
         TyKind::Int(int_type) => load_const_int(scalar_u128, *int_type, ctx),
         TyKind::Uint(uint_type) => load_const_uint(scalar_u128, *uint_type, ctx),
         TyKind::Float(ftype) => load_const_float(scalar_u128, *ftype, ctx),
-        TyKind::Bool => {
-            if scalar_u128 == 0 {
-                CILNode::LdFalse
-            } else {
-                CILNode::LdTrue
-            }
-        }
+        TyKind::Bool => CILNode::V2(ctx.alloc_node(scalar_u128 != 0)),
         TyKind::RawPtr(_, _) => conv_usize!(ldc_u64!(
             u64::try_from(scalar_u128).expect("pointers must be smaller than 2^64")
         ))

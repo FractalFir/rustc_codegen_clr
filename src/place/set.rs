@@ -7,7 +7,7 @@ use cilly::{
     call,
     cil_node::CILNode,
     cil_root::CILRoot,
-    conv_usize, ld_field, ldc_u64, size_of,
+    conv_usize, ld_field, ldc_u64,
     v2::{cilnode::MethodKind, ClassRef, FieldDesc, Int, MethodRef},
     Type,
 };
