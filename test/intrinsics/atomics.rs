@@ -5,7 +5,6 @@
     core_intrinsics,
     start,
     unsized_const_params,
-    strict_provenance,
     strict_provenance_atomic_ptr
 )]
 #![allow(

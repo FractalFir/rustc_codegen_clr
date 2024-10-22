@@ -373,7 +373,7 @@ fn repeat<'tcx>(
     // Array size
     let times = ctx.monomorphize(times);
     let times = times
-        .try_eval_target_usize(ctx.tcx(), ParamEnv::reveal_all())
+        .try_to_target_usize(ctx.tcx())
         .expect("Could not evalute array size as usize.");
     // Array type
     let array = ctx.monomorphize(rvalue.ty(ctx.body(), ctx.tcx()));

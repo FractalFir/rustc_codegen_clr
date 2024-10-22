@@ -5,7 +5,6 @@
     core_intrinsics,
     start,
     ptr_metadata,
-    strict_provenance,
     unsized_const_params,
     portable_simd
 )]

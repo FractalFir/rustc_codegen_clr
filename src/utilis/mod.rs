@@ -221,7 +221,7 @@ pub fn field_descrptor<'tcx>(
 
 /// Tires to get the value of Const `size` as usize.
 pub fn try_resolve_const_size(size: Const) -> Result<usize, &'static str> {
-    let scalar = match size.try_to_scalar() {
+    let (scalar, ty) = match size.try_to_scalar() {
         Some(value) => Ok(value),
         None => Err("Can't resolve scalar array size!"),
     }?;

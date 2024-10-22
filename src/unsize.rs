@@ -135,9 +135,11 @@ fn unsized_info<'tcx>(
         ctx.tcx()
             .struct_lockstep_tails_for_codegen(source, target, ParamEnv::reveal_all());
     match (&source.kind(), &target.kind()) {
-        (&TyKind::Array(_, len), &TyKind::Slice(_)) => conv_usize!(ldc_u64!(
-            len.eval_target_usize(ctx.tcx(), ParamEnv::reveal_all())
-        )),
+        (&TyKind::Array(_, len), &TyKind::Slice(_)) => {
+            conv_usize!(ldc_u64!(len
+                .try_to_target_usize(ctx.tcx())
+                .expect("Could not eval array length.")))
+        }
         (
             &TyKind::Dynamic(data_a, _, src_dyn_kind),
             &TyKind::Dynamic(data_b, _, target_dyn_kind),
