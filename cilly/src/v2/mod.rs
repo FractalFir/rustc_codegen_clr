@@ -153,6 +153,11 @@ impl IntoAsmIndex<TypeIdx> for Type {
         asm.alloc_type(self)
     }
 }
+impl IntoAsmIndex<TypeIdx> for Int {
+    fn into_idx(self, asm: &mut Assembly) -> TypeIdx {
+        asm.alloc_type(self)
+    }
+}
 impl IntoAsmIndex<TypeIdx> for ClassRefIdx {
     fn into_idx(self, asm: &mut Assembly) -> TypeIdx {
         asm.alloc_type(Type::ClassRef(self))

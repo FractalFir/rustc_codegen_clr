@@ -15,6 +15,7 @@ use cilly::{
     cil_root::CILRoot,
     conv_usize, ld_field,
     v2::{cilnode::MethodKind, ClassRef, FieldDesc, FnSig, Int},
+    IntoAsmIndex,
 };
 use cilly::{v2::MethodRef, Type};
 use rustc_middle::ty::InstanceKind;
@@ -368,7 +369,7 @@ pub fn call<'tcx>(
             ctx.alloc_node(i32::try_from(fn_idx).expect("More tahn 2^31 functions in a vtable!")),
         );
         let vtable_offset =
-            conv_usize!(vtable_index * CILNode::SizeOf(Box::new(Type::Int(Int::USize))));
+            conv_usize!(vtable_index * CILNode::V2(ctx.size_of(Int::ISize).into_idx(ctx)));
         // Get the address of the function ptr, and load it
         let obj_ptr_field_desc = FieldDesc::new(
             ctx.alloc_class_ref(ClassRef::new(fat_ptr_dyn, None, true, [].into())),

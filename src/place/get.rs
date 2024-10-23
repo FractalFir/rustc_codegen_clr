@@ -4,7 +4,7 @@ use cilly::{
     cil_node::CILNode,
     conv_usize, ld_field,
     v2::{cilnode::MethodKind, FieldDesc, Int, MethodRef},
-    Const, Type,
+    Const, IntoAsmIndex, Type,
 };
 use rustc_middle::{
     mir::{Place, PlaceElem},
@@ -143,7 +143,7 @@ fn place_elem_get<'a>(
                     let size = crate::casts::int_to_int(
                         Type::Int(Int::I32),
                         index_type,
-                        CILNode::SizeOf(inner_type.into()),
+                        CILNode::V2(ctx.size_of(inner_type).into_idx(ctx)),
                         ctx,
                     );
                     let addr = (ld_field!(addr_calc, ctx.alloc_field(desc))
@@ -212,7 +212,9 @@ fn place_elem_get<'a>(
                     let addr = ld_field!(addr_calc.clone(), ctx.alloc_field(data_pointer))
                         .cast_ptr(ctx.nptr(inner_type))
                         + (conv_usize!(index))
-                            * CILNode::ZeroExtendToUSize(CILNode::SizeOf(inner_type.into()).into());
+                            * CILNode::ZeroExtendToUSize(
+                                CILNode::V2(ctx.size_of(inner_type).into_idx(ctx)).into(),
+                            );
                     super::deref_op(super::PlaceTy::Ty(inner), ctx, addr)
                 }
                 TyKind::Array(element, _length) => {

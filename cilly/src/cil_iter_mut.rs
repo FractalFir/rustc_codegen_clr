@@ -161,7 +161,6 @@ impl<'a> Iterator for CILIterMut<'a> {
                     | CILNode::LDLocA(_)
                     | CILNode::LDArg(_)
                     | CILNode::LDArgA(_)
-                    | CILNode::SizeOf(_)
                     | CILNode::LdcF32(_)
                     | CILNode::LdcF64(_)
                     | CILNode::LdStr(_)

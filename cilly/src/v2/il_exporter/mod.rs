@@ -655,7 +655,14 @@ impl ILExporter {
                 }
             }
             CILNode::SizeOf(tpe) => {
-                writeln!(out, "sizeof {}", type_il(&asm[tpe], asm))
+                let tpe = asm[tpe];
+                if tpe == Type::Void{
+                    eprintln!("WARNING: attempted to calc size_of(void). This is UB: not all targets support ZSTs. Please use Const::I32(0) instead. Continuing anyway.");
+                    writeln!(out, "ldc.i4.0")
+                }
+                else{
+                    writeln!(out, "sizeof {}", type_il(&tpe, asm))
+                }
             }
             CILNode::GetException => Ok(()),
             CILNode::IsInst(val, tpe) => {

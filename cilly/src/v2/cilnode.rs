@@ -768,7 +768,7 @@ impl CILNode {
                 let string = asm.alloc_string(string.clone());
                 Const::PlatformString(string).into()
             }
-            V1Node::SizeOf(tpe) => Self::SizeOf(asm.alloc_type(*tpe.as_ref())),
+
             V1Node::LDTypeToken(tpe) => Self::LdTypeToken(asm.alloc_type(*tpe.as_ref())),
 
             V1Node::LdcF64(val) => Const::F64(*val).into(),

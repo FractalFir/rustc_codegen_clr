@@ -91,6 +91,7 @@ pub enum TypeCheckError {
         expected: super::FnSig,
         got: super::FnSig,
     },
+    SizeOfVoid,
 }
 pub fn display_typecheck_err(root: CILRoot, asm: &mut Assembly, sig: SigIdx, locals: &[LocalDef]) {
     let mut set = FxHashSet::default();
@@ -707,7 +708,10 @@ impl CILNode {
                     Ok(pointed_tpe)
                 }
             }
-            CILNode::SizeOf(_) => Ok(Type::Int(Int::I32)),
+            CILNode::SizeOf(tpe) => match asm[*tpe] {
+                Type::Void => Err(TypeCheckError::SizeOfVoid),
+                _ => Ok(Type::Int(Int::I32)),
+            },
             CILNode::GetException => Ok(Type::ClassRef(ClassRef::exception(asm))),
             CILNode::IsInst(obj, _) => {
                 let obj = asm.get_node(*obj).clone();

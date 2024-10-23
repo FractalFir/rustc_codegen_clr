@@ -5,7 +5,7 @@ use cilly::{
     cil_root::CILRoot,
     conv_i16, conv_i32, conv_i8, conv_isize, conv_u16, conv_u32, conv_u64, conv_u8, rem_un,
     v2::{cilnode::MethodKind, ClassRef, MethodRef},
-    Assembly, Int, Type,
+    Assembly, Int, IntoAsmIndex, Type,
 };
 use rustc_middle::{
     mir::{Operand, Place},
@@ -112,7 +112,7 @@ pub fn ctlz<'tcx>(
     let sub = match tpe {
         Type::Int(Int::ISize | Int::USize) | Type::Ptr(_) => {
             CILNode::V2(ctx.alloc_node(64_i32))
-                - (CILNode::SizeOf(Box::new(tpe)) * CILNode::V2(ctx.alloc_node(8_i32)))
+                - (CILNode::V2(ctx.size_of(tpe).into_idx(ctx)) * CILNode::V2(ctx.alloc_node(8_i32)))
         }
         Type::Int(Int::I64 | Int::U64) => CILNode::V2(ctx.alloc_node(0_i32)),
         Type::Int(Int::I32 | Int::U32) => CILNode::V2(ctx.alloc_node(32_i32)),

@@ -12,7 +12,7 @@ use cilly::{
     conv_f32, conv_f64, conv_i16, conv_i32, conv_i64, conv_i8, conv_isize, conv_u16, conv_u32,
     conv_u64, conv_u8, conv_usize, eq, ld_field,
     v2::{ClassRef, Float, Int},
-    Const, MethodRef, Type,
+    Const, IntoAsmIndex, MethodRef, Type,
 };
 use ints::{ctlz, rotate_left, rotate_right};
 use rustc_middle::{
@@ -45,7 +45,7 @@ pub fn handle_intrinsic<'tcx>(
             let tpe = ctx.monomorphize(
                 call_instance.args[0]
                     .as_type()
-                    .expect("needs_drop works only on types!"),
+                    .expect("arith_offset works only on types!"),
             );
             let tpe = ctx.type_from_cache(tpe);
 
@@ -53,7 +53,7 @@ pub fn handle_intrinsic<'tcx>(
                 destination,
                 handle_operand(&args[0].node, ctx)
                     + handle_operand(&args[1].node, ctx)
-                        * conv_isize!(CILNode::SizeOf(Box::new(tpe))),
+                        * conv_isize!(CILNode::V2(ctx.size_of(tpe).into_idx(ctx))),
                 ctx,
             )
         }
@@ -180,6 +180,10 @@ pub fn handle_intrinsic<'tcx>(
                     .as_type()
                     .expect("needs_drop works only on types!"),
             );
+            // Raw eq always true for zsts.
+            if ctx.layout_of(tpe).is_zst() {
+                return place_set(destination, CILNode::V2(ctx.alloc_node(true)), ctx);
+            }
             let tpe = ctx.type_from_cache(tpe);
             let size = match tpe {
                 Type::Bool
@@ -205,7 +209,7 @@ pub fn handle_intrinsic<'tcx>(
                         ctx,
                     );
                 }
-                _ => CILNode::SizeOf(Box::new(tpe)),
+                _ => CILNode::V2(ctx.size_of(tpe).into_idx(ctx)),
             };
             place_set(
                 destination,
@@ -238,8 +242,8 @@ pub fn handle_intrinsic<'tcx>(
             let tpe = ctx.type_from_cache(tpe);
             let dst = handle_operand(&args[0].node, ctx);
             let val = handle_operand(&args[1].node, ctx);
-            let count =
-                handle_operand(&args[2].node, ctx) * conv_usize!(CILNode::SizeOf(Box::new(tpe)));
+            let count = handle_operand(&args[2].node, ctx)
+                * conv_usize!(CILNode::V2(ctx.size_of(tpe).into_idx(ctx)));
             CILRoot::InitBlk {
                 dst: Box::new(dst),
                 val: Box::new(val),
@@ -257,11 +261,14 @@ pub fn handle_intrinsic<'tcx>(
                     .as_type()
                     .expect("needs_drop works only on types!"),
             );
+            if ctx.layout_of(tpe).is_zst() {
+                return CILRoot::Nop;
+            }
             let tpe = ctx.type_from_cache(tpe);
             let src = handle_operand(&args[0].node, ctx);
             let dst = handle_operand(&args[1].node, ctx);
-            let count =
-                handle_operand(&args[2].node, ctx) * conv_usize!(CILNode::SizeOf(Box::new(tpe)));
+            let count = handle_operand(&args[2].node, ctx)
+                * conv_usize!(CILNode::V2(ctx.size_of(tpe).into_idx(ctx)));
 
             CILRoot::CpBlk {
                 src: Box::new(src),
@@ -750,19 +757,26 @@ pub fn handle_intrinsic<'tcx>(
                 2,
                 "The intrinsic `ptr_offset_from_unsigned` MUST take in exactly 1 argument!"
             );
-            let tpe = ctx.monomorphize(
+            let ty = ctx.monomorphize(
                 call_instance.args[0]
                     .as_type()
                     .expect("needs_drop works only on types!"),
             );
-            let tpe = ctx.type_from_cache(tpe);
+            let tpe = ctx.type_from_cache(ty);
+            // This is UB, so we can do whatever.
+            if ctx.layout_of(ty).is_zst() {
+                return CILRoot::throw(
+                    &format!("ptr_offset_from_unsigned called with zst type:{ty}"),
+                    ctx,
+                );
+            }
             place_set(
                 destination,
                 CILNode::DivUn(
                     (handle_operand(&args[0].node, ctx) - handle_operand(&args[1].node, ctx))
                         .cast_ptr(Type::Int(Int::USize))
                         .into(),
-                    conv_usize!(CILNode::SizeOf(Box::new(tpe))).into(),
+                    conv_usize!(CILNode::V2(ctx.size_of(tpe).into_idx(ctx))).into(),
                 ),
                 ctx,
             )
@@ -797,19 +811,24 @@ pub fn handle_intrinsic<'tcx>(
                 2,
                 "The intrinsic `ptr_offset_from` MUST take in exactly 1 argument!"
             );
-            let tpe = ctx.monomorphize(
+            let ty = ctx.monomorphize(
                 call_instance.args[0]
                     .as_type()
                     .expect("needs_drop works only on types!"),
             );
-            let tpe = ctx.type_from_cache(tpe);
+            // This is UB, so we can do whatever.
+            if ctx.layout_of(ty).is_zst() {
+                return CILRoot::throw(&format!("ptr_offset_from called with zst type:{ty}"), ctx);
+            }
+            let tpe = ctx.type_from_cache(ty);
+
             place_set(
                 destination,
                 CILNode::Div(
                     (handle_operand(&args[0].node, ctx) - handle_operand(&args[1].node, ctx))
                         .cast_ptr(Type::Int(Int::ISize))
                         .into(),
-                    conv_isize!(CILNode::SizeOf(Box::new(tpe))).into(),
+                    conv_isize!(CILNode::V2(ctx.size_of(tpe).into_idx(ctx))).into(),
                 ),
                 ctx,
             )
@@ -950,7 +969,7 @@ pub fn handle_intrinsic<'tcx>(
                 args: [
                     handle_operand(&args[0].node, ctx).cast_ptr(void_ptr),
                     handle_operand(&args[1].node, ctx).cast_ptr(void_ptr),
-                    conv_usize!(CILNode::SizeOf(Box::new(tpe))),
+                    conv_usize!(CILNode::V2(ctx.size_of(tpe).into_idx(ctx))),
                 ]
                 .into(),
             }
@@ -1631,7 +1650,7 @@ pub fn handle_intrinsic<'tcx>(
                 CILNode::LDIndUSize {
                     ptr: Box::new(
                         (vtableptr
-                            + conv_usize!((CILNode::SizeOf(Box::new(Type::Int(Int::ISize))))))
+                            + conv_usize!((CILNode::V2(ctx.size_of(Int::ISize).into_idx(ctx)))))
                         .cast_ptr(ctx.nptr(Type::Int(Int::USize))),
                     ),
                 },
@@ -1646,7 +1665,7 @@ pub fn handle_intrinsic<'tcx>(
                     ptr: Box::new(
                         (vtableptr
                             + conv_usize!(
-                                (CILNode::SizeOf(Box::new(Type::Int(Int::ISize))))
+                                (CILNode::V2(ctx.size_of(Int::ISize).into_idx(ctx)))
                                     * CILNode::V2(ctx.alloc_node(2_i32))
                             ))
                         .cast_ptr(ctx.nptr(Type::Int(Int::USize))),

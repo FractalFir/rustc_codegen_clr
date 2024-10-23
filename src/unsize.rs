@@ -5,7 +5,7 @@ use cilly::cil_node::CILNode;
 use cilly::cil_root::CILRoot;
 
 use cilly::v2::{FieldDesc, Int};
-use cilly::{conv_u32, conv_usize};
+use cilly::{conv_u32, conv_usize, Assembly, IntoAsmIndex};
 use cilly::{Const, Type};
 use rustc_middle::{
     mir::Operand,
@@ -96,20 +96,21 @@ pub fn unsize2<'tcx>(
     let source_size = ctx.layout_of(source).size.bytes();
     // Assumes a 64 bit pointer!
     let copy_val = if source_size > 8 && !source.is_any_ptr() {
-        /*let addr = operand_address(operand, ctx);
-        let const_8 = CILNode::ZeroExtendToISize(Box::new(CILNode::LdcI8(8)));
-        let addr = CILNode::Add(Box::new(addr), Box::new(const_8));
+        let addr = operand_address(operand, ctx);
+
+        let addr = CILNode::Add(
+            Box::new(addr),
+            Box::new(CILNode::V2(ctx.alloc_node(8_isize))),
+        );
         let dst_addr = CILNode::MRefToRawPtr(Box::new(CILNode::LoadAddresOfTMPLocal));
-        let const_16 = CILNode::ZeroExtendToISize(Box::new(CILNode::LdcI8(16)));
+        let const_16 = CILNode::V2(ctx.alloc_node(16_isize));
         let dst_addr = CILNode::Add(Box::new(dst_addr), Box::new(const_16));
+        eprintln!("WARNING:Can't propely unsize types with sized fields yet. unsize assumes that layout of Wrapper<&T> ==   layout of Wrapper<FatPtr<T>>!");
         CILRoot::CpBlk {
             dst: Box::new(dst_addr),
             src: Box::new(addr),
-            len: Box::new(CILNode::ZeroExtendToISize(Box::new(CILNode::LdcU64(
-                source_size - 8,
-            )))),
-        }*/
-        todo!("Can't unsize types with sized fields yet.")
+            len: Box::new(CILNode::V2(ctx.alloc_node(Const::USize(source_size - 8)))),
+        }
     } else {
         CILRoot::Nop
     };
@@ -159,11 +160,10 @@ fn unsized_info<'tcx>(
             if let Some(entry_idx) = vptr_entry_idx {
                 let entry_idx = u32::try_from(entry_idx).unwrap();
                 let entry_offset = CILNode::V2(ctx.alloc_node(entry_idx))
-                    * conv_u32!(CILNode::SizeOf(Box::new(ctx.nptr(Type::Void))));
+                    * conv_u32!(CILNode::V2(ctx.size_of(Int::USize).into_idx(ctx)));
                 CILNode::LDIndUSize {
                     ptr: Box::new(
-                        (old_info + conv_usize!(entry_offset))
-                            .cast_ptr(ctx.nptr(Type::Int(Int::USize))),
+                        (old_info + conv_usize!(entry_offset)).cast_ptr(ctx.nptr(Int::USize)),
                     ),
                 }
             } else {
@@ -182,7 +182,7 @@ fn load_scalar_pair(addr: CILNode, ctx: &mut MethodCompileCtx<'_, '_>) -> (CILNo
         },
         CILNode::LDIndUSize {
             ptr: Box::new(
-                Box::new(addr + conv_usize!(CILNode::SizeOf(Box::new(Type::Int(Int::USize)))))
+                Box::new(addr + conv_usize!(CILNode::V2(ctx.size_of(Int::ISize).into_idx(ctx))))
                     .cast_ptr(ctx.nptr(Type::Int(Int::USize))),
             ),
         },

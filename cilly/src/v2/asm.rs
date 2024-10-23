@@ -271,7 +271,9 @@ impl Assembly {
         self.roots.get(root)
     }
     pub fn size_of(&mut self, tpe: impl IntoAsmIndex<TypeIdx>) -> CILNode {
-        CILNode::SizeOf(tpe.into_idx(self))
+        let idx = tpe.into_idx(self);
+        assert_ne!(self[idx], Type::Void);
+        CILNode::SizeOf(idx)
     }
     pub fn biop(
         &mut self,

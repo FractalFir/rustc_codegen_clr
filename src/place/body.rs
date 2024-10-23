@@ -12,7 +12,7 @@ use cilly::{
     cil_root::CILRoot,
     conv_usize, ld_field,
     v2::{cilnode::MethodKind, FieldDesc, Int, MethodRef},
-    Const, Type,
+    Const, IntoAsmIndex, Type,
 };
 use rustc_middle::mir::PlaceElem;
 use rustc_middle::ty::{Ty, TyKind};
@@ -155,7 +155,9 @@ pub fn place_elem_body_index<'tcx>(
             let addr = ld_field!(parrent_node, ctx.alloc_field(desc))
                 .cast_ptr(ctx.nptr(inner_type))
                 + (index
-                    * CILNode::ZeroExtendToUSize(CILNode::SizeOf(Box::new(inner_type)).into()));
+                    * CILNode::ZeroExtendToUSize(
+                        CILNode::V2(ctx.size_of(inner_type).into_idx(ctx)).into(),
+                    ));
 
             if body_ty_is_by_adress(inner, ctx) {
                 (inner.into(), addr)
@@ -278,7 +280,7 @@ pub fn place_elem_body<'tcx>(
 
                     let addr = Box::new(ld_field!(parrent_node.clone(), ctx.alloc_field(desc)))
                         .cast_ptr(ctx.nptr(inner_type))
-                        + (index) * conv_usize!(CILNode::SizeOf(inner_type.into()));
+                        + (index) * conv_usize!(CILNode::V2(ctx.size_of(inner_type).into_idx(ctx)));
                     if body_ty_is_by_adress(inner, ctx) {
                         (inner.into(), addr)
                     } else {

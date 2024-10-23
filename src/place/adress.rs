@@ -10,7 +10,7 @@ use cilly::{
     cil_root::CILRoot,
     conv_usize, ld_field,
     v2::{cilnode::MethodKind, FieldDesc, Int, MethodRef},
-    Const, Type,
+    Const, IntoAsmIndex, Type,
 };
 use rustc_middle::{
     mir::PlaceElem,
@@ -227,7 +227,8 @@ pub fn place_elem_adress<'tcx>(
                     // This is a false positive
                     //    #[allow(unused_parens)]
                     (ld_field!(addr_calc.clone(), desc)).cast_ptr(ctx.nptr(inner_type))
-                        + conv_usize!(CILNode::SizeOf(Box::new(inner_type))) * conv_usize!(index)
+                        + conv_usize!(CILNode::V2(ctx.size_of(inner_type).into_idx(ctx)))
+                            * conv_usize!(index)
                 }
                 TyKind::Array(element, _length) => {
                     let element = ctx.monomorphize(*element);
@@ -270,9 +271,7 @@ pub fn place_elem_adress<'tcx>(
                             addr: Box::new(CILNode::LoadAddresOfTMPLocal),
                             value: Box::new(CILNode::Sub(
                                 Box::new(ld_field!(addr_calc.clone(), metadata_field)),
-                                Box::new(CILNode::V2(
-                                    ctx.alloc_node(Const::USize(*to + 1)),
-                                )),
+                                Box::new(CILNode::V2(ctx.alloc_node(Const::USize(*to + 1)))),
                             )),
                             desc: (metadata_field),
                         },
@@ -300,9 +299,7 @@ pub fn place_elem_adress<'tcx>(
                     [
                         CILRoot::SetField {
                             addr: Box::new(CILNode::LoadAddresOfTMPLocal),
-                            value: Box::new(CILNode::V2(
-                                ctx.alloc_node(Const::USize(to - from)),
-                            )),
+                            value: Box::new(CILNode::V2(ctx.alloc_node(Const::USize(to - from)))),
                             desc: (metadata_field),
                         },
                         CILRoot::SetField {
@@ -354,7 +351,7 @@ pub fn place_elem_adress<'tcx>(
                     };
 
                     ld_field!(addr_calc.clone(), desc).cast_ptr(ctx.nptr(inner_type))
-                        + (index * conv_usize!(CILNode::SizeOf(inner_type.into())))
+                        + (index * conv_usize!(CILNode::V2(ctx.size_of(inner_type).into_idx(ctx))))
                 }
                 TyKind::Array(element, _) => {
                     let element_ty = ctx.monomorphize(*element);

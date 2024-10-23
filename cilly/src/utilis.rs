@@ -5,7 +5,7 @@ use crate::method::Method;
 use crate::v2::cilnode::MethodKind;
 use crate::v2::{ClassRef, FnSig, Int, MethodRef, MethodRefIdx, StaticFieldDesc};
 use crate::{asm::Assembly, cil_node::CILNode, cil_root::CILRoot, eq, lt};
-use crate::{call, call_virt, conv_i32, conv_usize, Type};
+use crate::{call, call_virt, conv_i32, conv_usize, IntoAsmIndex, Type};
 
 pub fn argc_argv_init_method(asm: &mut Assembly) -> MethodRefIdx {
     use std::num::NonZeroU8;
@@ -81,7 +81,7 @@ pub fn argc_argv_init_method(asm: &mut Assembly) -> MethodRefIdx {
         [
             CILNode::Mul(
                 conv_usize!(CILNode::LDLoc(argc)).into(),
-                conv_usize!(CILNode::SizeOf(Box::new(Type::Int(Int::USize)))).into()
+                conv_usize!(CILNode::V2(asm.size_of(Int::USize).into_idx(asm))).into()
             ),
             conv_usize!(CILNode::V2(asm.alloc_node(8_i32)))
         ]
@@ -142,7 +142,7 @@ pub fn argc_argv_init_method(asm: &mut Assembly) -> MethodRefIdx {
         CILRoot::STIndPtr(
             CILNode::LDLoc(argv)
                 + conv_usize!(
-                    CILNode::SizeOf(Box::new(Type::Int(Int::ISize))) * CILNode::LDLoc(arg_idx)
+                    CILNode::V2(asm.size_of(Int::USize).into_idx(asm)) * CILNode::LDLoc(arg_idx)
                 ),
             uarg,
             Box::new(Type::Int(Int::U8)),
@@ -356,9 +356,9 @@ pub fn get_environ(asm: &mut Assembly) -> MethodRefIdx {
         .into(),
     );
     let element_count = CILNode::LDLoc(envc) + CILNode::V2(asm.alloc_node(1_i32));
-    let arr_size =
-        conv_usize!(element_count) * conv_usize!(CILNode::SizeOf(Box::new(uint8_ptr_ptr)));
-    let arr_align = conv_usize!(CILNode::SizeOf(Box::new(uint8_ptr_ptr)));
+    let arr_size = conv_usize!(element_count)
+        * conv_usize!(CILNode::V2(asm.size_of(uint8_ptr_ptr).into_idx(asm)));
+    let arr_align = conv_usize!(CILNode::V2(asm.size_of(uint8_ptr_ptr).into_idx(asm)));
     let aligned_alloc = MethodRef::aligned_alloc(asm);
     init.trees_mut().push(
         CILRoot::STLoc {
@@ -494,7 +494,9 @@ pub fn get_environ(asm: &mut Assembly) -> MethodRefIdx {
     loop_body.trees_mut().push(
         CILRoot::STIndPtr(
             CILNode::LDLoc(arr_ptr)
-                + conv_usize!(CILNode::LDLoc(idx) * CILNode::SizeOf(Box::new(uint8_ptr_ptr))),
+                + conv_usize!(
+                    CILNode::LDLoc(idx) * CILNode::V2(asm.size_of(uint8_ptr_ptr).into_idx(asm))
+                ),
             utf8_kval,
             Box::new(Type::Int(Int::U8)),
         )
@@ -520,7 +522,9 @@ pub fn get_environ(asm: &mut Assembly) -> MethodRefIdx {
     loop_end.trees_mut().push(
         CILRoot::STIndPtr(
             CILNode::LDLoc(arr_ptr)
-                + conv_usize!(CILNode::LDLoc(envc) * CILNode::SizeOf(Box::new(uint8_ptr_ptr))),
+                + conv_usize!(
+                    CILNode::LDLoc(envc) * CILNode::V2(asm.size_of(uint8_ptr_ptr).into_idx(asm))
+                ),
             null_ptr,
             Box::new(Type::Int(Int::U8)),
         )

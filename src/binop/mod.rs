@@ -7,7 +7,7 @@ use cilly::{
     cil_root::CILRoot,
     conv_i8, conv_u16, conv_u32, conv_u64, conv_u8, eq, gt_un, lt_un, rem, rem_un,
     v2::{cilnode::MethodKind, FieldDesc, Float, Int, MethodRef},
-    Type,
+    IntoAsmIndex, Type,
 };
 use cmp::{eq_unchecked, gt_unchecked, lt_unchecked, ne_unchecked};
 use rustc_hir::lang_items::LangItem;
@@ -120,16 +120,21 @@ pub(crate) fn binop<'tcx>(
                 todo!("Can't offset pointer of type {ty_a:?}");
             };
             let pointed_ty = ctx.monomorphize(pointed_ty);
-            let pointed_ty = Box::new(ctx.type_from_cache(pointed_ty));
-            let offset_tpe = ctx.type_from_cache(ty_b);
-            ops_a
-                + ops_b
-                    * crate::casts::int_to_int(
-                        Type::Int(Int::U64),
-                        offset_tpe,
-                        CILNode::SizeOf(pointed_ty),
-                        ctx,
-                    )
+            let layout = ctx.layout_of(pointed_ty);
+            if layout.is_zst() {
+                ops_a
+            } else {
+                let pointed_type = ctx.type_from_cache(pointed_ty);
+                let offset_tpe = ctx.type_from_cache(ty_b);
+                ops_a
+                    + ops_b
+                        * crate::casts::int_to_int(
+                            Type::Int(Int::U64),
+                            offset_tpe,
+                            CILNode::V2(ctx.size_of(pointed_type).into_idx(ctx)),
+                            ctx,
+                        )
+            }
         }
         BinOp::Cmp => {
             let ordering = ctx

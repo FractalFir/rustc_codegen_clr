@@ -42,8 +42,7 @@ pub enum CILNode {
     ConvF64(Box<Self>),
     /// Converts the unsigned inner value to a 64 bit floating-point number.
     ConvF64Un(Box<Self>),
-    /// Returns the size of a type.
-    SizeOf(Box<Type>),
+
     /// Loads a i8 from a pointer
     LDIndI8 {
         /// Address of the value
@@ -397,7 +396,7 @@ impl CILNode {
             Self::LDLocA(_)|
             Self::LDArgA(_) => (),
             Self::BlackBox(inner) => inner.allocate_tmps(curr_loc, locals),
-            Self::SizeOf(_) => (),
+  
             Self::LDIndI8 { ptr }|
             Self::LDIndBool { ptr }|
             Self::LDIndI16 { ptr }|

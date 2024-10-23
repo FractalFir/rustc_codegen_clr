@@ -9,7 +9,7 @@ use cilly::{
     cil_root::CILRoot,
     conv_usize, ld_field,
     v2::{cilnode::MethodKind, ClassRef, FieldDesc, Int, MethodRef},
-    Type,
+    IntoAsmIndex, Type,
 };
 use rustc_middle::{
     mir::PlaceElem,
@@ -90,11 +90,11 @@ pub fn place_elem_set<'a>(
                         ctx.nptr(Type::Void),
                     );
                     let field_val = ld_field!(addr_calc, ctx.alloc_field(desc));
+                    let size = conv_usize!(CILNode::V2(ctx.size_of(inner_type).into_idx(ctx)));
                     ptr_set_op(
                         super::PlaceTy::Ty(inner),
                         ctx,
-                        field_val.cast_ptr(inner_ptr)
-                            + index * conv_usize!(CILNode::SizeOf(Box::new(inner_type))),
+                        field_val.cast_ptr(inner_ptr) + index * size,
                         value_calc,
                     )
                 }
@@ -168,7 +168,7 @@ pub fn place_elem_set<'a>(
                                 conv_usize!(index),
                                 ld_field!(addr_calc, ctx.alloc_field(metadata)),
                             ]
-                        ) * conv_usize!(CILNode::SizeOf(inner_type.into()));
+                        ) * conv_usize!(CILNode::V2(ctx.size_of(inner_type).into_idx(ctx)));
                     ptr_set_op(super::PlaceTy::Ty(inner), ctx, addr, value_calc)
                 }
                 TyKind::Array(element, _length) => {
