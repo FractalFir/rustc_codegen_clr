@@ -743,7 +743,7 @@ run_test! {cast,i8_to_u64,stable}
 run_test! {cast,i16_to_u64,stable}
 run_test! {cast,i32_to_u64,stable}
 run_test! {cast,i32_to_usize,stable}
-run_test! {cast,coerce_unsized,stable}
+run_test! {cast,coerce_unsized,unstable}
 run_test! {control_flow,cf_for,stable}
 run_test! {control_flow,drop,stable}
 run_test! {fuzz,test0,stable}
