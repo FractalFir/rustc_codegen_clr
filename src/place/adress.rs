@@ -135,7 +135,7 @@ fn field_address<'a>(
                     // Get the address of the unsized object.
                     let obj_addr = ld_field!(addr_calc,addr_descr);
                     // Add the offset to the object.
-                    obj_addr + CILNode::V2(ctx.alloc_node(Const::USize(offset as u64)))
+                    obj_addr + CILNode::V2(ctx.alloc_node(Const::USize(u64::from(offset))))
                 },
                 (true,true)=>{
                     let mut explicit_offset_iter = crate::utilis::adt::FieldOffsetIterator::fields(
@@ -169,7 +169,7 @@ fn field_address<'a>(
                                 CILRoot::SetField {
                                     addr: Box::new(CILNode::LoadAddresOfTMPLocal),
                                     value: Box::new(obj_addr
-                                            + CILNode::V2(ctx.alloc_node(Const::USize(offset as u64)))),
+                                            + CILNode::V2(ctx.alloc_node(Const::USize(u64::from(offset))))),
                                     desc: ctx.alloc_field(FieldDesc::new(field_fat_ptr.as_class_ref().unwrap(),data_ptr_name,void_ptr)),
                                 },
                                 CILRoot::SetField {
@@ -271,7 +271,7 @@ pub fn place_elem_adress<'tcx>(
                             value: Box::new(CILNode::Sub(
                                 Box::new(ld_field!(addr_calc.clone(), metadata_field)),
                                 Box::new(CILNode::V2(
-                                    ctx.alloc_node(Const::USize((*to + 1) as u64)),
+                                    ctx.alloc_node(Const::USize(*to + 1)),
                                 )),
                             )),
                             desc: (metadata_field),
@@ -280,7 +280,7 @@ pub fn place_elem_adress<'tcx>(
                             addr: Box::new(CILNode::LoadAddresOfTMPLocal),
                             value: Box::new(
                                 ld_field!(addr_calc, ptr_field)
-                                    + CILNode::V2(ctx.alloc_node(Const::USize(*from as u64))),
+                                    + CILNode::V2(ctx.alloc_node(Const::USize(*from))),
                             ),
                             desc: ptr_field,
                         },
@@ -301,7 +301,7 @@ pub fn place_elem_adress<'tcx>(
                         CILRoot::SetField {
                             addr: Box::new(CILNode::LoadAddresOfTMPLocal),
                             value: Box::new(CILNode::V2(
-                                ctx.alloc_node(Const::USize((to - from) as u64)),
+                                ctx.alloc_node(Const::USize(to - from)),
                             )),
                             desc: (metadata_field),
                         },
@@ -309,7 +309,7 @@ pub fn place_elem_adress<'tcx>(
                             addr: Box::new(CILNode::LoadAddresOfTMPLocal),
                             value: Box::new(
                                 ld_field!(addr_calc, ptr_field)
-                                    + CILNode::V2(ctx.alloc_node(Const::USize(*from as u64))),
+                                    + CILNode::V2(ctx.alloc_node(Const::USize(*from))),
                             ),
                             desc: ptr_field,
                         },
@@ -346,10 +346,10 @@ pub fn place_elem_adress<'tcx>(
                         //eprintln!("Slice index from end is:{offset}");
                         CILNode::Sub(
                             Box::new(ld_field!(addr_calc.clone(), len)),
-                            Box::new(CILNode::V2(ctx.alloc_node(Const::USize((*offset) as u64)))),
+                            Box::new(CILNode::V2(ctx.alloc_node(Const::USize(*offset)))),
                         )
                     } else {
-                        CILNode::V2(ctx.alloc_node(Const::USize((*offset) as u64)))
+                        CILNode::V2(ctx.alloc_node(Const::USize(*offset)))
                         //ops.extend(derf_op);
                     };
 
@@ -378,7 +378,7 @@ pub fn place_elem_adress<'tcx>(
                             ctx.alloc_methodref(mref),
                             [
                                 addr_calc,
-                                CILNode::V2(ctx.alloc_node(Const::USize((*offset) as u64)))
+                                CILNode::V2(ctx.alloc_node(Const::USize(*offset)))
                             ]
                         )
                     }

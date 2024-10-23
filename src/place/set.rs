@@ -131,7 +131,7 @@ pub fn place_elem_set<'a>(
             let curr_ty = curr_type
                 .as_ty()
                 .expect("INVALID PLACE: Indexing into enum variant???");
-            let index = CILNode::V2(ctx.alloc_node((*offset) as u64));
+            let index = CILNode::V2(ctx.alloc_node(*offset));
             assert!(!from_end, "Indexing slice form end");
 
             match curr_ty.kind() {

@@ -11,8 +11,8 @@ use cilly::{
     add, ld_arg, mul, ptr_cast,
     tpe::simd::SIMDVector,
     v2::{
-        cilnode::MethodKind, Access, BasicBlock, CILNode, CILRoot, ClassDef, ClassDefIdx,
-        ClassRef, ClassRefIdx, Float, Int, MethodDef, MethodImpl, StringIdx, Type,
+        cilnode::MethodKind, Access, BasicBlock, CILNode, CILRoot, ClassDef, ClassDefIdx, ClassRef,
+        ClassRefIdx, Float, Int, MethodDef, MethodImpl, StringIdx, Type,
     },
     IntoAsmIndex,
 };
@@ -136,6 +136,7 @@ pub fn get_type<'tcx>(ty: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_>) -> Typ
                     vec![],
                     vec![],
                     cilly::v2::Access::Public,
+                    None,
                     None,
                 ));
             }
@@ -283,6 +284,7 @@ pub fn get_type<'tcx>(ty: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_>) -> Typ
             if ctx.asm().class_ref_to_def(cref).is_none() {
                 let fields = vec![(element, ctx.alloc_string("f0"), Some(0))];
                 let class_ref = ctx.asm().class_ref(cref).clone();
+                let arr_align = layout.layout.align().pref.bytes();
                 let size = if let Ok(size) = std::convert::TryInto::<u32>::try_into(arr_size) {
                     size
                 } else if *crate::config::ABORT_ON_ERROR {
@@ -300,6 +302,7 @@ pub fn get_type<'tcx>(ty: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_>) -> Typ
                     vec![],
                     Access::Public,
                     Some(NonZeroU32::new(size).unwrap()),
+                    NonZeroU32::new((arr_align as u64).try_into().unwrap()),
                 ));
                 // Common nodes
                 let ldarg_2 = ld_arg!(2).into_idx(ctx);
@@ -442,6 +445,7 @@ pub fn fat_ptr_to<'tcx>(mut inner: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_
             vec![],
             Access::Public,
             Some(NonZeroU32::new(16).unwrap()),
+            Some(NonZeroU32::new(8).unwrap()),
         );
         ctx.class_def(def);
     }
@@ -512,6 +516,17 @@ pub fn closure_typedef(
             )
             .unwrap(),
         ),
+        Some(
+            NonZeroU32::new(
+                layout
+                    .align()
+                    .pref
+                    .bytes()
+                    .try_into()
+                    .expect("Closure alignement exceeds 2^32"),
+            )
+            .unwrap(),
+        ),
     )
 }
 /// Turns an adt struct defintion into a [`ClassDef`]
@@ -564,6 +579,18 @@ fn struct_<'tcx>(
         vec![],
         Access::Public,
         NonZeroU32::new(size),
+        Some(
+            NonZeroU32::new(
+                layout
+                    .layout
+                    .align()
+                    .pref
+                    .bytes()
+                    .try_into()
+                    .expect("Struct alignement exceeds 2^32"),
+            )
+            .unwrap(),
+        ),
     )
 }
 fn handle_tag<'tcx>(
@@ -659,6 +686,18 @@ fn enum_<'tcx>(
         vec![],
         Access::Public,
         Some(NonZeroU32::new(layout.layout.size().bytes().try_into().unwrap()).unwrap()),
+        Some(
+            NonZeroU32::new(
+                layout
+                    .layout
+                    .align()
+                    .pref
+                    .bytes()
+                    .try_into()
+                    .expect("Enum alignement exceeds 2^32"),
+            )
+            .unwrap(),
+        ),
     )
 }
 /// Turns an adt union defintion into a [`ClassDef`]
@@ -697,6 +736,18 @@ fn union_<'tcx>(
         vec![],
         Access::Public,
         Some(NonZeroU32::new(layout.layout.size().bytes().try_into().unwrap()).unwrap()),
+        Some(
+            NonZeroU32::new(
+                layout
+                    .layout
+                    .align()
+                    .pref
+                    .bytes()
+                    .try_into()
+                    .expect("Union alignement exceeds 2^32"),
+            )
+            .unwrap(),
+        ),
     )
 }
 #[must_use]
@@ -769,6 +820,17 @@ pub fn tuple_typedef(
                     .expect("Tuple size >= 2^32. Unsuported"),
             )
             .expect("Zero-sized tuple!"),
+        ),
+        Some(
+            NonZeroU32::new(
+                layout
+                    .align()
+                    .pref
+                    .bytes()
+                    .try_into()
+                    .expect("Tuple alignement exceeds 2^32"),
+            )
+            .unwrap(),
         ),
     ))
 }

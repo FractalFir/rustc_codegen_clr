@@ -411,6 +411,7 @@ impl Assembly {
             vec![],
             Access::Public,
             None,
+            None,
         );
         let cref = class_def.ref_to();
         let cref = self.class_refs.alloc(cref);
@@ -624,6 +625,7 @@ impl Assembly {
             vec![],
             vec![],
             Access::Public,
+            None,
             None,
         ));
         // Add the user defined roots

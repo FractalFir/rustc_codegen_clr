@@ -57,6 +57,9 @@ impl ILExporter {
             if let Some(size) = class_def.explict_size() {
                 writeln!(out, ".size {size}", size = size.get())?;
             }
+            if let Some(align) = class_def.align() {
+                writeln!(out, "//align {align}", align = align.get())?;
+            }
             // Export all fields
             for (tpe, name, offset) in class_def.fields() {
                 let name = &asm[*name];

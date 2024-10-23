@@ -8,7 +8,6 @@ use crate::{
 use cilly::{
     cil_node::CILNode,
     cil_root::CILRoot,
-    conv_usize,
     v2::{cilnode::MethodKind, ClassRef, FieldDesc, FnSig, Int, MethodRef},
     Const, Type,
 };

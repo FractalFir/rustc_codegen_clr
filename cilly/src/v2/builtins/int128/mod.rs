@@ -5,7 +5,7 @@ use crate::{
     BranchCond, ClassRef, Const, Type,
 };
 
-pub fn op_direct(
+fn op_direct(
     asm: &mut Assembly,
     patcher: &mut MissingMethodPatcher,
     lhs: Int,
@@ -24,7 +24,7 @@ pub fn op_direct(
     };
     patcher.insert(name, Box::new(generator));
 }
-pub fn op_indirect(
+fn op_indirect(
     asm: &mut Assembly,
     patcher: &mut MissingMethodPatcher,
     lhs_type: Int,

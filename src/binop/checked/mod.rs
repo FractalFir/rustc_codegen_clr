@@ -3,7 +3,7 @@ use cilly::{
     and, call,
     cil_node::CILNode,
     cil_root::CILRoot,
-    conv_i16, conv_i32, conv_i64, conv_i8, conv_isize, conv_u64, conv_usize, eq, gt, gt_un, lt, or,
+    conv_i16, conv_i32, conv_i64, conv_i8, conv_u64, eq, gt, gt_un, lt, or,
     v2::{cilnode::MethodKind, Assembly, ClassRef, FieldDesc, Int, MethodRef},
     Type,
 };

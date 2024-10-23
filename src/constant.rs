@@ -6,7 +6,6 @@ use cilly::{
     call,
     cil_node::{CILNode, CallOpArgs},
     cil_root::CILRoot,
-    conv_u64, conv_usize,
     v2::{
         cilnode::MethodKind,
         hashable::{HashableF32, HashableF64},
@@ -354,44 +353,34 @@ fn load_const_float(value: u128, float_type: FloatTy, asm: &mut Assembly) -> CIL
 }
 pub fn load_const_int(value: u128, int_type: IntTy, asm: &mut Assembly) -> NodeIdx {
     match int_type {
-        IntTy::I8 => (asm.alloc_node(i8::from_ne_bytes([u8::try_from(value).unwrap()]))),
-        IntTy::I16 => {
-            (asm.alloc_node(i16::from_ne_bytes(
-                (u16::try_from(value).unwrap()).to_ne_bytes(),
-            )))
-        }
-        IntTy::I32 => {
-            (asm.alloc_node(i32::from_ne_bytes(
-                (u32::try_from(value).unwrap()).to_ne_bytes(),
-            )))
-        }
-        IntTy::I64 => {
-            (asm.alloc_node(i64::from_ne_bytes(
-                (u64::try_from(value).unwrap()).to_ne_bytes(),
-            )))
-        }
-        IntTy::Isize => {
-            (asm.alloc_node(cilly::Const::ISize(i64::from_ne_bytes(
-                (u64::try_from(value).unwrap()).to_ne_bytes(),
-            ))))
-        }
+        IntTy::I8 => asm.alloc_node(i8::from_ne_bytes([u8::try_from(value).unwrap()])),
+        IntTy::I16 => asm.alloc_node(i16::from_ne_bytes(
+            (u16::try_from(value).unwrap()).to_ne_bytes(),
+        )),
+        IntTy::I32 => asm.alloc_node(i32::from_ne_bytes(
+            (u32::try_from(value).unwrap()).to_ne_bytes(),
+        )),
+        IntTy::I64 => asm.alloc_node(i64::from_ne_bytes(
+            (u64::try_from(value).unwrap()).to_ne_bytes(),
+        )),
+        IntTy::Isize => asm.alloc_node(cilly::Const::ISize(i64::from_ne_bytes(
+            (u64::try_from(value).unwrap()).to_ne_bytes(),
+        ))),
         #[allow(clippy::cast_possible_wrap)]
-        IntTy::I128 => (asm.alloc_node(value as i128)),
+        IntTy::I128 => asm.alloc_node(value as i128),
     }
 }
 pub fn load_const_uint(value: u128, int_type: UintTy, asm: &mut Assembly) -> NodeIdx {
     match int_type {
-        UintTy::U8 => (asm.alloc_node(u8::try_from(value).unwrap())),
-        UintTy::U16 => (asm.alloc_node(u16::try_from(value).unwrap())),
-        UintTy::U32 => (asm.alloc_node(u32::try_from(value).unwrap())),
-        UintTy::U64 => (asm.alloc_node(u64::try_from(value).unwrap())),
+        UintTy::U8 => asm.alloc_node(u8::try_from(value).unwrap()),
+        UintTy::U16 => asm.alloc_node(u16::try_from(value).unwrap()),
+        UintTy::U32 => asm.alloc_node(u32::try_from(value).unwrap()),
+        UintTy::U64 => asm.alloc_node(u64::try_from(value).unwrap()),
         UintTy::Usize => asm.alloc_node(cilly::Const::USize(u64::try_from(value).unwrap())),
-        UintTy::U128 => (asm.alloc_node(value)),
+        UintTy::U128 => asm.alloc_node(value),
     }
 }
-fn u128_low_u64(value: u128) -> u64 {
-    u64::try_from(value & u128::from(u64::MAX)).expect("trucating cast error")
-}
+
 fn get_fn_from_static_name(name: &str, ctx: &mut MethodCompileCtx<'_, '_>) -> MethodRefIdx {
     let int8_ptr = ctx.nptr(Type::Int(Int::I8));
     let int64_ptr = ctx.nptr(Type::Int(Int::I64));

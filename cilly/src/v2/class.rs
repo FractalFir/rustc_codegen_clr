@@ -447,6 +447,7 @@ pub struct ClassDef {
     methods: Vec<MethodDefIdx>,
     access: Access,
     explict_size: Option<NonZeroU32>,
+    align: Option<NonZeroU32>,
 }
 impl ClassDef {
     /// Checks if this class defition has a with the name and type.
@@ -473,9 +474,9 @@ impl ClassDef {
         extends: Option<ClassRefIdx>,
         fields: Vec<(Type, StringIdx, Option<u32>)>,
         static_fields: Vec<(Type, StringIdx, bool)>,
-
         access: Access,
         explict_size: Option<NonZeroU32>,
+        align: Option<NonZeroU32>,
     ) -> Self {
         //crate::utilis::assert_unique(&methods);
         Self {
@@ -488,6 +489,7 @@ impl ClassDef {
             methods: vec![],
             access,
             explict_size,
+            align,
         }
     }
 
@@ -584,6 +586,10 @@ impl ClassDef {
         }
         self.methods_mut().push(ref_idx);
     }
+
+    pub fn align(&self) -> Option<NonZeroU32> {
+        self.align
+    }
     /*
     /// Optimizes this class definition, consuming fuel
     pub fn opt(&mut self, fuel: &mut OptFuel, asm: &mut Assembly, cache: &mut SideEffectInfoCache) {
@@ -643,6 +649,7 @@ fn has_explicit_layout() {
             vec![],
             Access::Extern,
             None,
+            None,
         );
         assert!(def.explict_size().is_none());
         assert!(!def.has_explicit_layout());
@@ -657,6 +664,7 @@ fn has_explicit_layout() {
             vec![],
             Access::Extern,
             Some(NonZeroU32::new(1000).unwrap()),
+            None,
         );
         assert_eq!(def.fields().len(), 0);
         assert!(def.has_explicit_layout());
@@ -670,6 +678,7 @@ fn has_explicit_layout() {
             vec![(Type::Bool, name, Some(1000))],
             vec![],
             Access::Extern,
+            None,
             None,
         );
         assert!(def.explict_size().is_none());
@@ -685,6 +694,7 @@ fn has_explicit_layout() {
             vec![],
             vec![(Type::Bool, name, false)],
             Access::Extern,
+            None,
             None,
         );
         assert!(def.explict_size().is_none());
@@ -705,6 +715,7 @@ fn has_explicit_layout() {
             vec![],
             Access::Extern,
             None,
+            None,
         );
         assert!(def.explict_size().is_none());
         assert_eq!(def.fields().len(), 1);
@@ -720,6 +731,7 @@ fn has_explicit_layout() {
             vec![],
             Access::Extern,
             Some(NonZeroU32::new(1000).unwrap()),
+            None,
         );
         assert_eq!(def.explict_size(), Some(NonZeroU32::new(1000).unwrap()));
         assert_eq!(def.fields().len(), 1);
@@ -732,17 +744,47 @@ fn has_explicit_layout() {
 fn generics() {
     let mut asm = Assembly::default();
     let name = asm.alloc_string("MyClass");
-    let def = ClassDef::new(name, false, 0, None, vec![], vec![], Access::Extern, None);
+    let def = ClassDef::new(
+        name,
+        false,
+        0,
+        None,
+        vec![],
+        vec![],
+        Access::Extern,
+        None,
+        None,
+    );
     assert_eq!(def.generics(), 0);
     assert_eq!(def.ref_to().generics(), &[]);
-    let def = ClassDef::new(name, false, 5, None, vec![], vec![], Access::Extern, None);
+    let def = ClassDef::new(
+        name,
+        false,
+        5,
+        None,
+        vec![],
+        vec![],
+        Access::Extern,
+        None,
+        None,
+    );
     assert_eq!(def.generics(), 5);
 }
 #[test]
 fn display_class_ref() {
     let mut asm = Assembly::default();
     let name: StringIdx = asm.alloc_string("MyClass");
-    let def = ClassDef::new(name, false, 0, None, vec![], vec![], Access::Extern, None);
+    let def = ClassDef::new(
+        name,
+        false,
+        0,
+        None,
+        vec![],
+        vec![],
+        Access::Extern,
+        None,
+        None,
+    );
     assert_eq!(
         def.ref_to().display(&asm),
         "ClassRef{name:MyClass,asm:None,is_valuetype:false,generics[]}"
@@ -761,6 +803,7 @@ fn type_gc() {
         vec![],
         Access::Extern,
         None,
+        None,
     ));
     let name: StringIdx = asm.alloc_string("Gone");
     asm.class_def(ClassDef::new(
@@ -772,6 +815,7 @@ fn type_gc() {
         vec![],
         Access::Public,
         None,
+        None,
     ));
     assert_eq!(asm.class_defs().len(), 2);
     asm.eliminate_dead_types();
@@ -781,7 +825,17 @@ fn type_gc() {
 fn merge_defs() {
     let mut asm = Assembly::default();
     let name: StringIdx = asm.alloc_string("Stay");
-    let def = ClassDef::new(name, false, 0, None, vec![], vec![], Access::Extern, None);
+    let def = ClassDef::new(
+        name,
+        false,
+        0,
+        None,
+        vec![],
+        vec![],
+        Access::Extern,
+        None,
+        None,
+    );
 
     def.clone().merge_defs(def);
 }
@@ -790,9 +844,29 @@ fn merge_defs() {
 fn merge_defs_different() {
     let mut asm = Assembly::default();
     let name: StringIdx = asm.alloc_string("Stay");
-    let mut stay = ClassDef::new(name, false, 0, None, vec![], vec![], Access::Extern, None);
+    let mut stay = ClassDef::new(
+        name,
+        false,
+        0,
+        None,
+        vec![],
+        vec![],
+        Access::Extern,
+        None,
+        None,
+    );
     let name: StringIdx = asm.alloc_string("Gone");
-    let gone = ClassDef::new(name, false, 0, None, vec![], vec![], Access::Public, None);
+    let gone = ClassDef::new(
+        name,
+        false,
+        0,
+        None,
+        vec![],
+        vec![],
+        Access::Public,
+        None,
+        None,
+    );
 
     stay.merge_defs(gone);
 }
@@ -801,7 +875,17 @@ fn extends() {
     let mut asm = Assembly::default();
     let name: StringIdx = asm.alloc_string("Stay");
     let exception = ClassRef::exception(&mut asm);
-    let def = ClassDef::new(name, false, 0, None, vec![], vec![], Access::Extern, None);
+    let def = ClassDef::new(
+        name,
+        false,
+        0,
+        None,
+        vec![],
+        vec![],
+        Access::Extern,
+        None,
+        None,
+    );
     assert_eq!(def.iter_types().count(), 0);
     assert!(def.extends().is_none());
     let def = ClassDef::new(
@@ -812,6 +896,7 @@ fn extends() {
         vec![],
         vec![],
         Access::Extern,
+        None,
         None,
     );
     assert_eq!(def.extends(), Some(exception));

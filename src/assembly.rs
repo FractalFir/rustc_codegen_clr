@@ -16,7 +16,7 @@ use cilly::{
     cil_node::CILNode,
     cil_root::CILRoot,
     cil_tree::CILTree,
-    conv_isize, conv_usize,
+    conv_isize,
     method::{Method, MethodType},
     utilis::{self, encode},
     v2::{

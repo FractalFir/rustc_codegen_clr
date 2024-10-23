@@ -240,6 +240,7 @@ pub fn insert_heap(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
         vec![],
         Access::Public,
         None,
+        None,
     ));
     let ctor = asm.alloc_string(".ctor");
     let sig = asm.sig(

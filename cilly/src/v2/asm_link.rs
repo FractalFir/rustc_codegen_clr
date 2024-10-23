@@ -603,6 +603,7 @@ impl Assembly {
             static_fields,
             *def.access(),
             def.explict_size(),
+            def.align(),
         );
         let class_ref = self.alloc_class_ref(translated.ref_to());
         let (defs_mut, _) = self.class_defs_mut_strings();

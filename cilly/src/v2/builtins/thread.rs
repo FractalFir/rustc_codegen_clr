@@ -433,6 +433,7 @@ pub fn instert_threading(asm: &mut Assembly, patcher: &mut MissingMethodPatcher)
         // TODO: fix the bug which causes this to be cleaned up by dead code elimination when access is set to Public.
         Access::Extern,
         None,
+        None,
     ));
 
     let ctor = asm.alloc_string(".ctor");

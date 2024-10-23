@@ -94,7 +94,7 @@ fn get_field<'a>(
                     let obj_addr = ld_field!(addr_calc, ctx.alloc_field(addr_descr));
                     let obj = ctx.type_from_cache(field_type);
                     // Add the offset to the object.
-                    CILNode::LdObj{ ptr: Box::new(obj_addr + CILNode::V2(ctx.alloc_node(Const::USize((offset) as u64)))), obj: Box::new(obj) }
+                    CILNode::LdObj{ ptr: Box::new(obj_addr + CILNode::V2(ctx.alloc_node(Const::USize(u64::from(offset))))), obj: Box::new(obj) }
                 },
                 (true,true)=>panic!("Nonsensical operation: attempted to get value of the unsized type {field_type}. Unsized types can only be accessed by address."),
             }

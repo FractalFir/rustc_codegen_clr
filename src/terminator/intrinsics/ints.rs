@@ -216,7 +216,7 @@ pub fn cttz<'tcx>(
                 destination,
                 call!(
                     ctx.alloc_methodref(min),
-                    [value_calc, CILNode::V2(ctx.alloc_node(i8::BITS as u32))]
+                    [value_calc, CILNode::V2(ctx.alloc_node(i8::BITS))]
                 ),
                 ctx,
             )
@@ -244,7 +244,7 @@ pub fn cttz<'tcx>(
                 destination,
                 call!(
                     ctx.alloc_methodref(min),
-                    [value_calc, CILNode::V2(ctx.alloc_node(i16::BITS as u32))]
+                    [value_calc, CILNode::V2(ctx.alloc_node(i16::BITS))]
                 ),
                 ctx,
             )
@@ -272,7 +272,7 @@ pub fn cttz<'tcx>(
                 destination,
                 call!(
                     ctx.alloc_methodref(min),
-                    [value_calc, CILNode::V2(ctx.alloc_node(u8::BITS as u32))]
+                    [value_calc, CILNode::V2(ctx.alloc_node(u8::BITS))]
                 ),
                 ctx,
             )
@@ -300,7 +300,7 @@ pub fn cttz<'tcx>(
                 destination,
                 call!(
                     ctx.alloc_methodref(min),
-                    [value_calc, CILNode::V2(ctx.alloc_node(u16::BITS as u32))]
+                    [value_calc, CILNode::V2(ctx.alloc_node(u16::BITS))]
                 ),
                 ctx,
             )

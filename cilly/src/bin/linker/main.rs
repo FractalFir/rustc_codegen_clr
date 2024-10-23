@@ -390,6 +390,7 @@ fn main() {
         vec![],
         cilly::v2::Access::Public,
         NonZeroU32::new(16),
+        NonZeroU32::new(16),
     ));
 
     final_assembly.patch_missing_methods(&externs, &modifies_errno, &overrides);

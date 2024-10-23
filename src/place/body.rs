@@ -78,7 +78,7 @@ fn body_field<'a>(
                     // Get the address of the unsized object.
                     let obj_addr = ld_field!(parrent_node, ctx.alloc_field(addr_descr));
                     let obj = ctx.type_from_cache(field_type);
-                    let field_addr = obj_addr + CILNode::V2(ctx.alloc_node(Const::USize((offset) as u64)));
+                    let field_addr = obj_addr + CILNode::V2(ctx.alloc_node(Const::USize(u64::from(offset))));
                     if body_ty_is_by_adress(field_type, ctx) {
                         (field_type.into(),field_addr)
                     }else{
