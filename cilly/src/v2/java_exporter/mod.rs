@@ -8,13 +8,20 @@ use super::{
     cilroot::BranchCond, Assembly, CILIter, CILIterElem, CILNode, ClassRefIdx, Exporter, NodeIdx,
     RootIdx, Type,
 };
-use lazy_static::lazy_static;
-lazy_static! {
-    #[doc = "Specifies the path to the java bytecode assembler."]
-    pub static ref JAVA_ASM_PATH:String = {
-        std::env::vars().find_map(|(key,value)|if key == "JAVA_ASM_PATH"{Some(value)}else{None}).unwrap_or("krak2".into())
-    };
-}
+
+#[doc = "Specifies the path to the java bytecode assembler."]
+pub static JAVA_ASM_PATH: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+    std::env::vars()
+        .find_map(|(key, value)| {
+            if key == "JAVA_ASM_PATH" {
+                Some(value)
+            } else {
+                None
+            }
+        })
+        .unwrap_or("krak2".into())
+});
+
 pub struct JavaExporter {
     is_lib: bool,
 }

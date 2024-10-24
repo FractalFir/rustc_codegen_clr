@@ -10,7 +10,7 @@ pub type IString = Box<str>;
 #[derive(serde::Serialize, serde::Deserialize, Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct AsmString(u64);
 #[derive(serde::Serialize, serde::Deserialize, Debug, Default)]
-pub struct AsmStringContainer {
+struct AsmStringContainer {
     map: HashMap<AsmString, IString>,
     inv_map: HashMap<IString, AsmString>,
 }
@@ -59,28 +59,64 @@ pub mod method;
 pub mod utilis;
 pub mod v2;
 pub use v2::*;
+#[macro_export]
+macro_rules! config {
+    ($name:ident,bool,$default:expr) => {
+        pub static $name: std::sync::LazyLock<bool> = std::sync::LazyLock::new(|| {
+            std::env::vars()
+                .find_map(|(key, value)| {
+                    if key == stringify!($name) {
+                        Some(value)
+                    } else {
+                        None
+                    }
+                })
+                .map(|value| match value.as_ref() {
+                    "0" | "false" | "False" | "FALSE" => false,
+                    "1" | "true" | "True" | "TRUE" => true,
+                    _ => panic!(
+                        "Boolean enviroment variable {} has invalid value {}",
+                        stringify!($name),
+                        value
+                    ),
+                })
+                .unwrap_or($default)
+        });
+    };
+    ($name:ident,bool,$default:expr,$comment:literal) => {
+        #[doc = $comment]
+        pub static $name: std::sync::LazyLock<bool> = std::sync::LazyLock::new(|| {
+            std::env::vars()
+                .find_map(|(key, value)| {
+                    if key == stringify!($name) {
+                        Some(value)
+                    } else {
+                        None
+                    }
+                })
+                .map(|value| match value.as_ref() {
+                    "0" | "false" | "False" | "FALSE" => false,
+                    "1" | "true" | "True" | "TRUE" => true,
+                    _ => panic!(
+                        "Boolean enviroment variable {} has invalid value {}",
+                        stringify!($name),
+                        value
+                    ),
+                })
+                .unwrap_or($default)
+        });
+    };
+}
+config! {DEAD_CODE_ELIMINATION,bool,true}
 
 #[must_use]
 pub fn mem_checks() -> bool {
-    *crate::MEM_CHECKS
+    false
 }
 #[must_use]
 pub fn debig_sfi() -> bool {
     *crate::DEBUG_SFI
 }
-use lazy_static::lazy_static;
-lazy_static! {
-    #[doc = "Tells codegen to insert memory consistency checks after each call. If INSERT_MIR_DEBUG_COMMENTS is enabled, the consistency checks will be run also after each MIR statement."]pub static ref MEM_CHECKS:bool = {
-        std::env::vars().find_map(|(key,value)|if key == stringify!(MEM_CHECKS){
-            Some(value)
-        }else {
-            None
-        }).is_some_and(|value|match value.as_ref(){
-            "0"|"false"|"False"|"FALSE" => false,"1"|"true"|"True"|"TRUE" => true,_ => panic!("Boolean enviroment variable {} has invalid value {}",stringify!(MEM_CHECKS),value),
-        })
-    };
-}
-
 pub fn sfi_debug_print(sfi: &crate::cil_root::SFI) -> String {
     format!(
         "ldstr {name:?}
@@ -103,18 +139,12 @@ pub fn sfi_debug_print(sfi: &crate::cil_root::SFI) -> String {
        // col = sfi.1,
     )
 }
-
-lazy_static! {
-    #[doc = "Tells codegen to display source file info when executing each statement. "]pub static ref DEBUG_SFI:bool = {
-        std::env::vars().find_map(|(key,value)|if key == stringify!(DEBUG_SFI){
-            Some(value)
-        }else {
-            None
-        }).is_some_and(|value|match value.as_ref(){
-            "0"|"false"|"False"|"FALSE" => false,"1"|"true"|"True"|"TRUE" => true,_ => panic!("Boolean enviroment variable {} has invalid value {}",stringify!(DEBUG_SFI),value),
-        })
-    };
-}
+config!(
+    DEBUG_SFI,
+    bool,
+    false,
+    "Tells codegen to display source file info when executing each statement."
+);
 
 #[derive(Copy, Clone)]
 pub struct DepthSetting(u32);

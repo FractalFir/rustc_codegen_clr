@@ -1,4 +1,4 @@
-use std::ops::DerefMut;
+use std::ops::{Deref, DerefMut};
 
 use fxhash::{FxBuildHasher, FxHashMap};
 
@@ -49,7 +49,7 @@ pub struct Assembly {
     inner: super::v2::Assembly,
 }
 
-impl __Deref for Assembly {
+impl Deref for Assembly {
     type Target = super::v2::Assembly;
 
     fn deref(&self) -> &Self::Target {
@@ -194,29 +194,4 @@ impl Assembly {
     pub fn inner_mut(&mut self) -> &mut super::v2::Assembly {
         &mut self.inner
     }
-}
-use lazy_static::*;
-lazy_static! {
-    #[doc = "Tells the codegen to remove dead code before export."]pub static ref DEAD_CODE_ELIMINATION:bool = {
-        std::env::vars().find_map(|(key,value)|if key == stringify!(DEAD_CODE_ELIMINATION){
-            Some(value)
-        }else {
-            None
-        }).map(|value|match value.as_ref(){
-            "0"|"false"|"False"|"FALSE" => false,"1"|"true"|"True"|"TRUE" => true,_ => panic!("Boolean enviroment variable {} has invalid value {}",stringify!(DEAD_CODE_ELIMINATION),value),
-        }).unwrap_or(true)
-    };
-}
-
-lazy_static! {
-    #[doc = "Tells the codegen to use the new version of cilly."]
-    pub static ref CILLY_V2:bool = {
-        std::env::vars().find_map(|(key,value)|if key == stringify!(CILLY_V2){
-            Some(value)
-        }else {
-            None
-        }).map(|value|match value.as_ref(){
-            "0"|"false"|"False"|"FALSE" => false,"1"|"true"|"True"|"TRUE" => true,_ => panic!("Boolean enviroment variable {} has invalid value {}",stringify!(CILLY_V2),value),
-        }).unwrap_or(false)
-    };
 }

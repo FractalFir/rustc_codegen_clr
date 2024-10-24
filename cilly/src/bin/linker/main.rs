@@ -1,8 +1,7 @@
 #![deny(unused_must_use)]
 #![allow(clippy::module_name_repetitions)]
 use cilly::{
-    asm::DEAD_CODE_ELIMINATION,
-    conv_usize,
+    config, conv_usize,
     libc_fns::{self, LIBC_FNS, LIBC_MODIFIES_ERRNO},
     v2::{
         asm::{MissingMethodPatcher, ILASM_FLAVOUR},
@@ -10,10 +9,9 @@ use cilly::{
         Assembly, BasicBlock, CILNode, CILRoot, ClassDef, ClassRef, Const, IlasmFlavour, Int,
         MethodImpl, Type,
     },
-    MethodRef,
+    MethodRef, DEAD_CODE_ELIMINATION,
 };
 //use assembly::Assembly;
-use lazy_static::lazy_static;
 
 mod cmd;
 mod export;
@@ -41,13 +39,9 @@ fn add_mandatory_statics(asm: &mut cilly::v2::Assembly) {
     );
 }
 
-lazy_static! {
-    static ref LIBC: String = get_libc_();
-}
+static LIBC: std::sync::LazyLock<String> = std::sync::LazyLock::new(get_libc_);
+static LIBM: std::sync::LazyLock<String> = std::sync::LazyLock::new(get_libm_);
 
-lazy_static! {
-    static ref LIBM: String = get_libm_();
-}
 #[cfg(target_os = "linux")]
 fn get_libc_() -> String {
     let mut libc = None;
@@ -410,8 +404,6 @@ fn main() {
         .unwrap();
     if *C_MODE {
         final_assembly.export(&path, cilly::v2::c_exporter::CExporter::new(is_lib));
-    } else if *JS_MODE {
-        todo!();
     } else if *JAVA_MODE {
         final_assembly.export(&path, cilly::v2::java_exporter::JavaExporter::new(is_lib));
         if cargo_support {
@@ -505,39 +497,12 @@ fn bootstrap_source(fpath: &Path, output_file_path: &str, jumpstart_cmd: &str) -
         }
     )
 }
-lazy_static! {
-    #[doc = "Tells the codegen compile linked static libraries into a shared library, which will be bundled with the .NET executable."]pub static ref NATIVE_PASSTROUGH:bool = {
-        std::env::vars().find_map(|(key,value)|if key == stringify!(NATIVE_PASSTROUGH){
-            Some(value)
-        }else {
-            None
-        }).map(|value|match value.as_ref(){
-            "0"|"false"|"False"|"FALSE" => false,"1"|"true"|"True"|"TRUE" => true,_ => panic!("Boolean enviroment variable {} has invalid value {}",stringify!(NATIVE_PASSTROUGH),value),
-        }).unwrap_or(false)
-    };
-}
-lazy_static! {
-    #[doc = "Should the codegen stop working when ecountering an error, or try to press on, replacing unusuported code with exceptions throws?"]pub static ref ABORT_ON_ERROR:bool = {
-        std::env::vars().find_map(|(key,value)|if key == stringify!(ABORT_ON_ERROR){
-            Some(value)
-        }else {
-            None
-        }).map(|value|match value.as_ref(){
-            "0"|"false"|"False"|"FALSE" => false,"1"|"true"|"True"|"TRUE" => true,_ => panic!("Boolean enviroment variable {} has invalid value {}",stringify!(ABORT_ON_ERROR),value),
-        }).unwrap_or(false)
-    };
-}
-lazy_static! {
-    #[doc = "Tells the codegen to emmit C source files."]pub static ref C_MODE:bool = {
-        std::env::vars().find_map(|(key,value)|if key == stringify!(C_MODE){
-            Some(value)
-        }else {
-            None
-        }).map(|value|match value.as_ref(){
-            "0"|"false"|"False"|"FALSE" => false,"1"|"true"|"True"|"TRUE" => true,_ => panic!("Boolean enviroment variable {} has invalid value {}",stringify!(C_MODE),value),
-        }).unwrap_or(false)
-    };
-}
+config!(NATIVE_PASSTROUGH, bool, false);
+config!(ABORT_ON_ERROR, bool, false);
+config!(C_MODE, bool, false);
+config!(JAVA_MODE, bool, false);
+config!(PANIC_MANAGED_BT, bool, false);
+/*
 lazy_static! {
     #[doc = "Tells the linker to not remove any dead code."]pub static ref KEEP_DEAD_CODE:bool = {
         std::env::vars().find_map(|(key,value)|if key == stringify!(KEEP_DEAD_CODE){
@@ -559,64 +524,4 @@ lazy_static! {
             "0"|"false"|"False"|"FALSE" => false,"1"|"true"|"True"|"TRUE" => true,_ => panic!("Boolean enviroment variable {} has invalid value {}",stringify!(JS_MODE),value),
         }).unwrap_or(false)
     };
-}
-lazy_static! {
-    #[doc = "Tells the codegen to emmit Java source files."]pub static ref JAVA_MODE:bool = {
-        std::env::vars().find_map(|(key,value)|if key == stringify!(JAVA_MODE){
-            Some(value)
-        }else {
-            None
-        }).map(|value|match value.as_ref(){
-            "0"|"false"|"False"|"FALSE" => false,"1"|"true"|"True"|"TRUE" => true,_ => panic!("Boolean enviroment variable {} has invalid value {}",stringify!(JAVA_MODE),value),
-        }).unwrap_or(false)
-    };
-}
-lazy_static! {
-    #[doc = "Tells the codegen to throw exceptions on panics"]pub static ref PANIC_MANAGED_BT:bool = {
-        std::env::vars().find_map(|(key,value)|if key == stringify!(PANIC_MANAGED_BT){
-            Some(value)
-        }else {
-            None
-        }).map(|value|match value.as_ref(){
-            "0"|"false"|"False"|"FALSE" => false,"1"|"true"|"True"|"TRUE" => true,_ => panic!("Boolean enviroment variable {} has invalid value {}",stringify!(PANIC_MANAGED_BT),value),
-        }).unwrap_or(false)
-    };
-}
-
-/*
-fn override_errno(asm: &mut Assembly) {
-    for method in asm.methods_mut() {
-        if method.name().contains("errno")
-            && method.name().contains("os")
-            && method.name().contains("unix")
-            && method.name().contains("pal")
-            && method.name().contains("sys")
-            && method.name().contains("std")
-        {
-            *method = Method::new(
-                access_modifier::AccessModifer::Private,
-                MethodType::Static,
-                method.call_site().signature().clone(),
-                method.name(),
-                vec![],
-                vec![BasicBlock::new(
-                    vec![CILRoot::Ret {
-                        tree: cilly::call!(
-                            MethodRefIdx::new(
-                                Some(ClassRef::marshal()),
-                                "GetLastWin32Error".into(),
-                                FnSig::new(&[], Type::Int(Int::I32)),
-                                true
-                            ),
-                            []
-                        ),
-                    }
-                    .into()],
-                    0,
-                    None,
-                )],
-                vec![],
-            );
-        }
-    }
 }*/

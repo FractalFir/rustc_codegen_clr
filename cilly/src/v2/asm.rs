@@ -10,7 +10,7 @@ use super::{
 use crate::IString;
 use crate::{asm::Assembly as V1Asm, v2::MethodImpl};
 use fxhash::{FxHashMap, FxHashSet};
-use lazy_static::lazy_static;
+
 use serde::{Deserialize, Serialize};
 use std::{any::type_name, ops::Index};
 
@@ -1057,10 +1057,10 @@ fn encoded_stats<T: Serialize + for<'a> Deserialize<'a>>(val: &T) -> (&'static s
     );
     (type_name::<T>(), buff.len())
 }
-lazy_static! {
-    pub static ref ILASM_FLAVOUR: IlasmFlavour = {
-        if String::from_utf8_lossy(
-            &std::process::Command::new(&*ILASM_PATH).arg("--help")
+
+pub static ILASM_FLAVOUR: std::sync::LazyLock<IlasmFlavour> = std::sync::LazyLock::new(|| {
+    if String::from_utf8_lossy(
+            &std::process::Command::new(ilasm_path()).arg("--help")
                 .output()
                 .unwrap_or_else(|_| panic!("Could not run the IL assembler(ilasm) at path {:?}. Is ilasm propely installed? If so, try specifying a precise path by seting the ILASM_PATH enviroment variable",*ILASM_PATH))
                 .stdout,
@@ -1071,8 +1071,8 @@ lazy_static! {
         } else {
             IlasmFlavour::Clasic
         }
-    };
-}
+});
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum IlasmFlavour {
     Clasic,
@@ -1082,12 +1082,20 @@ pub enum IlasmFlavour {
 pub fn ilasm_path() -> &'static str {
     ILASM_PATH.as_str()
 }
-lazy_static! {
-    #[doc = "Specifies the path to the IL assembler."]
-    pub static ref ILASM_PATH:String = {
-        std::env::vars().find_map(|(key,value)|if key == "ILASM_PATH"{Some(value)}else{None}).unwrap_or(get_default_ilasm())
-    };
-}
+
+#[doc = "Specifies the path to the IL assembler."]
+pub static ILASM_PATH: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+    std::env::vars()
+        .find_map(|(key, value)| {
+            if key == "ILASM_PATH" {
+                Some(value)
+            } else {
+                None
+            }
+        })
+        .unwrap_or(get_default_ilasm())
+});
+
 #[cfg(not(target_os = "windows"))]
 fn get_default_ilasm() -> String {
     "ilasm".into()

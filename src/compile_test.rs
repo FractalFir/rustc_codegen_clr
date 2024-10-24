@@ -962,52 +962,48 @@ cargo_test! {benchmarks,bench}
 cargo_test! {glam_test,unstable}
 cargo_test! {fastrand_test,stable}
 
-use lazy_static::lazy_static;
 #[cfg(target_os = "windows")]
 const IS_DOTNET_PRESENT: &bool = &true;
+
 #[cfg(not(target_os = "windows"))]
-lazy_static! {
-  /// Cached information about the presence of the `dotnet` .NET runtime.
-  static ref IS_DOTNET_PRESENT: bool = std::process::Command::new("dotnet").output().is_ok();
-}
-lazy_static! {
-
-    /// Cached information about the presence of the `mono` .NET runtime.
-    static ref IS_MONO_PRESENT: bool = std::process::Command::new("mono").output().is_ok();
-    /// Cached information about the presence of the peverify tool.
-    static ref IS_PEVERIFY_PRESENT: bool = std::process::Command::new("peverify").output().is_ok();
-
-
-    /// Cached information about the result of building the backend.
-    pub static ref RUSTC_BUILD_STATUS: Result<(), String> = build_backend();
-    /// Cached path to the bulit-in linker.
-    pub static ref RUSTC_CODEGEN_CLR_LINKER:PathBuf = {
-        let _ = *RUSTC_BUILD_STATUS;
-        if cfg!(debug_assertions) {
-            std::process::Command::new("cargo").args(["build","--bin","linker"]).output().unwrap();
-            //TODO: Fix this for other platforms
-            if cfg!(target_os = "linux") || cfg!(target_os = "macos") {
-                std::fs::canonicalize("target/debug/linker").unwrap()
-            } else if cfg!(target_os = "windows") {
-                std::fs::canonicalize("target/debug/linker.exe").unwrap()
-            }
-             else {
-                panic!("Unsupported target OS");
-            }
+static IS_DOTNET_PRESENT: std::sync::LazyLock<bool> =
+    std::sync::LazyLock::new(|| std::process::Command::new("dotnet").output().is_ok());
+static IS_MONO_PRESENT: std::sync::LazyLock<bool> =
+    std::sync::LazyLock::new(|| std::process::Command::new("mono").output().is_ok());
+static IS_PEVERIFY_PRESENT: std::sync::LazyLock<bool> =
+    std::sync::LazyLock::new(|| std::process::Command::new("peverify").output().is_ok());
+static RUSTC_BUILD_STATUS: std::sync::LazyLock<Result<(), String>> =
+    std::sync::LazyLock::new(|| build_backend());
+static RUSTC_CODEGEN_CLR_LINKER: std::sync::LazyLock<PathBuf> = std::sync::LazyLock::new(|| {
+    let _ = *RUSTC_BUILD_STATUS;
+    if cfg!(debug_assertions) {
+        std::process::Command::new("cargo")
+            .args(["build", "--bin", "linker"])
+            .output()
+            .unwrap();
+        //TODO: Fix this for other platforms
+        if cfg!(target_os = "linux") || cfg!(target_os = "macos") {
+            std::fs::canonicalize("target/debug/linker").unwrap()
+        } else if cfg!(target_os = "windows") {
+            std::fs::canonicalize("target/debug/linker.exe").unwrap()
         } else {
-            std::process::Command::new("cargo").args(["build","--bin","linker","--release"]).output().unwrap();
-            //TODO: Fix this for other platforms
-            if cfg!(target_os = "linux") || cfg!(target_os = "macos") {
-                std::fs::canonicalize("target/release/linker").unwrap()
-            } else if cfg!(target_os = "windows") {
-                std::fs::canonicalize("target/release/linker.exe").unwrap()
-            } else {
-                panic!("Unsupported target OS");
-            }
+            panic!("Unsupported target OS");
         }
-
-    };
-}
+    } else {
+        std::process::Command::new("cargo")
+            .args(["build", "--bin", "linker", "--release"])
+            .output()
+            .unwrap();
+        //TODO: Fix this for other platforms
+        if cfg!(target_os = "linux") || cfg!(target_os = "macos") {
+            std::fs::canonicalize("target/release/linker").unwrap()
+        } else if cfg!(target_os = "windows") {
+            std::fs::canonicalize("target/release/linker.exe").unwrap()
+        } else {
+            panic!("Unsupported target OS");
+        }
+    }
+});
 /// A list of arguments needed for invoking `rustc` with this backend included.
 #[must_use]
 pub fn rustc_args() -> Box<[String]> {

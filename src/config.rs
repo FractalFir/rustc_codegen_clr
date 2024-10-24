@@ -1,28 +1,58 @@
-use lazy_static::lazy_static;
-macro_rules! config_flag{
-    ($var:ident,$default:expr)=>{
-        lazy_static!{
-            pub static ref $var:bool = {
-                std::env::vars().find_map(|(key,value)|if key == stringify!($var){Some(value)}else{None}).map(|value|match value.as_ref(){
-                    "0" | "false" | "False" | "FALSE" =>false,
-                    "1" | "true" | "True" | "TRUE" =>true,
-                    _=>panic!("Boolean enviroment variable {} has invalid value {}",stringify!($var),value),
-                }).unwrap_or($default)
-            };
-        }
+#[macro_export]
+macro_rules! config {
+    ($name:ident,bool,$default:expr) => {
+        pub static $name: std::sync::LazyLock<bool> = std::sync::LazyLock::new(|| {
+            std::env::vars()
+                .find_map(|(key, value)| {
+                    if key == stringify!($name) {
+                        Some(value)
+                    } else {
+                        None
+                    }
+                })
+                .map(|value| match value.as_ref() {
+                    "0" | "false" | "False" | "FALSE" => false,
+                    "1" | "true" | "True" | "TRUE" => true,
+                    _ => panic!(
+                        "Boolean enviroment variable {} has invalid value {}",
+                        stringify!($name),
+                        value
+                    ),
+                })
+                .unwrap_or($default)
+        });
     };
-    ($var:ident,$default:expr,$comment:literal)=>{
-        lazy_static!{
-            #[doc = $comment]
-            pub static ref $var:bool = {
-                std::env::vars().find_map(|(key,value)|if key == stringify!($var){Some(value)}else{None}).map(|value|match value.as_ref(){
-                    "0" | "false" | "False" | "FALSE" =>false,
-                    "1" | "true" | "True" | "TRUE" =>true,
-                    _=>panic!("Boolean enviroment variable {} has invalid value {}",stringify!($var),value),
-                }).unwrap_or($default)
-            };
-        }
-    }
+    ($name:ident,bool,$default:expr,$comment:literal) => {
+        #[doc = $comment]
+        pub static $name: std::sync::LazyLock<bool> = std::sync::LazyLock::new(|| {
+            std::env::vars()
+                .find_map(|(key, value)| {
+                    if key == stringify!($name) {
+                        Some(value)
+                    } else {
+                        None
+                    }
+                })
+                .map(|value| match value.as_ref() {
+                    "0" | "false" | "False" | "FALSE" => false,
+                    "1" | "true" | "True" | "TRUE" => true,
+                    _ => panic!(
+                        "Boolean enviroment variable {} has invalid value {}",
+                        stringify!($name),
+                        value
+                    ),
+                })
+                .unwrap_or($default)
+        });
+    };
+}
+macro_rules! config_flag {
+    ($var:ident,$default:expr) => {
+        config! {$var,bool,$default}
+    };
+    ($var:ident,$default:expr,$comment:literal) => {
+        config! {$var,bool,$default,$comment}
+    };
 }
 config_flag! {ABORT_ON_ERROR,false,"Should the codegen stop working when ecountering an error, or try to press on, replacing unusuported code with exceptions throws?"}
 
@@ -42,18 +72,7 @@ config_flag! {OPTIMIZE_CIL,true,"Tells the codegen to optmize the emiited CIL."}
 
 config_flag! {NEW_UNSIZE,false,"Turns out the new unsizing code"}
 
-lazy_static! {
-    #[doc = "Tells the codegen to escape class and method names."]pub static ref ESCAPE_NAMES:bool = {
-        std::env::vars().find_map(|(key,value)|if key == stringify!(ESCAPE_NAMES){
-            Some(value)
-        }else {
-            None
-        }).is_some_and(|value|match value.as_ref(){
-            "0"|"false"|"False"|"FALSE" => false,"1"|"true"|"True"|"TRUE" => true,_ => panic!("Boolean enviroment variable {} has invalid value {}",stringify!(ESCAPE_NAMES),value),
-        })
-    };
-}
-
+config_flag! {ESCAPE_NAMES,false,"ells the codegen to escape class and method names."}
 config_flag! {TEST_WITH_MONO,false,"Tells the codegen to use the mono runtime for tests."}
 
 config_flag! {JS_MODE,false,"Tells the codegen to emmit JS source files."}
@@ -62,17 +81,7 @@ config_flag! {C_MODE,false,"Tells the codegen to emmit C source files."}
 config_flag! {C_SANITIZE,false,"Tells the codegen sanitize C."}
 
 config_flag! {RANDOMIZE_LAYOUT,false,"Tells the codegen to randomize TEST type layout."}
-lazy_static! {
-    #[doc = "Tells the codegen compile linked static libraries into a shared library, which will be bundled with the .NET executable."]pub static ref NATIVE_PASSTROUGH:bool = {
-        std::env::vars().find_map(|(key,value)|if key == stringify!(NATIVE_PASSTROUGH){
-            Some(value)
-        }else {
-            None
-        }).is_some_and(|value|match value.as_ref(){
-            "0"|"false"|"False"|"FALSE" => false,"1"|"true"|"True"|"TRUE" => true,_ => panic!("Boolean enviroment variable {} has invalid value {}",stringify!(NATIVE_PASSTROUGH),value),
-        })
-    };
-}
+config_flag! {NATIVE_PASSTROUGH,false,"Tells the codegen compile linked static libraries into a shared library, which will be bundled with the .NET executable."}
 
 config_flag! {ENFORCE_CIL_VALID,false,"Tells the codegen to preform additonal checks before saving the ."}
 

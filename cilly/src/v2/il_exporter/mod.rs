@@ -1,5 +1,5 @@
 use crate::v2::MethodImpl;
-use lazy_static::lazy_static;
+
 use std::{io::Write, path::Path};
 
 use super::{
@@ -1416,95 +1416,15 @@ fn type_il(tpe: &Type, asm: &Assembly) -> String {
         Type::PlatformObject => "object".into(),
     }
 }
-/*
-compile_test::aligned::stable::debug
-    compile_test::aligned::stable::release
-    compile_test::any::stable::debug
-    compile_test::any::stable::release
-    compile_test::arg_test::stable::debug
-    compile_test::arg_test::stable::release
-    compile_test::assert::stable::debug
-    compile_test::assert::stable::release
-    compile_test::assign::stable::debug
-    compile_test::assign::stable::release
-    compile_test::binops::stable::debug
-    compile_test::binops::stable::release
-    compile_test::branches::stable::debug
-    compile_test::branches::stable::release
-    compile_test::caller_location::stable::debug
-    compile_test::caller_location::stable::release
-    compile_test::calls::stable::debug
-    compile_test::calls::stable::release
-    compile_test::casts::stable::debug
-    compile_test::casts::stable::release
-    compile_test::catch::stable::debug
-    compile_test::catch::stable::release
-    compile_test::closure::stable::debug
-    compile_test::closure::stable::release
-    compile_test::cmp::stable::debug
-    compile_test::cmp::stable::release
-    compile_test::copy_nonoverlaping::stable::debug
-    compile_test::copy_nonoverlaping::stable::release
-    compile_test::dyns::stable::debug
-    compile_test::dyns::stable::release
-    compile_test::empty_string_slice::stable::debug
-    compile_test::empty_string_slice::stable::release
-    compile_test::fn_ptr::stable::debug
-    compile_test::fn_ptr::stable::release
-    compile_test::fold::stable::debug
-    compile_test::fold::stable::release
-    compile_test::fuzz100::stable::debug
-    compile_test::fuzz16::stable::debug
-    compile_test::fuzz16::stable::release
-    compile_test::fuzz43::stable::debug
-    compile_test::fuzz4::stable::debug
-    compile_test::fuzz4::stable::release
-    compile_test::fuzz67::stable::debug
-    compile_test::fuzz67::stable::release
-    compile_test::fuzz80::stable::debug
-    compile_test::fuzz88::stable::debug
-    compile_test::fuzz88::stable::release
-    compile_test::fuzz94::stable::debug
-    compile_test::fuzz94::stable::release
-    compile_test::fuzz9::stable::debug
-    compile_test::fuzz9::stable::release
-    compile_test::identity::stable::debug
-    compile_test::identity::stable::release
-    compile_test::interop::stable::debug
-    compile_test::interop::stable::release
-    compile_test::mutithreading::stable::debug
-    compile_test::mutithreading::stable::release
-    compile_test::recursive::stable::debug
-    compile_test::recursive::stable::release
-    compile_test::references::stable::debug
-    compile_test::references::stable::release
-    compile_test::slice::stable::debug
-    compile_test::slice::stable::release
-    compile_test::slice_from_end::stable::debug
-    compile_test::slice_from_end::stable::release
-    compile_test::slice_index_ref::stable::debug
-    compile_test::slice_index_ref::stable::release
-    compile_test::tlocal_key_test::stable::debug
-    compile_test::tlocal_key_test::stable::release
-    compile_test::tuple::stable::debug
-    compile_test::tuple::stable::release
-    compile_test::type_id::stable::debug
-    compile_test::type_id::stable::release
-    compile_test::types::stable::debug
-    compile_test::types::stable::release
-    compile_test::vec::stable::debug
-    compile_test::vec::stable::release
 
-*/
 /// Cached runtime configuration string, obtained from calling the .NET runtime.
 #[must_use]
 pub fn get_runtime_config() -> &'static str {
     RUNTIME_CONFIG.as_ref()
 }
-#[cfg(not(target_os = "windows"))]
-lazy_static! {
-  /// Cached runtime configuration file, obtained from calling the .NET runtime.
-  static ref RUNTIME_CONFIG: String = {
+
+/// Cached runtime configuration file, obtained from calling the .NET runtime.
+static RUNTIME_CONFIG: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
     let info = std::process::Command::new("dotnet")
         .arg("--info")
         .output()
@@ -1534,7 +1454,7 @@ lazy_static! {
         }}
       }}"
     )
-    };
-}
+});
+
 #[cfg(target_os = "windows")]
 static RUNTIME_CONFIG: &String = &String::new();
