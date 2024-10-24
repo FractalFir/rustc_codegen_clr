@@ -18,9 +18,6 @@ rustc-demangle = "0.1.23"
 cilly = {path = "./cilly"}
 serde = { version = "1.0.183", features = ["derive"] }
 
-
-fxhash = "0.2.1"
-
 [profile.dev.package.fxhash]
 opt-level = 3
 [lib]

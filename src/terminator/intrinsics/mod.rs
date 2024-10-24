@@ -27,11 +27,52 @@ use utilis::{
     compare_bytes,
 };
 mod bswap;
+mod floats;
 mod interop;
 mod ints;
 mod saturating;
 mod type_info;
 mod utilis;
+use floats::*;
+mod ptr;
+use ptr::*;
+mod mem;
+use mem::*;
+mod atomic;
+mod tpe;
+mod vtable;
+pub fn breakpoint(args: &[Spanned<Operand<'_>>]) -> CILRoot {
+    debug_assert_eq!(
+        args.len(),
+        0,
+        "The intrinsic `breakpoint` MUST take in no arguments!"
+    );
+    CILRoot::Break
+}
+pub fn black_box<'tcx>(
+    args: &[Spanned<Operand<'tcx>>],
+    destination: &Place<'tcx>,
+    call_instance: Instance<'tcx>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
+) -> CILRoot {
+    debug_assert_eq!(
+        args.len(),
+        1,
+        "The intrinsic `black_box` MUST take in exactly 1 argument!"
+    );
+    let tpe = ctx.monomorphize(
+        call_instance.args[0]
+            .as_type()
+            .expect("needs_drop works only on types!"),
+    );
+    let tpe = ctx.type_from_cache(tpe);
+    if tpe == Type::Void {
+        return CILRoot::Nop;
+    }
+    // assert_eq!(args.len(),1,"The intrinsic `unlikely` MUST take in exactly 1 argument!");
+    place_set(destination, handle_operand(&args[0].node, ctx), ctx)
+}
+
 pub fn handle_intrinsic<'tcx>(
     fn_name: &str,
     args: &[Spanned<Operand<'tcx>>],
@@ -41,48 +82,9 @@ pub fn handle_intrinsic<'tcx>(
     ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> CILRoot {
     match fn_name {
-        "arith_offset" => {
-            let tpe = ctx.monomorphize(
-                call_instance.args[0]
-                    .as_type()
-                    .expect("arith_offset works only on types!"),
-            );
-            let tpe = ctx.type_from_cache(tpe);
-
-            place_set(
-                destination,
-                handle_operand(&args[0].node, ctx)
-                    + handle_operand(&args[1].node, ctx)
-                        * conv_isize!(CILNode::V2(ctx.size_of(tpe).into_idx(ctx))),
-                ctx,
-            )
-        }
-        "breakpoint" => {
-            debug_assert_eq!(
-                args.len(),
-                0,
-                "The intrinsic `breakpoint` MUST take in exactly 1 argument!"
-            );
-            CILRoot::Break
-        }
-        "black_box" => {
-            debug_assert_eq!(
-                args.len(),
-                1,
-                "The intrinsic `black_box` MUST take in exactly 1 argument!"
-            );
-            let tpe = ctx.monomorphize(
-                call_instance.args[0]
-                    .as_type()
-                    .expect("needs_drop works only on types!"),
-            );
-            let tpe = ctx.type_from_cache(tpe);
-            if tpe == Type::Void {
-                return CILRoot::Nop;
-            }
-            // assert_eq!(args.len(),1,"The intrinsic `unlikely` MUST take in exactly 1 argument!");
-            place_set(destination, handle_operand(&args[0].node, ctx), ctx)
-        }
+        "arith_offset" => arith_offset(args, destination, call_instance, ctx),
+        "breakpoint" => breakpoint(args),
+        "black_box" => black_box(args, destination, call_instance, ctx),
         "caller_location" => caller_location(destination, ctx, span),
         "compare_bytes" => place_set(
             destination,
@@ -101,7 +103,7 @@ pub fn handle_intrinsic<'tcx>(
             debug_assert_eq!(
                 args.len(),
                 1,
-                "The intrinsic `unlikely` MUST take in exactly 1 argument!"
+                "The intrinsic `{fn_name}` MUST take in exactly 1 argument!"
             );
             // assert_eq!(args.len(),1,"The intrinsic `unlikely` MUST take in exactly 1 argument!");
             place_set(destination, handle_operand(&args[0].node, ctx), ctx)
@@ -122,160 +124,14 @@ pub fn handle_intrinsic<'tcx>(
             let needs_drop = i32::from(needs_drop);
             place_set(destination, CILNode::V2(ctx.alloc_node(needs_drop)), ctx)
         }
-        "fmaf32" => {
-            let mref = MethodRef::new(
-                ClassRef::single(ctx),
-                ctx.alloc_string("FusedMultiplyAdd"),
-                ctx.sig(
-                    [
-                        Type::Float(Float::F32),
-                        Type::Float(Float::F32),
-                        Type::Float(Float::F32),
-                    ],
-                    Type::Float(Float::F32),
-                ),
-                MethodKind::Static,
-                vec![].into(),
-            );
-            let value_calc = call!(
-                ctx.alloc_methodref(mref),
-                [
-                    handle_operand(&args[0].node, ctx),
-                    handle_operand(&args[1].node, ctx),
-                    handle_operand(&args[2].node, ctx),
-                ]
-            );
-            place_set(destination, value_calc, ctx)
-        }
-        "fmaf64" => {
-            let mref = MethodRef::new(
-                ClassRef::double(ctx),
-                ctx.alloc_string("FusedMultiplyAdd"),
-                ctx.sig(
-                    [
-                        Type::Float(Float::F64),
-                        Type::Float(Float::F64),
-                        Type::Float(Float::F64),
-                    ],
-                    Type::Float(Float::F64),
-                ),
-                MethodKind::Static,
-                vec![].into(),
-            );
-            let value_calc = call!(
-                ctx.alloc_methodref(mref),
-                [
-                    handle_operand(&args[0].node, ctx),
-                    handle_operand(&args[1].node, ctx),
-                    handle_operand(&args[2].node, ctx),
-                ]
-            );
-            place_set(destination, value_calc, ctx)
-        }
-
-        "raw_eq" => {
-            // Raw eq returns 0 if values are not equal, and 1 if they are, unlike memcmp, which does the oposite.
-            let tpe = ctx.monomorphize(
-                call_instance.args[0]
-                    .as_type()
-                    .expect("needs_drop works only on types!"),
-            );
-            // Raw eq always true for zsts.
-            if ctx.layout_of(tpe).is_zst() {
-                return place_set(destination, CILNode::V2(ctx.alloc_node(true)), ctx);
-            }
-            let tpe = ctx.type_from_cache(tpe);
-            let size = match tpe {
-                Type::Bool
-                | Type::Int(
-                    Int::U8
-                    | Int::I8
-                    | Int::U16
-                    | Int::I16
-                    | Int::U32
-                    | Int::I32
-                    | Int::U64
-                    | Int::I64
-                    | Int::USize
-                    | Int::ISize,
-                )
-                | Type::Ptr(_) => {
-                    return place_set(
-                        destination,
-                        eq!(
-                            handle_operand(&args[0].node, ctx),
-                            handle_operand(&args[1].node, ctx)
-                        ),
-                        ctx,
-                    );
-                }
-                _ => CILNode::V2(ctx.size_of(tpe).into_idx(ctx)),
-            };
-            place_set(
-                destination,
-                eq!(
-                    compare_bytes(
-                        handle_operand(&args[0].node, ctx).cast_ptr(ctx.nptr(Type::Int(Int::U8))),
-                        handle_operand(&args[1].node, ctx).cast_ptr(ctx.nptr(Type::Int(Int::U8))),
-                        conv_usize!(size),
-                        ctx
-                    ),
-                    CILNode::V2(ctx.alloc_node(0_i32))
-                ),
-                ctx,
-            )
-        }
+        "fmaf32" => fmaf32(args, destination, call_instance, ctx),
+        "fmaf64" => fmaf64(args, destination, call_instance, ctx),
+        "raw_eq" => raw_eq(args, destination, call_instance, ctx),
         "bswap" => bswap::bswap(args, destination, ctx),
         "cttz" | "cttz_nonzero" => ints::cttz(args, destination, ctx, call_instance),
         "rotate_left" => rotate_left(args, destination, ctx, call_instance),
-        "write_bytes" => {
-            debug_assert_eq!(
-                args.len(),
-                3,
-                "The intrinsic `write_bytes` MUST take in exactly 3 argument!"
-            );
-            let tpe = ctx.monomorphize(
-                call_instance.args[0]
-                    .as_type()
-                    .expect("needs_drop works only on types!"),
-            );
-            let tpe = ctx.type_from_cache(tpe);
-            let dst = handle_operand(&args[0].node, ctx);
-            let val = handle_operand(&args[1].node, ctx);
-            let count = handle_operand(&args[2].node, ctx)
-                * conv_usize!(CILNode::V2(ctx.size_of(tpe).into_idx(ctx)));
-            CILRoot::InitBlk {
-                dst: Box::new(dst),
-                val: Box::new(val),
-                count: Box::new(count),
-            }
-        }
-        "copy" => {
-            debug_assert_eq!(
-                args.len(),
-                3,
-                "The intrinsic `copy` MUST take in exactly 3 argument!"
-            );
-            let tpe = ctx.monomorphize(
-                call_instance.args[0]
-                    .as_type()
-                    .expect("needs_drop works only on types!"),
-            );
-            if ctx.layout_of(tpe).is_zst() {
-                return CILRoot::Nop;
-            }
-            let tpe = ctx.type_from_cache(tpe);
-            let src = handle_operand(&args[0].node, ctx);
-            let dst = handle_operand(&args[1].node, ctx);
-            let count = handle_operand(&args[2].node, ctx)
-                * conv_usize!(CILNode::V2(ctx.size_of(tpe).into_idx(ctx)));
-
-            CILRoot::CpBlk {
-                src: Box::new(src),
-                dst: Box::new(dst),
-                len: Box::new(count),
-            }
-        }
+        "write_bytes" => write_bytes(args, call_instance, ctx),
+        "copy" => copy(args, call_instance, ctx),
         "exact_div" => {
             debug_assert_eq!(
                 args.len(),
@@ -294,53 +150,7 @@ pub fn handle_intrinsic<'tcx>(
                 ctx,
             )
         }
-        "type_id" => {
-            let tpe = ctx.monomorphize(
-                call_instance.args[0]
-                    .as_type()
-                    .expect("needs_drop works only on types!"),
-            );
-            let tpe = ctx.type_from_cache(tpe);
-            let type_type = ClassRef::type_type(ctx);
-            let runtime_handle = ClassRef::runtime_type_hadle(ctx);
-            let sig = ctx.sig([runtime_handle.into()], type_type);
-            let gethash_sig = ctx.sig([type_type.into()], Type::Int(Int::I32));
-            let op_implict = MethodRef::new(
-                ClassRef::uint_128(ctx),
-                ctx.alloc_string("op_Implicit"),
-                ctx.sig([Type::Int(Int::U32)], Type::Int(Int::U128)),
-                MethodKind::Static,
-                vec![].into(),
-            );
-            let get_hash_code = MethodRef::new(
-                ClassRef::object(ctx),
-                ctx.alloc_string("GetHashCode"),
-                gethash_sig,
-                MethodKind::Virtual,
-                vec![].into(),
-            );
-            let get_type_handle = MethodRef::new(
-                type_type,
-                ctx.alloc_string("GetTypeFromHandle"),
-                sig,
-                MethodKind::Static,
-                vec![].into(),
-            );
-            place_set(
-                destination,
-                call!(
-                    ctx.alloc_methodref(op_implict),
-                    [conv_u32!(call_virt!(
-                        ctx.alloc_methodref(get_hash_code),
-                        [call!(
-                            ctx.alloc_methodref(get_type_handle),
-                            [CILNode::LDTypeToken(tpe.into())]
-                        )]
-                    ))]
-                ),
-                ctx,
-            )
-        }
+        "type_id" => tpe::type_id(destination, call_instance, ctx),
         "volatile_load" => volitale_load(args, destination, ctx),
         "volatile_store" => {
             let pointed_type = ctx.monomorphize(
@@ -430,88 +240,7 @@ pub fn handle_intrinsic<'tcx>(
         | "atomic_cxchg_seqcst_relaxed"
         | "atomic_cxchg_acqrel_relaxed"
         | "atomic_cxchg_relaxed_relaxed"
-        | "atomic_cxchg_acqrel_seqcst" => {
-            let interlocked = ClassRef::interlocked(ctx);
-            // *T
-            let dst = handle_operand(&args[0].node, ctx);
-            // T
-            let old = handle_operand(&args[1].node, ctx);
-            // T
-            let src = handle_operand(&args[2].node, ctx);
-            debug_assert_eq!(
-                args.len(),
-                3,
-                "The intrinsic `atomic_cxchgweak_acquire_acquire` MUST take in exactly 3 argument!"
-            );
-            let src_type = ctx.monomorphize(args[2].node.ty(ctx.body(), ctx.tcx()));
-            let src_type = ctx.type_from_cache(src_type);
-
-            let value = src;
-            let comaprand = old.clone();
-            #[allow(clippy::single_match_else)]
-            let exchange_res = match &src_type {
-                Type::Ptr(_) => {
-                    let usize_ref = ctx.nref(Type::Int(Int::USize));
-                    let call_site = MethodRef::new(
-                        interlocked,
-                        ctx.alloc_string("CompareExchange"),
-                        ctx.sig(
-                            [usize_ref, Type::Int(Int::USize), Type::Int(Int::USize)],
-                            Type::Int(Int::USize),
-                        ),
-                        MethodKind::Static,
-                        vec![].into(),
-                    );
-                    call!(
-                        ctx.alloc_methodref(call_site),
-                        [
-                            Box::new(dst).cast_ptr(usize_ref),
-                            conv_usize!(value),
-                            conv_usize!(comaprand)
-                        ]
-                    )
-                    .cast_ptr(src_type)
-                }
-                // TODO: this is a bug, on purpose. The 1 byte compare exchange is not supported untill .NET 9. Remove after November, when .NET 9 Releases.
-                Type::Int(Int::U8) => comaprand,
-                _ => {
-                    let src_ref = ctx.nref(src_type);
-                    let call_site = MethodRef::new(
-                        interlocked,
-                        ctx.alloc_string("CompareExchange"),
-                        ctx.sig([src_ref, src_type, src_type], src_type),
-                        MethodKind::Static,
-                        vec![].into(),
-                    );
-                    call!(ctx.alloc_methodref(call_site), [dst, value, comaprand])
-                }
-            };
-
-            // Set a field of the destination
-            let dst_ty = destination.ty(ctx.body(), ctx.tcx());
-            let fld_desc = field_descrptor(dst_ty.ty, 0, ctx);
-
-            // Set the value of the result.
-            let set_val = CILRoot::SetField {
-                addr: Box::new(place_adress(destination, ctx)),
-                value: Box::new(exchange_res),
-                desc: fld_desc,
-            };
-            // Get the result back
-            let val = CILNode::SubTrees(Box::new((
-                [set_val].into(),
-                ld_field!(place_adress(destination, ctx), fld_desc).into(),
-            )));
-            // Compare the result to comparand(aka `old`)
-            let cmp = eq!(val, old);
-            let fld_desc = field_descrptor(dst_ty.ty, 1, ctx);
-
-            CILRoot::SetField {
-                addr: Box::new(place_adress(destination, ctx)),
-                value: Box::new(cmp),
-                desc: fld_desc,
-            }
-        }
+        | "atomic_cxchg_acqrel_seqcst" => atomic::cxchg(args, destination, ctx),
         "atomic_xsub_release"
         | "atomic_xsub_acqrel"
         | "atomic_xsub_acquire"
@@ -677,109 +406,11 @@ pub fn handle_intrinsic<'tcx>(
         | "atomic_xchg_acquire"
         | "atomic_xchg_acqrel"
         | "atomic_xchg_relaxed"
-        | "atomic_xchg_seqcst" => {
-            let interlocked = ClassRef::interlocked(ctx);
-            // *T
-            let dst = handle_operand(&args[0].node, ctx);
-            // T
-            let new = handle_operand(&args[1].node, ctx);
-
-            debug_assert_eq!(
-                args.len(),
-                2,
-                "The intrinsic `atomic_xchg_release` MUST take in exactly 3 argument!"
-            );
-            let src_type = ctx.monomorphize(args[1].node.ty(ctx.body(), ctx.tcx()));
-            let src_type = ctx.type_from_cache(src_type);
-            let uint8_ref = ctx.nref(Type::Int(Int::U8));
-            let xchng = MethodRef::new(
-                *ctx.main_module(),
-                ctx.alloc_string("atomic_xchng_u8"),
-                ctx.sig([uint8_ref, Type::Int(Int::U8)], Type::Int(Int::U8)),
-                MethodKind::Static,
-                vec![].into(),
-            );
-            match src_type {
-                Type::Int(Int::U8) => {
-                    return place_set(
-                        destination,
-                        call!(ctx.alloc_methodref(xchng), [dst, new]),
-                        ctx,
-                    )
-                }
-                Type::Ptr(_) => {
-                    let usize_ref = ctx.nref(Type::Int(Int::USize));
-                    let call_site = MethodRef::new(
-                        interlocked,
-                        ctx.alloc_string("Exchange"),
-                        ctx.sig([usize_ref, Type::Int(Int::USize)], Type::Int(Int::USize)),
-                        MethodKind::Static,
-                        vec![].into(),
-                    );
-                    return place_set(
-                        destination,
-                        call!(
-                            ctx.alloc_methodref(call_site),
-                            [
-                                Box::new(dst).cast_ptr(ctx.nref(Type::Int(Int::USize))),
-                                conv_usize!(new),
-                            ]
-                        )
-                        .cast_ptr(src_type),
-                        ctx,
-                    );
-                }
-                Type::Int(Int::I8 | Int::U16 | Int::I16) | Type::Bool | Type::PlatformChar => {
-                    todo!("can't {fn_name} {src_type:?}")
-                }
-                _ => (),
-            }
-            let src_ref = ctx.nref(src_type);
-            let call_site = MethodRef::new(
-                interlocked,
-                ctx.alloc_string("Exchange"),
-                ctx.sig([src_ref, src_type], src_type),
-                MethodKind::Static,
-                vec![].into(),
-            );
-            // T
-            place_set(
-                destination,
-                call!(ctx.alloc_methodref(call_site), [dst, new]),
-                ctx,
-            )
-        }
+        | "atomic_xchg_seqcst" => atomic::xchg(args, destination, call_instance, ctx),
         // TODO:Those are not stricly neccessary, but SHOULD be implemented at some point.
         "assert_inhabited" | "assert_zero_valid" | "const_deallocate" => CILRoot::Nop,
         "ptr_offset_from_unsigned" => {
-            debug_assert_eq!(
-                args.len(),
-                2,
-                "The intrinsic `ptr_offset_from_unsigned` MUST take in exactly 1 argument!"
-            );
-            let ty = ctx.monomorphize(
-                call_instance.args[0]
-                    .as_type()
-                    .expect("needs_drop works only on types!"),
-            );
-            let tpe = ctx.type_from_cache(ty);
-            // This is UB, so we can do whatever.
-            if ctx.layout_of(ty).is_zst() {
-                return CILRoot::throw(
-                    &format!("ptr_offset_from_unsigned called with zst type:{ty}"),
-                    ctx,
-                );
-            }
-            place_set(
-                destination,
-                CILNode::DivUn(
-                    (handle_operand(&args[0].node, ctx) - handle_operand(&args[1].node, ctx))
-                        .cast_ptr(Type::Int(Int::USize))
-                        .into(),
-                    conv_usize!(CILNode::V2(ctx.size_of(tpe).into_idx(ctx))).into(),
-                ),
-                ctx,
-            )
+            ptr::ptr_offset_from_unsigned(args, destination, call_instance, ctx)
         }
         "ptr_mask" => {
             debug_assert_eq!(
@@ -805,34 +436,7 @@ pub fn handle_intrinsic<'tcx>(
                 ctx,
             )
         }
-        "ptr_offset_from" => {
-            debug_assert_eq!(
-                args.len(),
-                2,
-                "The intrinsic `ptr_offset_from` MUST take in exactly 1 argument!"
-            );
-            let ty = ctx.monomorphize(
-                call_instance.args[0]
-                    .as_type()
-                    .expect("needs_drop works only on types!"),
-            );
-            // This is UB, so we can do whatever.
-            if ctx.layout_of(ty).is_zst() {
-                return CILRoot::throw(&format!("ptr_offset_from called with zst type:{ty}"), ctx);
-            }
-            let tpe = ctx.type_from_cache(ty);
-
-            place_set(
-                destination,
-                CILNode::Div(
-                    (handle_operand(&args[0].node, ctx) - handle_operand(&args[1].node, ctx))
-                        .cast_ptr(Type::Int(Int::ISize))
-                        .into(),
-                    conv_isize!(CILNode::V2(ctx.size_of(tpe).into_idx(ctx))).into(),
-                ),
-                ctx,
-            )
-        }
+        "ptr_offset_from" => ptr::ptr_offset_from(args, destination, call_instance, ctx),
         "saturating_add" => saturating_add(args, destination, ctx, call_instance),
         "saturating_sub" => saturating_sub(args, destination, ctx, call_instance),
         "min_align_of_val" => {
@@ -891,62 +495,8 @@ pub fn handle_intrinsic<'tcx>(
             )
         }
 
-        "powif32" => {
-            debug_assert_eq!(
-                args.len(),
-                2,
-                "The intrinsic `powif32` MUST take in exactly 2 arguments!"
-            );
-            let pow = MethodRef::new(
-                ClassRef::single(ctx),
-                ctx.alloc_string("Pow"),
-                ctx.sig(
-                    [Type::Float(Float::F32), Type::Float(Float::F32)],
-                    Type::Float(Float::F32),
-                ),
-                MethodKind::Static,
-                vec![].into(),
-            );
-            place_set(
-                destination,
-                call!(
-                    ctx.alloc_methodref(pow),
-                    [
-                        handle_operand(&args[0].node, ctx),
-                        conv_f32!(handle_operand(&args[1].node, ctx))
-                    ]
-                ),
-                ctx,
-            )
-        }
-        "powif64" => {
-            debug_assert_eq!(
-                args.len(),
-                2,
-                "The intrinsic `powif64` MUST take in exactly 2 arguments!"
-            );
-            let pow = MethodRef::new(
-                ClassRef::double(ctx),
-                ctx.alloc_string("Pow"),
-                ctx.sig(
-                    [Type::Float(Float::F64), Type::Float(Float::F64)],
-                    Type::Float(Float::F64),
-                ),
-                MethodKind::Static,
-                vec![].into(),
-            );
-            place_set(
-                destination,
-                call!(
-                    ctx.alloc_methodref(pow),
-                    [
-                        handle_operand(&args[0].node, ctx),
-                        conv_f64!(handle_operand(&args[1].node, ctx))
-                    ]
-                ),
-                ctx,
-            )
-        }
+        "powif32" => powif32(args, destination, call_instance, ctx),
+        "powif64" => powif64(args, destination, call_instance, ctx),
         "size_of_val" => size_of_val(args, destination, ctx, call_instance),
         "typed_swap" => {
             let pointed_ty = ctx.monomorphize(
@@ -1160,50 +710,8 @@ pub fn handle_intrinsic<'tcx>(
             );
             place_set(destination, value_calc, ctx)
         }
-        "powf32" => {
-            let pow = MethodRef::new(
-                ClassRef::single(ctx),
-                ctx.alloc_string("Pow"),
-                ctx.sig(
-                    [Type::Float(Float::F32), Type::Float(Float::F32)],
-                    Type::Float(Float::F32),
-                ),
-                MethodKind::Static,
-                vec![].into(),
-            );
-            let value_calc = call!(
-                ctx.alloc_methodref(pow),
-                [
-                    handle_operand(&args[0].node, ctx),
-                    handle_operand(&args[1].node, ctx),
-                ]
-            );
-            place_set(destination, value_calc, ctx)
-        }
-        "powf64" => {
-            let pow = MethodRef::new(
-                ClassRef::double(ctx),
-                ctx.alloc_string("Pow"),
-                ctx.sig(
-                    [Type::Float(Float::F64), Type::Float(Float::F64)],
-                    Type::Float(Float::F64),
-                ),
-                MethodKind::Static,
-                vec![].into(),
-            );
-
-            place_set(
-                destination,
-                call!(
-                    ctx.alloc_methodref(pow),
-                    [
-                        handle_operand(&args[0].node, ctx),
-                        handle_operand(&args[1].node, ctx),
-                    ]
-                ),
-                ctx,
-            )
-        }
+        "powf32" => powf32(args, destination, call_instance, ctx),
+        "powf64" => powf64(args, destination, call_instance, ctx),
         "copysignf32" => {
             let copy_sign = MethodRef::new(
                 ClassRef::single(ctx),
@@ -1371,31 +879,8 @@ pub fn handle_intrinsic<'tcx>(
             );
             place_set(destination, value_calc, ctx)
         }
-        "roundf32" => {
-            let rounding = ClassRef::midpoint_rounding(ctx);
-            let round = MethodRef::new(
-                ClassRef::mathf(ctx),
-                ctx.alloc_string("Round"),
-                ctx.sig(
-                    [Type::Float(Float::F32), Type::ClassRef(rounding)],
-                    Type::Float(Float::F32),
-                ),
-                MethodKind::Static,
-                vec![].into(),
-            );
-            let value_calc = call!(
-                ctx.alloc_methodref(round),
-                [
-                    handle_operand(&args[0].node, ctx),
-                    CILNode::V2(ctx.alloc_node(1_i32)).transmute_on_stack(
-                        Type::Int(Int::I32),
-                        Type::ClassRef(rounding),
-                        ctx
-                    )
-                ]
-            );
-            place_set(destination, value_calc, ctx)
-        }
+        "roundf32" => roundf32(args, destination, ctx),
+        "roundf64" => roundf64(args, destination, ctx),
         "nearbyintf64" | "rintf64" | "roundevenf64" => {
             let round = MethodRef::new(
                 ClassRef::math(ctx),
@@ -1410,31 +895,7 @@ pub fn handle_intrinsic<'tcx>(
             );
             place_set(destination, value_calc, ctx)
         }
-        "roundf64" => {
-            let rounding = ClassRef::midpoint_rounding(ctx);
-            let round = MethodRef::new(
-                ClassRef::math(ctx),
-                ctx.alloc_string("Round"),
-                ctx.sig(
-                    [Type::Float(Float::F64), Type::ClassRef(rounding)],
-                    Type::Float(Float::F64),
-                ),
-                MethodKind::Static,
-                vec![].into(),
-            );
-            let value_calc = call!(
-                ctx.alloc_methodref(round),
-                [
-                    handle_operand(&args[0].node, ctx),
-                    CILNode::V2(ctx.alloc_node(1_i32)).transmute_on_stack(
-                        Type::Int(Int::I32),
-                        Type::ClassRef(rounding),
-                        ctx
-                    )
-                ]
-            );
-            place_set(destination, value_calc, ctx)
-        }
+
         "floorf32" => {
             let floor = MethodRef::new(
                 ClassRef::mathf(ctx),
@@ -1643,37 +1104,8 @@ pub fn handle_intrinsic<'tcx>(
             CILNode::V2(ctx.alloc_node(Const::USize(0))),
             ctx,
         ),
-        "vtable_size" => {
-            let vtableptr = handle_operand(&args[0].node, ctx);
-            place_set(
-                destination,
-                CILNode::LDIndUSize {
-                    ptr: Box::new(
-                        (vtableptr
-                            + conv_usize!((CILNode::V2(ctx.size_of(Int::ISize).into_idx(ctx)))))
-                        .cast_ptr(ctx.nptr(Type::Int(Int::USize))),
-                    ),
-                },
-                ctx,
-            )
-        }
-        "vtable_align" => {
-            let vtableptr = handle_operand(&args[0].node, ctx);
-            place_set(
-                destination,
-                CILNode::LDIndUSize {
-                    ptr: Box::new(
-                        (vtableptr
-                            + conv_usize!(
-                                (CILNode::V2(ctx.size_of(Int::ISize).into_idx(ctx)))
-                                    * CILNode::V2(ctx.alloc_node(2_i32))
-                            ))
-                        .cast_ptr(ctx.nptr(Type::Int(Int::USize))),
-                    ),
-                },
-                ctx,
-            )
-        }
+        "vtable_size" => vtable::vtable_size(args, destination, ctx),
+        "vtable_align" => vtable::vtable_align(args, destination, ctx),
         "simd_eq" => {
             let comparands = ctx.type_from_cache(
                 call_instance.args[0]
