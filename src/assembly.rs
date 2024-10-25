@@ -563,7 +563,7 @@ pub fn add_item<'tcx>(
         MonoItem::Fn(instance) => {
             //let instance = crate::utilis::monomorphize(&instance,tcx);
             let symbol_name: IString = crate::utilis::function_name(item.symbol_name(tcx));
-            let mut ctx = MethodCompileCtx::new(tcx, None, instance, asm.inner_mut());
+            let mut ctx = MethodCompileCtx::new(tcx, None, instance, asm);
             let function_compile_timer = tcx
                 .profiler()
                 .generic_activity_with_arg("compile function", item.symbol_name(tcx).to_string());
@@ -590,10 +590,9 @@ pub fn add_item<'tcx>(
             if let Some(section) = attrs.link_section {
                 if section.to_string().contains(".init_array") {
                     let argc = utilis::argc_argv_init_method(asm);
-                    asm.add_initialzer(CILRoot::Call {
-                        site: argc,
-                        args: [].into(),
-                    });
+                    let init_argc =
+                        asm.alloc_root(cilly::v2::CILRoot::Call(Box::new((argc, Box::new([])))));
+                    asm.add_user_init(&[init_argc]);
                     let get_environ: MethodRefIdx = utilis::get_environ(asm);
                     let fn_ptr = alloc.0.provenance().ptrs().iter().next().unwrap();
                     let fn_ptr = tcx.global_alloc(fn_ptr.1.alloc_id());
@@ -601,7 +600,7 @@ pub fn add_item<'tcx>(
                         instance: finstance,
                     } = fn_ptr
                     {
-                        let mut ctx = MethodCompileCtx::new(tcx, None, finstance, asm.inner_mut());
+                        let mut ctx = MethodCompileCtx::new(tcx, None, finstance, asm);
                         // If it is a function, patch its pointer up.
                         let call_info =
                             crate::call_info::CallInfo::sig_from_instance_(finstance, &mut ctx);
@@ -622,23 +621,24 @@ pub fn add_item<'tcx>(
                     let argc = asm.alloc_string("argc");
                     let main_module = asm.main_module();
                     let mref = asm.alloc_methodref(init_call_site);
-                    asm.add_initialzer(CILRoot::Call {
-                        site: mref,
-                        args: [
-                            CILNode::LDStaticField(Box::new(StaticFieldDesc::new(
-                                *main_module,
-                                argc,
-                                Type::Int(Int::I32),
-                            ))),
-                            CILNode::LDStaticField(Box::new(StaticFieldDesc::new(
-                                *main_module,
-                                argv,
-                                uint8_ptr_ptr,
-                            ))),
-                            call!(get_environ, []),
-                        ]
-                        .into(),
-                    });
+                    let argv =
+                        asm.alloc_sfld(StaticFieldDesc::new(*main_module, argv, uint8_ptr_ptr));
+                    let argc = asm.alloc_sfld(StaticFieldDesc::new(
+                        *main_module,
+                        argc,
+                        Type::Int(Int::I32),
+                    ));
+                    let args = [
+                        asm.alloc_node(cilly::v2::CILNode::LdStaticField(argc)),
+                        asm.alloc_node(cilly::v2::CILNode::LdStaticField(argv)),
+                        asm.alloc_node(cilly::v2::CILNode::Call(Box::new((
+                            get_environ,
+                            Box::new([]),
+                        )))),
+                    ];
+                    let root =
+                        asm.alloc_root(cilly::v2::CILRoot::Call(Box::new((mref, args.into()))));
+                    asm.add_user_init(&[root]);
                 } else {
                     panic!("Unsuported link section {section}.")
                 }

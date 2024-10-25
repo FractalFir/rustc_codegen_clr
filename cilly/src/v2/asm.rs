@@ -617,7 +617,7 @@ impl Assembly {
     /// Converts the old assembly repr to the new one.
     #[must_use]
     pub fn from_v1(v1: &V1Asm) -> Self {
-        let mut empty: Assembly = v1.inner().clone();
+        let mut empty: Assembly = v1.clone();
         let rust_void = empty.alloc_string("RustVoid");
         empty.class_def(ClassDef::new(
             rust_void,
@@ -630,58 +630,6 @@ impl Assembly {
             None,
             None,
         ));
-        // Add the user defined roots
-        let roots = v1
-            .initializers()
-            .iter()
-            .map(|root| {
-                let root = CILRoot::from_v1(root, &mut empty);
-                empty.alloc_root(root)
-            })
-            .collect::<Box<[_]>>();
-        empty.add_user_init(roots.as_ref());
-        // Add the global static fields
-        let fields: Vec<_> = v1
-            .static_fields()
-            .iter()
-            .map(|(name, (tpe, thread_local))| {
-                let name = empty.alloc_string(name.clone());
-                (*tpe, name, *thread_local)
-            })
-            .collect();
-        let main_module = empty.main_module();
-        empty
-            .class_defs
-            .get_mut(&main_module)
-            .expect("Main module missing, even tough it has been added")
-            .static_fields_mut()
-            .extend(fields);
-        // Convert external function refs
-        v1.extern_fns()
-            .iter()
-            .for_each(|((fn_name, sig, preserve_errno), lib_name)| {
-                let name = empty.alloc_string(fn_name.clone());
-                let sigidx = empty.alloc_sig(sig.clone());
-                let lib = empty.alloc_string(lib_name.clone());
-                empty.new_method(MethodDef::new(
-                    Access::Public,
-                    main_module,
-                    name,
-                    sigidx,
-                    MethodKind::Static,
-                    MethodImpl::Extern {
-                        lib,
-                        preserve_errno: *preserve_errno,
-                    },
-                    sig.inputs().iter().map(|_| None).collect(),
-                ));
-            });
-
-        // Convert module methods
-        v1.functions().values().for_each(|method| {
-            let def = MethodDef::from_v1(method, &mut empty, main_module);
-            empty.new_method(def);
-        });
 
         #[cfg(debug_assertions)]
         empty.sanity_check();

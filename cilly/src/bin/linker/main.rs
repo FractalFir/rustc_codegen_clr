@@ -391,6 +391,7 @@ fn main() {
     final_assembly.patch_missing_methods(&externs, &modifies_errno, &overrides);
 
     add_mandatory_statics(&mut final_assembly);
+
     if *DEAD_CODE_ELIMINATION {
         println!("Eliminating dead code");
         final_assembly.eliminate_dead_code();

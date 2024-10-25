@@ -206,7 +206,7 @@ into_asm_index_closure! {StringIdx}
 
 #[test]
 fn add_macro() {
-    let sum = crate::binop!(
+    let _sum = crate::binop!(
         CILNode::LdLoc(0),
         |asm| { asm.alloc_node(CILNode::LdLoc(0)) },
         crate::BinOp::Add

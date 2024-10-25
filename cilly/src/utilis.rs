@@ -5,9 +5,10 @@ use crate::method::Method;
 use crate::v2::cilnode::MethodKind;
 use crate::v2::{ClassRef, FnSig, Int, MethodRef, MethodRefIdx, StaticFieldDesc};
 use crate::{asm::Assembly, cil_node::CILNode, cil_root::CILRoot, eq, lt};
-use crate::{call, call_virt, conv_i32, conv_usize, IntoAsmIndex, Type};
+use crate::{call, call_virt, conv_i32, conv_usize, IntoAsmIndex, MethodDef, Type};
 
 pub fn argc_argv_init_method(asm: &mut Assembly) -> MethodRefIdx {
+    let main_module = asm.main_module();
     use std::num::NonZeroU8;
     let init_cs = MethodRef::new(
         *asm.main_module(),
@@ -17,7 +18,7 @@ pub fn argc_argv_init_method(asm: &mut Assembly) -> MethodRefIdx {
         vec![].into(),
     );
     let init_cs = asm.alloc_methodref(init_cs);
-    if asm.contains_fn(init_cs) {
+    if asm.method_def_from_ref(init_cs).is_some() {
         return init_cs;
     }
     let mut init_method = Method::new(
@@ -232,11 +233,12 @@ pub fn argc_argv_init_method(asm: &mut Assembly) -> MethodRefIdx {
     let final_block = &mut blocks[final_bb as usize];
     final_block.trees_mut().push(CILRoot::VoidRet.into());
     drop(blocks);
-    asm.add_method(init_method);
-    asm.add_static(Type::Bool, "argv_argc_init_status", false);
+    let def = MethodDef::from_v1(&init_method, asm, main_module);
+    asm.new_method(def);
+    asm.add_static(Type::Bool, "argv_argc_init_status", false, main_module);
     let uint8_ptr_ptr = asm.nptr(uint8_ptr);
-    asm.add_static(uint8_ptr_ptr, "argv", false);
-    asm.add_static(Type::Int(Int::I32), "argc", false);
+    asm.add_static(uint8_ptr_ptr, "argv", false, main_module);
+    asm.add_static(Type::Int(Int::I32), "argc", false, main_module);
     init_cs
 }
 pub fn mstring_to_utf8ptr(mstring: CILNode, asm: &mut Assembly) -> CILNode {
@@ -251,6 +253,7 @@ pub fn mstring_to_utf8ptr(mstring: CILNode, asm: &mut Assembly) -> CILNode {
 }
 
 pub fn get_environ(asm: &mut Assembly) -> MethodRefIdx {
+    let main_module = asm.main_module();
     let uint8_ptr = asm.nptr(Type::Int(Int::U8));
     let uint8_ptr_ptr = asm.nptr(uint8_ptr);
     let init_cs = MethodRef::new(
@@ -261,7 +264,7 @@ pub fn get_environ(asm: &mut Assembly) -> MethodRefIdx {
         vec![].into(),
     );
     let init_cs = asm.alloc_methodref(init_cs);
-    if asm.contains_fn(init_cs) {
+    if asm.method_def_from_ref(init_cs).is_some() {
         return init_cs;
     }
 
@@ -542,9 +545,10 @@ pub fn get_environ(asm: &mut Assembly) -> MethodRefIdx {
         .into(),
     );
     drop(blocks);
-    asm.add_method(get_environ);
 
-    asm.add_static(uint8_ptr_ptr, "environ", true);
+    let def = MethodDef::from_v1(&get_environ, asm, main_module);
+    asm.new_method(def);
+    asm.add_static(uint8_ptr_ptr, "environ", true, main_module);
     init_cs
 }
 static CHARS: &[char] = &[
@@ -603,7 +607,7 @@ fn argv() {
 
 #[test]
 fn environ() {
-    let mut asm = Assembly::empty();
+    let mut asm = Assembly::default();
     get_environ(&mut asm);
 }
 #[test]

@@ -205,7 +205,7 @@ impl CodegenBackend for MyBackend {
         {
             let (_defid_set, cgus) = tcx.collect_and_partition_mono_items(());
 
-            let mut asm = Assembly::empty();
+            let mut asm = Assembly::default();
             let _ = cilly::utilis::get_environ(&mut asm);
 
             for cgu in cgus {
@@ -225,7 +225,7 @@ impl CodegenBackend for MyBackend {
                 )
                 .expect("Could not resolve entrypoint!")
                 .expect("Could not resolve entrypoint!");
-                let mut ctx = MethodCompileCtx::new(tcx, None, entrypoint, asm.inner_mut());
+                let mut ctx = MethodCompileCtx::new(tcx, None, entrypoint, &mut asm);
                 let sig = function_sig::sig_from_instance_(entrypoint, &mut ctx)
                     .expect("Could not get the signature of the entrypoint.");
                 let symbol = tcx.symbol_name(entrypoint);
@@ -237,8 +237,8 @@ impl CodegenBackend for MyBackend {
                     MethodKind::Static,
                     vec![].into(),
                 );
-                let cs = asm.alloc_methodref(cs);
-                asm.set_entrypoint(cs);
+
+                cilly::entrypoint::wrapper(cs, &mut asm);
             }
 
             let ffi_compile_timer = tcx

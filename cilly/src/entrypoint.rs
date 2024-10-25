@@ -17,6 +17,9 @@ pub fn wrapper(entrypoint: MethodRef, asm: &mut Assembly) -> MethodDefIdx {
     let main_module = asm.main_module();
     let entrypoint_name = asm.alloc_string("entrypoint");
     let entrypoint = asm.alloc_methodref(entrypoint);
+    // TODO: check if user_init is used, and only call that method in wrapper if so.
+    // This is just a hack that forces user_init to be always present, even when unneded.
+    asm.user_init();
     if entry_sig.inputs() == [Type::Int(Int::ISize), uint8_ptr_ptr]
         && entry_sig.output() == &Type::Int(Int::ISize)
     {
@@ -43,6 +46,7 @@ pub fn wrapper(entrypoint: MethodRef, asm: &mut Assembly) -> MethodDefIdx {
             MethodKind::Static,
             vec![].into(),
         );
+
         let static_init = asm.alloc_methodref(static_init);
         let argv = asm.alloc_node(Const::ISize(0_i64));
         let argv = asm.alloc_node(CILNode::PtrCast(
