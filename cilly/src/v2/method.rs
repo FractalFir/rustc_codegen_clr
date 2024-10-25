@@ -9,6 +9,7 @@ use super::{
 };
 use crate::v2::iter::TpeIter;
 use crate::v2::CILRoot;
+pub type LocalId = u32;
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub struct MethodRef {
     class: ClassRefIdx,

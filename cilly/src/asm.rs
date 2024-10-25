@@ -36,8 +36,7 @@ pub type ExternFnDef = (IString, FnSig, bool);
 pub struct Assembly {
     /// List of functions defined within this assembly.
     functions: FxHashMap<MethodRefIdx, Method>,
-    /// MethodRefIdx representing the entrypoint of this assebmly if any present.
-    entrypoint: Option<MethodRefIdx>,
+
     /// List of references to external assemblies
     extern_refs: FxHashMap<IString, AssemblyExternRef>,
     extern_fns: FxHashMap<ExternFnDef, IString>,
@@ -72,7 +71,7 @@ impl Assembly {
     pub fn empty() -> Self {
         let mut res = Self {
             functions: FxHashMap::with_hasher(FxBuildHasher::default()),
-            entrypoint: None,
+
             extern_refs: FxHashMap::with_hasher(FxBuildHasher::default()),
             static_fields: FxHashMap::with_hasher(FxBuildHasher::default()),
             extern_fns: FxHashMap::with_hasher(FxBuildHasher::default()),
@@ -150,10 +149,7 @@ impl Assembly {
 
     /// Sets the entrypoint of the assembly to the method behind `MethodRefIdx`.
     pub fn set_entrypoint(&mut self, entrypoint: MethodRefIdx) {
-        assert!(self.entrypoint.is_none(), "ERROR: Multiple entrypoints");
-        let wrapper = crate::entrypoint::wrapper(self[entrypoint].clone(), self.inner_mut());
-        self.entrypoint = Some(wrapper.call_site(self));
-        self.add_method(wrapper);
+        crate::entrypoint::wrapper(self[entrypoint].clone(), self.inner_mut());
     }
 
     #[must_use]

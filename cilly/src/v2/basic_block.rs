@@ -2,10 +2,11 @@ use serde::{Deserialize, Serialize};
 
 use super::{opt, Assembly, CILNode, CILRoot, RootIdx};
 use crate::basic_block::BasicBlock as V1Block;
+pub type BlockId = u32;
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub struct BasicBlock {
     roots: Vec<RootIdx>,
-    block_id: u32,
+    block_id: BlockId,
     handler: Option<Vec<Self>>,
 }
 
@@ -13,7 +14,7 @@ impl BasicBlock {
     pub fn targets<'block, 'asm: 'block>(
         &'block self,
         asm: &'asm Assembly,
-    ) -> impl Iterator<Item = u32> + 'block {
+    ) -> impl Iterator<Item = BlockId> + 'block {
         self.roots().iter().filter_map(|root| {
             match asm.get_root(*root) {
                 CILRoot::Branch(info) => {
@@ -32,7 +33,7 @@ impl BasicBlock {
         })
     }
     #[must_use]
-    pub fn new(roots: Vec<RootIdx>, block_id: u32, handler: Option<Vec<Self>>) -> Self {
+    pub fn new(roots: Vec<RootIdx>, block_id: BlockId, handler: Option<Vec<Self>>) -> Self {
         Self {
             roots,
             block_id,
@@ -46,7 +47,7 @@ impl BasicBlock {
     }
 
     #[must_use]
-    pub fn block_id(&self) -> u32 {
+    pub fn block_id(&self) -> BlockId {
         self.block_id
     }
     pub fn iter_roots(&self) -> impl Iterator<Item = RootIdx> + '_ {
@@ -111,7 +112,7 @@ impl BasicBlock {
     }
     /// Checks if this basic block consists of nothing more than an unconditional jump to another block
     #[must_use]
-    pub fn is_direct_jump(&self, asm: &Assembly) -> Option<(u32, u32)> {
+    pub fn is_direct_jump(&self, asm: &Assembly) -> Option<(BlockId, BlockId)> {
         let mut meningfull_root = self.meaningfull_roots(asm);
         let root = meningfull_root.next()?;
         let CILRoot::Branch(binfo) = asm.get_root(root) else {
