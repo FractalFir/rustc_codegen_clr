@@ -63,11 +63,7 @@ pub(crate) fn load_const_value<'tcx>(
                 "Zero sized const with a non-zero size. It is {tpe:?}"
             );
             let tpe = ctx.type_from_cache(tpe);
-            CILNode::TemporaryLocal(Box::new((
-                ctx.alloc_type(tpe),
-                [].into(),
-                CILNode::LoadTMPLocal,
-            )))
+            CILNode::uninit_val(tpe, ctx)
         }
         ConstValue::Slice { data, meta } => {
             let slice_type = get_type(const_ty, ctx);
@@ -133,20 +129,13 @@ fn load_scalar_ptr(
             if name == "__rust_alloc_error_handler_should_panic"
                 || name == "__rust_no_alloc_shim_is_unstable"
             {
-                return CILNode::TemporaryLocal(Box::new((
-                    ctx.alloc_type(Type::Int(Int::U8)),
-                    [CILRoot::SetTMPLocal {
-                        value: CILNode::LDStaticField(
-                            StaticFieldDesc::new(
-                                *ctx.main_module(),
-                                ctx.alloc_string(name),
-                                Type::Int(Int::U8),
-                            )
-                            .into(),
-                        ),
-                    }]
+                return CILNode::MRefToRawPtr(Box::new(CILNode::AddressOfStaticField(
+                    StaticFieldDesc::new(
+                        *ctx.main_module(),
+                        ctx.alloc_string(name),
+                        Type::Int(Int::U8),
+                    )
                     .into(),
-                    CILNode::LoadAddresOfTMPLocal,
                 )));
             }
             if name == "environ" {
@@ -337,18 +326,12 @@ fn load_const_float(value: u128, float_type: FloatTy, asm: &mut Assembly) -> CIL
             let value = f64::from_ne_bytes((u64::try_from(value).unwrap()).to_ne_bytes());
             CILNode::LdcF64(HashableF64(value))
         }
-        FloatTy::F128 => CILNode::TemporaryLocal(Box::new((
-            asm.alloc_type(Type::Int(Int::I128)),
-            Box::new([CILRoot::SetTMPLocal {
-                value: CILNode::V2(asm.alloc_node(Const::U128(value))),
-            }]),
-            CILNode::LdObj {
-                ptr: Box::new(
-                    CILNode::LoadAddresOfTMPLocal.cast_ptr(asm.nptr(Type::Float(Float::F128))),
-                ),
-                obj: Box::new(Type::Float(Float::F128)),
-            },
-        ))),
+        FloatTy::F128 => CILNode::transmute_on_stack(
+            CILNode::V2(asm.alloc_node(Const::U128(value))),
+            Type::Int(Int::U128),
+            Type::Float(Float::F128),
+            asm,
+        ),
     }
 }
 pub fn load_const_int(value: u128, int_type: IntTy, asm: &mut Assembly) -> NodeIdx {

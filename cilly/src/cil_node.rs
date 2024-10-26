@@ -7,7 +7,6 @@ use crate::v2::{
 use crate::TypeIdx;
 use crate::{
     call,
-    cil_iter::CILIterTrait,
     cil_root::CILRoot,
     v2::hashable::{HashableF32, HashableF64},
     IString,
@@ -131,11 +130,8 @@ pub enum CILNode {
     Shr(Box<Self>, Box<Self>),
     Shl(Box<Self>, Box<Self>),
     ShrUn(Box<Self>, Box<Self>),
-
     Call(Box<CallOpArgs>),
-
     CallVirt(Box<CallOpArgs>),
-  
     LdcF64(HashableF64),
     LdcF32(HashableF32),
     LoadGlobalAllocPtr {
@@ -329,22 +325,15 @@ impl CILNode {
             _ => todo!(),
         }
     }
-    /// Checks if this node may have side effects. `false` means that the node can't have side effects, `true` means that the node *may* have side effects, but it does not have to.
-    pub fn has_side_effects(&self) -> bool {
-        let contains_calls = self.into_iter().call_sites().next().is_some();
-        if contains_calls {
-            return true;
-        }
-        self.into_iter().any(|node| {
-            matches!(
-                node,
-                crate::cil_iter::CILIterElem::Node(
-                    CILNode::SubTrees(_) | CILNode::TemporaryLocal(_) | CILNode::GetException
-                )
-            )
-        })
-    }
 
+    /// Creates an unintialized value of type *tpe*.
+    pub fn uninit_val(tpe: Type, asm: &mut Assembly) -> Self {
+        CILNode::TemporaryLocal(Box::new((
+            asm.alloc_type(tpe),
+            [].into(),
+            CILNode::LoadTMPLocal,
+        )))
+    }
     pub fn transmute_on_stack(self, src: Type, target: Type, asm: &mut Assembly) -> Self {
         let tmp_loc = Self::TemporaryLocal(Box::new((
             asm.alloc_type(src),
@@ -354,6 +343,37 @@ impl CILNode {
         Self::LdObj {
             ptr: Box::new(CILNode::MRefToRawPtr(Box::new(tmp_loc)).cast_ptr(asm.nptr(target))),
             obj: Box::new(target),
+        }
+    }
+    pub fn cxchng_res_val(
+        old_val: Self,
+        expected: Self,
+        destination_addr: Self,
+        val_desc: FieldIdx,
+        flag_desc: FieldIdx,
+    ) -> CILRoot {
+        // Set the value of the result.
+        let set_val = CILRoot::SetField {
+            addr: Box::new(destination_addr.clone()),
+            value: Box::new(old_val),
+            desc: val_desc,
+        };
+        // Get the result back
+        let val = CILNode::SubTrees(Box::new((
+            [set_val].into(),
+            CILNode::LDField {
+                addr: Box::new(destination_addr.clone()),
+                field: val_desc,
+            }
+            .into(),
+        )));
+
+        let cmp = CILNode::Eq(val.into(), expected.into());
+
+        CILRoot::SetField {
+            addr: Box::new(destination_addr.clone()),
+            value: Box::new(cmp),
+            desc: flag_desc,
         }
     }
     #[track_caller]
@@ -386,8 +406,6 @@ impl CILNode {
             Self::GetException=>(),
             Self::LocAlloc{..}=>(),
             Self::LocAllocAligned {..}=>(),
-    
-      
             Self::CastPtr { val, new_ptr: _ }=>val.allocate_tmps(curr_loc, locals),
             Self:: PointerToConstValue(_arr)=>(),
             Self::LoadGlobalAllocPtr { alloc_id: _ } => (),
@@ -396,7 +414,6 @@ impl CILNode {
             Self::LDLocA(_)|
             Self::LDArgA(_) => (),
             Self::BlackBox(inner) => inner.allocate_tmps(curr_loc, locals),
-  
             Self::LDIndI8 { ptr }|
             Self::LDIndBool { ptr }|
             Self::LDIndI16 { ptr }|
@@ -436,7 +453,6 @@ impl CILNode {
                 b.allocate_tmps(curr_loc, locals);
             }
             Self::Call (call_op_args)  |  Self::CallVirt (call_op_args)  |  Self::NewObj (call_op_args) =>call_op_args.args.iter_mut().for_each(|arg|arg.allocate_tmps(curr_loc, locals)),
-            
             Self::LdcF64(_) |
             Self::LdcF32(_) =>(),
             Self::ConvF64Un(val) |

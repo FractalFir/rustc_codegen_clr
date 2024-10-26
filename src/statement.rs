@@ -2,8 +2,8 @@ use crate::assembly::MethodCompileCtx;
 use crate::place::place_get;
 use crate::rvalue::is_rvalue_unint;
 
-use cilly::{cil_node::CILNode, cil_root::CILRoot, cil_tree::CILTree, size_of};
 use cilly::zero_extend;
+use cilly::{cil_node::CILNode, cil_root::CILRoot, cil_tree::CILTree, size_of};
 
 use rustc_middle::mir::{CopyNonOverlapping, NonDivergingIntrinsic, Statement, StatementKind};
 #[allow(clippy::match_same_arms)]

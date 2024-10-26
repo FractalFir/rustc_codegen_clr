@@ -100,7 +100,7 @@ pub fn cxchg<'tcx>(
     // *T
     let dst = handle_operand(&args[0].node, ctx);
     // T
-    let old = handle_operand(&args[1].node, ctx);
+    let comparand = handle_operand(&args[1].node, ctx);
     // T
     let src = handle_operand(&args[2].node, ctx);
     debug_assert_eq!(
@@ -112,7 +112,7 @@ pub fn cxchg<'tcx>(
     let src_type = ctx.type_from_cache(src_type);
 
     let value = src;
-    let comaprand = old.clone();
+
     #[allow(clippy::single_match_else)]
     let exchange_res = match &src_type {
         Type::Ptr(_) => {
@@ -132,13 +132,13 @@ pub fn cxchg<'tcx>(
                 [
                     Box::new(dst).cast_ptr(usize_ref),
                     conv_usize!(value),
-                    conv_usize!(comaprand)
+                    conv_usize!(comparand.clone())
                 ]
             )
             .cast_ptr(src_type)
         }
         // TODO: this is a bug, on purpose. The 1 byte compare exchange is not supported untill .NET 9. Remove after November, when .NET 9 Releases.
-        Type::Int(Int::U8) => comaprand,
+        Type::Int(Int::U8) => comparand.clone(),
         _ => {
             let src_ref = ctx.nref(src_type);
             let call_site = MethodRef::new(
@@ -148,32 +148,20 @@ pub fn cxchg<'tcx>(
                 MethodKind::Static,
                 vec![].into(),
             );
-            call!(ctx.alloc_methodref(call_site), [dst, value, comaprand])
+            call!(
+                ctx.alloc_methodref(call_site),
+                [dst, value, comparand.clone()]
+            )
         }
     };
-
-    // Set a field of the destination
     let dst_ty = destination.ty(ctx.body(), ctx.tcx());
-    let fld_desc = field_descrptor(dst_ty.ty, 0, ctx);
-
-    // Set the value of the result.
-    let set_val = CILRoot::SetField {
-        addr: Box::new(place_adress(destination, ctx)),
-        value: Box::new(exchange_res),
-        desc: fld_desc,
-    };
-    // Get the result back
-    let val = CILNode::SubTrees(Box::new((
-        [set_val].into(),
-        ld_field!(place_adress(destination, ctx), fld_desc).into(),
-    )));
-    // Compare the result to comparand(aka `old`)
-    let cmp = eq!(val, old);
-    let fld_desc = field_descrptor(dst_ty.ty, 1, ctx);
-
-    CILRoot::SetField {
-        addr: Box::new(place_adress(destination, ctx)),
-        value: Box::new(cmp),
-        desc: fld_desc,
-    }
+    let val_desc = field_descrptor(dst_ty.ty, 0, ctx);
+    let flag_desc = field_descrptor(dst_ty.ty, 1, ctx);
+    CILNode::cxchng_res_val(
+        exchange_res,
+        comparand,
+        place_adress(destination, ctx),
+        val_desc,
+        flag_desc,
+    )
 }

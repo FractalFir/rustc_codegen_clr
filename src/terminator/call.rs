@@ -281,11 +281,7 @@ pub fn call_closure<'tcx>(
                 for (index, element) in elements.iter().enumerate() {
                     let element_type = ctx.type_from_cache(element);
                     if element_type == Type::Void {
-                        call_args.push(CILNode::TemporaryLocal(Box::new((
-                            ctx.alloc_type(Type::Void),
-                            [].into(),
-                            CILNode::LoadTMPLocal,
-                        ))));
+                        call_args.push(CILNode::uninit_val(Type::Void, ctx));
                         continue;
                     }
                     let tuple_element_name = format!("Item{}", index + 1);
@@ -405,11 +401,7 @@ pub fn call<'tcx>(
                         for (index, element) in elements.iter().enumerate() {
                             let element_type = ctx.type_from_cache(element);
                             if element_type == Type::Void {
-                                call_args.push(CILNode::TemporaryLocal(Box::new((
-                                    ctx.alloc_type(Type::Void),
-                                    [].into(),
-                                    CILNode::LoadTMPLocal,
-                                ))));
+                                call_args.push(CILNode::uninit_val(Type::Void, ctx));
                                 continue;
                             }
                             let tuple_element_name = format!("Item{}", index + 1);
@@ -578,11 +570,7 @@ pub fn call<'tcx>(
         //assert_eq!(args.len() + 1,signature.inputs().len(),"ERROR: mismatched argument count. \nsignature inputs:{:?} \narguments:{args:?}\narg_len:{arg_len}\n",signature.inputs());
         // assert_eq!(signature.inputs()[signature.inputs().len() - 1],tpe);
         //FIXME:This assembles a panic location from uninitialized memory. This WILL lead to bugs once unwinding is added. The fields `file`,`col`, and `line` should be set there.
-        call_args.push(CILNode::TemporaryLocal(Box::new((
-            ctx.alloc_type(tpe),
-            [].into(),
-            CILNode::LoadTMPLocal,
-        ))));
+        call_args.push(CILNode::uninit_val(tpe, ctx));
         //panic!("Call with PanicLocation!");
     }
     //assert_eq!(args.len(),signature.inputs().len(),"CALL SIGNATURE ARG COUNT MISMATCH!");

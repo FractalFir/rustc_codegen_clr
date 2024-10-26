@@ -104,18 +104,10 @@ fn body_field<'a>(
                     ));
                    (
                     field_ty.into(),
-                        CILNode::TemporaryLocal(Box::new((
-                            ctx.alloc_type(curr_type),
-                            [CILRoot::SetTMPLocal {
-                                value: CILNode::LdObj {
+                    CILNode::transmute_on_stack(CILNode::LdObj {
                                     ptr: Box::new(parrent_node),
                                     obj: Box::new(curr_type),
-                                },
-                            }]
-                            .into(),
-                            CILNode::LoadAddresOfTMPLocal
-                                .cast_ptr(ctx.nptr(field_type)),
-                        )))
+                                }, curr_type, field_type, ctx)
                     )
                 }
             }

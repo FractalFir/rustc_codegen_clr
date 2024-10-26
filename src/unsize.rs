@@ -72,18 +72,12 @@ pub fn unsize2<'tcx>(
         } else {
             let source_type = ctx.type_from_cache(source);
             // If this type is a box<thin>, then its layout *should* be equivalent to a pointer, so this *should* be OK.
-            CILNode::LDIndUSize {
-                ptr: Box::new(
-                    CILNode::TemporaryLocal(Box::new((
-                        ctx.alloc_type(source_type),
-                        Box::new([CILRoot::SetTMPLocal {
-                            value: handle_operand(operand, ctx),
-                        }]),
-                        CILNode::LoadAddresOfTMPLocal,
-                    )))
-                    .cast_ptr(ctx.nptr(Type::Int(Int::USize))),
-                ),
-            }
+            CILNode::transmute_on_stack(
+                handle_operand(operand, ctx),
+                source_type,
+                Type::Int(Int::USize),
+                ctx,
+            )
         };
         // `source` is not a fat pointer, so operand should be a pointer.
 

@@ -139,9 +139,7 @@ pub fn handle_rvalue<'tcx>(
         },
         Rvalue::Cast(CastKind::Transmute, operand, dst) => {
             let dst = ctx.monomorphize(*dst);
-            let dst_ty = dst;
             let dst = ctx.type_from_cache(dst);
-            let dst_ptr = ctx.nptr(dst);
             let src = operand.ty(&ctx.body().local_decls, ctx.tcx());
             let src = ctx.monomorphize(src);
             let src = ctx.type_from_cache(src);
@@ -152,18 +150,7 @@ pub fn handle_rvalue<'tcx>(
                 ) => handle_operand(operand, ctx).cast_ptr(dst),
 
                 (Type::Int(Int::U16), Type::PlatformChar) => handle_operand(operand, ctx),
-                (_, _) => CILNode::TemporaryLocal(Box::new((
-                    ctx.alloc_type(src),
-                    [CILRoot::SetTMPLocal {
-                        value: handle_operand(operand, ctx),
-                    }]
-                    .into(),
-                    crate::place::deref_op(
-                        crate::place::PlaceTy::Ty(dst_ty),
-                        ctx,
-                        CILNode::LoadAddresOfTMPLocal.cast_ptr(dst_ptr),
-                    ),
-                ))),
+                (_, _) => handle_operand(operand, ctx).transmute_on_stack(src, dst, ctx),
             }
         }
         Rvalue::ShallowInitBox(operand, dst) => {
@@ -178,19 +165,8 @@ pub fn handle_rvalue<'tcx>(
                 "ERROR: shallow init box used to initialze a fat box!"
             );
             let src = ctx.type_from_cache(src);
-            let boxed_ptr = ctx.nptr(boxed_dst_type);
-            CILNode::TemporaryLocal(Box::new((
-                ctx.alloc_type(src),
-                [CILRoot::SetTMPLocal {
-                    value: handle_operand(operand, ctx),
-                }]
-                .into(),
-                crate::place::deref_op(
-                    crate::place::PlaceTy::Ty(boxed_dst),
-                    ctx,
-                    CILNode::LoadAddresOfTMPLocal.cast_ptr(boxed_ptr),
-                ),
-            )))
+
+            handle_operand(operand, ctx).transmute_on_stack(src, boxed_dst_type, ctx)
         }
         Rvalue::Cast(CastKind::PointerWithExposedProvenance, operand, target) => {
             //FIXME: the documentation of this cast(https://doc.rust-lang.org/nightly/std/ptr/fn.from_exposed_addr.html) is a bit confusing,
