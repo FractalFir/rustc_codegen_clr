@@ -127,8 +127,11 @@ fn display_node(
     let node_children = node.child_nodes();
     let node_children_str: String = node_children
         .iter()
-        .map(|node| format!(" n{nodeidx} ", nodeidx = node.as_bimap_index(),))
-        .collect();
+        .fold(String::new(), |mut output, node| {
+            use std::fmt::Write;
+            let _ = write!(output, " n{nodeidx} ", nodeidx = node.as_bimap_index(),);
+            output
+        });
     if node_children.is_empty() {
         format!("{node_def}\n")
     } else {

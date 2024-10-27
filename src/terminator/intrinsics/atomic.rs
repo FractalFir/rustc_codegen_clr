@@ -5,7 +5,7 @@ use crate::{
     utilis::field_descrptor,
 };
 use cilly::{
-    call, cil_node::CILNode, cil_root::CILRoot, cilnode::MethodKind, conv_usize, eq, ld_field,
+    call, cil_node::CILNode, cil_root::CILRoot, cilnode::MethodKind, conv_usize,
     v2::ClassRef, Int, MethodRef, Type,
 };
 use rustc_middle::{

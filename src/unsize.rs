@@ -5,7 +5,7 @@ use cilly::cil_node::CILNode;
 use cilly::cil_root::CILRoot;
 
 use cilly::v2::{FieldDesc, Int};
-use cilly::{conv_u32, conv_usize, Assembly, IntoAsmIndex};
+use cilly::{conv_u32, conv_usize, IntoAsmIndex};
 use cilly::{Const, Type};
 use rustc_middle::{
     mir::Operand,

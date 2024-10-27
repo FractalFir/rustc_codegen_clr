@@ -3,38 +3,12 @@
 
 pub use crate::v2::Type;
 use fxhash::FxHasher;
-use std::collections::HashMap;
 
 pub type IString = Box<str>;
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct AsmString(u64);
-#[derive(serde::Serialize, serde::Deserialize, Debug, Default)]
-struct AsmStringContainer {
-    map: HashMap<AsmString, IString>,
-    inv_map: HashMap<IString, AsmString>,
-}
-impl AsmStringContainer {
-    pub fn alloc(&mut self, val: impl Into<IString> + Clone) -> AsmString {
-        match self.inv_map.entry(val.clone().into()) {
-            std::collections::hash_map::Entry::Occupied(occupied) => *occupied.get(),
-            std::collections::hash_map::Entry::Vacant(vacant) => {
-                let vstr = val.into();
-                let hash = calculate_hash(&vstr);
-                let string = AsmString(hash);
-                assert!(self.map.insert(string, vstr.clone()).is_none());
-                *vacant.insert(string)
-            }
-        }
-    }
-    pub fn join(&mut self, other: &mut Self) {
-        self.map.extend(other.map.clone());
-        self.inv_map.extend(other.inv_map.clone());
-    }
-    pub fn get(&self, key: AsmString) -> &IString {
-        &self.map[&key]
-    }
-}
+
 pub fn calculate_hash<T: std::hash::Hash>(t: &T) -> u64 {
     use std::hash::Hasher;
     let mut s = FxHasher::default();

@@ -152,6 +152,7 @@ impl Method {
 
     /// Creates a new method with name `name`, signature `sig`, accessibility of `access`, and consists of `blocks` basic blocks.
     #[must_use]
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         access: AccessModifer,
         method_type: MethodType,

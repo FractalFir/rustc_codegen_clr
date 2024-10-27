@@ -1,18 +1,17 @@
-use crate::{assembly::MethodCompileCtx, operand::handle_operand, place::place_set};
+use crate::{assembly::MethodCompileCtx, place::place_set};
 use cilly::{
     call, call_virt,
     cil_node::CILNode,
     cil_root::CILRoot,
     cilnode::MethodKind,
-    conv_u32, conv_usize,
-    v2::{ClassRef, Float},
-    Int, IntoAsmIndex, MethodRef, Type,
+    conv_u32,
+    v2::ClassRef,
+    Int, MethodRef, Type,
 };
 use rustc_middle::{
-    mir::{Operand, Place},
+    mir::Place,
     ty::Instance,
 };
-use rustc_span::source_map::Spanned;
 pub fn type_id<'tcx>(
     destination: &Place<'tcx>,
     call_instance: Instance<'tcx>,

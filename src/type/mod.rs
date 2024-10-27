@@ -302,7 +302,7 @@ pub fn get_type<'tcx>(ty: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_>) -> Typ
                     vec![],
                     Access::Public,
                     Some(NonZeroU32::new(size).unwrap()),
-                    NonZeroU32::new((arr_align as u64).try_into().unwrap()),
+                    NonZeroU32::new(arr_align.try_into().unwrap()),
                 ));
                 // Common nodes
                 let ldarg_2 = ld_arg!(2).into_idx(ctx);

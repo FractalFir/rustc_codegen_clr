@@ -1,9 +1,7 @@
 use std::num::NonZeroU8;
 
 use crate::{
-    access_modifier::AccessModifer,
-    call, conv_isize, conv_usize,
-    v2::{cilnode::MethodKind, Assembly, FnSig, Int, MethodRef},
+    v2::{cilnode::MethodKind, Assembly, Int, MethodRef},
     Access, BasicBlock, CILNode, CILRoot, Const, MethodDef, MethodDefIdx, MethodImpl, Type,
 };
 
@@ -25,10 +23,10 @@ pub fn wrapper(entrypoint: MethodRef, asm: &mut Assembly) -> MethodDefIdx {
     {
         let string = asm.alloc_type(Type::PlatformString);
         let sig = asm.sig(
-            ([Type::PlatformArray {
+            [Type::PlatformArray {
                 elem: string,
                 dims: NonZeroU8::new(1).unwrap(),
-            }]),
+            }],
             Type::Void,
         );
         let tcctor = MethodRef::new(
@@ -111,7 +109,7 @@ pub fn wrapper(entrypoint: MethodRef, asm: &mut Assembly) -> MethodDefIdx {
             0,
             None,
         )];
-        let mut method = MethodDef::new(
+        let method = MethodDef::new(
             Access::Extern,
             main_module,
             entrypoint_name,

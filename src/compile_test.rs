@@ -973,7 +973,7 @@ static IS_MONO_PRESENT: std::sync::LazyLock<bool> =
 static IS_PEVERIFY_PRESENT: std::sync::LazyLock<bool> =
     std::sync::LazyLock::new(|| std::process::Command::new("peverify").output().is_ok());
 static RUSTC_BUILD_STATUS: std::sync::LazyLock<Result<(), String>> =
-    std::sync::LazyLock::new(|| build_backend());
+    std::sync::LazyLock::new(build_backend);
 static RUSTC_CODEGEN_CLR_LINKER: std::sync::LazyLock<PathBuf> = std::sync::LazyLock::new(|| {
     let _ = *RUSTC_BUILD_STATUS;
     if cfg!(debug_assertions) {

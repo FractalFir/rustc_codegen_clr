@@ -1456,5 +1456,5 @@ static RUNTIME_CONFIG: std::sync::LazyLock<String> = std::sync::LazyLock::new(||
     )
 });
 
-#[cfg(target_os = "windows")]
-static RUNTIME_CONFIG: &String = &String::new();
+//#[cfg(target_os = "windows")]
+//static RUNTIME_CONFIG: &String = &String::new();

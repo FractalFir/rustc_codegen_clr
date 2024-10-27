@@ -4,7 +4,7 @@ use crate::v2::{
     MethodRefIdx, NodeIdx, RootIdx,
 };
 #[cfg(test)]
-use crate::v2::{BasicBlock, Const, Type};
+use crate::v2::{BasicBlock, Type};
 fn trivial_inline_block<'def, 'asm: 'def>(
     def: &'def MethodDef,
     asm: &'asm mut Assembly,

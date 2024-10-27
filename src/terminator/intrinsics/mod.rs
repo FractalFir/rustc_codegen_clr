@@ -1,16 +1,14 @@
 use crate::{
     assembly::MethodCompileCtx,
     operand::handle_operand,
-    place::{place_adress, place_set},
-    utilis::field_descrptor,
+    place::place_set,
 };
 use cilly::{
-    call, call_virt,
+    call,
     cil_node::CILNode,
     cil_root::CILRoot,
-    cilnode::MethodKind,
-    conv_f32, conv_f64, conv_i16, conv_i32, conv_i64, conv_i8, conv_isize, conv_u16, conv_u32,
-    conv_u64, conv_u8, conv_usize, eq, ld_field,
+    cilnode::MethodKind, conv_i16, conv_i32, conv_i64, conv_i8, conv_isize, conv_u16, conv_u32,
+    conv_u64, conv_u8, conv_usize,
     v2::{ClassRef, Float, Int},
     Const, IntoAsmIndex, MethodRef, Type,
 };
@@ -33,11 +31,11 @@ mod ints;
 mod saturating;
 mod type_info;
 mod utilis;
-use floats::*;
+use floats::{fmaf32, fmaf64, powf32, powf64, powif32, powif64, roundf32, roundf64};
 mod ptr;
-use ptr::*;
+use ptr::arith_offset;
 mod mem;
-use mem::*;
+use mem::{copy, raw_eq, write_bytes};
 mod atomic;
 mod tpe;
 mod vtable;

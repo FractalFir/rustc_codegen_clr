@@ -945,9 +945,6 @@ impl Assembly {
         &self.method_defs
     }
 
-    pub(crate) fn contains_def(&self, cref: ClassRefIdx) -> bool {
-        self.class_ref_to_def(cref).is_some()
-    }
     /// Checks if this assembly contains a reference [`ClassRef`]
     #[must_use]
     pub fn contains_ref(&self, cref: &ClassRef) -> bool {
