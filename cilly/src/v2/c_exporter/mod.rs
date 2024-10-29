@@ -16,6 +16,7 @@ use super::{
     cilnode::{ExtendKind, PtrCastRes},
     cilroot::BranchCond,
     method::LocalDef,
+    tpe::simd::SIMDVector,
     typecheck::TypeCheckError,
     Assembly, BinOp, CILIter, CILIterElem, CILNode, CILRoot, ClassDefIdx, ClassRef, ClassRefIdx,
     Const, Exporter, Int, MethodDef, MethodRef, NodeIdx, RootIdx, SigIdx, Type,
@@ -35,7 +36,17 @@ fn local_name(locals: &[LocalDef], asm: &Assembly, loc: u32) -> String {
     }
 }
 fn escape_ident(ident: &str) -> String {
-    let mut escaped = ident.replace('.', "_");
+    let mut escaped = ident
+        .replace(['.', ' '], "_")
+        .replace('~', "_tilda_")
+        .replace("#", "_pound_")
+        .replace(":", "_col_")
+        .replace("[", "_srpar_")
+        .replace("]", "_slpar_")
+        .replace("(", "_rpar_")
+        .replace(")", "_lpar_")
+        .replace("{", "_rbra_")
+        .replace("}", "_lbra_");
     if escaped.chars().next().unwrap().is_numeric() {
         escaped = format!("p{escaped}");
     }
@@ -89,14 +100,26 @@ fn c_tpe(field_tpe: Type, asm: &Assembly) -> String {
             dims = "*".repeat(dims.get() as usize)
         ),
         Type::FnPtr(_) => "void*".into(),
-        Type::SMIDVector(_) => panic!("SMID is not supported in C"),
+        Type::SMIDVector(vec) => {
+            format!(
+                "__simdvec{elem}{count}",
+                elem = std::convert::Into::<Type>::into(vec.elem()).mangle(asm),
+                count = vec.count()
+            )
+        }
     }
 }
 fn mref_to_name(mref: &MethodRef, asm: &Assembly) -> String {
     let class = &asm[mref.class()];
     let class_name = escape_ident(&asm[class.name()]);
     let mname = escape_ident(&asm[mref.name()]);
-    if class.asm().is_some() {
+    if class.asm().is_some()
+        || matches!(mref.output(asm), Type::SMIDVector(_))
+        || mref
+            .stack_inputs(asm)
+            .iter()
+            .any(|tpe| matches!(tpe, Type::SMIDVector(_)))
+    {
         let mangled = escape_ident(
             &asm[mref.sig()]
                 .iter_types()
@@ -855,7 +878,9 @@ impl CExporter {
                 preserve_errno,
             } => match mname.as_str() {
                 "printf" | "puts" | "memcmp" | "memcpy" | "strlen" | "rename" | "realpath"
-                | "unsetenv" | "setenv" | "getenv" | "syscall" => return Ok(()),
+                | "unsetenv" | "setenv" | "getenv" | "syscall" | "fcntl" | "execvp" => {
+                    return Ok(())
+                }
                 _ => {
                     let inputs = def
                         .ref_to()
@@ -1108,7 +1133,7 @@ pub fn class_to_mangled(class: &super::ClassRef, asm: &Assembly) -> String {
         Some(asm_idx) => &asm[asm_idx],
         None => "",
     };
-    format!("{assembly}{name}", name = &asm[class.name()])
+    format!("{assembly}{name}", name = escape_ident(&asm[class.name()]))
 }
 #[must_use]
 pub fn name_sig_class_to_mangled(

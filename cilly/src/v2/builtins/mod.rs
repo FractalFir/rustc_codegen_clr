@@ -221,6 +221,23 @@ fn insert_rust_dealloc(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
     };
     patcher.insert(name, Box::new(generator));
 }
+pub fn insert_exeception_stub(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
+    let rust_exception = asm.alloc_string("RustException");
+    let data_pointer = asm.alloc_string("data_pointer");
+    let extends = Some(ClassRef::exception(asm));
+    asm.class_def(ClassDef::new(
+        rust_exception,
+        false,
+        0,
+        extends,
+        vec![(Type::Int(Int::USize), data_pointer, Some(0))],
+        vec![],
+        Access::Public,
+        Some(NonZeroU32::new(8).unwrap()),
+        None,
+    ));
+    insert_catch_unwind_stub(asm, patcher);
+}
 pub fn insert_exception(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
     let rust_exception = asm.alloc_string("RustException");
     let data_pointer = asm.alloc_string("data_pointer");
@@ -251,6 +268,7 @@ pub fn insert_exception(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) 
     ));
     let set_field = asm.alloc_root(CILRoot::SetField(Box::new((field, ldarg_0, ldarg_1))));
     let void_ret = asm.alloc_root(CILRoot::VoidRet);
+
     asm.new_method(MethodDef::new(
         Access::Public,
         rust_exception,
@@ -280,6 +298,31 @@ fn insert_pause(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
         let ret = asm.alloc_root(CILRoot::VoidRet);
         MethodImpl::MethodBody {
             blocks: vec![BasicBlock::new(vec![ret], 0, None)],
+            locals: vec![],
+        }
+    };
+    patcher.insert(name, Box::new(generator));
+}
+fn insert_catch_unwind_stub(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
+    let name = asm.alloc_string("catch_unwind");
+    let generator = move |_, asm: &mut Assembly| {
+        let uint8_ptr = asm.nptr(Type::Int(Int::U8));
+        let try_sig = asm.sig([uint8_ptr], Type::Void);
+
+        let ldarg_0 = asm.alloc_node(CILNode::LdArg(0));
+        let ldarg_1 = asm.alloc_node(CILNode::LdArg(1));
+
+        // Call indirect try
+        let calli_try = asm.alloc_root(CILRoot::CallI(Box::new((
+            ldarg_0,
+            try_sig,
+            [ldarg_1].into(),
+        ))));
+
+        let const_0 = asm.alloc_node(Const::I32(0));
+        let ret_0 = asm.alloc_root(CILRoot::Ret(const_0));
+        MethodImpl::MethodBody {
+            blocks: vec![BasicBlock::new(vec![calli_try, ret_0], 0, None)],
             locals: vec![],
         }
     };

@@ -365,13 +365,16 @@ fn main() {
     cilly::v2::builtins::int128::generate_int128_ops(&mut final_assembly, &mut overrides, *C_MODE);
     cilly::v2::builtins::int128::i128_mul_ovf_check(&mut final_assembly, &mut overrides);
     cilly::v2::builtins::f16::generate_f16_ops(&mut final_assembly, &mut overrides, *C_MODE);
-    if !*C_MODE {
+    if *C_MODE {
+        cilly::v2::builtins::insert_exeception_stub(&mut final_assembly, &mut overrides);
+    } else {
         cilly::v2::builtins::atomics::generate_all_atomics(&mut final_assembly, &mut overrides);
         cilly::v2::builtins::instert_threading(&mut final_assembly, &mut overrides);
         cilly::v2::builtins::math::math(&mut final_assembly, &mut overrides);
         cilly::v2::builtins::simd::simd(&mut final_assembly, &mut overrides);
+        cilly::v2::builtins::insert_exception(&mut final_assembly, &mut overrides);
     }
-    cilly::v2::builtins::insert_exception(&mut final_assembly, &mut overrides);
+
     // Ensure the cctor and tcctor exist!
     let _ = final_assembly.tcctor();
     let _ = final_assembly.cctor();
