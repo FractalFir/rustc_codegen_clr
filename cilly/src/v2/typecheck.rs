@@ -92,15 +92,43 @@ pub enum TypeCheckError {
         got: super::FnSig,
     },
     SizeOfVoid,
+    LocalAssigementWrong {
+        loc: u32,
+        got: Type,
+        expected: Type,
+    },
 }
-pub fn display_typecheck_err(root: CILRoot, asm: &mut Assembly, sig: SigIdx, locals: &[LocalDef]) {
+pub fn typecheck_err_to_string(
+    root_idx: super::RootIdx,
+    asm: &mut Assembly,
+    sig: SigIdx,
+    locals: &[LocalDef],
+) -> String {
+    let root = asm[root_idx].clone();
     let mut set = FxHashSet::default();
     let nodes = root
         .nodes()
         .iter()
         .map(|node| display_node(**node, asm, sig, locals, &mut set))
         .collect::<String>();
-    eprintln!("digraph G{{edge [dir=\"back\"];\n{nodes}}}");
+    let root_connections: String = root
+        .nodes()
+        .iter()
+        .map(|node| format!("n{node} ", node = node.as_bimap_index(),))
+        .collect();
+    let root_string = root.display(asm, sig, locals);
+    match root.typecheck(sig, locals, asm){
+        Ok(ok)=> format!("digraph G{{edge [dir=\"back\"];\n{nodes} r{root_idx}  [label = \"{root_string:?}\" color = \"green\"] r{root_idx} ->{root_connections}}}",root_idx = root_idx.as_bimap_index()),
+        Err(err)=> format!("digraph G{{edge [dir=\"back\"];\\n{nodes} r{root_idx}  [label = \"{root_string:?}\n{err:?}\" color = \"red\"] r{root_idx} ->{root_connections}}}",root_idx = root_idx.as_bimap_index()),
+   }
+}
+pub fn display_typecheck_err(
+    root_idx: super::RootIdx,
+    asm: &mut Assembly,
+    sig: SigIdx,
+    locals: &[LocalDef],
+) {
+    eprintln!("{}", typecheck_err_to_string(root_idx, asm, sig, locals))
 }
 fn display_node(
     nodeidx: NodeIdx,
@@ -729,7 +757,10 @@ impl CILNode {
                 Ok(asm[*cast_res])
             }
 
-            CILNode::LocAlloc { size } => todo!(),
+            CILNode::LocAlloc { size } => {
+                let size = asm[*size].clone().typecheck(sig, locals, asm)?;
+                Ok(asm.nptr(Type::Int(Int::U8)))
+            }
             CILNode::LdStaticField(sfld) => {
                 let sfld = *asm.get_static_field(*sfld);
                 Ok(sfld.tpe())
@@ -799,10 +830,27 @@ impl CILRoot {
         locals: &[LocalDef],
         asm: &mut Assembly,
     ) -> Result<(), TypeCheckError> {
-        for node in self.nodes() {
-            asm.get_node(*node).clone().typecheck(sig, locals, asm)?;
+        match self {
+            Self::StLoc(loc, node) => {
+                let got = asm.get_node(*node).clone().typecheck(sig, locals, asm)?;
+                let expected = asm[locals[*loc as usize].1];
+                if !got.is_assignable_to(expected, asm) {
+                    Err(TypeCheckError::LocalAssigementWrong {
+                        loc: *loc,
+                        got,
+                        expected,
+                    })
+                } else {
+                    Ok(())
+                }
+            }
+            _ => {
+                for node in self.nodes() {
+                    asm.get_node(*node).clone().typecheck(sig, locals, asm)?;
+                }
+                Ok(())
+            }
         }
-        Ok(())
     }
 }
 #[test]

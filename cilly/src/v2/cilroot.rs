@@ -663,6 +663,29 @@ impl CILRoot {
             }
         }
     }
+
+    pub(crate) fn display(
+        &self,
+        asm: &mut Assembly,
+        sig: SigIdx,
+        locals: &[(Option<StringIdx>, TypeIdx)],
+    ) -> String {
+        match self {
+            Self::StLoc(loc, val) => match locals.get(*loc as usize) {
+                Some((Some(name), tpe)) => format!(
+                    "StLoc({loc}: {loc_tpe:?} {name:?}, {val:?})",
+                    loc_tpe = asm[*tpe].clone().mangle(asm),
+                    name = &asm[*name],
+                ),
+                Some((None, tpe)) => format!(
+                    "StLoc({loc}: {loc_tpe},{val:?})",
+                    loc_tpe = asm[*tpe].clone().mangle(asm)
+                ),
+                None => format!("{self:?}"),
+            },
+            _ => format!("{self:?}"),
+        }
+    }
 }
 /// Changes a mutable reference to a slice to an vec of mutable references to the elements.
 fn many_mut<T>(input: &mut [T]) -> Vec<&mut T> {

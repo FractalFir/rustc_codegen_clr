@@ -484,7 +484,7 @@ impl MethodDef {
             roots.for_each(|root| {
                 let check = asm.get_root(*root).clone().typecheck(sig, &locals, asm);
                 if check.is_err() {
-                    display_typecheck_err(asm.get_root(*root).clone(), asm, sig, &locals);
+                    display_typecheck_err(*root, asm, sig, &locals);
                 };
                 check.unwrap_or_else(|_| eprintln!("Could not verify method {}", &asm[name]))
             })

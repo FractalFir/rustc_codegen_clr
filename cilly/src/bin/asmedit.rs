@@ -6,6 +6,7 @@ use std::{
 };
 
 use cilly::{
+    c_exporter::CExporter,
     v2::{
         asm::Assembly, cillyir_exporter::CillyIRExpoter, il_exporter::ILExporter, Access, CILIter,
         MethodImpl, MethodRefIdx,
@@ -144,6 +145,17 @@ fn main() {
                 let start = Instant::now();
                 println!("Preparing to export the assembly");
                 asm.export(path, ILExporter::new(cilly::v2::IlasmFlavour::Clasic, true));
+                println!(
+                    "Exported the assembly in {} ms",
+                    start.elapsed().as_millis()
+                );
+            }
+            "toc" => {
+                let path = body;
+                let path = path.trim().trim_matches('\'').trim();
+                let start = Instant::now();
+                println!("Preparing to export the assembly");
+                asm.export(path, CExporter::new(false));
                 println!(
                     "Exported the assembly in {} ms",
                     start.elapsed().as_millis()

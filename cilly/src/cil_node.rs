@@ -389,6 +389,7 @@ impl CILNode {
             ),
             "Invalid new ptr {new_ptr:?}"
         );
+
         Self::CastPtr {
             val: Box::new(self),
             new_ptr: Box::new(new_ptr),

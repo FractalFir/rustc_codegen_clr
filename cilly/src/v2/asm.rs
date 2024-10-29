@@ -7,8 +7,8 @@ use super::{
     MethodRefIdx, NodeIdx, RootIdx, SigIdx, StaticFieldDesc, StaticFieldIdx, StringIdx, Type,
     TypeIdx,
 };
-use crate::IString;
 use crate::{asm::Assembly as V1Asm, v2::MethodImpl};
+use crate::{config, IString};
 use fxhash::{FxHashMap, FxHashSet};
 
 use serde::{Deserialize, Serialize};
@@ -642,7 +642,11 @@ impl Assembly {
         });
     }
     pub fn export(&self, out: impl AsRef<std::path::Path>, exporter: impl Exporter) {
-        exporter.export(self, out.as_ref()).unwrap();
+        if *LINKER_RECOVER {
+            eprintln!("{:?}", exporter.export(self, out.as_ref()));
+        } else {
+            exporter.export(self, out.as_ref()).unwrap();
+        }
     }
     pub fn memory_info(&self) {
         let mut stats = vec![
@@ -1248,3 +1252,4 @@ fn link() {
     asm.realloc_roots();
     asm.export("/tmp/link_test.exe", ILExporter::new(*ILASM_FLAVOUR, false));
 }
+config! {LINKER_RECOVER,bool,false}

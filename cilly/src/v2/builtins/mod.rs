@@ -1,3 +1,5 @@
+use std::num::NonZeroU32;
+
 use super::{
     asm::MissingMethodPatcher, cilnode::MethodKind, cilroot::BranchCond, Access, Assembly,
     BasicBlock, CILNode, CILRoot, ClassDef, ClassRef, Const, FieldDesc, Int, MethodDef, MethodImpl,
@@ -219,14 +221,7 @@ fn insert_rust_dealloc(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
     };
     patcher.insert(name, Box::new(generator));
 }
-
-pub fn insert_heap(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
-    insert_rust_alloc(asm, patcher);
-    insert_rust_alloc_zeroed(asm, patcher);
-    insert_rust_realloc(asm, patcher);
-    insert_rust_dealloc(asm, patcher);
-    insert_catch_unwind(asm, patcher);
-    insert_pause(asm, patcher);
+pub fn insert_exception(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
     let rust_exception = asm.alloc_string("RustException");
     let data_pointer = asm.alloc_string("data_pointer");
     let this = asm.alloc_string("this");
@@ -236,10 +231,10 @@ pub fn insert_heap(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
         false,
         0,
         extends,
-        vec![(Type::Int(Int::USize), data_pointer, None)],
+        vec![(Type::Int(Int::USize), data_pointer, Some(0))],
         vec![],
         Access::Public,
-        None,
+        Some(NonZeroU32::new(8).unwrap()),
         None,
     ));
     let ctor = asm.alloc_string(".ctor");
@@ -268,6 +263,15 @@ pub fn insert_heap(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
         },
         vec![Some(this), Some(data_pointer)],
     ));
+    insert_catch_unwind(asm, patcher);
+}
+pub fn insert_heap(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
+    insert_rust_alloc(asm, patcher);
+    insert_rust_alloc_zeroed(asm, patcher);
+    insert_rust_realloc(asm, patcher);
+    insert_rust_dealloc(asm, patcher);
+
+    insert_pause(asm, patcher);
 }
 
 fn insert_pause(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {

@@ -193,7 +193,8 @@ impl Type {
                 let cref = asm.class_ref(cref);
                 !cref.is_valuetype()
             }
-            (Type::ClassRef(cref), Type::PlatformString) => {
+            (Type::ClassRef(cref), Type::PlatformString)
+            | (Type::PlatformString, Type::ClassRef(cref)) => {
                 let cref = asm.class_ref(cref);
                 !cref.is_valuetype()
                     && cref.asm().map(|s| asm[s].as_ref()) == Some("System.Runtime")

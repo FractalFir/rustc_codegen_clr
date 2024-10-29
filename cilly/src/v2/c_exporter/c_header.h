@@ -1,14 +1,16 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
-#include "threads.h"
+
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+/*
 #include <unistd.h>
 #include <sys/uio.h>
 #include <poll.h>
 #include <sched.h>
+#include "threads.h"*/
 #ifdef __STDC_VERSION__
 
 #else
@@ -163,6 +165,7 @@ void *System_Runtime_InteropServices_NativeMemory_AlignedReallocpvususpv(void *p
 #define System_Buffers_Binary_BinaryPrimitives_ReverseEndiannessusus __builtin_bswap64
 
 #define System_Numerics_BitOperations_TrailingZeroCountusi4(val) (int32_t) __builtin_ctzl((uint64_t)val)
+#define System_Numerics_BitOperations_LeadingZeroCountu8i4(val) (int32_t) __builtin_ctzl((uint64_t)val)
 #define System_Numerics_BitOperations_PopCountusi4(val) __builtin_popcountl((uint64_t)val)
 
 union System_Collections_IDictionary System_Environment_GetEnvironmentVariables14System_Runtime30System_Collections_IDictionary()
@@ -217,6 +220,7 @@ void System_Console_WriteLinei4v(int arg)
 
 #define System_Exception__ctor14System_Runtime16System_Exceptionsv
 #define System_Exception__ctorp14System_Runtime16System_Exceptionsv
+#define System_Exception__ctorp14System_Runtime16System_Exceptionstv
 float System_Single_Clampf4f4f4f4(float d, float min, float max)
 {
     const float t = d < min ? min : d;
@@ -291,3 +295,49 @@ double System_Double_CopySignf8f8f8(double mag, double sign)
 #define System_MathF_Sqrtf8f8 sqrt
 #define System_Single_Powf4f4f4(a, b) (float)pow(a, b)
 #define System_Single_Powf8f8f8 pow
+uint32_t System_Threading_Interlocked_CompareExchangeru4u4u4u4(uint32_t *addr, uint32_t value, uint32_t comparand)
+{
+    fprintf(stderr, "Can't System_Threading_Interlocked_CompareExchangeru4u4u4u4 yet.\n");
+    abort();
+    return 0;
+}
+uint64_t System_Threading_Interlocked_CompareExchangeru8u8u8u8(uint64_t *addr, uint64_t value, uint64_t comparand)
+{
+    fprintf(stderr, "Can't System_Threading_Interlocked_CompareExchangeru8u8u8u8 yet.\n");
+    abort();
+    return 0;
+}
+uintptr_t System_Threading_Interlocked_CompareExchangerusususus(uintptr_t *addr, uintptr_t value, uintptr_t comparand)
+{
+    fprintf(stderr, "Can't System_Threading_Interlocked_CompareExchangerusususus yet.\n");
+    abort();
+    return 0;
+}
+uint32_t System_Threading_Interlocked_Exchangeru4u4u4(uint32_t *addr, uint32_t val)
+{
+    fprintf(stderr, "Can't System_Threading_Interlocked_Exchangeru4u4u4 yet.\n");
+    abort();
+    return 0;
+}
+
+uint32_t System_Threading_Interlocked_Addru4u4u4(uint32_t *addr, uint32_t addend)
+{
+    fprintf(stderr, "Can't System_Threading_Interlocked_Addru4u4u4 yet.\n");
+    abort();
+}
+void System_Threading_Thread_MemoryBarrierv() {}
+static int _argcStaticStorage;
+static char **_argvStaticStorage;
+char **System_Environment_GetCommandLineArgsa1st() { return _argvStaticStorage; }
+uintptr_t ld_len(void *arr)
+{
+    return strlen((const char *)arr) / sizeof(uintptr_t);
+}
+intptr_t System_Runtime_InteropServices_Marshal_StringToCoTaskMemUTF8stis(char *str)
+{
+    uintptr_t len = strlen(str);
+    char *ptr = (char *)malloc(len + 1);
+    memcpy(ptr, str, len + 1);
+    return len;
+}
+long syscall(long number, ...);

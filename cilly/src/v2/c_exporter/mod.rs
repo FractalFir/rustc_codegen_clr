@@ -5,8 +5,9 @@ use std::{collections::HashSet, io::Write};
 use fxhash::{hash64, FxHashSet, FxHasher};
 
 use crate::{
+    typecheck,
     utilis::{assert_unique, encode},
-    v2::{BiMap, MethodImpl, StringIdx},
+    v2::{asm::LINKER_RECOVER, BiMap, MethodImpl, StringIdx},
 };
 
 use super::{
@@ -15,6 +16,7 @@ use super::{
     cilnode::{ExtendKind, PtrCastRes},
     cilroot::BranchCond,
     method::LocalDef,
+    typecheck::TypeCheckError,
     Assembly, BinOp, CILIter, CILIterElem, CILNode, CILRoot, ClassDefIdx, ClassRef, ClassRefIdx,
     Const, Exporter, Int, MethodDef, MethodRef, NodeIdx, RootIdx, SigIdx, Type,
 };
@@ -39,7 +41,7 @@ fn escape_ident(ident: &str) -> String {
     }
     // Check if reserved.
     match escaped.as_str() {
-        "int" => encode(hash64(&escaped)),
+        "int" | "default" => encode(hash64(&escaped)),
         _ => escaped,
     }
 }
@@ -152,10 +154,10 @@ impl CExporter {
         locals: &[LocalDef],
         inputs: &[(Type, Option<StringIdx>)],
         sig: SigIdx,
-    ) -> String {
-        let lhs = Self::node_to_string(lhs, asm, locals, inputs, sig);
-        let rhs = Self::node_to_string(rhs, asm, locals, inputs, sig);
-        match op {
+    ) -> Result<String, TypeCheckError> {
+        let lhs = Self::node_to_string(lhs, asm, locals, inputs, sig)?;
+        let rhs = Self::node_to_string(rhs, asm, locals, inputs, sig)?;
+        Ok(match op {
             BinOp::Add => match tpe {
                 Type::Ptr(type_idx) | Type::Ref(type_idx) => format!(
                     "({tpe}*)((void*)({lhs}) + (uintptr_t)({rhs}))",
@@ -319,7 +321,7 @@ impl CExporter {
                 Type::Float(_) | Type::Int(_) => format!("({lhs}) / ({rhs})"),
                 _ => todo!(),
             },
-        }
+        })
     }
     fn node_to_string(
         node: CILNode,
@@ -327,20 +329,28 @@ impl CExporter {
         locals: &[LocalDef],
         inputs: &[(Type, Option<StringIdx>)],
         sig: SigIdx,
-    ) -> String {
-        match node {
+    ) -> Result<String, TypeCheckError> {
+        Ok(match node {
             CILNode::Const(cst) => match cst.as_ref() {
                 Const::I8(v) => format!("(int8_t)0x{v:x}"),
                 Const::I16(v) => format!("(int16_t)0x{v:x}"),
                 Const::I32(v) => format!("((int32_t)0x{v:x})"),
                 Const::I64(v) => format!("0x{v:x}L"),
-                Const::I128(v) => todo!("can't load const i128"),
+                Const::I128(v) => {
+                    let low = *v as u128 as u64;
+                    let high = ((*v as u128) >> 64) as u64;
+                    format!("(__int128)((unsigned __int128)({low}) | ((unsigned __int128)({high}) << 64))")
+                }
                 Const::ISize(v) => format!("(intptr_t)0x{v:x}L"),
                 Const::U8(v) => format!("(uint8_t)0x{v:x}"),
                 Const::U16(v) => format!("(uint16_t)0x{v:x}"),
                 Const::U32(v) => format!("0x{v:x}u"),
                 Const::U64(v) => format!("0x{v:x}uL"),
-                Const::U128(v) => todo!("can't load const u128"),
+                Const::U128(v) => {
+                    let low = *v as u64;
+                    let high = ((*v as u128) >> 64) as u64;
+                    format!("((unsigned __int128)({low}) | ((unsigned __int128)({high}) << 64))")
+                }
                 Const::USize(v) => format!("(uintptr_t)0x{v:x}uL"),
                 Const::PlatformString(string_idx) => format!("{:?}", &asm[*string_idx]),
                 Const::Bool(val) => {
@@ -367,7 +377,7 @@ impl CExporter {
                 Const::Null(class_ref_idx) => todo!(),
             },
             CILNode::BinOp(lhs, rhs, bin_op) => {
-                let tpe = node.typecheck(sig, locals, asm).unwrap();
+                let tpe = node.typecheck(sig, locals, asm)?;
                 Self::binop_to_string(
                     asm[lhs].clone(),
                     asm[rhs].clone(),
@@ -377,55 +387,55 @@ impl CExporter {
                     locals,
                     inputs,
                     sig,
-                )
+                )?
             }
             CILNode::UnOp(node_idx, ref un_op) => match un_op {
                 super::cilnode::UnOp::Not => format!(
                     "~({})",
-                    Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig)
+                    Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig)?
                 ),
                 super::cilnode::UnOp::Neg => {
-                    let tpe = node.typecheck(sig, locals, asm).unwrap();
+                    let tpe = node.typecheck(sig, locals, asm)?;
                     match tpe {
                         Type::Ptr(_) | Type::Ref(_) => format!(
                             "-({})",
-                            Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig)
+                            Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig)?
                         ),
                         Type::FnPtr(_) => format!(
                             "-({})",
-                            Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig)
+                            Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig)?
                         ),
                         Type::Float(_) => format!(
                             "-({})",
-                            Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig)
+                            Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig)?
                         ),
                         Type::Int(Int::I8) => format!(
                             "(int8_t)(0 - ((uint8_t)({})))",
-                            Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig)
+                            Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig)?
                         ),
                         Type::Int(Int::I16) => format!(
                             "(int16_t)(0 - ((uint16_t)({})))",
-                            Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig)
+                            Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig)?
                         ),
                         Type::Int(Int::I32) => format!(
                             "(int32_t)(0 - ((uint32_t)({})))",
-                            Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig)
+                            Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig)?
                         ),
                         Type::Int(Int::I64) => format!(
                             "(int64_t)(0 - ((uint64_t)({})))",
-                            Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig)
+                            Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig)?
                         ),
                         Type::Int(Int::I128) => format!(
                             "(__int128_t)(0 - ((__uint128_t)({})))",
-                            Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig)
+                            Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig)?
                         ),
                         Type::Int(Int::ISize) => format!(
                             "(intptr_t)(0 - ((uintptr_t)({})))",
-                            Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig)
+                            Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig)?
                         ),
                         Type::Int(_) => format!(
                             "-({})",
-                            Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig)
+                            Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig)?
                         ),
                         _ => todo!("can't neg {}", tpe.mangle(asm)),
                     }
@@ -450,6 +460,7 @@ impl CExporter {
                         format!(
                             "({})",
                             Self::node_to_string(asm[*arg].clone(), asm, locals, inputs, sig)
+                                .unwrap()
                         )
                     })
                     .intersperse(",".into())
@@ -465,7 +476,7 @@ impl CExporter {
                 target,
                 extend,
             } => {
-                let input = Self::node_to_string(asm[input].clone(), asm, locals, inputs, sig);
+                let input = Self::node_to_string(asm[input].clone(), asm, locals, inputs, sig)?;
                 match (target, extend) {
                     (Int::U8, ExtendKind::ZeroExtend) => format!("(uint8_t)({input})"),
                     (Int::U8, ExtendKind::SignExtend) => todo!(),
@@ -502,7 +513,7 @@ impl CExporter {
                 target,
                 is_signed,
             } => {
-                let input = Self::node_to_string(asm[input].clone(), asm, locals, inputs, sig);
+                let input = Self::node_to_string(asm[input].clone(), asm, locals, inputs, sig)?;
                 match target {
                     super::Float::F16 => todo!(),
                     super::Float::F32 => format!("(float)({input})"),
@@ -511,10 +522,10 @@ impl CExporter {
                 }
             }
             CILNode::RefToPtr(node_idx) => {
-                Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig)
+                Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig)?
             }
             CILNode::PtrCast(node_idx, ptr_cast_res) => {
-                let node = Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig);
+                let node = Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig)?;
                 match ptr_cast_res.as_ref() {
                     PtrCastRes::Ptr(type_idx) | PtrCastRes::Ref(type_idx) => {
                         format!("({tpe}*)({node})", tpe = c_tpe(asm[*type_idx], asm),)
@@ -526,15 +537,15 @@ impl CExporter {
             }
             CILNode::LdFieldAdress { addr, field } => {
                 let addr = asm[addr].clone();
-                let addr = Self::node_to_string(addr, asm, locals, inputs, sig);
+                let addr = Self::node_to_string(addr, asm, locals, inputs, sig)?;
                 let field = asm[field];
                 let name = &asm[field.name()];
                 format!("&({addr})->{name}.f")
             }
             CILNode::LdField { addr, field } => {
                 let addr = asm[addr].clone();
-                let addr_tpe = addr.typecheck(sig, locals, asm).unwrap();
-                let addr = Self::node_to_string(addr, asm, locals, inputs, sig);
+                let addr_tpe = addr.typecheck(sig, locals, asm)?;
+                let addr = Self::node_to_string(addr, asm, locals, inputs, sig)?;
                 let field = asm[field];
                 let name = &asm[field.name()];
                 match addr_tpe {
@@ -552,12 +563,12 @@ impl CExporter {
                     format!(
                         "*(volitale {tpe}*)({addr})",
                         tpe = c_tpe(asm[tpe], asm),
-                        addr = Self::node_to_string(asm[addr].clone(), asm, locals, inputs, sig)
+                        addr = Self::node_to_string(asm[addr].clone(), asm, locals, inputs, sig)?
                     )
                 } else {
                     format!(
                         "*({addr})",
-                        addr = Self::node_to_string(asm[addr].clone(), asm, locals, inputs, sig)
+                        addr = Self::node_to_string(asm[addr].clone(), asm, locals, inputs, sig)?
                     )
                 }
             }
@@ -574,6 +585,7 @@ impl CExporter {
                         format!(
                             "({})",
                             Self::node_to_string(asm[*arg].clone(), asm, locals, inputs, sig)
+                                .unwrap()
                         )
                     })
                     .intersperse(",".into())
@@ -585,12 +597,12 @@ impl CExporter {
                     .map(|i| nonvoid_c_type(*i, asm))
                     .intersperse(",".into())
                     .collect::<String>();
-                let fn_ptr = Self::node_to_string(asm[*fn_ptr].clone(), asm, locals, inputs, sig);
+                let fn_ptr = Self::node_to_string(asm[*fn_ptr].clone(), asm, locals, inputs, sig)?;
                 format!("((*({ret}(*)({args}))({fn_ptr})))({call_args})")
             }
             CILNode::LocAlloc { size } => format!(
                 "alloca({})",
-                Self::node_to_string(asm[size].clone(), asm, locals, inputs, sig)
+                Self::node_to_string(asm[size].clone(), asm, locals, inputs, sig)?
             ),
             CILNode::LdStaticField(static_field_idx) => {
                 let field = asm[static_field_idx];
@@ -609,7 +621,7 @@ impl CExporter {
             //TODO: ld len is not really supported in C, and is only there due to the argc emulation.
             CILNode::LdLen(node_idx) => format!(
                 "ld_len({arr})",
-                arr = Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig)
+                arr = Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig)?
             ),
             // TODO: loc alloc aligned does not respect the aligement ATM.
             CILNode::LocAllocAlgined { tpe, align } => {
@@ -617,16 +629,16 @@ impl CExporter {
             }
             //TODO: ld elem ref is not really supported in C, and is only there due to the argc emulation.
             CILNode::LdElelemRef { array, index } => {
-                let tpe = node.typecheck(sig, locals, asm).unwrap();
-                let array = Self::node_to_string(asm[array].clone(), asm, locals, inputs, sig);
-                let index = Self::node_to_string(asm[index].clone(), asm, locals, inputs, sig);
+                let tpe = node.typecheck(sig, locals, asm)?;
+                let array = Self::node_to_string(asm[array].clone(), asm, locals, inputs, sig)?;
+                let index = Self::node_to_string(asm[index].clone(), asm, locals, inputs, sig)?;
                 format!("({array})[{index}]")
             }
             CILNode::UnboxAny { object, tpe } => format!(
                 "({object})",
-                object = Self::node_to_string(asm[object].clone(), asm, locals, inputs, sig)
+                object = Self::node_to_string(asm[object].clone(), asm, locals, inputs, sig)?
             ),
-        }
+        })
     }
     fn root_to_string(
         root: CILRoot,
@@ -634,8 +646,8 @@ impl CExporter {
         locals: &[LocalDef],
         inputs: &[(Type, Option<StringIdx>)],
         sig: SigIdx,
-    ) -> String {
-        match root {
+    ) -> Result<String, TypeCheckError> {
+        Ok(match root {
             CILRoot::StLoc(id, node_idx) => {
                 if locals
                 .iter()
@@ -643,41 +655,41 @@ impl CExporter {
                 .count()
                 > 1
             {
-                return format!("L{id} = {node};", node = Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig),);
+                return Ok(format!("L{id} = {node};", node = Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig)?,));
             }
                 match locals[id as usize].0 {
                 Some(name) => format!(
                     "{name} = {node};",
-                    node = Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig),
+                    node = Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig)?,
                     name = escape_ident(&asm[name]),
                 ),
                 None => format!(
                     "L{id} = {node};",
-                    node = Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig),
+                    node = Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig)?,
                 ),
             }},
             CILRoot::StArg(arg, node_idx) =>match inputs[arg as usize].1 {
                 Some(name) => format!(
                     "{name} = {node};",
-                    node = Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig),
+                    node = Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig)?,
                     name = escape_ident(&asm[name]),
                 ),
                 None => format!(
                     "A{arg} = {node};",
-                    node = Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig),
+                    node = Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig)?,
                 ),
             },
             CILRoot::Ret(node_idx) => format!(
                 "return {node};",
-                node = Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig)
+                node = Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig)?
             ),
             CILRoot::Pop(node_idx) => format!(
                 "{node};",
-                node = Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig)
+                node = Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig)?
             ),
             CILRoot::Throw(node_idx) =>  format!(
                 "eprintf(\"An error was encoutrered in %s, at %s:%d\\n\",__func__,__FILE__,__LINE__);eprintf(\"%s\\n\",{node}); abort();",
-                node = Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig)
+                node = Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig)?
             ),
             CILRoot::VoidRet => "return;".into(),
             CILRoot::Break => "".into(),
@@ -688,56 +700,56 @@ impl CExporter {
                     sub_target
                 }else {target};
                 let Some(cond) = cond else {
-                    return format!("goto bb{target};");
+                    return Ok(format!("goto bb{target};"));
                 };
                 match cond {
                     BranchCond::True(node_idx) => format!(
                         "if({node}) goto bb{target};",
                         node =
-                            Self::node_to_string(asm[*node_idx].clone(), asm, locals, inputs, sig)
+                            Self::node_to_string(asm[*node_idx].clone(), asm, locals, inputs, sig)?
                     ),
                     BranchCond::False(node_idx) => format!(
                         "if(!({node})) goto bb{target};",
                         node =
-                            Self::node_to_string(asm[*node_idx].clone(), asm, locals, inputs, sig)
+                            Self::node_to_string(asm[*node_idx].clone(), asm, locals, inputs, sig)?
                     ),
                     BranchCond::Eq(lhs, rhs) => format!(
                         "if(({lhs}) == ({rhs})) goto bb{target};",
-                        lhs = Self::node_to_string(asm[*lhs].clone(), asm, locals, inputs, sig),
-                        rhs = Self::node_to_string(asm[*rhs].clone(), asm, locals, inputs, sig)
+                        lhs = Self::node_to_string(asm[*lhs].clone(), asm, locals, inputs, sig)?,
+                        rhs = Self::node_to_string(asm[*rhs].clone(), asm, locals, inputs, sig)?
                     ),
                     BranchCond::Ne(lhs, rhs) => format!(
                         "if(({lhs}) != ({rhs})) goto bb{target};",
-                        lhs = Self::node_to_string(asm[*lhs].clone(), asm, locals, inputs, sig),
-                        rhs = Self::node_to_string(asm[*rhs].clone(), asm, locals, inputs, sig)
+                        lhs = Self::node_to_string(asm[*lhs].clone(), asm, locals, inputs, sig)?,
+                        rhs = Self::node_to_string(asm[*rhs].clone(), asm, locals, inputs, sig)?
                     ),
                     BranchCond::Lt(lhs, rhs, _cmp_kind) => format!(
                         "if(({lhs}) < ({rhs})) goto bb{target};",
-                        lhs = Self::node_to_string(asm[*lhs].clone(), asm, locals, inputs, sig),
-                        rhs = Self::node_to_string(asm[*rhs].clone(), asm, locals, inputs, sig)
+                        lhs = Self::node_to_string(asm[*lhs].clone(), asm, locals, inputs, sig)?,
+                        rhs = Self::node_to_string(asm[*rhs].clone(), asm, locals, inputs, sig)?
                     ),
                     BranchCond::Gt(lhs, rhs, _cmp_kind) => format!(
                         "if(({lhs}) > ({rhs})) goto bb{target};",
-                        lhs = Self::node_to_string(asm[*lhs].clone(), asm, locals, inputs, sig),
-                        rhs = Self::node_to_string(asm[*rhs].clone(), asm, locals, inputs, sig)
+                        lhs = Self::node_to_string(asm[*lhs].clone(), asm, locals, inputs, sig)?,
+                        rhs = Self::node_to_string(asm[*rhs].clone(), asm, locals, inputs, sig)?
                     ),
                     BranchCond::Le(lhs, rhs, _cmp_kind) => format!(
                         "if(({lhs}) <= ({rhs})) goto bb{target};",
-                        lhs = Self::node_to_string(asm[*lhs].clone(), asm, locals, inputs, sig),
-                        rhs = Self::node_to_string(asm[*rhs].clone(), asm, locals, inputs, sig)
+                        lhs = Self::node_to_string(asm[*lhs].clone(), asm, locals, inputs, sig)?,
+                        rhs = Self::node_to_string(asm[*rhs].clone(), asm, locals, inputs, sig)?
                     ),
                     BranchCond::Ge(lhs, rhs, _cmp_kind) => format!(
                         "if(({lhs}) >= ({rhs})) goto bb{target};",
-                        lhs = Self::node_to_string(asm[*lhs].clone(), asm, locals, inputs, sig),
-                        rhs = Self::node_to_string(asm[*rhs].clone(), asm, locals, inputs, sig)
+                        lhs = Self::node_to_string(asm[*lhs].clone(), asm, locals, inputs, sig)?,
+                        rhs = Self::node_to_string(asm[*rhs].clone(), asm, locals, inputs, sig)?
                     ),
                 }
             }
             CILRoot::SourceFileInfo { line_start, line_len, col_start, col_len, file  } => format!("#line {line_start} {file:?}", file = &asm[file]),
             CILRoot::SetField(info) =>{
                 let (field,addr,value) = info.as_ref();
-                let addr = Self::node_to_string(asm[*addr].clone(), asm, locals, inputs, sig);
-                let value = Self::node_to_string(asm[*value].clone(), asm, locals, inputs, sig);
+                let addr = Self::node_to_string(asm[*addr].clone(), asm, locals, inputs, sig)?;
+                let value = Self::node_to_string(asm[*value].clone(), asm, locals, inputs, sig)?;
                 let field = asm[*field];
                 let name = &asm[field.name()];
                 format!("({addr})->{name}.f = ({value});")
@@ -750,7 +762,7 @@ impl CExporter {
                     .map(|arg| {
                         format!(
                             "({})",
-                            Self::node_to_string(asm[*arg].clone(), asm, locals, inputs, sig)
+                            Self::node_to_string(asm[*arg].clone(), asm, locals, inputs, sig).unwrap()
                         )
                     })
                     .intersperse(",".into())
@@ -760,8 +772,8 @@ impl CExporter {
             }
             CILRoot::StInd(info) => {
                 let (addr, value, tpe, is_volitle) = info.as_ref();
-                let addr = Self::node_to_string(asm[*addr].clone(), asm, locals, inputs, sig);
-                let value = Self::node_to_string(asm[*value].clone(), asm, locals, inputs, sig);
+                let addr = Self::node_to_string(asm[*addr].clone(), asm, locals, inputs, sig)?;
+                let value = Self::node_to_string(asm[*value].clone(), asm, locals, inputs, sig)?;
                 if *is_volitle {
                     format!(
                         "*((volitale {tpe}*)({addr})) = ({value});",
@@ -773,16 +785,16 @@ impl CExporter {
             }
             CILRoot::InitBlk(blk) => {
                 let (dst, val, count) = blk.as_ref();
-                let dst = Self::node_to_string(asm[*dst].clone(), asm, locals, inputs, sig);
-                let val = Self::node_to_string(asm[*val].clone(), asm, locals, inputs, sig);
-                let count = Self::node_to_string(asm[*count].clone(), asm, locals, inputs, sig);
+                let dst = Self::node_to_string(asm[*dst].clone(), asm, locals, inputs, sig)?;
+                let val = Self::node_to_string(asm[*val].clone(), asm, locals, inputs, sig)?;
+                let count = Self::node_to_string(asm[*count].clone(), asm, locals, inputs, sig)?;
                 format!("memset(({dst}),({val}),({count}));")
             }
             CILRoot::CpBlk(blk) => {
                 let (dst, src, len) = blk.as_ref();
-                let dst = Self::node_to_string(asm[*dst].clone(), asm, locals, inputs, sig);
-                let src = Self::node_to_string(asm[*src].clone(), asm, locals, inputs, sig);
-                let len = Self::node_to_string(asm[*len].clone(), asm, locals, inputs, sig);
+                let dst = Self::node_to_string(asm[*dst].clone(), asm, locals, inputs, sig)?;
+                let src = Self::node_to_string(asm[*src].clone(), asm, locals, inputs, sig)?;
+                let len = Self::node_to_string(asm[*len].clone(), asm, locals, inputs, sig)?;
                 format!("memcpy(({dst}),({src}),({len}));")
             }
             CILRoot::CallI(info) => {
@@ -793,7 +805,7 @@ impl CExporter {
                     .map(|arg| {
                         format!(
                             "({})",
-                            Self::node_to_string(asm[*arg].clone(), asm, locals, inputs, sig)
+                            Self::node_to_string(asm[*arg].clone(), asm, locals, inputs, sig).unwrap()
                         )
                     })
                     .intersperse(",".into())
@@ -805,7 +817,7 @@ impl CExporter {
                     .map(|i| nonvoid_c_type(*i, asm))
                     .intersperse(",".into())
                     .collect::<String>();
-                let fn_ptr = Self::node_to_string(asm[*fn_ptr].clone(), asm, locals, inputs, sig);
+                let fn_ptr = Self::node_to_string(asm[*fn_ptr].clone(), asm, locals, inputs, sig)?;
                 format!("((*({ret}(*)({args}))({fn_ptr})))({call_args});")
             }
             CILRoot::ExitSpecialRegion { target, source } => format!("goto bb{target};"),
@@ -814,17 +826,18 @@ impl CExporter {
                 let field = asm[field];
                 let class = asm[field.owner()].clone();
                 let fname = class_member_name(&asm[class.name()], &asm[field.name()]);
-                let val = Self::node_to_string(asm[val].clone(), asm, locals, inputs, sig);
+                let val = Self::node_to_string(asm[val].clone(), asm, locals, inputs, sig)?;
                 format!("{fname} = {val};")
             }
             CILRoot::CpObj { src, dst, tpe } => todo!(),
             CILRoot::Unreachable(string_idx) => todo!(),
-        }
+        })
     }
     fn export_method_def(
         asm: &mut Assembly,
         def: &MethodDef,
         method_defs: &mut impl Write,
+        method_decls: &mut impl Write,
     ) -> std::io::Result<()> {
         let class = &asm[def.class()];
         let class_name = escape_ident(&asm[class.name()]);
@@ -840,7 +853,21 @@ impl CExporter {
             MethodImpl::Extern {
                 lib,
                 preserve_errno,
-            } => return Ok(()),
+            } => match mname.as_str() {
+                "printf" | "puts" | "memcmp" | "memcpy" | "strlen" | "rename" | "realpath"
+                | "unsetenv" | "setenv" | "getenv" | "syscall" => return Ok(()),
+                _ => {
+                    let inputs = def
+                        .ref_to()
+                        .stack_inputs(asm)
+                        .iter()
+                        .map(|i| nonvoid_c_type(*i, asm))
+                        .intersperse(",".into())
+                        .collect::<String>();
+                    writeln!(method_decls, "{output} {method_name}({inputs});")?;
+                    return Ok(());
+                }
+            },
             MethodImpl::Missing => {
                 let inputs = def
                     .ref_to()
@@ -901,15 +928,35 @@ impl CExporter {
         let blocks = def.blocks(asm).unwrap().to_vec();
         for block in blocks {
             writeln!(method_defs, "bb{}:", block.block_id())?;
-            for root in block.roots() {
+            for root_idx in block.roots() {
+                if let Err(err) = asm[*root_idx].clone().typecheck(sig, &locals, asm) {
+                    eprintln!("Typecheck error:{err:?}");
+                    writeln!(method_defs, "fprintf(stderr,\"Attempted to execute a statement which failed to compile.\" {err:?}); abort();",err = format!("{err:?}"))?;
+                    continue;
+                }
+
                 let root = Self::root_to_string(
-                    asm[*root].clone(),
+                    asm[*root_idx].clone(),
                     asm,
                     &locals[..],
                     &stack_inputs[..],
                     sig,
                 );
-                writeln!(method_defs, "{root}")?;
+
+                match root {
+                    Ok(root) => {
+                        writeln!(
+                            method_defs,
+                            "// {:?}",
+                            typecheck::typecheck_err_to_string(*root_idx, asm, sig, &locals)
+                        )?;
+                        writeln!(method_defs, "{root}")?
+                    }
+                    Err(err) => {
+                        eprintln!("Typecheck error:{err:?}");
+                        writeln!(method_defs, "fprintf(stderr,\"Attempted to execute a statement which failed to compile.\" {err:?}); abort();",err = format!("{err:?}"))?
+                    }
+                }
             }
         }
         writeln!(method_defs, "}}")
@@ -962,18 +1009,18 @@ impl CExporter {
             let field_tpe = c_tpe(*sfield_tpe, asm);
             let fname = class_member_name(&class_name, &fname);
             if *is_thread_local {
-                writeln!(type_defs, "static thread_local {field_tpe} {fname};")?;
+                writeln!(type_defs, "static _Thread_local {field_tpe} {fname};")?;
             } else {
                 writeln!(type_defs, "static {field_tpe} {fname};")?;
             }
         }
         for method in class.methods() {
-            let mref = &asm[method.0];
+            let mref = &asm[method.0].clone();
             let def = asm[*method].clone();
             let is_extern = def.resolved_implementation(asm).is_extern();
+            Self::export_method_def(asm, &def, method_defs, method_decls)?;
             if !is_extern {
                 Self::export_method_decl(asm, mref, method_decls)?;
-                Self::export_method_def(asm, &def, method_defs)?;
             }
         }
         defined_types.insert(defid);
@@ -1008,7 +1055,7 @@ impl CExporter {
         out.write_all(&method_decls)?;
         out.write_all(&method_defs)?;
         if !self.is_lib {
-            out.write_all(b"void main(){_cctor();entrypoint((void *)0);}")?;
+            out.write_all(b"void main(int argc, char** argv){_argcStaticStorage = argc; _argvStaticStorage = argv; _cctor();entrypoint((void *)0);}")?;
         }
         Ok(())
     }
@@ -1042,12 +1089,14 @@ impl Exporter for CExporter {
         let out = cmd.output().unwrap();
         let stdout = String::from_utf8_lossy(&out.stdout);
         let stderr = String::from_utf8_lossy(&out.stderr);
-        assert!(
-            !(stderr.contains("error") || stderr.contains("fatal")),
-            "stdout:{} stderr:{} cmd:{cmd:?}",
-            stdout,
-            String::from_utf8_lossy(&out.stderr)
-        );
+        if !*LINKER_RECOVER {
+            assert!(
+                !(stderr.contains("error") || stderr.contains("fatal")),
+                "stdout:{} stderr:{} cmd:{cmd:?}",
+                stdout,
+                String::from_utf8_lossy(&out.stderr)
+            );
+        }
 
         Ok(())
     }

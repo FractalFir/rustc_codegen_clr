@@ -9,7 +9,7 @@ use crate::cil_node::CILNode as V1Node;
 use crate::v2::Type;
 
 #[derive(Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize)]
-pub struct NodeIdx(BiMapIndex);
+pub struct NodeIdx(pub BiMapIndex);
 impl IntoBiMapIndex for NodeIdx {
     fn from_index(val: BiMapIndex) -> Self {
         Self(val)
