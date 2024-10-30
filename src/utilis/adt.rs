@@ -8,7 +8,7 @@ use cilly::{
 };
 use rustc_middle::ty::{AdtDef, Ty};
 use rustc_target::abi::{
-    FieldIdx, FieldsShape, Layout, LayoutS, TagEncoding, VariantIdx, Variants,
+    FieldIdx, FieldsShape, Layout, LayoutData, TagEncoding, VariantIdx, Variants,
 };
 
 use crate::fn_ctx::MethodCompileCtx;
@@ -89,7 +89,9 @@ impl FieldOffsetIterator {
             }
         }
     }
-    pub fn fields(parent: LayoutS<FieldIdx, rustc_target::abi::VariantIdx>) -> FieldOffsetIterator {
+    pub fn fields(
+        parent: LayoutData<FieldIdx, rustc_target::abi::VariantIdx>,
+    ) -> FieldOffsetIterator {
         //eprintln!("ADT fields:{:?}",parent.fields);
         Self::from_fields_shape(&parent.fields)
     }
@@ -143,8 +145,8 @@ fn primitive_to_type(primitive: rustc_target::abi::Primitive, asm: &mut Assembly
 }
 pub fn get_variant_at_index(
     variant_index: VariantIdx,
-    layout: LayoutS<FieldIdx, rustc_target::abi::VariantIdx>,
-) -> LayoutS<FieldIdx, rustc_target::abi::VariantIdx> {
+    layout: LayoutData<FieldIdx, rustc_target::abi::VariantIdx>,
+) -> LayoutData<FieldIdx, rustc_target::abi::VariantIdx> {
     match layout.variants {
         Variants::Single { .. } => layout,
         Variants::Multiple { variants, .. } => variants[variant_index].clone(),
