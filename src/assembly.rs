@@ -133,8 +133,8 @@ fn allocation_initializer_method(
                 local: 0,
                 tree: Box::new(call!(
                     asm.alloc_methodref(alloc),
-                    [conv_isize!(CILNode::V2(asm.alloc_node(
-                        i32::try_from(bytes.len()).expect("Static alloc too big")
+                    [CILNode::V2(asm.alloc_node(Const::ISize(
+                        i64::try_from(bytes.len()).expect("Static alloc too big")
                     )))]
                 ))
                 .cast_ptr(asm.nptr(Type::Int(Int::U8))),

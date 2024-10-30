@@ -248,10 +248,10 @@ pub fn insert_exception(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) 
         false,
         0,
         extends,
-        vec![(Type::Int(Int::USize), data_pointer, Some(0))],
+        vec![(Type::Int(Int::USize), data_pointer, None)],
         vec![],
         Access::Public,
-        Some(NonZeroU32::new(8).unwrap()),
+        None,
         None,
     ));
     let ctor = asm.alloc_string(".ctor");

@@ -86,7 +86,7 @@ fn c_tpe(field_tpe: Type, asm: &Assembly) -> String {
             super::Float::F16 => todo!(),
             super::Float::F32 => "float".into(),
             super::Float::F64 => "double".into(),
-            super::Float::F128 => todo!(),
+            super::Float::F128 => "_Float128".into(),
         },
         Type::PlatformString => "char*".into(),
         Type::PlatformChar => "char".into(),

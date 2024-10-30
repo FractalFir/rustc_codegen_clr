@@ -20,18 +20,18 @@ pub fn call_alias(
                 .iter()
                 .zip(original_inputs.iter())
                 .enumerate()
-                .map(|(arg, (tpe, original_tpe))| {
-                    if tpe == original_tpe {
+                .map(|(arg, (target_type, original_tpe))| {
+                    if target_type == original_tpe {
                         asm.alloc_node(CILNode::LdArg(arg as u32))
                     } else {
-                        match (tpe, original_tpe) {
+                        match (target_type, original_tpe) {
                             (
                                 Type::Ptr(_) | Type::Int(Int::ISize | Int::USize) | Type::FnPtr(_),
                                 Type::ClassRef(_),
                             ) => {
                                 // Transmute to a pointer
                                 let ptr_address = asm.alloc_node(CILNode::LdArgA(arg as u32));
-                                let tpe = asm.alloc_type(*tpe);
+                                let tpe = asm.alloc_type(*target_type);
                                 asm.alloc_node(CILNode::LdInd {
                                     addr: ptr_address,
                                     tpe,
@@ -51,10 +51,23 @@ pub fn call_alias(
                                 })
                             }
                             (
+                                Type::Int(int @ (Int::ISize | Int::USize)),
+                                Type::Int(Int::ISize | Int::USize)
+                            )  => {
+                                let src =  asm.alloc_node(CILNode::LdArg(arg as u32));
+                                asm.alloc_node(CILNode::IntCast { input: src, target:*int, extend:cilly::cilnode::ExtendKind::ZeroExtend })
+                               
+                            },
+                            (
                                 Type::Ptr(_) | Type::Int(Int::ISize | Int::USize) | Type::FnPtr(_),
                                 Type::Ptr(_) | Type::Int(Int::ISize | Int::USize) | Type::FnPtr(_),
-                            ) | (Type::Int(Int::I64),Type::Int(Int::U64)) => asm.alloc_node(CILNode::LdArg(arg as u32)),
-                            _ => todo!("can't auto convert {original_tpe:?} to {tpe:?} when autogenrating wrappers."),
+                            )  => {
+                         
+                                asm.alloc_node(CILNode::LdArg(arg as u32))
+                            },
+                            
+                            (Type::Int(Int::I64),Type::Int(Int::U64)) => asm.alloc_node(CILNode::LdArg(arg as u32)),
+                            _ => todo!("can't auto convert {original_tpe:?} to {target_type:?} when autogenrating wrappers."),
                         }
                     }
                 })

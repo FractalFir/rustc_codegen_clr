@@ -97,6 +97,10 @@ pub enum TypeCheckError {
         got: Type,
         expected: Type,
     },
+    ValueTypeCompare {
+        lhs: Type,
+        rhs: Type,
+    },
 }
 pub fn typecheck_err_to_string(
     root_idx: super::RootIdx,
@@ -201,7 +205,15 @@ impl BinOp {
             },
             BinOp::Eq => {
                 if lhs == rhs || lhs.is_assignable_to(rhs, asm) {
-                    Ok(Type::Bool)
+                    if let Type::ClassRef(cref) = lhs {
+                        if asm[cref].is_valuetype() {
+                            Err(TypeCheckError::ValueTypeCompare { lhs, rhs })
+                        } else {
+                            Ok(Type::Bool)
+                        }
+                    } else {
+                        Ok(Type::Bool)
+                    }
                 } else {
                     Err(TypeCheckError::WrongBinopArgs {
                         lhs,

@@ -371,7 +371,10 @@ uint64_t System_UInt64_RotateLeftu8i4u8(uint64_t val, int32_t ammount)
     fprintf(stderr, "Can't System_UInt64_RotateLeftu8i4u8 yet.\n");
     abort();
 }
-
+unsigned __int128 System_UInt128_RotateRightu16i4u16(unsigned __int128 val, int32_t amount){
+  fprintf(stderr, "Can't System_UInt128_RotateRightu16i4u16 yet.\n");
+    abort();
+}
 
 uint8_t System_Byte_RotateLeftu1i4u1(uint8_t val, int32_t ammount)
 {
@@ -380,7 +383,7 @@ uint8_t System_Byte_RotateLeftu1i4u1(uint8_t val, int32_t ammount)
 }
 unsigned __int128 System_UInt128_LeadingZeroCountu16u16(unsigned __int128 val)
 {
-    fprintf(stderr, "Can't System_Byte_RotateLeftu1i4u1 yet.\n");
+    fprintf(stderr, "Can't System_UInt128_LeadingZeroCountu16u16 yet.\n");
     abort();
 }
 uint32_t System_Math_Minu4u4u4(uint32_t lhs, uint32_t rhs)

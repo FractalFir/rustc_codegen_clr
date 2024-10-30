@@ -86,7 +86,7 @@ pub fn handle_rvalue<'tcx>(
             }
             NullOp::AlignOf => {
                 let algin = crate::utilis::align_of(ctx.monomorphize(*ty), ctx.tcx());
-                CILNode::V2(ctx.alloc_node(algin))
+                CILNode::V2(ctx.alloc_node(Const::USize(algin)))
             }
             NullOp::OffsetOf(fields) => {
                 let layout = ctx.layout_of(*ty);
@@ -94,7 +94,7 @@ pub fn handle_rvalue<'tcx>(
                     .tcx()
                     .offset_of_subfield(ParamEnv::reveal_all(), layout, fields.iter())
                     .bytes();
-                CILNode::V2(ctx.alloc_node(offset))
+                CILNode::V2(ctx.alloc_node(Const::USize(offset)))
             }
             rustc_middle::mir::NullOp::UbChecks => {
                 let ub_checks = ctx.tcx().sess.ub_checks();

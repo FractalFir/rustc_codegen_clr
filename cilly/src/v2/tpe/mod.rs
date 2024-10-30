@@ -214,6 +214,7 @@ impl Type {
                     && cref.asm().map(|s| asm[s].as_ref()) == Some("System.Runtime")
                     && &asm[cref.name()] == "System.UInt128"
             }
+            (Type::Int(Int::U16 | Int::I16), Type::PlatformChar) => true,
             (Type::Ptr(ptr), Type::Ref(rf)) => ptr == rf,
             // TODO: check generics propely?
             (_, Type::PlatformGeneric(_, _)) => true,
