@@ -1,9 +1,6 @@
 use crate::{assembly::MethodCompileCtx, operand::handle_operand, place::place_set};
 use cilly::{
-    cil_node::CILNode,
-    cil_root::CILRoot,
-    conv_isize, conv_usize,
-    Int, IntoAsmIndex, Type,
+    cil_node::CILNode, cil_root::CILRoot, conv_isize, conv_usize, Int, IntoAsmIndex, Type,
 };
 use rustc_middle::{
     mir::{Operand, Place},

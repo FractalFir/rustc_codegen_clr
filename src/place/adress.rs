@@ -158,30 +158,9 @@ fn field_address<'a>(
                         let obj_addr = ld_field!(addr_calc.clone(),addr_descr);
                         let metadata_descr = ctx.alloc_field(FieldDesc::new(curr_type_fat_ptr.as_class_ref().unwrap(),metadata_name,Type::Int(Int::USize)));
                         let metadata = ld_field!(addr_calc,metadata_descr);
-                        let field_fat_ptr = ctx.type_from_cache(Ty::new_ptr(
-                            ctx.tcx(),
-                            field_ty,
-                            rustc_middle::ty::Mutability::Mut,
-                        ));
-                        CILNode::TemporaryLocal(Box::new((
-                            ctx.alloc_type(field_fat_ptr),
-                            [
-                                CILRoot::SetField {
-                                    addr: Box::new(CILNode::LoadAddresOfTMPLocal),
-                                    value: Box::new(obj_addr
-                                            + CILNode::V2(ctx.alloc_node(Const::USize(u64::from(offset))))),
-                                    desc: ctx.alloc_field(FieldDesc::new(field_fat_ptr.as_class_ref().unwrap(),data_ptr_name,void_ptr)),
-                                },
-                                CILRoot::SetField {
-                                    addr: Box::new(CILNode::LoadAddresOfTMPLocal),
-                                    value: Box::new(metadata
-                                           ),
-                                    desc: ctx.alloc_field(FieldDesc::new(field_fat_ptr.as_class_ref().unwrap(),metadata_name,Type::Int(Int::USize),)),
-                                },
-                            ]
-                            .into(),
-                           CILNode::LoadTMPLocal,
-                        )))
+                        let ptr =obj_addr
+                        + CILNode::V2(ctx.alloc_node(Const::USize(u64::from(offset))));
+                        CILNode::create_slice(curr_type_fat_ptr.as_class_ref().unwrap(), ctx, metadata, ptr)
                 }
             }
         }
@@ -264,56 +243,23 @@ pub fn place_elem_adress<'tcx>(
                 let data_ptr_name = ctx.alloc_string(crate::DATA_PTR);
                 let void_ptr = ctx.nptr(Type::Void);
                 let ptr_field = ctx.alloc_field(FieldDesc::new(curr_type, data_ptr_name, void_ptr));
-                CILNode::TemporaryLocal(Box::new((
-                    ctx.alloc_type(Type::ClassRef(curr_type)),
-                    [
-                        CILRoot::SetField {
-                            addr: Box::new(CILNode::LoadAddresOfTMPLocal),
-                            value: Box::new(CILNode::Sub(
-                                Box::new(ld_field!(addr_calc.clone(), metadata_field)),
-                                Box::new(CILNode::V2(ctx.alloc_node(Const::USize(*to + 1)))),
-                            )),
-                            desc: (metadata_field),
-                        },
-                        CILRoot::SetField {
-                            addr: Box::new(CILNode::LoadAddresOfTMPLocal),
-                            value: Box::new(
-                                ld_field!(addr_calc, ptr_field)
-                                    + CILNode::V2(ctx.alloc_node(Const::USize(*from))),
-                            ),
-                            desc: ptr_field,
-                        },
-                    ]
-                    .into(),
-                    CILNode::LoadTMPLocal,
-                )))
+                let metadata = CILNode::Sub(
+                    Box::new(ld_field!(addr_calc.clone(), metadata_field)),
+                    Box::new(CILNode::V2(ctx.alloc_node(Const::USize(*to + 1)))),
+                );
+                let data_ptr = ld_field!(addr_calc, ptr_field)
+                    + CILNode::V2(ctx.alloc_node(Const::USize(*from)));
+                CILNode::create_slice(curr_type, ctx, metadata, data_ptr)
             } else {
                 let void_ptr = ctx.nptr(Type::Void);
                 let data_ptr = ctx.alloc_string(crate::DATA_PTR);
-                let metadata = ctx.alloc_string(crate::METADATA);
-                let metadata_field =
-                    ctx.alloc_field(FieldDesc::new(curr_type, metadata, Type::Int(Int::USize)));
+
                 let ptr_field = ctx.alloc_field(FieldDesc::new(curr_type, data_ptr, void_ptr));
-                CILNode::TemporaryLocal(Box::new((
-                    ctx.alloc_type(Type::ClassRef(curr_type)),
-                    [
-                        CILRoot::SetField {
-                            addr: Box::new(CILNode::LoadAddresOfTMPLocal),
-                            value: Box::new(CILNode::V2(ctx.alloc_node(Const::USize(to - from)))),
-                            desc: (metadata_field),
-                        },
-                        CILRoot::SetField {
-                            addr: Box::new(CILNode::LoadAddresOfTMPLocal),
-                            value: Box::new(
-                                ld_field!(addr_calc, ptr_field)
-                                    + CILNode::V2(ctx.alloc_node(Const::USize(*from))),
-                            ),
-                            desc: ptr_field,
-                        },
-                    ]
-                    .into(),
-                    CILNode::LoadTMPLocal,
-                )))
+                let metadata = CILNode::V2(ctx.alloc_node(Const::USize(to - from)));
+                let data_ptr = ld_field!(addr_calc, ptr_field)
+                    + CILNode::V2(ctx.alloc_node(Const::USize(*from)));
+
+                CILNode::create_slice(curr_type, ctx, metadata, data_ptr)
             }
         }
         PlaceElem::ConstantIndex {

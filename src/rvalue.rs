@@ -377,6 +377,7 @@ pub fn handle_rvalue<'tcx>(
         ) => todo!("Dyn star casts unspoorted"),
     }
 }
+const SIMPLE_REPEAT_CAP: u64 = 16;
 fn repeat<'tcx>(
     rvalue: &Rvalue<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
@@ -408,8 +409,8 @@ fn repeat<'tcx>(
         };
         return (vec![init], place_get(target_location, ctx));
     }
-    // Check if there are more than 16 elements. If so, use mecmpy to accelerate initialzation
-    if times > 16 {
+    // Check if there are more than SIMPLE_REPEAT_CAP elements. If so, use mecmpy to accelerate initialzation
+    if times > SIMPLE_REPEAT_CAP {
         let place_address = place_adress(target_location, ctx);
         let mut branches = Vec::new();
         let arr_ref = ctx.nref(array);
@@ -421,7 +422,7 @@ fn repeat<'tcx>(
             vec![].into(),
         );
         let mref = ctx.alloc_methodref(mref);
-        for idx in 0..16 {
+        for idx in 0..SIMPLE_REPEAT_CAP {
             branches.push(CILRoot::Call {
                 site: mref,
                 args: [
@@ -432,7 +433,7 @@ fn repeat<'tcx>(
                 .into(),
             });
         }
-        let mut curr_len = 16;
+        let mut curr_len = SIMPLE_REPEAT_CAP;
         while curr_len < times {
             // Copy curr_len elements if possible, otherwise this is the last iteration, so copy the reminder.
             let curr_copy_size = curr_len.min(times - curr_len);

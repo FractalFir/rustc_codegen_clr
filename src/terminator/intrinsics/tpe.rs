@@ -1,17 +1,9 @@
 use crate::{assembly::MethodCompileCtx, place::place_set};
 use cilly::{
-    call, call_virt,
-    cil_node::CILNode,
-    cil_root::CILRoot,
-    cilnode::MethodKind,
-    conv_u32,
-    v2::ClassRef,
-    Int, MethodRef, Type,
+    call, call_virt, cil_node::CILNode, cil_root::CILRoot, cilnode::MethodKind, conv_u32,
+    v2::ClassRef, Int, MethodRef, Type,
 };
-use rustc_middle::{
-    mir::Place,
-    ty::Instance,
-};
+use rustc_middle::{mir::Place, ty::Instance};
 pub fn type_id<'tcx>(
     destination: &Place<'tcx>,
     call_instance: Instance<'tcx>,

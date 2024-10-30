@@ -1,10 +1,5 @@
 use crate::{assembly::MethodCompileCtx, operand::handle_operand, place::place_set};
-use cilly::{
-    cil_node::CILNode,
-    cil_root::CILRoot,
-    conv_usize, eq,
-    Int, IntoAsmIndex, Type,
-};
+use cilly::{cil_node::CILNode, cil_root::CILRoot, conv_usize, eq, Int, IntoAsmIndex, Type};
 use rustc_middle::{
     mir::{Operand, Place},
     ty::Instance,

@@ -1,14 +1,11 @@
-use crate::{
-    assembly::MethodCompileCtx,
-    operand::handle_operand,
-    place::place_set,
-};
+use crate::{assembly::MethodCompileCtx, operand::handle_operand, place::place_set};
 use cilly::{
     call,
     cil_node::CILNode,
     cil_root::CILRoot,
-    cilnode::MethodKind, conv_i16, conv_i32, conv_i64, conv_i8, conv_isize, conv_u16, conv_u32,
-    conv_u64, conv_u8, conv_usize,
+    cilnode::MethodKind,
+    conv_i16, conv_i32, conv_i64, conv_i8, conv_isize, conv_u16, conv_u32, conv_u64, conv_u8,
+    conv_usize,
     v2::{ClassRef, Float, Int},
     Const, IntoAsmIndex, MethodRef, Type,
 };

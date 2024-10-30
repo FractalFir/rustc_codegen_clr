@@ -33,6 +33,12 @@ pub mod method;
 pub mod utilis;
 pub mod v2;
 pub use v2::*;
+/// The metadata of a slice
+pub const METADATA: &str = "m";
+/// The data pointer of a slice
+pub const DATA_PTR: &str = "d";
+/// The tag of an enum
+pub const ENUM_TAG: &str = "v";
 #[macro_export]
 macro_rules! config {
     ($name:ident,bool,$default:expr) => {

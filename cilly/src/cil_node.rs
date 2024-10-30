@@ -224,6 +224,39 @@ pub enum CILNode {
 }
 
 impl CILNode {
+    pub fn create_slice(
+        slice_tpe: ClassRefIdx,
+        asm: &mut Assembly,
+        metadata: Self,
+        ptr: Self,
+    ) -> Self {
+        let metadata_name = asm.alloc_string(crate::METADATA);
+        let metadata_field = asm.alloc_field(crate::FieldDesc::new(
+            slice_tpe,
+            metadata_name,
+            Type::Int(Int::USize),
+        ));
+        let data_ptr_name = asm.alloc_string(crate::DATA_PTR);
+        let void_ptr = asm.nptr(Type::Void);
+        let ptr_field = asm.alloc_field(crate::FieldDesc::new(slice_tpe, data_ptr_name, void_ptr));
+        CILNode::TemporaryLocal(Box::new((
+            asm.alloc_type(Type::ClassRef(slice_tpe)),
+            [
+                CILRoot::SetField {
+                    addr: Box::new(CILNode::LoadAddresOfTMPLocal),
+                    value: Box::new(metadata),
+                    desc: (metadata_field),
+                },
+                CILRoot::SetField {
+                    addr: Box::new(CILNode::LoadAddresOfTMPLocal),
+                    value: Box::new(ptr),
+                    desc: ptr_field,
+                },
+            ]
+            .into(),
+            CILNode::LoadTMPLocal,
+        )))
+    }
     pub fn const_u128(value: u128, asm: &mut Assembly) -> CILNode {
         CILNode::V2(asm.alloc_node(value))
     }

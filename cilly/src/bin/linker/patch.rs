@@ -56,16 +56,13 @@ pub fn call_alias(
                             )  => {
                                 let src =  asm.alloc_node(CILNode::LdArg(arg as u32));
                                 asm.alloc_node(CILNode::IntCast { input: src, target:*int, extend:cilly::cilnode::ExtendKind::ZeroExtend })
-                               
                             },
                             (
                                 Type::Ptr(_) | Type::Int(Int::ISize | Int::USize) | Type::FnPtr(_),
                                 Type::Ptr(_) | Type::Int(Int::ISize | Int::USize) | Type::FnPtr(_),
                             )  => {
-                         
                                 asm.alloc_node(CILNode::LdArg(arg as u32))
                             },
-                            
                             (Type::Int(Int::I64),Type::Int(Int::U64)) => asm.alloc_node(CILNode::LdArg(arg as u32)),
                             _ => todo!("can't auto convert {original_tpe:?} to {target_type:?} when autogenrating wrappers."),
                         }
