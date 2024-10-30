@@ -1,7 +1,8 @@
 use crate::{
     assembly::MethodCompileCtx,
     call_info::CallInfo,
-    operand::handle_operand,
+    operand::{handle_operand, operand_address},
+    place::{place_adress, place_get},
     r#type::{fat_ptr_to, get_type, pointer_to_is_fat},
 };
 use cilly::{
@@ -41,18 +42,20 @@ pub fn handle_rvalue<'tcx>(
     rvalue: &Rvalue<'tcx>,
     target_location: &Place<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-) -> CILNode {
+) -> (Vec<CILRoot>, CILNode) {
     match rvalue {
-        Rvalue::Use(operand) => handle_operand(operand, ctx),
-        Rvalue::CopyForDeref(place) => crate::place::place_get(place, ctx),
+        Rvalue::Use(operand) => (vec![], handle_operand(operand, ctx)),
+        Rvalue::CopyForDeref(place) => (vec![], crate::place::place_get(place, ctx)),
 
-        Rvalue::Ref(_region, _borrow_kind, place) => crate::place::place_adress(place, ctx),
-        Rvalue::RawPtr(_mutability, place) => crate::place::place_adress(place, ctx),
+        Rvalue::Ref(_region, _borrow_kind, place) => {
+            (vec![], crate::place::place_adress(place, ctx))
+        }
+        Rvalue::RawPtr(_mutability, place) => (vec![], crate::place::place_adress(place, ctx)),
         Rvalue::Cast(
             CastKind::PointerCoercion(PointerCoercion::UnsafeFnPointer, _),
             operand,
             _dst,
-        ) => handle_operand(operand, ctx),
+        ) => (vec![], handle_operand(operand, ctx)),
         Rvalue::Cast(
             CastKind::PointerCoercion(
                 PointerCoercion::MutToConstPointer | PointerCoercion::ArrayToPointer,
@@ -61,32 +64,36 @@ pub fn handle_rvalue<'tcx>(
             | CastKind::PtrToPtr,
             operand,
             dst,
-        ) => ptr_to_ptr(ctx, operand, *dst),
+        ) => (vec![], ptr_to_ptr(ctx, operand, *dst)),
         Rvalue::Cast(CastKind::PointerCoercion(PointerCoercion::Unsize, _), operand, target) => {
-            crate::unsize::unsize2(ctx, operand, *target)
+            (vec![], crate::unsize::unsize2(ctx, operand, *target))
         }
-        Rvalue::BinaryOp(binop, operands) => {
-            crate::binop::binop(*binop, &operands.0, &operands.1, ctx)
-        }
-        Rvalue::UnaryOp(binop, operand) => crate::unop::unop(*binop, operand, ctx),
-        Rvalue::Cast(CastKind::IntToInt, operand, target) => {
-            cast!(ctx, operand, target, crate::casts::int_to_int, ctx)
-        }
-        Rvalue::Cast(CastKind::FloatToInt, operand, target) => {
-            cast!(ctx, operand, target, crate::casts::float_to_int, ctx)
-        }
-        Rvalue::Cast(CastKind::IntToFloat, operand, target) => {
-            cast!(ctx, operand, target, crate::casts::int_to_float, ctx)
-        }
+        Rvalue::BinaryOp(binop, operands) => (
+            vec![],
+            crate::binop::binop(*binop, &operands.0, &operands.1, ctx),
+        ),
+        Rvalue::UnaryOp(binop, operand) => (vec![], crate::unop::unop(*binop, operand, ctx)),
+        Rvalue::Cast(CastKind::IntToInt, operand, target) => (
+            vec![],
+            cast!(ctx, operand, target, crate::casts::int_to_int, ctx),
+        ),
+        Rvalue::Cast(CastKind::FloatToInt, operand, target) => (
+            vec![],
+            cast!(ctx, operand, target, crate::casts::float_to_int, ctx),
+        ),
+        Rvalue::Cast(CastKind::IntToFloat, operand, target) => (
+            vec![],
+            cast!(ctx, operand, target, crate::casts::int_to_float, ctx),
+        ),
         Rvalue::NullaryOp(op, ty) => match op {
             NullOp::SizeOf => {
                 let ty = ctx.type_from_cache(ctx.monomorphize(*ty));
                 let val = size_of!(ty)(ctx);
-                conv_usize!(CILNode::V2(val))
+                (vec![], conv_usize!(CILNode::V2(val)))
             }
             NullOp::AlignOf => {
                 let algin = crate::utilis::align_of(ctx.monomorphize(*ty), ctx.tcx());
-                CILNode::V2(ctx.alloc_node(Const::USize(algin)))
+                (vec![], CILNode::V2(ctx.alloc_node(Const::USize(algin))))
             }
             NullOp::OffsetOf(fields) => {
                 let layout = ctx.layout_of(*ty);
@@ -94,18 +101,21 @@ pub fn handle_rvalue<'tcx>(
                     .tcx()
                     .offset_of_subfield(ParamEnv::reveal_all(), layout, fields.iter())
                     .bytes();
-                CILNode::V2(ctx.alloc_node(Const::USize(offset)))
+                (vec![], CILNode::V2(ctx.alloc_node(Const::USize(offset))))
             }
             rustc_middle::mir::NullOp::UbChecks => {
                 let ub_checks = ctx.tcx().sess.ub_checks();
-                CILNode::V2(ctx.alloc_node(ub_checks))
+                (vec![], CILNode::V2(ctx.alloc_node(ub_checks)))
             }
         },
-        Rvalue::Aggregate(aggregate_kind, field_index) => crate::aggregate::handle_aggregate(
-            ctx,
-            target_location,
-            aggregate_kind.as_ref(),
-            field_index,
+        Rvalue::Aggregate(aggregate_kind, field_index) => (
+            vec![],
+            crate::aggregate::handle_aggregate(
+                ctx,
+                target_location,
+                aggregate_kind.as_ref(),
+                field_index,
+            ),
         ),
         Rvalue::Cast(
             CastKind::PointerCoercion(PointerCoercion::ClosureFnPointer(_), _),
@@ -130,7 +140,7 @@ pub fn handle_rvalue<'tcx>(
                     MethodKind::Static,
                     vec![].into(),
                 );
-                CILNode::LDFtn(ctx.alloc_methodref(call_site))
+                (vec![], CILNode::LDFtn(ctx.alloc_methodref(call_site)))
             }
             _ => panic!(
                 "{} cannot be cast to a fn ptr",
@@ -147,10 +157,13 @@ pub fn handle_rvalue<'tcx>(
                 (
                     Type::Int(Int::ISize | Int::USize) | Type::Ptr(_) | Type::FnPtr(_),
                     Type::Int(Int::ISize | Int::USize) | Type::Ptr(_) | Type::FnPtr(_),
-                ) => handle_operand(operand, ctx).cast_ptr(dst),
+                ) => (vec![], handle_operand(operand, ctx).cast_ptr(dst)),
 
-                (Type::Int(Int::U16), Type::PlatformChar) => handle_operand(operand, ctx),
-                (_, _) => handle_operand(operand, ctx).transmute_on_stack(src, dst, ctx),
+                (Type::Int(Int::U16), Type::PlatformChar) => (vec![], handle_operand(operand, ctx)),
+                (_, _) => (
+                    vec![],
+                    handle_operand(operand, ctx).transmute_on_stack(src, dst, ctx),
+                ),
             }
         }
         Rvalue::ShallowInitBox(operand, dst) => {
@@ -166,7 +179,10 @@ pub fn handle_rvalue<'tcx>(
             );
             let src = ctx.type_from_cache(src);
 
-            handle_operand(operand, ctx).transmute_on_stack(src, boxed_dst_type, ctx)
+            (
+                vec![],
+                handle_operand(operand, ctx).transmute_on_stack(src, boxed_dst_type, ctx),
+            )
         }
         Rvalue::Cast(CastKind::PointerWithExposedProvenance, operand, target) => {
             //FIXME: the documentation of this cast(https://doc.rust-lang.org/nightly/std/ptr/fn.from_exposed_addr.html) is a bit confusing,
@@ -176,7 +192,7 @@ pub fn handle_rvalue<'tcx>(
             let target = ctx.monomorphize(*target);
             let target = ctx.type_from_cache(target);
             // Cast from usize/isize to any *T is a NOP, so we just have to load the operand.
-            handle_operand(operand, ctx).cast_ptr(target)
+            (vec![], handle_operand(operand, ctx).cast_ptr(target))
         }
         Rvalue::Cast(CastKind::PointerExposeProvenance, operand, target) => {
             //FIXME: the documentation of this cast(https://doc.rust-lang.org/nightly/std/primitive.pointer.html#method.expose_addrl) is a bit confusing,
@@ -188,18 +204,21 @@ pub fn handle_rvalue<'tcx>(
             // Cast to usize/isize from any *T is a NOP, so we just have to load the operand.
 
             let val = handle_operand(operand, ctx);
-            match target {
-                Type::Int(Int::USize | Int::ISize) | Type::Ptr(_) | Type::FnPtr(_) => {
-                    val.cast_ptr(target)
-                }
-                Type::Int(Int::U64 | Int::I64) => crate::casts::int_to_int(
-                    Type::Int(Int::USize),
-                    target,
-                    val.cast_ptr(Type::Int(Int::USize)),
-                    ctx,
-                ),
-                _ => todo!("Can't cast using `PointerExposeProvenance` to {target:?}"),
-            }
+            (
+                vec![],
+                match target {
+                    Type::Int(Int::USize | Int::ISize) | Type::Ptr(_) | Type::FnPtr(_) => {
+                        val.cast_ptr(target)
+                    }
+                    Type::Int(Int::U64 | Int::I64) => crate::casts::int_to_int(
+                        Type::Int(Int::USize),
+                        target,
+                        val.cast_ptr(Type::Int(Int::USize)),
+                        ctx,
+                    ),
+                    _ => todo!("Can't cast using `PointerExposeProvenance` to {target:?}"),
+                },
+            )
         }
         Rvalue::Cast(CastKind::FloatToFloat, operand, target) => {
             let target = ctx.monomorphize(*target);
@@ -210,7 +229,7 @@ pub fn handle_rvalue<'tcx>(
                 Type::Float(Float::F64) => ops = CILNode::ConvF64(ops.into()),
                 _ => panic!("Can't preform a FloatToFloat cast to type {target:?}"),
             }
-            ops
+            (vec![], ops)
         }
         Rvalue::Cast(
             CastKind::PointerCoercion(PointerCoercion::ReifyFnPointer, _),
@@ -247,7 +266,7 @@ pub fn handle_rvalue<'tcx>(
                 MethodKind::Static,
                 vec![].into(),
             );
-            CILNode::LDFtn(ctx.alloc_methodref(call_site))
+            (vec![], CILNode::LDFtn(ctx.alloc_methodref(call_site)))
         }
 
         Rvalue::Discriminant(place) => {
@@ -260,28 +279,37 @@ pub fn handle_rvalue<'tcx>(
             let (disrc_type, _) = crate::utilis::adt::enum_tag_info(layout.layout, ctx);
             let Type::ClassRef(owner) = owner else {
                 eprintln!("Can't get the discirminant of type {owner_ty:?}, because it is a zst. Size:{} Discr type:{:?}",layout.layout.size.bytes(), owner_ty.discriminant_ty(ctx.tcx()));
-                return crate::casts::int_to_int(
-                    Type::Int(Int::I32),
-                    target,
-                    CILNode::V2(ctx.alloc_node(0_i32)),
-                    ctx,
+                return (
+                    vec![],
+                    crate::casts::int_to_int(
+                        Type::Int(Int::I32),
+                        target,
+                        CILNode::V2(ctx.alloc_node(0_i32)),
+                        ctx,
+                    ),
                 );
             };
 
             if disrc_type == Type::Void {
                 // TODO: This always returns 0 if the discriminat type is `()` - this seems to work, but is incorrect. I should be finding the only inhabited variant instead.
-                crate::casts::int_to_int(
-                    Type::Int(Int::I32),
-                    target,
-                    CILNode::V2(ctx.alloc_node(0_i32)),
-                    ctx,
+                (
+                    vec![],
+                    crate::casts::int_to_int(
+                        Type::Int(Int::I32),
+                        target,
+                        CILNode::V2(ctx.alloc_node(0_i32)),
+                        ctx,
+                    ),
                 )
             } else {
-                crate::casts::int_to_int(
-                    disrc_type,
-                    target,
-                    crate::utilis::adt::get_discr(layout.layout, addr, owner, owner_ty, ctx),
-                    ctx,
+                (
+                    vec![],
+                    crate::casts::int_to_int(
+                        disrc_type,
+                        target,
+                        crate::utilis::adt::get_discr(layout.layout, addr, owner, owner_ty, ctx),
+                        ctx,
+                    ),
                 )
             }
         }
@@ -300,17 +328,20 @@ pub fn handle_rvalue<'tcx>(
                         !matches!(addr, CILNode::LDLoc(_)),
                         "improper addr {addr:?}. operand:{operand:?}"
                     );
-                    ld_field!(addr, ctx.alloc_field(descriptor))
+                    (vec![], ld_field!(addr, ctx.alloc_field(descriptor)))
                 }
                 TyKind::Array(_ty, length) => {
                     let len =
                         crate::utilis::try_resolve_const_size(ctx.monomorphize(*length)).unwrap();
-                    CILNode::V2(ctx.alloc_node(Const::USize(len as u64)))
+                    (
+                        vec![],
+                        CILNode::V2(ctx.alloc_node(Const::USize(len as u64))),
+                    )
                 }
                 _ => todo!("Get length of type {ty:?}"),
             }
         }
-        Rvalue::Repeat(operand, times) => repeat(rvalue, ctx, operand, *times),
+        Rvalue::Repeat(operand, times) => repeat(rvalue, ctx, operand, *times, target_location),
         Rvalue::ThreadLocalRef(def_id) => {
             if !def_id.is_local() && ctx.tcx().needs_thread_local_shim(*def_id) {
                 let _instance = Instance {
@@ -323,15 +354,18 @@ pub fn handle_rvalue<'tcx>(
                 let alloc_id = ctx.tcx().reserve_and_set_static_alloc(*def_id);
                 let rvalue_ty = rvalue.ty(ctx.body(), ctx.tcx());
                 let rvalue_type = ctx.type_from_cache(rvalue_ty);
-                CILNode::LoadGlobalAllocPtr {
-                    alloc_id: alloc_id.0.into(),
-                }
-                .cast_ptr(rvalue_type)
+                (
+                    vec![],
+                    CILNode::LoadGlobalAllocPtr {
+                        alloc_id: alloc_id.0.into(),
+                    }
+                    .cast_ptr(rvalue_type),
+                )
             }
         }
         Rvalue::Cast(rustc_middle::mir::CastKind::FnPtrToPtr, operand, target) => {
             let target = ctx.type_from_cache(*target);
-            handle_operand(operand, ctx).cast_ptr(target)
+            (vec![], handle_operand(operand, ctx).cast_ptr(target))
         }
         rustc_middle::mir::Rvalue::Cast(
             rustc_middle::mir::CastKind::PointerCoercion(
@@ -348,7 +382,8 @@ fn repeat<'tcx>(
     ctx: &mut MethodCompileCtx<'tcx, '_>,
     element: &Operand<'tcx>,
     times: rustc_middle::ty::Const<'tcx>,
-) -> CILNode {
+    target_location: &Place<'tcx>,
+) -> (Vec<CILRoot>, CILNode) {
     // Get the type of the operand
     let element_ty = ctx.monomorphize(element.ty(ctx.body(), ctx.tcx()));
     let element_type = ctx.type_from_cache(element_ty);
@@ -364,26 +399,18 @@ fn repeat<'tcx>(
     let array_dotnet = array.clone().as_class_ref().expect("Invalid array type.");
     // Check if the element is byte sized. If so, use initblk to quickly initialize this array.
     if crate::utilis::compiletime_sizeof(element_ty, ctx.tcx()) == 1 {
-        let val = Box::new(CILNode::TemporaryLocal(Box::new((
-            ctx.alloc_type(element_type),
-            vec![CILRoot::SetTMPLocal { value: element }].into(),
-            CILNode::LDIndU8 {
-                ptr: Box::new(CILNode::LoadAddresOfTMPLocal.cast_ptr(ctx.nptr(Type::Int(Int::U8)))),
-            },
-        ))));
+        let place_address = place_adress(target_location, ctx);
+        let val = Box::new(element.transmute_on_stack(element_type, Type::Int(Int::U8), ctx));
         let init = CILRoot::InitBlk {
-            dst: Box::new(CILNode::LoadAddresOfTMPLocal.cast_ptr(ctx.nptr(Type::Int(Int::U8)))),
+            dst: Box::new(place_address.cast_ptr(ctx.nptr(Type::Int(Int::U8)))),
             val,
             count: Box::new(CILNode::V2(ctx.alloc_node(Const::USize(times)))),
         };
-        return CILNode::TemporaryLocal(Box::new((
-            ctx.alloc_type(array),
-            vec![init].into(),
-            CILNode::LoadTMPLocal,
-        )));
+        return (vec![init], place_get(target_location, ctx));
     }
     // Check if there are more than 16 elements. If so, use mecmpy to accelerate initialzation
     if times > 16 {
+        let place_address = place_adress(target_location, ctx);
         let mut branches = Vec::new();
         let arr_ref = ctx.nref(array);
         let mref = MethodRef::new(
@@ -398,7 +425,7 @@ fn repeat<'tcx>(
             branches.push(CILRoot::Call {
                 site: mref,
                 args: [
-                    CILNode::LoadAddresOfTMPLocal,
+                    place_address.clone(),
                     CILNode::V2(ctx.alloc_node(Const::USize(idx))),
                     element.clone(),
                 ]
@@ -413,11 +440,11 @@ fn repeat<'tcx>(
             // Copy curr_copy_size elements from the start of the array, starting at curr_len(the ammount of already initialized buffers)
             branches.push(CILRoot::CpBlk {
                 dst: Box::new(
-                    CILNode::MRefToRawPtr(Box::new(CILNode::LoadAddresOfTMPLocal))
+                    CILNode::MRefToRawPtr(Box::new(place_address.clone()))
                         + CILNode::V2(ctx.alloc_node(Const::USize(curr_len)))
                             * conv_usize!(CILNode::V2(elem_size)),
                 ),
-                src: Box::new(CILNode::LoadAddresOfTMPLocal),
+                src: Box::new(place_address.clone()),
                 len: Box::new(
                     CILNode::V2(ctx.alloc_node(Const::USize(curr_copy_size)))
                         * conv_usize!(CILNode::V2(elem_size)),
@@ -426,11 +453,7 @@ fn repeat<'tcx>(
             curr_len *= 2;
         }
         let branches: Box<_> = branches.into();
-        CILNode::TemporaryLocal(Box::new((
-            ctx.alloc_type(array),
-            branches,
-            CILNode::LoadTMPLocal,
-        )))
+        (*branches, place_get(target_location, ctx))
     } else {
         let mut branches = Vec::new();
         let arr_ref = ctx.nref(array);
@@ -441,12 +464,13 @@ fn repeat<'tcx>(
             MethodKind::Instance,
             vec![].into(),
         );
+        let place_address = place_adress(target_location, ctx);
         let mref = ctx.alloc_methodref(mref);
         for idx in 0..times {
             branches.push(CILRoot::Call {
                 site: mref,
                 args: [
-                    CILNode::LoadAddresOfTMPLocal,
+                    place_address.clone(),
                     CILNode::V2(ctx.alloc_node(Const::USize(idx))),
                     element.clone(),
                 ]
@@ -454,11 +478,7 @@ fn repeat<'tcx>(
             });
         }
         let branches: Box<_> = branches.into();
-        CILNode::TemporaryLocal(Box::new((
-            ctx.alloc_type(array),
-            branches,
-            CILNode::LoadTMPLocal,
-        )))
+        (*branches, place_get(target_location, ctx))
     }
 }
 fn ptr_to_ptr<'tcx>(

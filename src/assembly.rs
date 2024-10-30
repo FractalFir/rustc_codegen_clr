@@ -314,7 +314,7 @@ pub fn terminator_to_ops<'tcx>(
 pub fn statement_to_ops<'tcx>(
     statement: &Statement<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-) -> Result<Option<CILTree>, CodegenError> {
+) -> Result<Vec<CILTree>, CodegenError> {
     if *crate::config::ABORT_ON_ERROR {
         Ok(crate::statement::handle_statement(statement, ctx))
     } else {
@@ -439,11 +439,11 @@ pub fn add_fn<'tcx, 'asm, 'a: 'asm>(
                     rustc_middle::ty::print::with_no_trimmed_paths! {eprintln!(
                         "Method \"{name}\" failed to compile statement {statement:?} with message {err:?}\n"
                     )};
-                    rustc_middle::ty::print::with_no_trimmed_paths! {Some(CILRoot::throw(&format!("Tired to run a statement {statement:?} which failed to compile with error message {err:?}."),ctx).into())}
+                    rustc_middle::ty::print::with_no_trimmed_paths! {vec![(CILRoot::throw(&format!("Tired to run a statement {statement:?} which failed to compile with error message {err:?}."),ctx).into())]}
                 }
             };
             // Only save debuginfo for statements which result in ops.
-            if statement_tree.is_some() {
+            if !statement_tree.is_empty() {
                 trees.push(span_source_info(ctx.tcx(), statement.source_info.span).into());
             }
             trees.extend(statement_tree);

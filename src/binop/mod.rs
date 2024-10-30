@@ -151,21 +151,8 @@ pub(crate) fn binop<'tcx>(
             let lt = -conv_i8!(lt_unchecked(ty_a, ops_a.clone(), ops_b.clone(), ctx));
             let gt = conv_i8!(gt_unchecked(ty_a, ops_a, ops_b, ctx));
             let res = lt | gt;
-            let enum_tag = ctx.alloc_string(crate::ENUM_TAG);
-            CILNode::TemporaryLocal(Box::new((
-                ctx.alloc_type(ordering_type),
-                [CILRoot::SetField {
-                    addr: Box::new(CILNode::LoadAddresOfTMPLocal),
-                    value: Box::new(res),
-                    desc: ctx.alloc_field(FieldDesc::new(
-                        ordering_type.as_class_ref().unwrap(),
-                        enum_tag,
-                        Type::Int(Int::I8),
-                    )),
-                }]
-                .into(),
-                CILNode::LoadTMPLocal,
-            )))
+
+            res.transmute_on_stack(Type::Int(Int::I8), ordering_type, ctx)
         }
     }
 }

@@ -10,11 +10,11 @@ use rustc_middle::mir::{CopyNonOverlapping, NonDivergingIntrinsic, Statement, St
 pub fn handle_statement<'tcx>(
     statement: &Statement<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-) -> Option<CILTree> {
+) -> Vec<CILTree> {
     let kind = &statement.kind;
     match kind {
-        StatementKind::StorageLive(_local) => None,
-        StatementKind::StorageDead(_local) => None,
+        StatementKind::StorageLive(_local) => vec![],
+        StatementKind::StorageDead(_local) => vec![],
         StatementKind::SetDiscriminant {
             place,
             variant_index,
@@ -30,39 +30,34 @@ pub fn handle_statement<'tcx>(
             };
             //ops.push();
 
-            Some(
-                crate::utilis::adt::set_discr(
-                    layout.layout,
-                    *variant_index,
-                    crate::place::place_adress(place, ctx),
-                    owner,
-                    owner_ty,
-                    ctx,
-                )
-                .into(),
+            vec![crate::utilis::adt::set_discr(
+                layout.layout,
+                *variant_index,
+                crate::place::place_adress(place, ctx),
+                owner,
+                owner_ty,
+                ctx,
             )
+            .into()]
         }
         StatementKind::Assign(palce_rvalue) => {
             if is_rvalue_unint(&palce_rvalue.as_ref().1, ctx) {
-                return None;
-                /*return Some(
-                    CILRoot::debug(&format!("{:?} is unint.", palce_rvalue.as_ref().1)).into(),
-                );*/
+                return vec![];
             }
             let place = palce_rvalue.as_ref().0;
             let rvalue = &palce_rvalue.as_ref().1;
             let ty = ctx.monomorphize(place.ty(ctx.body(), ctx.tcx()).ty);
             // Skip void assigments. Assigining to or from void type is a NOP.
             if crate::utilis::is_zst(ctx.monomorphize(ty), ctx.tcx()) {
-                return None;
+                return vec![];
             }
-            let value_calc = crate::rvalue::handle_rvalue(rvalue, &place, ctx);
-
-            Some(crate::place::place_set(&place, value_calc, ctx).into())
+            let (mut trees, value_calc) = crate::rvalue::handle_rvalue(rvalue, &place, ctx);
+            trees.push(crate::place::place_set(&place, value_calc, ctx));
+            trees.into_iter().map(std::convert::Into::into).collect()
         }
         StatementKind::Intrinsic(non_diverging_intirinsic) => {
             match non_diverging_intirinsic.as_ref() {
-                NonDivergingIntrinsic::Assume(_) => None,
+                NonDivergingIntrinsic::Assume(_) => vec![],
                 NonDivergingIntrinsic::CopyNonOverlapping(CopyNonOverlapping {
                     src,
                     dst,
@@ -78,39 +73,35 @@ pub fn handle_statement<'tcx>(
                         rustc_middle::ty::print::with_no_trimmed_paths! { panic!("Copy nonoverlaping called with non-pointer type {src_ty:?}")};
                     };
 
-                    Some(
-                        CILRoot::CpBlk {
-                            src: Box::new(src_op),
-                            dst: Box::new(dst_op),
-                            len: Box::new(
-                                count_op * CILNode::V2(zero_extend!(size_of!(pointed), usize)(ctx)),
-                            ),
-                        }
-                        .into(),
-                    )
+                    vec![CILRoot::CpBlk {
+                        src: Box::new(src_op),
+                        dst: Box::new(dst_op),
+                        len: Box::new(
+                            count_op * CILNode::V2(zero_extend!(size_of!(pointed), usize)(ctx)),
+                        ),
+                    }
+                    .into()]
                 }
             }
         }
         StatementKind::FakeRead(_) => {
             panic!("Fake reads should not be passed from the backend to the forntend!")
         }
-        StatementKind::PlaceMention(place) => Some(
-            CILRoot::Pop {
-                tree: place_get(place, ctx),
-            }
-            .into(),
-        ),
+        StatementKind::PlaceMention(place) => vec![CILRoot::Pop {
+            tree: place_get(place, ctx),
+        }
+        .into()],
         //Since deinitialization writes "uninint" bytes to the place, it is safe to write nothing here. "uninit" bytes can be anything, so they can be what was there previously too.
-        StatementKind::Deinit(_) => None,
+        StatementKind::Deinit(_) => vec![],
         //TODO: consider adding some .NET specific coverage info(Is that even possible?).
-        StatementKind::Coverage(_) => None,
+        StatementKind::Coverage(_) => vec![],
         // A no-op in non-const scenarions, so safe to do nothing.
-        StatementKind::ConstEvalCounter => None,
+        StatementKind::ConstEvalCounter => vec![],
         // A no-op does nothing, so safe to do... nothing.
-        StatementKind::Nop => None,
+        StatementKind::Nop => vec![],
         // This is related to stacked borrow. TODO:consider emmiting info that would prevent wrong optimizations here.
-        StatementKind::Retag(_, _) => None,
+        StatementKind::Retag(_, _) => vec![],
         // A no-op at runtime.
-        StatementKind::AscribeUserType(_, _) => None,
+        StatementKind::AscribeUserType(_, _) => vec![],
     }
 }
