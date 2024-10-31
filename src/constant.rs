@@ -238,18 +238,12 @@ fn load_const_scalar<'tcx>(
             if matches!(scalar_type, Type::Ptr(_) | Type::FnPtr(_)) {
                 return load_scalar_ptr(ctx, ptr).cast_ptr(scalar_type);
             }
-            let uint8_ptr = ctx.nptr(Type::Int(Int::U8));
-            return CILNode::LdObj {
-                obj: Box::new(scalar_type),
-                ptr: Box::new(CILNode::TemporaryLocal(Box::new((
-                    ctx.alloc_type(uint8_ptr),
-                    [CILRoot::SetTMPLocal {
-                        value: load_scalar_ptr(ctx, ptr),
-                    }]
-                    .into(),
-                    CILNode::LoadAddresOfTMPLocal.cast_ptr(ctx.nptr(scalar_type)),
-                )))),
-            };
+            return CILNode::transmute_on_stack(
+                load_scalar_ptr(ctx, ptr),
+                ctx.nptr(Type::Int(Int::U8)),
+                scalar_type,
+                ctx,
+            );
         }
     };
 
@@ -265,30 +259,17 @@ fn load_const_scalar<'tcx>(
         TyKind::Tuple(elements) => {
             if elements.is_empty() {
                 let scalar_ptr = ctx.nptr(scalar_type);
-                CILNode::TemporaryLocal(Box::new((
-                    ctx.alloc_type(scalar_ptr),
-                    [].into(),
-                    CILNode::LdObj {
-                        ptr: CILNode::LoadTMPLocal.into(),
-                        obj: Type::Void.into(),
-                    },
-                )))
+                CILNode::uninit_val(scalar_ptr, ctx)
             } else {
-                CILNode::LdObj {
-                    ptr: Box::new(
-                        CILNode::PointerToConstValue(Box::new(scalar_u128))
-                            .cast_ptr(ctx.nptr(scalar_type)),
-                    ),
-                    obj: scalar_type.into(),
-                }
+                CILNode::V2(ctx.alloc_node(scalar_u128)).transmute_on_stack(
+                    Type::Int(Int::U128),
+                    scalar_type,
+                    ctx,
+                )
             }
         }
-        TyKind::Adt(_, _) | TyKind::Closure(_, _) => CILNode::LdObj {
-            ptr: Box::new(
-                CILNode::PointerToConstValue(Box::new(scalar_u128)).cast_ptr(ctx.nptr(scalar_type)),
-            ),
-            obj: scalar_type.into(),
-        },
+        TyKind::Adt(_, _) | TyKind::Closure(_, _) => CILNode::V2(ctx.alloc_node(scalar_u128))
+            .transmute_on_stack(Type::Int(Int::U128), scalar_type, ctx),
         TyKind::Char => CILNode::V2(ctx.alloc_node(u32::try_from(scalar_u128).unwrap())),
         _ => todo!("Can't load scalar constants of type {scalar_ty:?}!"),
     }

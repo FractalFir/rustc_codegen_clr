@@ -67,54 +67,6 @@ impl Method {
             .nodes()
             .any(|node| matches!(node, CILNode::LDLocA(loc) if *loc == local))
     }
-    /// For a `local`, returns the *values* of all its assigements. This *will not include the root, only the nodes*!
-    /// WARNING: this ONLY works on "finalized" CIL, and DOES NOT SUPPORT SUBTREES
-    pub fn local_sets(&self, local: u32) -> impl Iterator<Item = &CILNode> {
-        {
-            let this = &self;
-            this.blocks()
-                .iter()
-                .flat_map(|block| block.iter_tree_roots())
-        }
-        .filter_map(move |root| match root {
-            CILRoot::STLoc { local: loc, tree } if (*loc == local) => Some(tree),
-            _ => None,
-        })
-    }
-    pub fn direct_set_count(&self, local: u32) -> usize {
-        self.local_sets(local).count()
-    }
-    pub fn const_opt_pass(&mut self) {
-        use crate::cil_iter_mut::CILIterMutTrait;
-        // If a local is set only once, and its address is never taken, it is likely to be const
-        // TODO: this is inefficient Consider checking all locals at once?
-        let luo = LocalUsageInfo::from_method(self);
-        let locals_address_not_taken: Box<[_]> = (0..(self.locals().len()))
-            .filter(|idx| !luo.is_address_taken(*idx))
-            .collect();
-
-        for local in locals_address_not_taken {
-            let sets = self.local_sets(local as u32);
-            if let Some(val) = all_evals_identical(sets) {
-                let mut tmp: Vec<_> = self
-                    .blocks
-                    .iter_mut()
-                    .flat_map(|block| block.all_trees_mut())
-                    .map(|tree| tree.root_mut())
-                    .collect();
-
-                tmp.iter_mut()
-                    .flat_map(|tree| tree.deref_mut().into_iter().nodes())
-                    .for_each(|node| match node {
-                        CILNode::LDLoc(loc) if *loc == local as u32 => *node = val.clone(),
-                        CILNode::LDLocA(loc) if *loc == local as u32 => {
-                            panic!("const propagation failed: the address of const taken")
-                        }
-                        _ => (),
-                    });
-            }
-        }
-    }
 
     /// Iterates over each `CILNode` and `CILRoot`.
     pub fn iter_cil(&self) -> impl Iterator<Item = CILIterElem> {

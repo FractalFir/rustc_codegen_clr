@@ -506,15 +506,7 @@ fn ptr_to_ptr<'tcx>(
     let target_fat = pointer_to_is_fat(*target_pointed_to, ctx.tcx(), ctx.instance());
     match (src_fat, target_fat) {
         (true, true) => {
-            let parrent = handle_operand(operand, ctx);
-
-            let target_ptr = ctx.nptr(target_type);
-            let tmp = CILNode::TemporaryLocal(Box::new((
-                ctx.alloc_type(source_type),
-                [CILRoot::SetTMPLocal { value: parrent }].into(),
-                Box::new(CILNode::LoadAddresOfTMPLocal).cast_ptr(target_ptr),
-            )));
-            crate::place::deref_op(crate::place::PlaceTy::Ty(target), ctx, tmp)
+            CILNode::transmute_on_stack(handle_operand(operand, ctx), source_type, target_type, ctx)
         }
         (true, false) => {
             let field_desc = FieldDesc::new(
@@ -522,15 +514,8 @@ fn ptr_to_ptr<'tcx>(
                 ctx.alloc_string(crate::DATA_PTR),
                 ctx.nptr(cilly::v2::Type::Void),
             );
-            CILNode::TemporaryLocal(Box::new((
-                ctx.alloc_type(source_type),
-                [CILRoot::SetTMPLocal {
-                    value: handle_operand(operand, ctx),
-                }]
-                .into(),
-                ld_field!(CILNode::LoadAddresOfTMPLocal, ctx.alloc_field(field_desc))
-                    .cast_ptr(target_type),
-            )))
+            ld_field!(operand_address(operand, ctx), ctx.alloc_field(field_desc))
+                .cast_ptr(target_type)
         }
         (false, true) => {
             panic!("ERROR: a non-unsizing cast turned a sized ptr into an unsized one")

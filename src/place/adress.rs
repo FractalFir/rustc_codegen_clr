@@ -7,7 +7,6 @@ use crate::{
 use cilly::{
     call,
     cil_node::CILNode,
-    cil_root::CILRoot,
     conv_usize, ld_field,
     v2::{cilnode::MethodKind, FieldDesc, Int, MethodRef},
     Const, IntoAsmIndex, Type,

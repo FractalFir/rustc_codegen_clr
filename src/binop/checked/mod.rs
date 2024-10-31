@@ -11,26 +11,7 @@ use rustc_middle::ty::{IntTy, Ty, TyKind, UintTy};
 
 pub fn result_tuple(tpe: Type, out_of_range: CILNode, val: CILNode, asm: &mut Assembly) -> CILNode {
     let tuple = crate::r#type::simple_tuple(&[tpe, Type::Bool], asm);
-    let item2 = asm.alloc_string("Item2");
-    let item1 = asm.alloc_string("Item1");
-    CILNode::TemporaryLocal(Box::new((
-        asm.alloc_type(tuple),
-        [
-            CILRoot::SetField {
-                addr: Box::new(CILNode::LoadAddresOfTMPLocal),
-                value: Box::new(out_of_range),
-                desc: asm.alloc_field(FieldDesc::new(tuple, item2, Type::Bool)),
-            },
-            CILRoot::SetField {
-                addr: Box::new(CILNode::LoadAddresOfTMPLocal),
-                value: Box::new(val),
-                desc: asm.alloc_field(FieldDesc::new(tuple, item1, tpe)),
-            },
-        ]
-        .into(),
-        CILNode::LoadTMPLocal,
-    )))
-    //CILNode::T
+    CILNode::ovf_check_tuple(asm, tuple, out_of_range, val, tpe)
 }
 pub fn zero(ty: Ty, asm: &mut Assembly) -> CILNode {
     match ty.kind() {
