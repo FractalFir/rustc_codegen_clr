@@ -368,6 +368,81 @@ impl MethodDef {
             .blocks()
             .map(|vec| vec.as_ref())
     }
+    pub fn adjust_aligement(&mut self, asm: &mut Assembly) {
+        let MethodImpl::MethodBody { blocks, locals } = self.implementation_mut() else {
+            return;
+        };
+        let to_map: Vec<_> = locals
+            .iter()
+            .map(|(name, tpe)| (*name, *tpe, asm.alignof_type(*tpe)))
+            .enumerate()
+            .collect();
+        // Check which locals get their address taken.
+        let mut local_address_of = vec![false; locals.len()];
+        for node in blocks
+            .iter()
+            .flat_map(super::basic_block::BasicBlock::iter_roots)
+            .flat_map(|root| super::CILIter::new(asm.get_root(root).clone(), asm))
+            .filter_map(super::iter::CILIterElem::as_node)
+        {
+            if let CILNode::LdLocA(loc) = node {
+                local_address_of[loc as usize] = true
+            }
+        }
+        let mut preamble = vec![];
+        for (local_id, (_, tpe_idx, align)) in to_map {
+            if align <= 8 {
+                // Aligement guanrateed by .NET, skip.
+                continue;
+            }
+            // Check that the address of this local is ever taken. If not, just ignore it.
+            if !local_address_of[local_id] {
+                continue;
+            }
+            // Change the type of the local var.
+            let tpe_ptr = asm.nptr(tpe_idx);
+            let tpe_ptr = asm.alloc_type(tpe_ptr);
+            locals[local_id].1 = tpe_ptr;
+            // Allocate a new buffer for the local var, aligned to align.
+            let tpe = asm[tpe_idx];
+            let local_buff = asm.alloc_node(CILNode::LocAllocAlgined {
+                tpe: tpe_idx,
+                align,
+            });
+            preamble.push(asm.alloc_root(CILRoot::StLoc(local_id as u32, local_buff)));
+            // Map all usages of this local, to ensure it is propely alligned.
+            blocks
+                .iter_mut()
+                .flat_map(|block| block.roots_mut())
+                .for_each(|root_idx| {
+                    let root = asm[*root_idx].clone();
+                    let local_addr = asm.alloc_node(CILNode::LdLoc(local_id as u32));
+                    let root = root.map(
+                        asm,
+                        &mut |root, asm| match root {
+                            CILRoot::StLoc(loc, val) if loc == local_id as u32 => {
+                                CILRoot::StInd(Box::new((local_addr, val, tpe, false)))
+                            }
+                            _ => root,
+                        },
+                        &mut |node, asm| match node {
+                            CILNode::LdLocA(loc) if loc == local_id as u32 => {
+                                CILNode::LdLoc(local_id as u32)
+                            }
+                            CILNode::LdLoc(loc) if loc == local_id as u32 => CILNode::LdInd {
+                                addr: local_addr,
+                                tpe: tpe_idx,
+                                volitale: false,
+                            },
+                            _ => node,
+                        },
+                    );
+                    *root_idx = asm.alloc_root(root);
+                });
+        }
+        preamble.extend(blocks[0].roots().iter().copied());
+        *blocks[0].roots_mut() = preamble;
+    }
 }
 pub type LocalDef = (Option<StringIdx>, TypeIdx);
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]

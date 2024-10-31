@@ -24,6 +24,16 @@ impl Float {
             Float::F128 => todo!(),
         }
     }
+    /// Returns the size of this floating-point number
+    #[must_use]
+    pub fn size(&self) -> u8 {
+        match self {
+            Float::F16 => 2,
+            Float::F32 => 4,
+            Float::F64 => 8,
+            Float::F128 => 16,
+        }
+    }
     /// Checks if this float is NaN
     pub fn is_nan(&self, val: NodeIdx, asm: &mut Assembly) -> NodeIdx {
         let is_nan = asm.alloc_string("IsNaN");

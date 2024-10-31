@@ -982,6 +982,37 @@ impl Assembly {
             *class.static_fields_mut() = statics;
         }
     }
+    pub fn fix_aligement(&mut self) {
+        let method_def_idxs: Box<[_]> = self.method_defs.keys().copied().collect();
+        for method in method_def_idxs {
+            let mut tmp_method = self.borrow_methoddef(method);
+            tmp_method.adjust_aligement(self);
+            self.return_methoddef(method, tmp_method);
+        }
+    }
+    pub fn alignof_type(&self, tpe: TypeIdx) -> u64 {
+        match self[tpe] {
+            Type::FnPtr(_) | Type::Ptr(_) | Type::Ref(_) => 8, // ASSUMES alignof<*T>() = 8.
+            Type::Int(int) => int.size().unwrap_or(8) as u64,  // ASSUMES alignof<usize>() = 8.
+            Type::ClassRef(class_ref_idx) => match self.class_ref_to_def(class_ref_idx) {
+                Some(def) => self[def]
+                    .align()
+                    .unwrap_or(std::num::NonZeroU32::new(8).unwrap())
+                    .get() as u64,
+                None => 8,
+            },
+            Type::Float(float) => float.size() as u64,
+            Type::PlatformString | Type::PlatformObject | Type::PlatformArray { .. } => 8, // ASSUMES alignof<&managed T>() = 8.
+            Type::PlatformChar => 2,
+            Type::PlatformGeneric(_, _) => 8,
+            Type::Bool => 1,
+            Type::Void => 0,
+            Type::SMIDVector(simdvector) => match simdvector.elem() {
+                super::tpe::simd::SIMDElem::Int(int) => int.size().unwrap_or(8) as u64, // ASSUMES alignof<usize>() = 8.
+                super::tpe::simd::SIMDElem::Float(float) => float.size() as u64,
+            },
+        }
+    }
 }
 /// An initializer, which runs before everything else. By convention, it is used to initialize static / const data. Should not execute any user code
 pub const CCTOR: &str = ".cctor";

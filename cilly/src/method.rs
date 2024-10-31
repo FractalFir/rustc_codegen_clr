@@ -120,35 +120,6 @@ impl Method {
     pub fn iter_cil(&self) -> impl Iterator<Item = CILIterElem> {
         self.blocks().iter().flat_map(|block| block.iter_cil())
     }
-    /// Reallocates the local variables, removing any dead ones.
-    pub fn realloc_locals(&mut self) {
-        let blocks = &mut self.blocks;
-        let mut locals = Vec::new();
-        let mut local_map: FxHashMap<u32, u32> = FxHashMap::with_hasher(FxBuildHasher::default());
-        let mut tmp: Vec<_> = blocks
-            .iter_mut()
-            .flat_map(|block| block.tree_iter())
-            .map(|tree| tree.root_mut())
-            .collect();
-        tmp.iter_mut()
-            .flat_map(|root| root.deref_mut().into_iter())
-            .for_each(|node| match node {
-                CILIterElemMut::Node(CILNode::LDLoc(loc) | CILNode::LDLocA(loc))
-                | CILIterElemMut::Root(CILRoot::STLoc { local: loc, .. }) => {
-                    if let Some(new_loc) = local_map.get(loc) {
-                        *loc = *new_loc;
-                    } else {
-                        let new_loc = locals.len() as u32;
-                        locals.push(self.locals[*loc as usize]);
-                        local_map.insert(*loc, new_loc);
-                        *loc = new_loc;
-                    }
-                }
-
-                _ => (),
-            });
-        self.locals = locals;
-    }
 
     /// Creates a new method with name `name`, signature `sig`, accessibility of `access`, and consists of `blocks` basic blocks.
     #[must_use]
@@ -345,130 +316,58 @@ impl Method {
             .push((name.map(|name| name.into_idx(asm)), tpe.into_idx(asm)));
         new_loc
     }
-    pub fn adjust_aligement(&mut self, adjust: Vec<Option<u64>>, asm: &mut Assembly) {
-        if !adjust.iter().any(|adjust| adjust.is_some()) {
-            return;
-        }
-        for (unaligned_local, align) in adjust
-            .iter()
-            .enumerate()
-            .filter_map(|(local_id, o)| o.as_ref().map(|align| (local_id, *align)))
-        {
-            let (name, tpe) = self.locals[unaligned_local];
-            let unaligned_local = unaligned_local as u32;
-            let (name, tpe) = (name, tpe);
-            let tpe_ptr = asm.nptr(tpe);
-            let new_loc = self.alloc_local(tpe_ptr, name, asm) as u32;
-            let tpe = asm[tpe];
-            self.append_preamble(
-                CILRoot::STLoc {
-                    local: new_loc,
-                    tree: CILNode::LocAllocAligned {
-                        tpe: Box::new(tpe),
-                        align,
-                    },
-                }
-                .into(),
-            );
-            let mut tmp: Vec<_> = self
-                .blocks
-                .iter_mut()
-                .flat_map(|block| block.tree_iter())
-                .map(|tree| tree.root_mut())
-                .collect();
-            tmp.iter_mut()
-                .flat_map(|root| root.deref_mut().into_iter())
-                .for_each(|node| match node {
-                    CILIterElemMut::Root(root) => {
-                        if let CILRoot::STLoc { local, tree } = root {
-                            if *local == unaligned_local {
-                                // We replace seting *a* with an indirect wirte to allocation pointed to by *b*.
-                                *root = CILRoot::STObj {
-                                    addr_calc: Box::new(CILNode::LDLoc(new_loc)),
-                                    value_calc: Box::new(tree.clone()),
-                                    tpe: Box::new(tpe),
-                                };
-                            }
-                        }
-                    }
-                    CILIterElemMut::Node(node) => match node {
-                        CILNode::LDLocA(local) => {
-                            if *local == unaligned_local {
-                                // We replace getting the adress of *a* with loading the pointer *b*, which points to our aligned local
-                                *node = CILNode::LDLoc(new_loc);
-                            }
-                        }
-                        CILNode::LDLoc(local) => {
-                            if *local == unaligned_local {
-                                // We replace getting the value of *a* with a read of the value *b* points to.
-                                *node = CILNode::LdObj {
-                                    ptr: Box::new(CILNode::LDLoc(new_loc)),
-                                    obj: Box::new(tpe),
-                                };
-                            }
-                        }
-                        _ => (),
-                    },
-                });
-        }
-    }
 
-    pub fn opt(&mut self) {
-        //self.const_opt_pass();
-        self.opt_merge_bbs();
-    }
-    pub fn opt_merge_bbs(&mut self) {
-        for block in 0..self.blocks().len() {
-            // Get the last uncond jump, if present
-            let Some(target_id) = self.blocks[block].final_uncond_jump() else {
-                continue;
-            };
-            let target_index = self.block_with_id(target_id).unwrap();
-            // Check if this is the only block jumping to target. If target_id is 0, then the entrypoint "jumps" to that target, so we are not the only ones jumping there.
-            // We also can't optimize if we are jumping to ourselves
-            if target_id == 0 || target_index == block {
-                continue;
-            }
-            if self.count_jumps_to(target_id) > 1 {
-                continue;
-            }
+    /*
+     pub fn opt_merge_bbs(&mut self) {
+         for block in 0..self.blocks().len() {
+             // Get the last uncond jump, if present
+             let Some(target_id) = self.blocks[block].final_uncond_jump() else {
+                 continue;
+             };
+             let target_index = self.block_with_id(target_id).unwrap();
+             // Check if this is the only block jumping to target. If target_id is 0, then the entrypoint "jumps" to that target, so we are not the only ones jumping there.
+             // We also can't optimize if we are jumping to ourselves
+             if target_id == 0 || target_index == block {
+                 continue;
+             }
+             if self.count_jumps_to(target_id) > 1 {
+                 continue;
+             }
 
-            // Since only we jump to this block, we can append the target block at the end of this block, if our handlers match
-            if self.blocks()[block].handler() == self.blocks()[target_index].handler() {
-                // Remove the last unconditional jump
-                self.blocks[block].trees_mut().pop();
-                // Append the block
-                let cloned = self.blocks[target_index].trees().to_vec();
-                self.blocks[block].trees_mut().extend(cloned);
-                // We empty out the now unnedded block
-                *self.blocks[target_index].trees_mut() = vec![];
-                // 6.5
-            }
-        }
-        // Remove unneded blocks
-        // let prev_c = self.blocks.len();
-        self.blocks.retain(|block| !block.trees().is_empty());
-    }
-    fn count_jumps_to(&self, block_id: u32) -> usize {
-        self.blocks()
-            .iter()
-            .flat_map(|block| block.targets())
-            .filter(|(target, sub_target)| {
-                if *sub_target != 0 {
-                    *sub_target == block_id
-                } else {
-                    *target == block_id
-                }
-            })
-            .count()
-    }
-    pub fn block_with_id(&self, id: u32) -> Option<usize> {
-        self.blocks.iter().position(|block| block.id() == id)
-    }
+             // Since only we jump to this block, we can append the target block at the end of this block, if our handlers match
+             if self.blocks()[block].handler() == self.blocks()[target_index].handler() {
+                 // Remove the last unconditional jump
+                 self.blocks[block].trees_mut().pop();
+                 // Append the block
+                 let cloned = self.blocks[target_index].trees().to_vec();
+                 self.blocks[block].trees_mut().extend(cloned);
+                 // We empty out the now unnedded block
+                 *self.blocks[target_index].trees_mut() = vec![];
+                 // 6.5
+             }
+         }
+         // Remove unneded blocks
+         // let prev_c = self.blocks.len();
+         self.blocks.retain(|block| !block.trees().is_empty());
+     }
+     fn count_jumps_to(&self, block_id: u32) -> usize {
+         self.blocks()
+             .iter()
+             .flat_map(|block| block.targets())
+             .filter(|(target, sub_target)| {
+                 if *sub_target != 0 {
+                     *sub_target == block_id
+                 } else {
+                     *target == block_id
+                 }
+             })
+             .count()
+     }
+     pub fn block_with_id(&self, id: u32) -> Option<usize> {
+         self.blocks.iter().position(|block| block.id() == id)
+     }
 
-    pub fn attributes(&self) -> &[Attribute] {
-        &self.attributes
-    }
+    */
 }
 
 /// A wrapper around mutably borrowed [`BasicBlock`]s of a method. Prevents certain bugs.

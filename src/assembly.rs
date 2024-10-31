@@ -519,12 +519,7 @@ pub fn add_fn<'tcx, 'asm, 'a: 'asm>(
     method.allocate_temporaries();
 
     let adjust = check_align_adjust(&mir.local_decls, ctx.tcx(), &ctx.instance(), mir.arg_count);
-    // TODO: find a better way of checking if we are in release
-    method.adjust_aligement(adjust, ctx);
-    if ctx.tcx().sess.opts.optimize != rustc_session::config::OptLevel::No {
-        method.opt();
-        method.realloc_locals();
-    }
+
     let main_module = ctx.main_module();
     let method = MethodDef::from_v1(&method, ctx, main_module);
     ctx.new_method(method);

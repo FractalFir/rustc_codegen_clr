@@ -403,7 +403,7 @@ fn main() {
     let mut fuel = final_assembly.fuel_from_env().fraction(0.5);
     final_assembly.opt(&mut fuel);
     final_assembly.eliminate_dead_code();
-
+    final_assembly.fix_aligement();
     final_assembly
         .save_tmp(&mut std::fs::File::create(path.with_extension("cilly2")).unwrap())
         .unwrap();
