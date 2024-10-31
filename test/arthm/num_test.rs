@@ -5,7 +5,6 @@
     core_intrinsics,
     start,
     unsized_const_params,
-    isqrt,
     int_roundings
 )]
 #![allow(
