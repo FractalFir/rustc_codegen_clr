@@ -1442,7 +1442,7 @@ static RUNTIME_CONFIG: std::sync::LazyLock<String> = std::sync::LazyLock::new(||
     format!(
         "{{
         \"runtimeOptions\": {{
-          \"tfm\": \"netcoreapp3.1\",
+          \"tfm\": \"net8.0\",
           \"framework\": {{
             \"name\": \"Microsoft.NETCore.App\",
             \"version\": \"{version}\"
@@ -1455,6 +1455,3 @@ static RUNTIME_CONFIG: std::sync::LazyLock<String> = std::sync::LazyLock::new(||
       }}"
     )
 });
-
-//#[cfg(target_os = "windows")]
-//static RUNTIME_CONFIG: &String = &String::new();

@@ -1080,7 +1080,8 @@ impl CExporter {
         out.write_all(&method_decls)?;
         out.write_all(&method_defs)?;
         if !self.is_lib {
-            out.write_all(b"void main(int argc, char** argv){_argcStaticStorage = argc; _argvStaticStorage = argv; _cctor();entrypoint((void *)0);}")?;
+            let cctor_call = if asm.has_cctor() { "_cctor();" } else { "" };
+            writeln!(out,"void main(int argc, char** argv){{_argcStaticStorage = argc; _argvStaticStorage = argv; {cctor_call}entrypoint((void *)0);}}")?;
         }
         Ok(())
     }

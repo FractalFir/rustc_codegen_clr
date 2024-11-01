@@ -510,19 +510,25 @@ impl Assembly {
             self.new_method(cctor_def)
         }
     }
-    /// Returns a reference to the static initializer
-    pub fn cctor(&mut self) -> MethodDefIdx {
+    fn cctor_mref(&mut self) -> MethodRefIdx {
         let main_module = self.main_module();
         let user_init = self.alloc_string(CCTOR);
         let ctor_sig = self.sig([], Type::Void);
-        let mref = MethodRef::new(
+        self.alloc_methodref(MethodRef::new(
             *main_module,
             user_init,
             ctor_sig,
             MethodKind::Static,
             vec![].into(),
-        );
-        let mref = self.alloc_methodref(mref);
+        ))
+    }
+    pub fn has_cctor(&mut self) -> bool {
+        let cctor = self.cctor_mref();
+        self.method_ref_to_def(cctor).is_some()
+    }
+    /// Returns a reference to the static initializer
+    pub fn cctor(&mut self) -> MethodDefIdx {
+        let mref = self.cctor_mref();
         if self.method_defs.contains_key(&MethodDefIdx(mref)) {
             MethodDefIdx(mref)
         } else {
@@ -534,6 +540,9 @@ impl Assembly {
                 )],
                 locals: vec![],
             };
+            let main_module = self.main_module();
+            let user_init = self.alloc_string(CCTOR);
+            let ctor_sig = self.sig([], Type::Void);
             let cctor_def = MethodDef::new(
                 Access::Extern,
                 main_module,
@@ -1013,6 +1022,10 @@ impl Assembly {
             },
         }
     }
+
+    pub fn method_refs(&self) -> &BiMap<MethodRefIdx, MethodRef> {
+        &self.method_refs
+    }
 }
 /// An initializer, which runs before everything else. By convention, it is used to initialize static / const data. Should not execute any user code
 pub const CCTOR: &str = ".cctor";
@@ -1024,7 +1037,11 @@ pub const USER_INIT: &str = "static_init";
 pub const ENTRYPOINT: &str = "entrypoint";
 /// Main class of this module
 pub const MAIN_MODULE: &str = "MainModule";
-
+#[test]
+fn test_encoded_stats() {
+    assert_eq!(encoded_stats(&u64::MAX), (type_name::<u64>(), 10));
+    assert_eq!(encoded_stats(&0_i32), (type_name::<i32>(), 1));
+}
 fn encoded_stats<T: Serialize + for<'a> Deserialize<'a>>(val: &T) -> (&'static str, usize) {
     let buff = postcard::to_allocvec(val).unwrap();
     let start = std::time::Instant::now();

@@ -2,6 +2,7 @@ use std::{
     collections::VecDeque,
     io::{stdin, Read},
     num::NonZeroU32,
+    panic::catch_unwind,
     time::Instant,
 };
 
@@ -234,48 +235,81 @@ fn main() {
             "" => continue,
             "misolate" => {
                 let isolate_id = parse_id(body, &asm);
-                let externs: Vec<_> = asm
-                    .methods_with(|_, _, def| *def.access() == Access::Extern)
-                    .map(|(id, _)| id)
-                    .copied()
-                    .collect();
-                for extern_id in externs {
-                    asm.modify_methodef(|_, method| method.set_access(Access::Public), extern_id);
-                }
                 let Some(isolate_id) = asm.method_ref_to_def(isolate_id) else {
                     eprintln!("Invalid method!");
                     continue;
                 };
-                let main_module = asm.main_module();
-                let entrypoint = asm.alloc_string("entrypoint");
-                let sig = asm.sig([], cilly::Type::Void);
-                let fn_ptr = asm.alloc_node(CILNode::LdFtn(*isolate_id));
-                let roots = [
-                    asm.alloc_root(CILRoot::Pop(fn_ptr)),
-                    asm.alloc_root(CILRoot::VoidRet),
-                ];
-                let implementation = MethodImpl::MethodBody {
-                    blocks: vec![BasicBlock::new(roots.into(), 0, None)],
-                    locals: vec![],
-                };
-                let entrypoint = MethodDef::new(
-                    Access::Extern,
-                    main_module,
-                    entrypoint,
-                    sig,
-                    cilly::cilnode::MethodKind::Static,
-                    implementation,
-                    vec![],
-                );
-                asm.new_method(entrypoint);
-                asm.eliminate_dead_code();
-                // GC
-                asm = asm.clone().link(Assembly::default());
-                asm.remove_dead_statics();
+                misolate(&mut asm, *isolate_id)
             }
+            "find_invalid_c" => find_invalid_c(&asm),
+            "asmstats" => println!(
+                "methoddefs:{}",
+                asm.method_refs()
+                    .iter_keys()
+                    .filter_map(|key| asm.method_ref_to_def(key))
+                    .count()
+            ),
             _ => eprintln!("unknown command {cmd:?}"),
         }
     }
+}
+fn find_invalid_c(asm: &Assembly) {
+    let mut fail_id = 0;
+    for key in asm
+        .method_refs()
+        .iter_keys()
+        .filter_map(|key| asm.method_ref_to_def(key))
+    {
+        let mut copy = asm.clone();
+        misolate(&mut copy, *key);
+        if !is_valid_c(&copy, fail_id) {
+            fail_id += 1;
+            eprintln!("Invalid c code methodid {key:?} fail_id:{fail_id}")
+        } else {
+            eprintln!("Method ok.")
+        }
+    }
+    println!("Found {} faliures, saved to tmp", fail_id)
+}
+fn is_valid_c(asm: &Assembly, id: u32) -> bool {
+    catch_unwind(|| asm.export(format!("/tmp/test{id}.out"), CExporter::new(false))).is_ok()
+}
+fn misolate(asm: &mut Assembly, isolate_id: MethodRefIdx) {
+    let externs: Vec<_> = asm
+        .methods_with(|_, _, def| *def.access() == Access::Extern)
+        .map(|(id, _)| id)
+        .copied()
+        .collect();
+    for extern_id in externs {
+        asm.modify_methodef(|_, method| method.set_access(Access::Public), extern_id);
+    }
+
+    let main_module = asm.main_module();
+    let entrypoint = asm.alloc_string("entrypoint");
+    let sig = asm.sig([], cilly::Type::Void);
+    let fn_ptr = asm.alloc_node(CILNode::LdFtn(isolate_id));
+    let roots = [
+        asm.alloc_root(CILRoot::Pop(fn_ptr)),
+        asm.alloc_root(CILRoot::VoidRet),
+    ];
+    let implementation = MethodImpl::MethodBody {
+        blocks: vec![BasicBlock::new(roots.into(), 0, None)],
+        locals: vec![],
+    };
+    let entrypoint = MethodDef::new(
+        Access::Extern,
+        main_module,
+        entrypoint,
+        sig,
+        cilly::cilnode::MethodKind::Static,
+        implementation,
+        vec![],
+    );
+    asm.new_method(entrypoint);
+    asm.eliminate_dead_code();
+    // GC
+    *asm = asm.clone().link(Assembly::default());
+    asm.remove_dead_statics();
 }
 fn parse_id(id: &str, asm: &Assembly) -> MethodRefIdx {
     if let Ok(id) = id.parse::<u32>() {

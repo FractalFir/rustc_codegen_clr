@@ -110,7 +110,22 @@ impl BasicBlock {
             &mut self.roots,
         )
     }
-    /// Checks if this basic block consists of nothing more than an unconditional jump to another block
+    /// Checks if this basic block consists of nothing more than an unconditional jump to another block.
+    /// ```
+    /// # use cilly::*;
+    /// # use cilly::v2::BasicBlock;
+    /// # let mut asm = Assembly::default();
+    /// # let mut void_ret = asm.alloc_root(CILRoot::VoidRet);
+    /// # let mut rethrow = asm.alloc_root(CILRoot::ReThrow);
+    /// # let mut val = asm.alloc_node(0);
+    /// # let mut do_sth = asm.alloc_root(CILRoot::StLoc(0,val));
+    /// let target = 11;
+    /// let mut jump = asm.alloc_root(CILRoot::Branch(Box::new((target,0,None))));
+    /// assert_eq!(BasicBlock::new(vec![],0,None).is_direct_jump(&asm),None);
+    /// assert_eq!(BasicBlock::new(vec![void_ret],0,None).is_direct_jump(&asm),None);
+    /// assert_eq!(BasicBlock::new(vec![jump],0,None).is_direct_jump(&asm),Some((target,0)));
+    /// assert_eq!(BasicBlock::new(vec![do_sth,jump],0,None).is_direct_jump(&asm),None);
+    /// ```
     #[must_use]
     pub fn is_direct_jump(&self, asm: &Assembly) -> Option<(BlockId, BlockId)> {
         let mut meningfull_root = self.meaningfull_roots(asm);
@@ -125,6 +140,19 @@ impl BasicBlock {
         }
     }
     /// Checks if this basic block consists of nothing more thaan an uncondtional rethrow
+    /// ```
+    /// # use cilly::*;
+    /// # use cilly::v2::BasicBlock;
+    /// # let mut asm = Assembly::default();
+    /// # let mut void_ret = asm.alloc_root(CILRoot::VoidRet);
+    /// # let mut rethrow = asm.alloc_root(CILRoot::ReThrow);
+    /// # let mut val = asm.alloc_node(0);
+    /// # let mut do_sth = asm.alloc_root(CILRoot::StLoc(0,val));
+    /// assert!(!BasicBlock::new(vec![],0,None).is_only_rethrow(&asm));
+    /// assert!(!BasicBlock::new(vec![void_ret],0,None).is_only_rethrow(&asm));
+    /// assert!(BasicBlock::new(vec![rethrow],0,None).is_only_rethrow(&asm));
+    /// assert!(!BasicBlock::new(vec![do_sth,rethrow],0,None).is_only_rethrow(&asm));
+    /// ```
     #[must_use]
     pub fn is_only_rethrow(&self, asm: &Assembly) -> bool {
         let mut meningfull_root = self.meaningfull_roots(asm);

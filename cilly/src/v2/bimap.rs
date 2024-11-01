@@ -62,6 +62,9 @@ impl<Key: IntoBiMapIndex + Eq + Hash + Clone + Debug, Value: Eq + Hash + Clone +
     pub fn contais_val(&self, def: Value) -> bool {
         self.1.contains_key(&def)
     }
+    pub fn iter_keys(&self) -> impl Iterator<Item = Key> {
+        (1..(self.0.len() as u32)).map(|key| Key::from_index(NonZeroU32::new(key).unwrap()))
+    }
 }
 pub type BiMapIndex = NonZeroU32;
 pub trait IntoBiMapIndex {
