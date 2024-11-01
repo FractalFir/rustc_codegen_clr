@@ -91,22 +91,6 @@ pub trait Exporter {
 }
 
 #[test]
-fn no_collision() {
-    fn test_binop(asm: &mut Assembly, op: BinOp) -> CILNode {
-        let mut curr: NodeIdx = IntoAsmIndex::into_idx(Const::I8(1), asm);
-        for _ in 0..100 {
-            curr = IntoAsmIndex::into_idx(asm.biop(curr, curr, op), asm);
-        }
-        asm[curr]
-            .clone()
-            .typecheck(asm.sig(vec![], Type::Void), &[], asm)
-            .unwrap();
-        asm[curr].clone()
-    }
-    let mut asm = Assembly::default();
-    test_binop(&mut asm, BinOp::Add);
-}
-#[test]
 fn test_binops() {
     fn test_binop(asm: &mut Assembly, op: BinOp) -> CILNode {
         let mut curr: NodeIdx = IntoAsmIndex::into_idx(Const::I8(1), asm);

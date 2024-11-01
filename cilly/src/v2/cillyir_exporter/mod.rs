@@ -94,7 +94,7 @@ fn tpe_to(tpe: &Type, asm: &Assembly) -> String {
         | Type::Void => format!("{tpe:?}"),
         Type::PlatformArray { .. } => todo!(),
         Type::FnPtr(sig) => format!("Type::FnPtr({sig})", sig = sig_to(asm[*sig].clone(), asm)),
-        Type::SMIDVector(_) => panic!("SMID is not supported when dumping cilly IR"),
+        Type::SIMDVector(_) => panic!("SMID is not supported when dumping cilly IR"),
     }
 }
 fn sig_to(sig: FnSig, asm: &Assembly) -> String {

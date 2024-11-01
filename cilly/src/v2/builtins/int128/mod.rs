@@ -161,13 +161,3 @@ pub fn i128_mul_ovf_check(asm: &mut Assembly, patcher: &mut MissingMethodPatcher
     };
     patcher.insert(name, Box::new(generator));
 }
-#[test]
-fn test() {
-    let op = BinOp::Eq;
-    let lhs_type = Int::I128;
-    panic!(
-        "{op}_{lhs_type}",
-        op = op.name(),
-        lhs_type = lhs_type.name()
-    );
-}

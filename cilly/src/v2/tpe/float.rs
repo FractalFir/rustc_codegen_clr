@@ -24,7 +24,12 @@ impl Float {
             Float::F128 => todo!(),
         }
     }
-    /// Returns the size of this floating-point number
+    /// Returns the size of this floating-point number, in bytes
+    /// ```
+    /// # use cilly::Float;
+    /// assert_eq!(Float::F16.size(),2);
+    /// assert_eq!(Float::F128.size(),16);
+    /// ```
     #[must_use]
     pub fn size(&self) -> u8 {
         match self {
@@ -153,13 +158,14 @@ impl Float {
         ));
         asm.alloc_node(CILNode::Call(Box::new((mref, Box::new([val])))))
     }
+    /// Counts the number of bits this number has.
+    /// ```
+    /// # use cilly::Float;
+    /// assert_eq!(Float::F16.bits(),16);
+    /// assert_eq!(Float::F128.bits(),128);
+    /// ```
     pub fn bits(&self) -> u8 {
-        match self {
-            Float::F16 => 16,
-            Float::F32 => 32,
-            Float::F64 => 64,
-            Float::F128 => 128,
-        }
+        self.size() * 8
     }
 }
 impl From<Float> for Type {

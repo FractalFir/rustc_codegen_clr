@@ -228,6 +228,7 @@ impl CILRoot {
                 let col_end = u16::try_from(sfi.1.end.min(u64::from(u16::MAX))).unwrap();
                 let col_len = col_end - col_start;
                 let file = asm.alloc_string(sfi.2.clone());
+
                 Self::SourceFileInfo {
                     line_start,
                     line_len,
@@ -663,8 +664,16 @@ impl CILRoot {
             }
         }
     }
-
-    pub(crate) fn display(
+    /// Returns a debug string, representing this root. This debug repr contains additional info not included by std::fmt::Debug.
+    /// ```
+    /// # use cilly::v2::cilroot::CILRoot;
+    /// # let mut asm = cilly::Assembly::default();
+    /// # let sig = asm.sig([],cilly::Type::Void);
+    /// # let locals = [];
+    /// let root = CILRoot::Nop;
+    /// assert_eq!(root.display(&mut asm,sig,&locals),"Nop");
+    /// ```
+    pub fn display(
         &self,
         asm: &mut Assembly,
         sig: SigIdx,
@@ -720,9 +729,17 @@ fn many_mut<T>(input: &mut [T]) -> Vec<&mut T> {
     assert_eq!(res.len(), input_len);
     res
 }
-/// Changes a mutable reference to a slice to an vec of mutable references to the elements.
+/// Changes a reference to a slice to an vec of references to the elements.
 fn many_ref<T>(inputs: &[T]) -> Vec<&T> {
     inputs.iter().collect()
+}
+#[test]
+fn test_many_ref() {
+    let inputs = [0, 1, 2, 3, 4];
+    let res = many_ref(&inputs);
+    assert_eq!(res.len(), inputs.len());
+    assert_eq!(res[0], &0);
+    assert_eq!(res[4], &4);
 }
 #[test]
 fn test_many_mut() {
@@ -748,4 +765,8 @@ fn test_many_mut() {
     *many_mut(&mut [1, 2, 3, 4, 5])[2] = 3;
     *many_mut(&mut [1, 2, 3, 4, 5])[3] = 4;
     *many_mut(&mut [1, 2, 3, 4, 5])[4] = 5;
+    for i in 0..100 {
+        let mut vec = vec![0; i];
+        assert_eq!(many_mut(&mut vec).len(), i);
+    }
 }

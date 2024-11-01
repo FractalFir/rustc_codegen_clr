@@ -74,7 +74,6 @@ impl Int {
             Int::ISize | Int::USize => Int::ISize,
         }
     }
-
     /// Returns the minimum value of this int.
     pub fn min(&self, asm: &mut Assembly) -> CILNode {
         match self {
@@ -258,9 +257,16 @@ impl Int {
             Int::USize | Int::ISize => None,
         }
     }
-
-    pub fn bits(&self) -> u8 {
-        self.size().unwrap() * 8
+    /// Counts the number of bits this intiger has. Returns None when this information is not known till runtime(for `usize` and `isize`).
+    /// ```
+    /// # use cilly::Int;
+    /// assert_eq!(Int::U8.bits(),Some(8));
+    /// assert_eq!(Int::I16.bits(),Some(16));
+    /// assert_eq!(Int::U128.bits(),Some(128));
+    /// assert_eq!(Int::USize.bits(),None);
+    /// ```
+    pub fn bits(&self) -> Option<u8> {
+        self.size().map(|size| size * 8)
     }
 }
 #[test]

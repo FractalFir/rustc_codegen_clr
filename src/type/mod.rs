@@ -207,7 +207,7 @@ pub fn get_type<'tcx>(ty: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_>) -> Typ
                 if count == 1 {
                     return elem;
                 }
-                return Type::SMIDVector(SIMDVector::new(
+                return Type::SIMDVector(SIMDVector::new(
                     elem.try_into().unwrap(),
                     count.try_into().unwrap(),
                 ));

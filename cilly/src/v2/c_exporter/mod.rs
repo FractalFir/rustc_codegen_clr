@@ -100,7 +100,7 @@ fn c_tpe(field_tpe: Type, asm: &Assembly) -> String {
             dims = "*".repeat(dims.get() as usize)
         ),
         Type::FnPtr(_) => "void*".into(),
-        Type::SMIDVector(vec) => {
+        Type::SIMDVector(vec) => {
             format!(
                 "__simdvec{elem}{count}",
                 elem = std::convert::Into::<Type>::into(vec.elem()).mangle(asm),
@@ -114,11 +114,11 @@ fn mref_to_name(mref: &MethodRef, asm: &Assembly) -> String {
     let class_name = escape_ident(&asm[class.name()]);
     let mname = escape_ident(&asm[mref.name()]);
     if class.asm().is_some()
-        || matches!(mref.output(asm), Type::SMIDVector(_))
+        || matches!(mref.output(asm), Type::SIMDVector(_))
         || mref
             .stack_inputs(asm)
             .iter()
-            .any(|tpe| matches!(tpe, Type::SMIDVector(_)))
+            .any(|tpe| matches!(tpe, Type::SIMDVector(_)))
     {
         let mangled = escape_ident(
             &asm[mref.sig()]

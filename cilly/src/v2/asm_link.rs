@@ -22,7 +22,7 @@ impl Assembly {
             | Type::Void
             | Type::PlatformObject
             | Type::PlatformGeneric(_, _)
-            | Type::SMIDVector(_) => tpe,
+            | Type::SIMDVector(_) => tpe,
             Type::ClassRef(class_ref) => {
                 Type::ClassRef(self.translate_class_ref(source, class_ref))
             }
@@ -616,48 +616,39 @@ impl Assembly {
             }
         }
 
-        def
-            .methods()
-            .iter()
-            .for_each(|mdef| {
-                let mut method_definition = self.translate_method_def(source, source.method_def(*mdef));
-                let method_ref = self.alloc_methodref(method_definition.ref_to());
-                // 1st Take the orignal method, if it exists(we need this to be able to mutate methods)
-                let original = self.method_defs().get(&MethodDefIdx(method_ref));
-                let method_definition = match original {
-                    Some(original) => {
-                        assert_eq!(method_definition.name(), original.name());
-                        // Check if this method has a special name, and needs merging.
-                        let name = &self[method_definition.name()];
-                        if SPECIAL_METHOD_NAMES.iter().any(|val| **val == *name) {
-                            // Not special, proly does not need merging, so we can check if it matches and go on our merry way.
-                            assert_eq!(method_definition.access(), original.access());
-                            assert_eq!(method_definition.class(), original.class());
-                            assert_eq!(method_definition.sig(), original.sig());
-                            assert_eq!(method_definition.kind(), original.kind());
-                            method_definition
-                                .implementation_mut()
-                                .merge_cctor_impls(original.implementation(), self);
-                            method_definition
-                        } else {
-                            // Not special, proly does not need merging, so we can check if it matches and go on our merry way.
-                            assert_eq!(method_definition.access(), original.access());
-                            assert_eq!(method_definition.class(), original.class());
-                            assert_eq!(method_definition.sig(), original.sig());
-                            assert_eq!(method_definition.kind(), original.kind());
-                            // EXPENSIVE, consider making this check debug only.
-                            let (left_val,right_val) = (&(method_definition.implementation()), &(original.implementation()));
-                            if!(*left_val== *right_val){
-                                eprintln!("WARNING: linking methods with diveriging implmenentations. This is usualy a sign of a bug. {left_val:?} {right_val:?}");
-                            };
-                            method_definition
-                        }
+        def.methods().iter().for_each(|mdef| {
+            let mut method_definition = self.translate_method_def(source, source.method_def(*mdef));
+            let method_ref = self.alloc_methodref(method_definition.ref_to());
+            // 1st Take the orignal method, if it exists(we need this to be able to mutate methods)
+            let original = self.method_defs().get(&MethodDefIdx(method_ref));
+            let method_definition = match original {
+                Some(original) => {
+                    assert_eq!(method_definition.name(), original.name());
+                    // Check if this method has a special name, and needs merging.
+                    let name = &self[method_definition.name()];
+                    if SPECIAL_METHOD_NAMES.iter().any(|val| **val == *name) {
+                        // Needs special handling.
+                        assert_eq!(method_definition.access(), original.access());
+                        assert_eq!(method_definition.class(), original.class());
+                        assert_eq!(method_definition.sig(), original.sig());
+                        assert_eq!(method_definition.kind(), original.kind());
+                        method_definition
+                            .implementation_mut()
+                            .merge_cctor_impls(original.implementation(), self);
+                        method_definition
+                    } else {
+                        // Not special, proly does not need merging, so we can check if it matches and go on our merry way.
+                        assert_eq!(method_definition.access(), original.access());
+                        assert_eq!(method_definition.class(), original.class());
+                        assert_eq!(method_definition.sig(), original.sig());
+                        assert_eq!(method_definition.kind(), original.kind());
+                        method_definition
                     }
-                    None => method_definition,
-                };
-                self.new_method(method_definition);
-            })
-            ;
+                }
+                None => method_definition,
+            };
+            self.new_method(method_definition);
+        });
         translated
     }
 }

@@ -11,7 +11,7 @@ pub enum SIMDElem {
 impl SIMDElem {
     fn bits(&self) -> u8 {
         match self {
-            SIMDElem::Int(int) => int.bits(),
+            SIMDElem::Int(int) => int.bits().unwrap_or(64), // Assumes a 64 bit target
             SIMDElem::Float(float) => float.bits(),
         }
     }
@@ -22,6 +22,16 @@ impl From<SIMDElem> for Type {
             SIMDElem::Int(int) => Type::Int(int),
             SIMDElem::Float(float) => Type::Float(float),
         }
+    }
+}
+impl From<Int> for SIMDElem {
+    fn from(val: Int) -> Self {
+        SIMDElem::Int(val)
+    }
+}
+impl From<Float> for SIMDElem {
+    fn from(val: Float) -> Self {
+        SIMDElem::Float(val)
     }
 }
 #[derive(Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize)]
@@ -39,7 +49,13 @@ impl SIMDVector {
         );
         res
     }
-
+    /// Returns a short name descirbing this vector.
+    /// ```
+    /// # use cilly::v2::tpe::simd::{SIMDElem,SIMDVector};
+    /// # use cilly::Int;
+    /// assert_eq!(SIMDVector::new(Int::U64.into(),4).name(),"simdu64_4");
+    /// assert_eq!(SIMDVector::new(Int::U8.into(),32).name(),"simdu8_32");
+    /// ```
     pub fn name(&self) -> String {
         match self.elem {
             SIMDElem::Int(elem) => {
@@ -50,9 +66,15 @@ impl SIMDVector {
             }
         }
     }
-
+    /// Returns the size of this SIMD vector in bits.
+    /// ```
+    /// # use cilly::v2::tpe::simd::{SIMDElem,SIMDVector};
+    /// # use cilly::{Float,Int};
+    /// assert_eq!(SIMDVector::new(Float::F64.into(),4).bits(), 4 * Float::F64.bits() as u16);
+    /// assert_eq!(SIMDVector::new(Int::U64.into(),4).bits(), 4 * Int::U64.bits().unwrap() as u16);
+    /// ```
     pub fn bits(&self) -> u16 {
-        self.elem.bits() as u16 * self.count as u16
+        self.elem.bits() as u16 * self.count() as u16
     }
 
     pub fn elem(&self) -> SIMDElem {
@@ -70,7 +92,14 @@ impl SIMDVector {
         let name = asm.alloc_string(format!("System.Runtime.Intrinsics.Vector{}", self.bits()));
         asm.alloc_class_ref(ClassRef::new(name, Some(asm_name), false, vec![].into()))
     }
-
+    /// Returns the ammount of elements in this [`SIMDVec`].
+    /// ```
+    /// # use cilly::v2::tpe::simd::{SIMDElem,SIMDVector};
+    /// # use cilly::{Float,Int};
+    /// assert_eq!(SIMDVector::new(Float::F64.into(),4).count(), 4);
+    /// assert_eq!(SIMDVector::new(Float::F64.into(),2).count(), 2);
+    /// assert_eq!(SIMDVector::new(Int::U64.into(),8).count(),8);
+    /// ```
     pub fn count(&self) -> u8 {
         self.count
     }

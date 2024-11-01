@@ -37,7 +37,7 @@ pub enum Type {
     Void,
     PlatformArray { elem: TypeIdx, dims: NonZeroU8 },
     FnPtr(SigIdx),
-    SMIDVector(SIMDVector),
+    SIMDVector(SIMDVector),
 }
 #[derive(Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize)]
 pub enum GenericKind {
@@ -62,7 +62,7 @@ impl Type {
             | Type::PlatformObject
             | Type::Bool
             | Type::Void
-            | Type::SMIDVector(_) => Box::new(std::iter::empty()),
+            | Type::SIMDVector(_) => Box::new(std::iter::empty()),
             Type::FnPtr(sig) => Box::new(
                 asm[*sig]
                     .iter_types()
@@ -90,7 +90,7 @@ impl Type {
     #[must_use]
     pub fn mangle(&self, asm: &Assembly) -> String {
         match self {
-            Type::SMIDVector(val) => val.name(),
+            Type::SIMDVector(val) => val.name(),
             Type::Ptr(inner) => format!("p{}", asm[*inner].mangle(asm)),
             Type::Ref(inner) => format!("r{}", asm[*inner].mangle(asm)),
             Type::Int(int) => match int {
@@ -151,6 +151,15 @@ impl Type {
         }
     }
     #[must_use]
+    /// If this type is a class reference, returns that class reference.
+    /// ```
+    /// # use cilly::*;
+    /// # use cilly::v2::{ClassRef};
+    /// # let mut asm = cilly::v2::Assembly::default();
+    /// let uint_128 = ClassRef::uint_128(&mut asm);
+    /// assert_eq!(Type::ClassRef(uint_128).as_class_ref(),Some(uint_128));
+    /// assert_eq!(Type::Int(Int::U8).as_class_ref(),None);
+    /// ```
     pub fn as_class_ref(&self) -> Option<ClassRefIdx> {
         if let Self::ClassRef(v) = self {
             Some(*v)
@@ -158,7 +167,15 @@ impl Type {
             None
         }
     }
-
+    /// If this type is a pointer(*T) or a reference(&T), returns the pointed type(T).
+    /// ```
+    /// # use cilly::*;
+    /// # let mut asm = cilly::v2::Assembly::default();
+    /// # let u8_tpe = asm.alloc_type(Type::Int(Int::U8));
+    /// assert_eq!(asm.nptr(u8_tpe).pointed_to(),Some(u8_tpe));
+    /// assert_eq!(asm.nref(u8_tpe).pointed_to(),Some(u8_tpe));
+    /// assert_eq!(Type::Int(Int::U8).pointed_to(),None);
+    /// ```
     pub fn pointed_to(&self) -> Option<TypeIdx> {
         match self {
             Type::Ptr(type_idx) | Type::Ref(type_idx) => Some(*type_idx),
@@ -173,7 +190,10 @@ impl Type {
     /// // You can assign a string to an object.
     /// let ps = Type::PlatformString;
     /// let obj = Type::PlatformObject;
+    /// // All non-valuetype classes can be assigned to an object.
     /// assert!(ps.is_assignable_to(obj,&asm));
+    /// // Valuetype, so can't be directly assigned to an object(it needs to be boxed first).
+    /// assert!(!Type::ClassRef(ClassRef::int_128(&mut asm)).is_assignable_to(obj,&asm));
     /// // But you can't assign an object to a string.
     /// assert!(!obj.is_assignable_to(ps,&asm));
     /// // Types are always assignable to themselves.
@@ -182,6 +202,24 @@ impl Type {
     /// assert!(Type::Int(Int::I128).is_assignable_to(Type::ClassRef(ClassRef::int_128(&mut asm)),&asm));
     /// // A class ref to uint_128 is assignable to Int::U128
     /// assert!(Type::Int(Int::U128).is_assignable_to(Type::ClassRef(ClassRef::uint_128(&mut asm)),&asm));
+    /// // You can assign a *T to a &T, but not the other way round.
+    /// # let refu8 = asm.nref(Int::U8);
+    /// # let ptru8 = asm.nptr(Int::U8);
+    /// assert!(ptru8.is_assignable_to(refu8,&asm));
+    /// assert!(!refu8.is_assignable_to(ptru8,&asm));
+    /// //     Ignores partial matches.
+    /// # let u128_name = asm.alloc_string("System.UInt128");
+    /// # let i128_name = asm.alloc_string("System.Int128");
+    /// # let system_runtime = Some(asm.alloc_string("System.Runtime"));
+    /// # let string_name = asm.alloc_string("System.String");
+    /// // Has the right name and is in the right assembly, but the valuetype is not right.
+    /// assert!(!Type::Int(Int::U128).is_assignable_to(Type::ClassRef(asm.alloc_class_ref(ClassRef::new(u128_name, system_runtime, false, [].into()))),&asm));
+    /// assert!(!Type::Int(Int::I128).is_assignable_to(Type::ClassRef(asm.alloc_class_ref(ClassRef::new(i128_name, system_runtime, false, [].into()))),&asm));
+    /// assert!(!Type::PlatformString.is_assignable_to(Type::ClassRef(asm.alloc_class_ref(ClassRef::new(string_name, system_runtime, true, [].into()))),&asm));
+    /// // Has the right assembly, valuetype, but the wrong name
+    /// assert!(!Type::Int(Int::I128).is_assignable_to(Type::ClassRef(asm.alloc_class_ref(ClassRef::new(string_name, system_runtime, true, [].into()))),&asm));
+    /// assert!(!Type::Int(Int::U128).is_assignable_to(Type::ClassRef(asm.alloc_class_ref(ClassRef::new(string_name, system_runtime, true, [].into()))),&asm));
+    /// assert!(!Type::PlatformString.is_assignable_to(Type::ClassRef(asm.alloc_class_ref(ClassRef::new(u128_name, system_runtime, false, [].into()))),&asm));
     /// ```
     pub fn is_assignable_to(&self, to: Type, asm: &Assembly) -> bool {
         if *self == to {
@@ -239,9 +277,16 @@ impl Type {
             None
         }
     }
-
+    /// If this type is an [`SIMDVector`], return that SIMDVector.
+    /// ```
+    /// # use cilly::v2::tpe::simd::{SIMDElem,SIMDVector};
+    /// # use cilly::*;
+    /// let vec = SIMDVector::new(Int::U64.into(),4);
+    /// assert_eq!(Type::SIMDVector(vec).as_simdvector(),Some(&vec));
+    /// assert_eq!(Type::Int(Int::U64).as_simdvector(),None);
+    /// ```
     pub fn as_simdvector(&self) -> Option<&SIMDVector> {
-        if let Self::SMIDVector(v) = self {
+        if let Self::SIMDVector(v) = self {
             Some(v)
         } else {
             None

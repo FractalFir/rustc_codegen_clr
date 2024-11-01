@@ -646,10 +646,10 @@ impl ILExporter {
                     (Type::PlatformArray { .. }, false) => writeln!(out, "ldind.ref"),
                     (Type::FnPtr(_), true) => writeln!(out, "volatile. ldind.i"),
                     (Type::FnPtr(_), false) => writeln!(out, "ldind.i"),
-                    (Type::SMIDVector(_), true) => {
+                    (Type::SIMDVector(_), true) => {
                         writeln!(out, "volatile. ldobj {}", type_il(&tpe, asm))
                     }
-                    (Type::SMIDVector(_), false) => {
+                    (Type::SIMDVector(_), false) => {
                         writeln!(out, "ldobj {}", type_il(&tpe, asm))
                     }
                 }
@@ -1132,7 +1132,7 @@ impl ILExporter {
                     Type::Void => writeln!(out, "pop pop ldstr \"Attempted to wrtie to a zero-sized type(void).\" newobj void [System.Runtime]System.Exception::.ctor(string) throw"), // TODO: forbid this, since this is NEVER valid.
                     Type::PlatformArray { .. } => writeln!(out, "{is_volitale} stind.ref"),
                     Type::FnPtr(_) => writeln!(out, "{is_volitale} stind.i"),
-                    Type::SMIDVector(_)=>writeln!(out, "stobj {}", type_il(&tpe, asm)),
+                    Type::SIMDVector(_)=>writeln!(out, "stobj {}", type_il(&tpe, asm)),
                 }
             }
             super::CILRoot::InitBlk(blk) => {
@@ -1350,7 +1350,7 @@ fn non_void_type_il(tpe: &Type, asm: &Assembly) -> String {
 }
 fn type_il(tpe: &Type, asm: &Assembly) -> String {
     match tpe {
-        Type::SMIDVector(simdvec) => {
+        Type::SIMDVector(simdvec) => {
             let vec_bits = simdvec.bits();
             assert!(
                 vec_bits == 64 || vec_bits == 128 || vec_bits == 256 || vec_bits == 512,

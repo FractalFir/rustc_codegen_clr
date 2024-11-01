@@ -1007,7 +1007,7 @@ impl Assembly {
             Type::PlatformGeneric(_, _) => 8,
             Type::Bool => 1,
             Type::Void => 0,
-            Type::SMIDVector(simdvector) => match simdvector.elem() {
+            Type::SIMDVector(simdvector) => match simdvector.elem() {
                 super::tpe::simd::SIMDElem::Int(int) => int.size().unwrap_or(8) as u64, // ASSUMES alignof<usize>() = 8.
                 super::tpe::simd::SIMDElem::Float(float) => float.size() as u64,
             },
@@ -1077,8 +1077,13 @@ pub static ILASM_PATH: std::sync::LazyLock<String> = std::sync::LazyLock::new(||
 });
 
 #[cfg(not(target_os = "windows"))]
+/// Finds the default instance of the IL assembler.
 fn get_default_ilasm() -> String {
     "ilasm".into()
+}
+#[test]
+fn test_get_default_ilasm() {
+    assert!(get_default_ilasm().contains("ilasm"));
 }
 #[cfg(target_os = "windows")]
 fn get_default_ilasm() -> String {

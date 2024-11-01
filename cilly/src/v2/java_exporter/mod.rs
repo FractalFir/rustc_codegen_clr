@@ -181,7 +181,7 @@ fn type_string(tpe: Type, asm: &Assembly) -> String {
             elem = type_string(asm[elem], asm)
         ),
         Type::FnPtr(_) => "J".into(),
-        Type::SMIDVector(_) => panic!("SMID is not supported in Java"),
+        Type::SIMDVector(_) => panic!("SMID is not supported in Java"),
     }
 }
 /*
