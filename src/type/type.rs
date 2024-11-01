@@ -165,7 +165,7 @@ pub fn is_fat_ptr<'tcx>(
     tcx: TyCtxt<'tcx>,
     method: rustc_middle::ty::Instance<'tcx>,
 ) -> bool {
-    use rustc_target::abi::Abi;
+    use rustc_target::abi::BackendRepr;
     let ptr_type = monomorphize(&method, ptr_type, tcx);
     let layout = tcx
         .layout_of(rustc_middle::ty::ParamEnvAnd {
@@ -174,10 +174,10 @@ pub fn is_fat_ptr<'tcx>(
         })
         .expect("Can't get layout of a type.")
         .layout;
-    let abi = layout.abi();
+    let abi = layout.0 .0.backend_repr;
     match abi {
-        Abi::Scalar(_) => false,
-        Abi::ScalarPair(_, _) => true,
+        BackendRepr::Scalar(_) => false,
+        BackendRepr::ScalarPair(_, _) => true,
         _ => panic!("Unexpected abi of pointer to {ptr_type:?}. The ABI was:{abi:?}"),
     }
 }

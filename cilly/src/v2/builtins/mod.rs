@@ -112,6 +112,7 @@ fn insert_rust_alloc_zeroed(asm: &mut Assembly, patcher: &mut MissingMethodPatch
         let size = asm.alloc_node(CILNode::LdArg(0));
         let align = asm.alloc_node(CILNode::LdArg(1));
         let void_ptr = asm.nptr(Type::Void);
+        let void_idx = asm.alloc_type(Type::Void);
         let sig = asm.sig([Type::Int(Int::USize), Type::Int(Int::USize)], void_ptr);
         let aligned_alloc = asm.alloc_string("AlignedAlloc");
         let native_mem = ClassRef::native_mem(asm);
@@ -126,6 +127,10 @@ fn insert_rust_alloc_zeroed(asm: &mut Assembly, patcher: &mut MissingMethodPatch
             call_method,
             Box::new([size, align]),
         ))));
+        let alloc = asm.alloc_node(CILNode::PtrCast(
+            alloc,
+            Box::new(super::cilnode::PtrCastRes::Ptr(void_idx)),
+        ));
         let alloc = asm.alloc_root(CILRoot::StLoc(0, alloc));
         let cap = asm.alloc_node(Const::USize(ALLOC_CAP));
         let check = asm.alloc_root(CILRoot::Branch(Box::new((
@@ -150,7 +155,7 @@ fn insert_rust_alloc_zeroed(asm: &mut Assembly, patcher: &mut MissingMethodPatch
                 BasicBlock::new(vec![check, alloc, zero, ret], 0, None),
                 BasicBlock::new(vec![throw], 1, None),
             ],
-            locals: vec![(None, asm.alloc_type(Type::Int(Int::USize)))],
+            locals: vec![(None, asm.alloc_type(void_ptr))],
         }
     };
     patcher.insert(name, Box::new(generator));

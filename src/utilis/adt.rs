@@ -160,10 +160,7 @@ pub fn set_discr<'tcx>(
     ty: Ty<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> CILRoot {
-    if get_variant_at_index(variant_index, (*layout.0).clone())
-        .abi
-        .is_uninhabited()
-    {
+    if get_variant_at_index(variant_index, (*layout.0).clone()).is_uninhabited() {
         // Could be skipped, but keeping a throw here can with CIL correctnes. Each block *must* terminate with a jump, return or a throw.
         // By inserting a throw, we are able to remove all code
         // after it safely.
@@ -240,10 +237,7 @@ pub fn get_discr<'tcx>(
     ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> CILNode {
     //return CILNode::
-    assert!(
-        !layout.abi.is_uninhabited(),
-        "UB: enum layout is unanhibited!"
-    );
+    assert!(!layout.is_uninhabited(), "UB: enum layout is unanhibited!");
     let (tag_tpe, _) = crate::utilis::adt::enum_tag_info(layout, ctx);
     let tag_encoding = match layout.variants {
         Variants::Single { index } => {
