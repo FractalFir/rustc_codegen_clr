@@ -5,7 +5,7 @@ use crate::{v2::bimap::IntoBiMapIndex, IString};
 use super::{
     cilnode::{PtrCastRes, UnOp},
     method::LocalDef,
-    Assembly, BinOp, CILNode, CILRoot, ClassRef, Int, NodeIdx, SigIdx, Type,
+    Assembly, BinOp, CILNode, CILRoot, ClassRef, FieldIdx, Int, NodeIdx, SigIdx, Type,
 };
 #[derive(Debug)]
 pub enum TypeCheckError {
@@ -108,6 +108,17 @@ pub enum TypeCheckError {
     WriteWrongValue {
         tpe: Type,
         value: Type,
+    },
+    ConditionNotBool {
+        cond: Type,
+    },
+    CantCompareTypes {
+        lhs: Type,
+        rhs: Type,
+    },
+    FieldAssignWrongType {
+        fld: FieldIdx,
+        val: Type,
     },
 }
 pub fn typecheck_err_to_string(
@@ -549,8 +560,10 @@ impl CILNode {
             CILNode::UnOp(arg, op) => {
                 let arg = asm.get_node(*arg).clone();
                 let arg_type = arg.typecheck(sig, locals, asm)?;
-                match arg_type {
-                    Type::Int(_) | Type::Float(_) | Type::Ptr(_) => Ok(arg_type),
+                match (arg_type, op) {
+                    (Type::Int(_) | Type::Float(_) | Type::Ptr(_), UnOp::Not) => Ok(arg_type),
+                    (Type::Int(int), UnOp::Neg) if int.is_signed() => Ok(arg_type),
+                    (Type::Float(_) | Type::Ptr(_), UnOp::Neg) => Ok(arg_type),
                     _ => Err(TypeCheckError::WrongUnOpArgs {
                         tpe: arg_type,
                         op: op.clone(),
@@ -864,6 +877,38 @@ impl CILRoot {
                     Ok(())
                 }
             }
+            Self::Branch(boxed) => {
+                let (_, _, cond) = boxed.as_ref();
+                let Some(cond) = cond else { return Ok(()) };
+                match cond {
+                    super::BranchCond::True(cond) | super::BranchCond::False(cond) => {
+                        let cond = asm[*cond].clone().typecheck(sig, locals, asm)?;
+                        match cond {
+                            Type::Bool => Ok(()),
+                            Type::Int(_) => Ok(()),
+                            _ => Err(TypeCheckError::ConditionNotBool { cond }),
+                        }
+                    }
+                    super::BranchCond::Eq(lhs, rhs)
+                    | super::BranchCond::Ne(lhs, rhs)
+                    | super::BranchCond::Lt(lhs, rhs, _)
+                    | super::BranchCond::Gt(lhs, rhs, _)
+                    | super::BranchCond::Le(lhs, rhs, _)
+                    | super::BranchCond::Ge(lhs, rhs, _) => {
+                        let lhs = asm[*lhs].clone().typecheck(sig, locals, asm)?;
+                        let rhs = asm[*rhs].clone().typecheck(sig, locals, asm)?;
+                        if lhs.is_assignable_to(rhs, asm)
+                            && lhs
+                                .as_class_ref()
+                                .is_none_or(|cref| !asm[cref].is_valuetype())
+                        {
+                            Ok(())
+                        } else {
+                            Err(TypeCheckError::CantCompareTypes { lhs, rhs })
+                        }
+                    }
+                }
+            }
             Self::StInd(boxed) => {
                 let (addr, value, tpe, _) = boxed.as_ref();
                 let addr = asm[*addr].clone().typecheck(sig, locals, asm)?;
@@ -888,6 +933,16 @@ impl CILRoot {
                     || value == Type::Bool && *tpe == Type::Int(Int::I8))
                 {
                     return Err(TypeCheckError::WriteWrongValue { tpe: *tpe, value });
+                }
+                Ok(())
+            }
+            Self::SetField(boxed) => {
+                let (fld, addr, val) = boxed.as_ref();
+                let addr = asm[*addr].clone().typecheck(sig, locals, asm)?;
+                let val = asm[*val].clone().typecheck(sig, locals, asm)?;
+                let field_tpe = asm[*fld].tpe();
+                if !val.is_assignable_to(field_tpe, asm) {
+                    return Err(TypeCheckError::FieldAssignWrongType { fld: *fld, val });
                 }
                 Ok(())
             }

@@ -5,11 +5,11 @@ use std::{collections::HashSet, io::Write};
 use fxhash::{hash64, FxHashSet, FxHasher};
 
 use crate::{
-    typecheck,
+    config, typecheck,
     utilis::{assert_unique, encode},
     v2::{asm::LINKER_RECOVER, BiMap, MethodImpl, StringIdx},
 };
-
+config!(NO_SFI, bool, false);
 use super::{
     asm::MAIN_MODULE,
     bimap::IntoBiMapIndex,
@@ -52,7 +52,9 @@ fn escape_ident(ident: &str) -> String {
     }
     // Check if reserved.
     match escaped.as_str() {
-        "int" | "default" => encode(hash64(&escaped)),
+        "int" | "default" | "float" | "double" | "long" | "short" | "register" => {
+            format!("i{}", encode(hash64(&escaped)))
+        }
         _ => escaped,
     }
 }
@@ -768,7 +770,13 @@ impl CExporter {
                     ),
                 }
             }
-            CILRoot::SourceFileInfo { line_start, line_len, col_start, col_len, file  } => format!("#line {line_start} {file:?}", file = &asm[file]),
+            CILRoot::SourceFileInfo { line_start, line_len, col_start, col_len, file  } =>{
+                if !*NO_SFI{
+                    format!("#line {line_start} {file:?}", file = &asm[file])
+                }else{
+                    "".into()
+                }
+            },
             CILRoot::SetField(info) =>{
                 let (field,addr,value) = info.as_ref();
                 let addr = Self::node_to_string(asm[*addr].clone(), asm, locals, inputs, sig)?;

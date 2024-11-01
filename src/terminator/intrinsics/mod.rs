@@ -246,10 +246,25 @@ pub fn handle_intrinsic<'tcx>(
             // T
             let sub_ammount = handle_operand(&args[1].node, ctx);
             // we sub by adding a negative number
-            let add_ammount = CILNode::Neg(Box::new(sub_ammount.clone()));
+
             let src_type = ctx.monomorphize(args[1].node.ty(ctx.body(), ctx.tcx()));
             let src_type = ctx.type_from_cache(src_type);
-
+            let src_int = src_type.as_int().unwrap();
+            let add_ammount = if src_int.is_signed() {
+                CILNode::Neg(Box::new(sub_ammount.clone()))
+            } else {
+                crate::casts::int_to_int(
+                    Type::Int(src_int.as_signed()),
+                    src_type,
+                    CILNode::Neg(Box::new(crate::casts::int_to_int(
+                        src_type,
+                        Type::Int(src_int.as_signed()),
+                        sub_ammount.clone(),
+                        ctx,
+                    ))),
+                    ctx,
+                )
+            };
             place_set(
                 destination,
                 CILNode::Sub(

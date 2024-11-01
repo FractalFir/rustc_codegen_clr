@@ -30,7 +30,7 @@ union System_Collections_DictionaryEntry
 union System_String
 {
 };
-
+int execvp(void *file, void *argv);
 #define System_Runtime_InteropServices_Marshal_AllocHGlobali4is(size) malloc(size)
 #define System_Runtime_InteropServices_Marshal_AllocHGlobalisis(size) malloc(size)
 #define System_Runtime_InteropServices_Marshal_ReAllocHGlobalisisis(ptr, new_size) realloc(ptr, new_size)
@@ -172,7 +172,6 @@ void *System_Runtime_InteropServices_NativeMemory_AlignedReallocpvususpv(void *p
 #define System_Numerics_BitOperations_PopCountu4i4(val) __builtin_popcountl((uint32_t)val)
 #define System_Numerics_BitOperations_PopCountu8i4(val) __builtin_popcountl((uint64_t)val)
 
-
 union System_Collections_IDictionary System_Environment_GetEnvironmentVariables14System_Runtime30System_Collections_IDictionary()
 {
     union System_Collections_IDictionary res;
@@ -297,6 +296,7 @@ float System_MathF_Truncatef4f4(float val)
     abort();
     return 0;
 }
+double fabsf64(double val);
 #define System_Single_Cosf4f4(x) ((float)cos(x))
 #define System_Single_Cosf8f8 cos
 #define System_Single_Sinf4f4(x) ((float)sin(x))
@@ -308,6 +308,67 @@ float System_MathF_Truncatef4f4(float val)
 #define System_Single_Powf4f4f4(a, b) (float)pow(a, b)
 #define System_Single_Powf8f8f8 pow
 #define System_Double_Powf8f8f8 pow
+#define System_Int128_get_Zeroi16(v) ((__int128_t)0)
+float System_Single_Exp2f4f4(float input)
+{
+    fprintf(stderr, "Can't System_Single_Exp2f4f4 yet.\n");
+    abort();
+    return 0.0f;
+}
+float System_Single_Logf4f4(float input)
+{
+    fprintf(stderr, "Can't System_Single_Logf4f4 yet.\n");
+    abort();
+    return 0.0f;
+}
+float System_Single_Log2f4f4(float input)
+{
+    fprintf(stderr, "Can't System_Single_Log2f4f4 yet.\n");
+    abort();
+    return 0.0f;
+}
+float System_Single_Log10f4f4(float input)
+{
+    fprintf(stderr, "Can't System_Single_Log10f4f4 yet.\n");
+    abort();
+    return 0.0f;
+}
+float System_Math_Floorf8f8(float input)
+{
+    fprintf(stderr, "Can't System_Math_Floorf8f8 yet.\n");
+    abort();
+    return 0.0f;
+}
+double System_Math_Sqrtf8f8(double input)
+{
+    fprintf(stderr, "Can't System_Math_Sqrtf8f8 yet.\n");
+    abort();
+    return 0.0f;
+}
+double System_Double_Log10f8f8(double input)
+{
+    fprintf(stderr, "Can't System_Double_Log10f8f8 yet.\n");
+    abort();
+    return 0.0f;
+}
+double System_Math_Truncatef8f8(double input)
+{
+    fprintf(stderr, "Can't System_Math_Truncatef8f8 yet.\n");
+    abort();
+    return 0.0f;
+}
+uint32_t System_UInt32_RotateRightu4i4u4(uint32_t val, int32_t ammount)
+{
+    fprintf(stderr, "Can't System_UInt32_RotateRightu4i4u4 yet.\n");
+    abort();
+    return 0;
+}
+uint8_t System_Byte_RotateRightu1i4u1(uint8_t val, int32_t ammount)
+{
+    fprintf(stderr, "Can't System_Byte_RotateRightu1i4u1 yet.\n");
+    abort();
+    return 0;
+}
 uint32_t System_Threading_Interlocked_CompareExchangeru4u4u4u4(uint32_t *addr, uint32_t value, uint32_t comparand)
 {
     fprintf(stderr, "Can't System_Threading_Interlocked_CompareExchangeru4u4u4u4 yet.\n");
@@ -326,9 +387,22 @@ uintptr_t System_Threading_Interlocked_CompareExchangerusususus(uintptr_t *addr,
     abort();
     return 0;
 }
+intptr_t System_Threading_Interlocked_CompareExchangerisisisis(intptr_t *addr, intptr_t value, intptr_t comparand)
+{
+    fprintf(stderr, "Can't System_Threading_Interlocked_CompareExchangerisisisis yet.\n");
+    abort();
+    return 0;
+}
+
 uint32_t System_Threading_Interlocked_Exchangeru4u4u4(uint32_t *addr, uint32_t val)
 {
     fprintf(stderr, "Can't System_Threading_Interlocked_Exchangeru4u4u4 yet.\n");
+    abort();
+    return 0;
+}
+uintptr_t System_Threading_Interlocked_Exchangerususus(uintptr_t *addr, uintptr_t val)
+{
+    fprintf(stderr, "Can't System_Threading_Interlocked_Exchangerususus yet.\n");
     abort();
     return 0;
 }
@@ -371,8 +445,9 @@ uint64_t System_UInt64_RotateLeftu8i4u8(uint64_t val, int32_t ammount)
     fprintf(stderr, "Can't System_UInt64_RotateLeftu8i4u8 yet.\n");
     abort();
 }
-unsigned __int128 System_UInt128_RotateRightu16i4u16(unsigned __int128 val, int32_t amount){
-  fprintf(stderr, "Can't System_UInt128_RotateRightu16i4u16 yet.\n");
+unsigned __int128 System_UInt128_RotateRightu16i4u16(unsigned __int128 val, int32_t amount)
+{
+    fprintf(stderr, "Can't System_UInt128_RotateRightu16i4u16 yet.\n");
     abort();
 }
 
@@ -386,6 +461,17 @@ unsigned __int128 System_UInt128_LeadingZeroCountu16u16(unsigned __int128 val)
     fprintf(stderr, "Can't System_UInt128_LeadingZeroCountu16u16 yet.\n");
     abort();
 }
+unsigned __int128 System_UInt128_PopCountu16u16(unsigned __int128 val)
+{
+    fprintf(stderr, "Can't System_UInt128_PopCountu16u16 yet.\n");
+    abort();
+}
+unsigned __int128 System_UInt128_TrailingZeroCountu16u16(unsigned __int128 val)
+{
+    fprintf(stderr, "Can't System_UInt128_TrailingZeroCountu16u16 yet.\n");
+    abort();
+}
+
 uint32_t System_Math_Minu4u4u4(uint32_t lhs, uint32_t rhs)
 {
     if (lhs > rhs)
@@ -443,11 +529,13 @@ __int128 System_Int128_Clampi16i16i16i16(__int128 val, __int128 min, __int128 ma
         return val;
     }
 }
-__int128 System_Int128_get_MinValuei16(){
+__int128 System_Int128_get_MinValuei16()
+{
     fprintf(stderr, "Can't System_Int128_get_MinValuei16 yet.\n");
     abort();
 }
-__int128 System_Int128_get_MaxValuei16(){
+__int128 System_Int128_get_MaxValuei16()
+{
     fprintf(stderr, "Can't System_Int128_get_MinValuei16 yet.\n");
     abort();
 }
