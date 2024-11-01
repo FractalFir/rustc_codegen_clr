@@ -1,7 +1,7 @@
 use crate::{
     assembly::MethodCompileCtx,
     operand::handle_operand,
-    place::place_get,
+    place::{place_get, place_set},
     r#type::{get_type, pointer_to_is_fat},
     utilis::{adt::set_discr, field_name},
 };
@@ -220,14 +220,14 @@ pub fn handle_aggregate<'tcx>(
                     "data_ty:{data_ty:?} is a zst. That is bizzare, cause it should be a pointer?"
                 );
                 let data_type = ctx.type_from_cache(data_ty);
-                let fat_ptr_type_ptr = ctx.nptr(fat_ptr_type);
+                let ptr_tpe = ctx.type_from_cache(pointee);
                 assert_ne!(data_type, Type::Void);
                 // Pointer is thin, just directly assign
                 return CILNode::SubTrees(Box::new((
-                    [CILRoot::STIndPtr(
-                        init_addr,
-                        handle_operand(data, ctx).cast_ptr(ctx.nptr(fat_ptr_type_ptr)),
-                        Box::new(ctx.nptr(fat_ptr_type)),
+                    [place_set(
+                        target_location,
+                        handle_operand(data, ctx).cast_ptr(ctx.nptr(ptr_tpe)),
+                        ctx,
                     )]
                     .into(),
                     Box::new(place_get(target_location, ctx)),

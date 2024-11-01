@@ -680,6 +680,11 @@ impl CILRoot {
         locals: &[(Option<StringIdx>, TypeIdx)],
     ) -> String {
         match self {
+            Self::StInd(boxed) => {
+                let (addr, val, tpe, is_volitile) = boxed.as_ref();
+                let tpe = tpe.mangle(asm);
+                format!("StInd{{addr:{addr:?},val:{val:?},tpe:{tpe},is_volitile:{is_volitile}}}")
+            }
             Self::StLoc(loc, val) => match locals.get(*loc as usize) {
                 Some((Some(name), tpe)) => format!(
                     "StLoc({loc}: {loc_tpe:?} {name:?}, {val:?})",
@@ -688,7 +693,7 @@ impl CILRoot {
                 ),
                 Some((None, tpe)) => format!(
                     "StLoc({loc}: {loc_tpe},{val:?})",
-                    loc_tpe = asm[*tpe].clone().mangle(asm)
+                    loc_tpe = asm[*tpe].clone().mangle(asm),
                 ),
                 None => format!("{self:?}"),
             },

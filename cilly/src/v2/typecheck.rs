@@ -101,6 +101,14 @@ pub enum TypeCheckError {
         lhs: Type,
         rhs: Type,
     },
+    WriteWrongAddr {
+        addr: Type,
+        tpe: Type,
+    },
+    WriteWrongValue {
+        tpe: Type,
+        value: Type,
+    },
 }
 pub fn typecheck_err_to_string(
     root_idx: super::RootIdx,
@@ -122,8 +130,8 @@ pub fn typecheck_err_to_string(
         .collect();
     let root_string = root.display(asm, sig, locals);
     match root.typecheck(sig, locals, asm){
-        Ok(ok)=> format!("digraph G{{edge [dir=\"back\"];\n{nodes} r{root_idx}  [label = \"{root_string:?}\" color = \"green\"] r{root_idx} ->{root_connections}}}",root_idx = root_idx.as_bimap_index()),
-        Err(err)=> format!("digraph G{{edge [dir=\"back\"];\\n{nodes} r{root_idx}  [label = \"{root_string:?}\n{err:?}\" color = \"red\"] r{root_idx} ->{root_connections}}}",root_idx = root_idx.as_bimap_index()),
+        Ok(ok)=> format!("digraph G{{edge [dir=\"back\"];\n{nodes} r{root_idx}  [label = \"{root_string}\" color = \"green\"] r{root_idx} ->{root_connections}}}",root_idx = root_idx.as_bimap_index()),
+        Err(err)=> format!("digraph G{{edge [dir=\"back\"];\\n{nodes} r{root_idx}  [label = \"{root_string}\n{err:?}\" color = \"red\"] r{root_idx} ->{root_connections}}}",root_idx = root_idx.as_bimap_index()),
    }
 }
 pub fn display_typecheck_err(
@@ -855,6 +863,33 @@ impl CILRoot {
                 } else {
                     Ok(())
                 }
+            }
+            Self::StInd(boxed) => {
+                let (addr, value, tpe, _) = boxed.as_ref();
+                let addr = asm[*addr].clone().typecheck(sig, locals, asm)?;
+                let value = asm[*value].clone().typecheck(sig, locals, asm)?;
+                let Some(addr_points_to) = addr.pointed_to().map(|tpe| asm[tpe]) else {
+                    return Err(TypeCheckError::WriteWrongAddr { addr, tpe: *tpe });
+                };
+                if !(tpe.is_assignable_to(addr_points_to, asm)
+                    || addr_points_to
+                        .as_int()
+                        .zip(tpe.as_int())
+                        .is_some_and(|(a, b)| a.as_unsigned() == b.as_unsigned())
+                    || addr_points_to == Type::Bool && *tpe == Type::Int(Int::I8))
+                {
+                    return Err(TypeCheckError::WriteWrongAddr { addr, tpe: *tpe });
+                }
+                if !(value.is_assignable_to(*tpe, asm)
+                    || value
+                        .as_int()
+                        .zip(tpe.as_int())
+                        .is_some_and(|(a, b)| a.as_unsigned() == b.as_unsigned())
+                    || value == Type::Bool && *tpe == Type::Int(Int::I8))
+                {
+                    return Err(TypeCheckError::WriteWrongValue { tpe: *tpe, value });
+                }
+                Ok(())
             }
             _ => {
                 for node in self.nodes() {
