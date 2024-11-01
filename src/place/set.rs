@@ -9,7 +9,7 @@ use cilly::{
     cil_root::CILRoot,
     conv_usize, ld_field,
     v2::{cilnode::MethodKind, ClassRef, FieldDesc, Int, MethodRef},
-    IntoAsmIndex, Type,
+    BinOp, IntoAsmIndex, Type,
 };
 use rustc_middle::{
     mir::PlaceElem,
@@ -76,7 +76,7 @@ pub fn place_elem_set<'a>(
             let curr_ty = curr_type
                 .as_ty()
                 .expect("INVALID PLACE: Indexing into enum variant???");
-            let index = crate::place::local_get(index.as_usize(), ctx.body());
+            let index = crate::place::local_get(index.as_usize(), ctx.body(), ctx);
 
             match curr_ty.kind() {
                 TyKind::Slice(inner) => {
@@ -90,13 +90,16 @@ pub fn place_elem_set<'a>(
                         ctx.nptr(Type::Void),
                     );
                     let field_val = ld_field!(addr_calc, ctx.alloc_field(desc));
-                    let size = conv_usize!(CILNode::V2(ctx.size_of(inner_type).into_idx(ctx)));
-                    ptr_set_op(
-                        super::PlaceTy::Ty(inner),
-                        ctx,
-                        field_val.cast_ptr(inner_ptr) + index * size,
-                        value_calc,
-                    )
+                    let size = ctx.size_of(inner_type).into_idx(ctx);
+                    let size = ctx.alloc_node(cilly::CILNode::IntCast {
+                        input: size,
+                        target: Int::USize,
+                        extend: cilly::cilnode::ExtendKind::ZeroExtend,
+                    });
+                    let offset = ctx.biop(index, size, BinOp::Mul);
+                    let addr_calc =
+                        field_val.cast_ptr(inner_ptr) + CILNode::V2(ctx.alloc_node(offset));
+                    ptr_set_op(super::PlaceTy::Ty(inner), ctx, addr_calc, value_calc)
                 }
                 TyKind::Array(element, _length) => {
                     let element = ctx.monomorphize(*element);
@@ -114,7 +117,7 @@ pub fn place_elem_set<'a>(
                     );
                     CILRoot::Call {
                         site: ctx.alloc_methodref(mref),
-                        args: [addr_calc, index, value_calc].into(),
+                        args: [addr_calc, CILNode::V2(index), value_calc].into(),
                     }
                 }
                 _ => {

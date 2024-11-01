@@ -9,31 +9,30 @@ use cilly::{
     cil_node::CILNode,
     conv_usize, ld_field,
     v2::{cilnode::MethodKind, FieldDesc, Int, MethodRef},
-    Const, IntoAsmIndex, Type,
+    Assembly, Const, IntoAsmIndex, NodeIdx, Type,
 };
 use rustc_middle::{
     mir::PlaceElem,
     ty::{Ty, TyKind},
 };
-pub fn local_adress(local: usize, method: &rustc_middle::mir::Body) -> CILNode {
-    if let Some(spread_arg) = method.spread_arg
+pub fn local_adress(local: usize, method: &rustc_middle::mir::Body, asm: &mut Assembly) -> NodeIdx {
+    let local = if let Some(spread_arg) = method.spread_arg
         && local == spread_arg.as_usize()
     {
-        return CILNode::MRefToRawPtr(Box::new(CILNode::LDLocA(
+        cilly::CILNode::LdLocA(
             (method.local_decls.len() - method.arg_count)
                 .try_into()
                 .unwrap(),
-        )));
-    }
-    if local == 0 {
-        CILNode::MRefToRawPtr(CILNode::LDLocA(0).into())
-    } else if local > method.arg_count {
-        CILNode::MRefToRawPtr(
-            CILNode::LDLocA(u32::try_from(local - method.arg_count).unwrap()).into(),
         )
+    } else if local == 0 {
+        cilly::CILNode::LdLocA(0)
+    } else if local > method.arg_count {
+        cilly::CILNode::LdLocA(u32::try_from(local - method.arg_count).unwrap())
     } else {
-        CILNode::MRefToRawPtr(CILNode::LDArgA(u32::try_from(local - 1).unwrap()).into())
-    }
+        cilly::CILNode::LdArgA(u32::try_from(local - 1).unwrap())
+    };
+    let local = asm.alloc_node(local);
+    asm.alloc_node(cilly::CILNode::RefToPtr(local))
 }
 pub fn address_last_dereference<'tcx>(
     target_ty: Ty<'tcx>,
@@ -197,7 +196,7 @@ pub fn place_elem_adress<'tcx>(
             let curr_ty = curr_type
                 .as_ty()
                 .expect("INVALID PLACE: Indexing into enum variant???");
-            let index = crate::place::local_get(index.as_usize(), ctx.body());
+            let index = crate::place::local_get(index.as_usize(), ctx.body(), ctx);
             match curr_ty.kind() {
                 TyKind::Slice(inner) => {
                     let inner = ctx.monomorphize(*inner);
@@ -209,9 +208,16 @@ pub fn place_elem_adress<'tcx>(
                     let desc = ctx.alloc_field(FieldDesc::new(slice, data_ptr_name, void_ptr));
                     // This is a false positive
                     //    #[allow(unused_parens)]
+                    let size = ctx.size_of(inner_type);
+                    let size = size.into_idx(ctx);
+                    let size = ctx.alloc_node(cilly::CILNode::IntCast {
+                        input: size,
+                        target: Int::USize,
+                        extend: cilly::cilnode::ExtendKind::ZeroExtend,
+                    });
+                    let offset = ctx.biop(index, size, cilly::BinOp::Mul);
                     (ld_field!(addr_calc.clone(), desc)).cast_ptr(ctx.nptr(inner_type))
-                        + conv_usize!(CILNode::V2(ctx.size_of(inner_type).into_idx(ctx)))
-                            * conv_usize!(index)
+                        + CILNode::V2(ctx.alloc_node(offset))
                 }
                 TyKind::Array(element, _length) => {
                     let element = ctx.monomorphize(*element);
@@ -227,7 +233,7 @@ pub fn place_elem_adress<'tcx>(
                         MethodKind::Instance,
                         vec![].into(),
                     );
-                    call!(ctx.alloc_methodref(mref), [addr_calc, index])
+                    call!(ctx.alloc_methodref(mref), [addr_calc, CILNode::V2(index)])
                 }
                 _ => {
                     rustc_middle::ty::print::with_no_trimmed_paths! {todo!("Can't index into {curr_ty}!")}

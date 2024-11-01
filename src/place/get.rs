@@ -1,10 +1,11 @@
 use crate::{assembly::MethodCompileCtx, r#type::fat_ptr_to};
 use cilly::{
+    asm::Assembly,
     call,
     cil_node::CILNode,
     conv_usize, ld_field,
     v2::{cilnode::MethodKind, FieldDesc, Int, MethodRef},
-    Const, IntoAsmIndex, Type,
+    Const, IntoAsmIndex, NodeIdx, Type,
 };
 use rustc_middle::{
     mir::{Place, PlaceElem},
@@ -14,33 +15,41 @@ use rustc_middle::{
 
 use super::body_ty_is_by_adress;
 
-pub(super) fn local_get(local: usize, method: &rustc_middle::mir::Body) -> CILNode {
-    if let Some(spread_arg) = method.spread_arg
-        && local == spread_arg.as_usize()
-    {
-        return CILNode::LDLoc(
-            (method.local_decls.len() - method.arg_count)
-                .try_into()
-                .unwrap(),
-        );
-    }
-    if local == 0 {
-        CILNode::LDLoc(0)
-    } else if local > method.arg_count {
-        CILNode::LDLoc(
-            u32::try_from(local - method.arg_count)
-                .expect("Method has more than 2^32 local varaibles"),
-        )
-    } else {
-        CILNode::LDArg(u32::try_from(local - 1).expect("Method has more than 2^32 local variables"))
-    }
+pub(super) fn local_get(
+    local: usize,
+    method: &rustc_middle::mir::Body,
+    asm: &mut Assembly,
+) -> NodeIdx {
+    asm.alloc_node(
+        if let Some(spread_arg) = method.spread_arg
+            && local == spread_arg.as_usize()
+        {
+            cilly::CILNode::LdLoc(
+                (method.local_decls.len() - method.arg_count)
+                    .try_into()
+                    .unwrap(),
+            )
+        } else if local == 0 {
+            cilly::CILNode::LdLoc(0)
+        } else if local > method.arg_count {
+            cilly::CILNode::LdLoc(
+                u32::try_from(local - method.arg_count)
+                    .expect("Method has more than 2^32 local varaibles"),
+            )
+        } else {
+            cilly::CILNode::LdArg(
+                u32::try_from(local - 1).expect("Method has more than 2^32 local variables"),
+            )
+        },
+    )
 }
 /// Returns the ops for getting the value of place.
 pub fn place_get<'tcx>(place: &Place<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_>) -> CILNode {
     if place.projection.is_empty() {
-        local_get(place.local.as_usize(), ctx.body())
+        CILNode::V2(local_get(place.local.as_usize(), ctx.body(), ctx))
     } else {
-        let (mut op, mut ty) = super::local_body(place.local.as_usize(), ctx);
+        let (op, mut ty) = super::local_body(place.local.as_usize(), ctx);
+        let mut op = CILNode::V2(op);
         ty = ctx.monomorphize(ty);
         let mut ty = ty.into();
 
@@ -126,7 +135,7 @@ fn place_elem_get<'a>(
                 .expect("INVALID PLACE: Indexing into enum variant???");
 
             let index_type = ctx.monomorphize(ctx.body().local_decls[*index].ty);
-            let index = crate::place::local_get(index.as_usize(), ctx.body());
+            let index = crate::place::local_get(index.as_usize(), ctx.body(), ctx);
 
             match curr_ty.kind() {
                 TyKind::Slice(inner) => {
@@ -140,15 +149,17 @@ fn place_elem_get<'a>(
                         ctx.alloc_string(crate::DATA_PTR),
                         ctx.nptr(Type::Void),
                     );
-                    let size = crate::casts::int_to_int(
-                        Type::Int(Int::I32),
-                        index_type,
-                        CILNode::V2(ctx.size_of(inner_type).into_idx(ctx)),
-                        ctx,
-                    );
+                    let size = ctx.size_of(inner_type);
+                    let size = size.into_idx(ctx);
+                    let size = ctx.alloc_node(cilly::CILNode::IntCast {
+                        input: size,
+                        target: Int::USize,
+                        extend: cilly::cilnode::ExtendKind::ZeroExtend,
+                    });
+                    let offset = ctx.biop(index, size, cilly::BinOp::Mul);
                     let addr = (ld_field!(addr_calc, ctx.alloc_field(desc))
                         .cast_ptr(ctx.nptr(inner_type)))
-                        + (index * size);
+                        + CILNode::V2(ctx.alloc_node(offset));
                     super::deref_op(super::PlaceTy::Ty(inner), ctx, addr)
                 }
                 TyKind::Array(element, _length) => {
@@ -164,10 +175,7 @@ fn place_elem_get<'a>(
                         MethodKind::Instance,
                         vec![].into(),
                     );
-                    call!(
-                        ctx.alloc_methodref(mref),
-                        [addr_calc, CILNode::ZeroExtendToUSize(index.into())]
-                    )
+                    call!(ctx.alloc_methodref(mref), [addr_calc, CILNode::V2(index)])
                 }
                 _ => {
                     rustc_middle::ty::print::with_no_trimmed_paths! {todo!("Can't index into {curr_ty}!")}

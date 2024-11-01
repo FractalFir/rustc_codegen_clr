@@ -146,17 +146,13 @@ fn load_scalar_ptr(
                     MethodKind::Static,
                     vec![].into(),
                 );
-                return CILNode::TemporaryLocal(Box::new((
+                return CILNode::stack_addr(
+                    CILNode::Call(Box::new(CallOpArgs {
+                        args: Box::new([]),
+                        site: ctx.alloc_methodref(mref),
+                    })),
                     ctx.alloc_type(u8_ptr_ptr),
-                    [CILRoot::SetTMPLocal {
-                        value: CILNode::Call(Box::new(CallOpArgs {
-                            args: Box::new([]),
-                            site: ctx.alloc_methodref(mref),
-                        })),
-                    }]
-                    .into(),
-                    CILNode::LoadAddresOfTMPLocal,
-                )));
+                );
             }
             let attrs = ctx.tcx().codegen_fn_attrs(def_id);
 
@@ -164,14 +160,7 @@ fn load_scalar_ptr(
                 // TODO: this could cause issues if the pointer to the static is not imediatly dereferenced.
                 let site = get_fn_from_static_name(&name, ctx);
                 let ptr_sig = Type::FnPtr(ctx[site].sig());
-                return CILNode::TemporaryLocal(Box::new((
-                    ctx.alloc_type(ptr_sig),
-                    [CILRoot::SetTMPLocal {
-                        value: CILNode::LDFtn(site),
-                    }]
-                    .into(),
-                    CILNode::LoadAddresOfTMPLocal,
-                )));
+                return CILNode::stack_addr(CILNode::LDFtn(site), ctx.alloc_type(ptr_sig));
             }
             if let Some(section) = attrs.link_section {
                 panic!("static {name} requires special linkage in section {section:?}");

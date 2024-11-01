@@ -224,6 +224,13 @@ pub enum CILNode {
 }
 
 impl CILNode {
+    pub fn stack_addr(val: Self, tpe: TypeIdx) -> Self {
+        CILNode::TemporaryLocal(Box::new((
+            tpe,
+            [CILRoot::SetTMPLocal { value: val }].into(),
+            CILNode::LoadAddresOfTMPLocal,
+        )))
+    }
     pub fn ovf_check_tuple(
         asm: &mut Assembly,
         tuple: ClassRefIdx,

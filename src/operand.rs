@@ -13,11 +13,7 @@ pub(crate) fn handle_operand<'tcx>(
 ) -> CILNode {
     let res = ctx.type_from_cache(ctx.monomorphize(operand.ty(ctx.body(), ctx.tcx())));
     if res == Type::Void {
-        return CILNode::TemporaryLocal(Box::new((
-            ctx.alloc_type(Type::Void),
-            [].into(),
-            CILNode::LoadTMPLocal,
-        )));
+        return CILNode::uninit_val(Type::Void, ctx);
     }
     match operand {
         Operand::Copy(place) | Operand::Move(place) => crate::place::place_get(place, ctx),
@@ -33,11 +29,7 @@ pub(crate) fn operand_address<'tcx>(
         Operand::Constant(const_val) => {
             let local_type = ctx.type_from_cache(operand.ty(ctx.body(), ctx.tcx()));
             let constant = crate::constant::handle_constant(const_val, ctx);
-            let ptr = CILNode::TemporaryLocal(Box::new((
-                ctx.alloc_type(local_type),
-                [CILRoot::SetTMPLocal { value: constant }].into(),
-                CILNode::LoadAddresOfTMPLocal,
-            )));
+            let ptr = CILNode::stack_addr(constant, ctx.alloc_type(local_type));
             crate::place::deref_op(
                 crate::place::PlaceTy::Ty(operand.ty(ctx.body(), ctx.tcx())),
                 ctx,

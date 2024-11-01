@@ -11,17 +11,17 @@ use cilly::{
     cil_node::CILNode,
     conv_usize, ld_field,
     v2::{cilnode::MethodKind, FieldDesc, Int, MethodRef},
-    Const, IntoAsmIndex, Type,
+    Const, IntoAsmIndex, NodeIdx, Type,
 };
 use rustc_middle::mir::PlaceElem;
 use rustc_middle::ty::{Ty, TyKind};
-pub fn local_body<'tcx>(local: usize, ctx: &mut MethodCompileCtx<'tcx, '_>) -> (CILNode, Ty<'tcx>) {
+pub fn local_body<'tcx>(local: usize, ctx: &mut MethodCompileCtx<'tcx, '_>) -> (NodeIdx, Ty<'tcx>) {
     let ty = ctx.body().local_decls[local.into()].ty;
     let ty = ctx.monomorphize(ty);
     if body_ty_is_by_adress(ty, ctx) {
-        (super::adress::local_adress(local, ctx.body()), ty)
+        (super::adress::local_adress(local, ctx.body(), ctx), ty)
     } else {
-        (super::get::local_get(local, ctx.body()), ty)
+        (super::get::local_get(local, ctx.body(), ctx), ty)
     }
 }
 fn body_field<'a>(
@@ -132,7 +132,7 @@ pub fn place_elem_body_index<'tcx>(
     parrent_node: CILNode,
     index: rustc_middle::mir::Local,
 ) -> (PlaceTy<'tcx>, CILNode) {
-    let index = crate::place::local_get(index.as_usize(), ctx.body());
+    let index = crate::place::local_get(index.as_usize(), ctx.body(), ctx);
     match curr_ty.kind() {
         TyKind::Slice(inner) => {
             let inner = ctx.monomorphize(*inner);
@@ -143,12 +143,17 @@ pub fn place_elem_body_index<'tcx>(
                 ctx.alloc_string(crate::DATA_PTR),
                 ctx.nptr(Type::Void),
             );
+            let size = ctx.size_of(inner_type);
+            let size = size.into_idx(ctx);
+            let size = ctx.alloc_node(cilly::CILNode::IntCast {
+                input: size,
+                target: Int::USize,
+                extend: cilly::cilnode::ExtendKind::ZeroExtend,
+            });
+            let offset = ctx.biop(index, size, cilly::BinOp::Mul);
             let addr = ld_field!(parrent_node, ctx.alloc_field(desc))
                 .cast_ptr(ctx.nptr(inner_type))
-                + (index
-                    * CILNode::ZeroExtendToUSize(
-                        CILNode::V2(ctx.size_of(inner_type).into_idx(ctx)).into(),
-                    ));
+                + CILNode::V2(ctx.alloc_node(offset));
 
             if body_ty_is_by_adress(inner, ctx) {
                 (inner.into(), addr)
@@ -165,6 +170,12 @@ pub fn place_elem_body_index<'tcx>(
             let array_type = ctx.type_from_cache(curr_ty);
             let array_dotnet = array_type.as_class_ref().expect("Non array type");
             let arr_ref = ctx.nref(array_type);
+            let index = ctx.alloc_node(cilly::CILNode::IntCast {
+                input: index,
+                target: Int::USize,
+                extend: cilly::cilnode::ExtendKind::ZeroExtend,
+            });
+            let index = CILNode::V2(index);
             if body_ty_is_by_adress(element, ctx) {
                 let elem_ptr = ctx.nptr(element_type);
                 let mref = MethodRef::new(
@@ -174,10 +185,7 @@ pub fn place_elem_body_index<'tcx>(
                     MethodKind::Instance,
                     vec![].into(),
                 );
-                let ops = call!(
-                    ctx.alloc_methodref(mref),
-                    [parrent_node, CILNode::ZeroExtendToUSize(index.into())]
-                );
+                let ops = call!(ctx.alloc_methodref(mref), [parrent_node, index]);
                 ((element).into(), ops)
             } else {
                 let mref = MethodRef::new(
@@ -187,10 +195,7 @@ pub fn place_elem_body_index<'tcx>(
                     MethodKind::Instance,
                     vec![].into(),
                 );
-                let ops = call!(
-                    ctx.alloc_methodref(mref),
-                    [parrent_node, CILNode::ZeroExtendToUSize(index.into())]
-                );
+                let ops = call!(ctx.alloc_methodref(mref), [parrent_node, index]);
                 ((element).into(), ops)
             }
         }

@@ -172,13 +172,13 @@ pub fn place_adress<'a>(place: &Place<'a>, ctx: &mut MethodCompileCtx<'a, '_>) -
     if place.projection.is_empty() {
         let loc_ty = ctx.monomorphize(ctx.body().local_decls[place.local].ty);
         if pointer_to_is_fat(loc_ty, ctx.tcx(), ctx.instance()) {
-            local_get(place.local.as_usize(), ctx.body())
+            CILNode::V2(local_get(place.local.as_usize(), ctx.body(), ctx))
         } else {
-            local_adress(place.local.as_usize(), ctx.body())
+            CILNode::V2(local_adress(place.local.as_usize(), ctx.body(), ctx))
         }
     } else {
-        let (mut addr_calc, mut ty) = local_body(place.local.as_usize(), ctx);
-
+        let (addr_calc, mut ty) = local_body(place.local.as_usize(), ctx);
+        let mut addr_calc = CILNode::V2(addr_calc);
         ty = ctx.monomorphize(ty);
         let mut ty = ty.into();
 
@@ -205,17 +205,17 @@ pub(crate) fn place_address_raw<'a>(
         return CILNode::V2(ctx.alloc_node(Const::USize(layout.align.pref.bytes())));
     }
     if place.projection.is_empty() {
-        local_adress(place.local.as_usize(), ctx.body())
+        CILNode::V2(local_adress(place.local.as_usize(), ctx.body(), ctx))
     } else if place.projection.len() == 1
         && matches!(
             slice_head(place.projection).0,
             rustc_middle::mir::PlaceElem::Deref
         )
     {
-        return local_adress(place.local.as_usize(), ctx.body());
+        return CILNode::V2(local_adress(place.local.as_usize(), ctx.body(), ctx));
     } else {
-        let (mut addr_calc, mut ty) = local_body(place.local.as_usize(), ctx);
-
+        let (addr_calc, mut ty) = local_body(place.local.as_usize(), ctx);
+        let mut addr_calc = CILNode::V2(addr_calc);
         ty = ctx.monomorphize(ty);
         let mut ty = ty.into();
 
@@ -237,7 +237,8 @@ pub(crate) fn place_set<'tcx>(
     if place.projection.is_empty() {
         set::local_set(place.local.as_usize(), ctx.body(), value_calc)
     } else {
-        let (mut addr_calc, ty) = local_body(place.local.as_usize(), ctx);
+        let (addr_calc, ty) = local_body(place.local.as_usize(), ctx);
+        let mut addr_calc = CILNode::V2(addr_calc);
         let mut ty: PlaceTy = ty.into();
         ty = ty.monomorphize(ctx);
 
