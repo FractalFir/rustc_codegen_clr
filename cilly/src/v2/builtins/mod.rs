@@ -1,9 +1,11 @@
 use std::num::NonZeroU32;
 
 use super::{
-    asm::MissingMethodPatcher, cilnode::MethodKind, cilroot::BranchCond, Access, Assembly,
-    BasicBlock, CILNode, CILRoot, ClassDef, ClassRef, Const, FieldDesc, Int, MethodDef, MethodImpl,
-    MethodRef, Type,
+    asm::MissingMethodPatcher,
+    cilnode::{MethodKind, PtrCastRes},
+    cilroot::BranchCond,
+    Access, Assembly, BasicBlock, CILNode, CILRoot, ClassDef, ClassRef, Const, FieldDesc, Int,
+    MethodDef, MethodImpl, MethodRef, Type,
 };
 
 pub mod atomics;
@@ -160,71 +162,165 @@ fn insert_rust_alloc_zeroed(asm: &mut Assembly, patcher: &mut MissingMethodPatch
     };
     patcher.insert(name, Box::new(generator));
 }
-fn insert_rust_realloc(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
+fn insert_rust_realloc(asm: &mut Assembly, patcher: &mut MissingMethodPatcher, use_libc: bool) {
     let name = asm.alloc_string("__rust_realloc");
-    let generator = move |_, asm: &mut Assembly| {
-        let ptr = asm.alloc_node(CILNode::LdArg(0));
-        let align = asm.alloc_node(CILNode::LdArg(2));
-        let new_size = asm.alloc_node(CILNode::LdArg(3));
-        let align = asm.alloc_node(CILNode::IntCast {
-            input: align,
-            target: Int::USize,
-            extend: super::cilnode::ExtendKind::ZeroExtend,
-        });
-        let new_size = asm.alloc_node(CILNode::IntCast {
-            input: new_size,
-            target: Int::USize,
-            extend: super::cilnode::ExtendKind::ZeroExtend,
-        });
-        let void_ptr = asm.nptr(Type::Void);
-        let sig = asm.sig(
-            [void_ptr, Type::Int(Int::USize), Type::Int(Int::USize)],
-            void_ptr,
-        );
-        let aligned_realloc = asm.alloc_string("AlignedRealloc");
-        let native_mem = ClassRef::native_mem(asm);
-        let call_method = asm.alloc_methodref(MethodRef::new(
-            native_mem,
-            aligned_realloc,
-            sig,
-            MethodKind::Static,
-            [].into(),
-        ));
-        let alloc = asm.alloc_node(CILNode::Call(Box::new((
-            call_method,
-            Box::new([ptr, new_size, align]),
-        ))));
-        let ret = asm.alloc_root(CILRoot::Ret(alloc));
-        MethodImpl::MethodBody {
-            blocks: vec![BasicBlock::new(vec![ret], 0, None)],
-            locals: vec![],
-        }
-    };
-    patcher.insert(name, Box::new(generator));
+    if use_libc {
+        let generator = move |_, asm: &mut Assembly| {
+            let ptr = asm.alloc_node(CILNode::LdArg(0));
+            let void_idx = asm.alloc_type(Type::Void);
+            let ptr = asm.alloc_node(CILNode::PtrCast(
+                ptr,
+                Box::new(super::cilnode::PtrCastRes::Ptr(void_idx)),
+            ));
+            let align = asm.alloc_node(CILNode::LdArg(2));
+            let new_size = asm.alloc_node(CILNode::LdArg(3));
+            let align = asm.alloc_node(CILNode::IntCast {
+                input: align,
+                target: Int::USize,
+                extend: super::cilnode::ExtendKind::ZeroExtend,
+            });
+            let new_size = asm.alloc_node(CILNode::IntCast {
+                input: new_size,
+                target: Int::USize,
+                extend: super::cilnode::ExtendKind::ZeroExtend,
+            });
+            let void_ptr = asm.nptr(Type::Void);
+            let mm_malloc_sig = asm.sig([Type::Int(Int::USize), Type::Int(Int::USize)], void_ptr);
+            // 1. call _mm_malloc
+            let aligned_realloc = asm.alloc_string("_mm_malloc");
+            let main_module = asm.main_module();
+            let _mm_malloc = asm.alloc_methodref(MethodRef::new(
+                *main_module,
+                aligned_realloc,
+                mm_malloc_sig,
+                MethodKind::Static,
+                [].into(),
+            ));
+            let _mm_malloc = asm.alloc_node(CILNode::Call(Box::new((
+                _mm_malloc,
+                Box::new([new_size, align]),
+            ))));
+            let call_mm_malloc = asm.alloc_root(CILRoot::StLoc(0, _mm_malloc));
+            // 2. memcpy the buffer.
+            let buff = asm.alloc_node(CILNode::LdLoc(0));
+            let copy = asm.alloc_root(CILRoot::CpBlk(Box::new((buff, ptr, new_size))));
+            // 3. free the old buffer
+            let aligned_free = asm.alloc_string("_mm_free");
+            let mm_free_sig = asm.sig([void_ptr], Type::Void);
+            let aligned_free = asm.alloc_methodref(MethodRef::new(
+                *main_module,
+                aligned_free,
+                mm_free_sig,
+                MethodKind::Static,
+                [].into(),
+            ));
+            let call_aligned_free =
+                asm.alloc_root(CILRoot::Call(Box::new((aligned_free, [ptr].into()))));
+            let ret = asm.alloc_root(CILRoot::Ret(buff));
+            MethodImpl::MethodBody {
+                blocks: vec![BasicBlock::new(
+                    vec![call_mm_malloc, copy, call_aligned_free, ret],
+                    0,
+                    None,
+                )],
+                locals: vec![(None, asm.alloc_type(void_ptr))],
+            }
+        };
+        patcher.insert(name, Box::new(generator));
+    } else {
+        let generator = move |_, asm: &mut Assembly| {
+            let ptr = asm.alloc_node(CILNode::LdArg(0));
+            let align = asm.alloc_node(CILNode::LdArg(2));
+            let new_size = asm.alloc_node(CILNode::LdArg(3));
+            let align = asm.alloc_node(CILNode::IntCast {
+                input: align,
+                target: Int::USize,
+                extend: super::cilnode::ExtendKind::ZeroExtend,
+            });
+            let new_size = asm.alloc_node(CILNode::IntCast {
+                input: new_size,
+                target: Int::USize,
+                extend: super::cilnode::ExtendKind::ZeroExtend,
+            });
+            let void_ptr = asm.nptr(Type::Void);
+            let sig = asm.sig(
+                [void_ptr, Type::Int(Int::USize), Type::Int(Int::USize)],
+                void_ptr,
+            );
+            let aligned_realloc = asm.alloc_string("AlignedRealloc");
+            let native_mem = ClassRef::native_mem(asm);
+            let call_method = asm.alloc_methodref(MethodRef::new(
+                native_mem,
+                aligned_realloc,
+                sig,
+                MethodKind::Static,
+                [].into(),
+            ));
+            let alloc = asm.alloc_node(CILNode::Call(Box::new((
+                call_method,
+                Box::new([ptr, new_size, align]),
+            ))));
+            let ret = asm.alloc_root(CILRoot::Ret(alloc));
+            MethodImpl::MethodBody {
+                blocks: vec![BasicBlock::new(vec![ret], 0, None)],
+                locals: vec![],
+            }
+        };
+        patcher.insert(name, Box::new(generator));
+    }
 }
-fn insert_rust_dealloc(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
+fn insert_rust_dealloc(asm: &mut Assembly, patcher: &mut MissingMethodPatcher, use_libc: bool) {
     let name = asm.alloc_string("__rust_dealloc");
-    let generator = move |_, asm: &mut Assembly| {
-        let ldarg_0 = asm.alloc_node(CILNode::LdArg(0));
-        let void_ptr = asm.nptr(Type::Void);
-        let sig = asm.sig([void_ptr], Type::Void);
-        let aligned_realloc = asm.alloc_string("AlignedFree");
-        let native_mem = ClassRef::native_mem(asm);
-        let call_method = asm.alloc_methodref(MethodRef::new(
-            native_mem,
-            aligned_realloc,
-            sig,
-            MethodKind::Static,
-            [].into(),
-        ));
-        let alloc = asm.alloc_node(CILNode::Call(Box::new((call_method, Box::new([ldarg_0])))));
-        let ret = asm.alloc_root(CILRoot::Ret(alloc));
-        MethodImpl::MethodBody {
-            blocks: vec![BasicBlock::new(vec![ret], 0, None)],
-            locals: vec![],
-        }
-    };
-    patcher.insert(name, Box::new(generator));
+    if use_libc {
+        let generator = move |_, asm: &mut Assembly| {
+            let ldarg_0 = asm.alloc_node(CILNode::LdArg(0));
+            let void_idx = asm.alloc_type(Type::Void);
+            let ldarg_0 = asm.alloc_node(CILNode::PtrCast(
+                ldarg_0,
+                Box::new(PtrCastRes::Ptr(void_idx)),
+            ));
+            let void_ptr = asm.nptr(Type::Void);
+            let sig = asm.sig([void_ptr], Type::Void);
+            let mm_free = asm.alloc_string("_mm_free");
+            let main_module = asm.main_module();
+            let call_method = asm.alloc_methodref(MethodRef::new(
+                *main_module,
+                mm_free,
+                sig,
+                MethodKind::Static,
+                [].into(),
+            ));
+            let alloc = asm.alloc_node(CILNode::Call(Box::new((call_method, Box::new([ldarg_0])))));
+            let ret = asm.alloc_root(CILRoot::Ret(alloc));
+            MethodImpl::MethodBody {
+                blocks: vec![BasicBlock::new(vec![ret], 0, None)],
+                locals: vec![],
+            }
+        };
+        patcher.insert(name, Box::new(generator));
+    } else {
+        let generator = move |_, asm: &mut Assembly| {
+            let ldarg_0 = asm.alloc_node(CILNode::LdArg(0));
+            let void_ptr = asm.nptr(Type::Void);
+            let sig = asm.sig([void_ptr], Type::Void);
+            let aligned_realloc = asm.alloc_string("AlignedFree");
+            let native_mem = ClassRef::native_mem(asm);
+            let call_method = asm.alloc_methodref(MethodRef::new(
+                native_mem,
+                aligned_realloc,
+                sig,
+                MethodKind::Static,
+                [].into(),
+            ));
+            let alloc = asm.alloc_node(CILNode::Call(Box::new((call_method, Box::new([ldarg_0])))));
+            let ret = asm.alloc_root(CILRoot::Ret(alloc));
+            MethodImpl::MethodBody {
+                blocks: vec![BasicBlock::new(vec![ret], 0, None)],
+                locals: vec![],
+            }
+        };
+        patcher.insert(name, Box::new(generator));
+    }
 }
 pub fn insert_exeception_stub(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
     let rust_exception = asm.alloc_string("RustException");
@@ -288,12 +384,11 @@ pub fn insert_exception(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) 
     ));
     insert_catch_unwind(asm, patcher);
 }
-pub fn insert_heap(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
+pub fn insert_heap(asm: &mut Assembly, patcher: &mut MissingMethodPatcher, use_libc: bool) {
     insert_rust_alloc(asm, patcher);
     insert_rust_alloc_zeroed(asm, patcher);
-    insert_rust_realloc(asm, patcher);
-    insert_rust_dealloc(asm, patcher);
-
+    insert_rust_realloc(asm, patcher, use_libc);
+    insert_rust_dealloc(asm, patcher, use_libc);
     insert_pause(asm, patcher);
 }
 

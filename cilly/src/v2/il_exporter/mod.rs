@@ -554,7 +554,7 @@ impl ILExporter {
             CILNode::LdInd {
                 addr,
                 tpe,
-                volitale,
+                volatile: volitale,
             } => {
                 self.export_node(asm, out, addr, sig, locals)?;
                 let tpe = asm[tpe];

@@ -88,8 +88,13 @@ pub fn handle_rvalue<'tcx>(
         Rvalue::NullaryOp(op, ty) => match op {
             NullOp::SizeOf => {
                 let ty = ctx.type_from_cache(ctx.monomorphize(*ty));
-                let val = size_of!(ty)(ctx);
-                (vec![], conv_usize!(CILNode::V2(val)))
+                if ty == Type::Void {
+                    let val = ctx.alloc_node(Const::USize(0));
+                    (vec![], CILNode::V2(val))
+                } else {
+                    let val = size_of!(ty)(ctx);
+                    (vec![], conv_usize!(CILNode::V2(val)))
+                }
             }
             NullOp::AlignOf => {
                 let algin = crate::utilis::align_of(ctx.monomorphize(*ty), ctx.tcx());

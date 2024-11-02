@@ -58,6 +58,22 @@ impl Int {
             Int::ISize | Int::USize => Int::USize,
         }
     }
+    pub fn zero(&self) -> Const {
+        match self {
+            Int::U8 => Const::U8(0),
+            Int::U16 => Const::U16(0),
+            Int::U32 => Const::U32(0),
+            Int::U64 => Const::U64(0),
+            Int::U128 => Const::U128(0),
+            Int::USize => Const::USize(0),
+            Int::I8 => Const::I8(0),
+            Int::I16 => Const::I16(0),
+            Int::I32 => Const::I32(0),
+            Int::I64 => Const::I64(0),
+            Int::I128 => Const::I128(0),
+            Int::ISize => Const::ISize(0),
+        }
+    }
     /// Returns the signed version of this type.
     /// ```
     /// # use cilly::Int;

@@ -280,7 +280,7 @@ fn insert_pthread_create(asm: &mut Assembly, patcher: &mut MissingMethodPatcher)
         let transmute_arg_2 = asm.alloc_node(CILNode::LdInd {
             addr: arg2_addr,
             tpe: start_fn_ptr_type,
-            volitale: false,
+            volatile: false,
         });
         let transmute_arg_2 = asm.alloc_root(CILRoot::StLoc(2, transmute_arg_2));
         // Arg2 needs to be transmuted, and the local 2 holds the transmuted value of arg2.

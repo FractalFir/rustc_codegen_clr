@@ -432,7 +432,7 @@ impl MethodDef {
                             CILNode::LdLoc(loc) if loc == local_id as u32 => CILNode::LdInd {
                                 addr: local_addr,
                                 tpe: tpe_idx,
-                                volitale: false,
+                                volatile: false,
                             },
                             _ => node,
                         },

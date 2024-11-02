@@ -52,7 +52,8 @@ fn escape_ident(ident: &str) -> String {
     }
     // Check if reserved.
     match escaped.as_str() {
-        "int" | "default" | "float" | "double" | "long" | "short" | "register" => {
+        "int" | "default" | "float" | "double" | "long" | "short" | "register" | "stderr"
+        | "environ" => {
             format!("i{}", encode(hash64(&escaped)))
         }
         _ => escaped,
@@ -364,7 +365,7 @@ impl CExporter {
                 Const::I128(v) => {
                     let low = *v as u128 as u64;
                     let high = ((*v as u128) >> 64) as u64;
-                    format!("(__int128)((unsigned __int128)({low}) | ((unsigned __int128)({high}) << 64))")
+                    format!("(__int128)((unsigned __int128)(0x{low:x}) | ((unsigned __int128)(0x{high:x}) << 64))")
                 }
                 Const::ISize(v) => format!("(intptr_t)0x{v:x}L"),
                 Const::U8(v) => format!("(uint8_t)0x{v:x}"),
@@ -374,7 +375,7 @@ impl CExporter {
                 Const::U128(v) => {
                     let low = *v as u64;
                     let high = ((*v as u128) >> 64) as u64;
-                    format!("((unsigned __int128)({low}) | ((unsigned __int128)({high}) << 64))")
+                    format!("((unsigned __int128)(0x{low:x}) | ((unsigned __int128)(0x{high:x}) << 64))")
                 }
                 Const::USize(v) => format!("(uintptr_t)0x{v:x}uL"),
                 Const::PlatformString(string_idx) => format!("{:?}", &asm[*string_idx]),
@@ -564,7 +565,7 @@ impl CExporter {
                 let addr = asm[addr].clone();
                 let addr = Self::node_to_string(addr, asm, locals, inputs, sig)?;
                 let field = asm[field];
-                let name = &asm[field.name()];
+                let name = escape_ident(&asm[field.name()]);
                 format!("&({addr})->{name}.f")
             }
             CILNode::LdField { addr, field } => {
@@ -572,7 +573,7 @@ impl CExporter {
                 let addr_tpe = addr.typecheck(sig, locals, asm)?;
                 let addr = Self::node_to_string(addr, asm, locals, inputs, sig)?;
                 let field = asm[field];
-                let name = &asm[field.name()];
+                let name = escape_ident(&asm[field.name()]);
                 match addr_tpe {
                     Type::Ref(_) | Type::Ptr(_) => format!("({addr})->{name}.f"),
                     Type::ClassRef(_) => format!("({addr}).{name}.f"),
@@ -582,11 +583,11 @@ impl CExporter {
             CILNode::LdInd {
                 addr,
                 tpe,
-                volitale,
+                volatile,
             } => {
-                if volitale {
+                if volatile {
                     format!(
-                        "*(volitale {tpe}*)({addr})",
+                        "*(volatile {tpe}*)({addr})",
                         tpe = c_tpe(asm[tpe], asm),
                         addr = Self::node_to_string(asm[addr].clone(), asm, locals, inputs, sig)?
                     )
@@ -782,7 +783,7 @@ impl CExporter {
                 let addr = Self::node_to_string(asm[*addr].clone(), asm, locals, inputs, sig)?;
                 let value = Self::node_to_string(asm[*value].clone(), asm, locals, inputs, sig)?;
                 let field = asm[*field];
-                let name = &asm[field.name()];
+                let name = escape_ident(&asm[field.name()]);
                 format!("({addr})->{name}.f = ({value});")
             }
             CILRoot::Call(info) => {
@@ -807,7 +808,7 @@ impl CExporter {
                 let value = Self::node_to_string(asm[*value].clone(), asm, locals, inputs, sig)?;
                 if *is_volitle {
                     format!(
-                        "*((volitale {tpe}*)({addr})) = ({value});",
+                        "*((volatile {tpe}*)({addr})) = ({value});",
                         tpe = c_tpe(*tpe, asm)
                     )
                 } else {
@@ -877,7 +878,7 @@ impl CExporter {
         if mname == "get_environ" || mname == "malloc" || mname == "realloc" || mname == "free" {
             return Ok(());
         }
-        let method_name = class_member_name(&class_name, &mname);
+        let method_name = mref_to_name(&def.ref_to(), asm);
         let output = c_tpe(def.ref_to().output(asm), asm);
         match def.resolved_implementation(asm) {
             MethodImpl::MethodBody { blocks, locals } => (),
@@ -911,7 +912,7 @@ impl CExporter {
                     .collect::<String>();
                 writeln!(
                     method_defs,
-                    "{output} {method_name}({inputs}){{eprintf(\"Missing method {mname}\\n\");abort();}}"
+                    "{output} {method_name}({inputs}){{eprintf(\"Missing method {method_name}\\n\");abort();}}"
                 )?;
                 return Ok(());
             }
@@ -977,14 +978,7 @@ impl CExporter {
                 );
 
                 match root {
-                    Ok(root) => {
-                        writeln!(
-                            method_defs,
-                            "// {:?}",
-                            typecheck::typecheck_err_to_string(*root_idx, asm, sig, &locals)
-                        )?;
-                        writeln!(method_defs, "{root}")?
-                    }
+                    Ok(root) => writeln!(method_defs, "{root}")?,
                     Err(err) => {
                         eprintln!("Typecheck error:{err:?}");
                         writeln!(method_defs, "fprintf(stderr,\"Attempted to execute a statement which failed to compile.\" {err:?}); abort();",err = format!("{err:?}"))?

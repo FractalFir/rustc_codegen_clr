@@ -347,7 +347,7 @@ pub fn get_type<'tcx>(ty: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_>) -> Typ
                 let elem_val = ctx.alloc_node(CILNode::LdInd {
                     addr: elem_addr,
                     tpe: elem_tpe_idx,
-                    volitale: false,
+                    volatile: false,
                 });
                 let elem_ret = ctx.alloc_root(CILRoot::Ret(elem_val));
                 ctx.new_method(MethodDef::new(

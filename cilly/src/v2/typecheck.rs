@@ -754,7 +754,7 @@ impl CILNode {
             CILNode::LdInd {
                 addr,
                 tpe,
-                volitale,
+                volatile: volitale,
             } => {
                 let addr = asm.get_node(*addr).clone();
                 let addr_tpe = addr.typecheck(sig, locals, asm)?;

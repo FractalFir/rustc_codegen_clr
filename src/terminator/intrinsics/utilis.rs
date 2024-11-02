@@ -8,30 +8,20 @@ use cilly::{
 
 pub fn atomic_add(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly) -> CILNode {
     match tpe {
-        Type::Int(Int::U64 | Int::I64) => {
-            let u64_ref = asm.nref(Type::Int(Int::U64));
+        Type::Int(int) => {
+            let u64_ref = asm.nref(Type::Int(int));
             let mref = MethodRef::new(
-                ClassRef::interlocked(asm),
-                asm.alloc_string("Add"),
-                asm.sig([u64_ref, Type::Int(Int::U64)], Type::Int(Int::U64)),
+                *asm.main_module(),
+                asm.alloc_string(format!("atomic_add_{int}", int = int.name())),
+                asm.sig([u64_ref, Type::Int(int)], Type::Int(int)),
                 MethodKind::Static,
                 vec![].into(),
             );
             let cilnode = call!(asm.alloc_methodref(mref), [addr, addend]);
             cilnode
         }
-        Type::Int(Int::U32 | Int::I32) => {
-            let u32_ref = asm.nref(Type::Int(Int::U32));
-            let mref = MethodRef::new(
-                ClassRef::interlocked(asm),
-                asm.alloc_string("Add"),
-                asm.sig([u32_ref, Type::Int(Int::U32)], Type::Int(Int::U32)),
-                MethodKind::Static,
-                vec![].into(),
-            );
-            call!(asm.alloc_methodref(mref), [addr, addend])
-        }
-        Type::Int(Int::USize | Int::ISize) | Type::Ptr(_) => {
+
+        Type::Ptr(_) => {
             let usize_ref = asm.nref(Type::Int(Int::USize));
             let mref = MethodRef::new(
                 *asm.main_module(),

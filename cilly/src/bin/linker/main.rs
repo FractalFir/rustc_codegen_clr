@@ -222,7 +222,7 @@ fn main() {
         }),
     );
     // Override allocator
-    {
+    if !*C_MODE {
         // Get the marshal class
         let marshal = ClassRef::marshal(&mut final_assembly);
         // Overrides calls to malloc
@@ -361,14 +361,18 @@ fn main() {
     cilly::v2::builtins::insert_swap_at_generic(&mut final_assembly, &mut overrides);
     cilly::v2::builtins::insert_bounds_check(&mut final_assembly, &mut overrides);
     cilly::v2::builtins::casts::insert_casts(&mut final_assembly, &mut overrides);
-    cilly::v2::builtins::insert_heap(&mut final_assembly, &mut overrides);
+    cilly::v2::builtins::insert_heap(&mut final_assembly, &mut overrides, *C_MODE);
     cilly::v2::builtins::int128::generate_int128_ops(&mut final_assembly, &mut overrides, *C_MODE);
     cilly::v2::builtins::int128::i128_mul_ovf_check(&mut final_assembly, &mut overrides);
     cilly::v2::builtins::f16::generate_f16_ops(&mut final_assembly, &mut overrides, *C_MODE);
+    cilly::v2::builtins::atomics::generate_all_atomics(&mut final_assembly, &mut overrides);
     if *C_MODE {
         cilly::v2::builtins::insert_exeception_stub(&mut final_assembly, &mut overrides);
+        externs.insert("__dso_handle", LIBC.clone());
+        externs.insert("_mm_malloc", LIBC.clone());
+        externs.insert("_mm_free", LIBC.clone());
+        externs.insert("abort", LIBC.clone());
     } else {
-        cilly::v2::builtins::atomics::generate_all_atomics(&mut final_assembly, &mut overrides);
         cilly::v2::builtins::instert_threading(&mut final_assembly, &mut overrides);
         cilly::v2::builtins::math::math(&mut final_assembly, &mut overrides);
         cilly::v2::builtins::simd::simd(&mut final_assembly, &mut overrides);

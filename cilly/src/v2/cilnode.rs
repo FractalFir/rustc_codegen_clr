@@ -56,7 +56,7 @@ pub enum CILNode {
     LdInd {
         addr: NodeIdx,
         tpe: TypeIdx,
-        volitale: bool,
+        volatile: bool,
     },
     /// Calcualtes the size of a type.
     SizeOf(TypeIdx),
@@ -349,7 +349,7 @@ impl CILNode {
                 Self::LdInd {
                     addr: asm.alloc_node(ptr),
                     tpe: asm.alloc_type(Type::Bool),
-                    volitale: false,
+                    volatile: false,
                 }
             }
             V1Node::LDIndU8 { ptr } => {
@@ -357,7 +357,7 @@ impl CILNode {
                 Self::LdInd {
                     addr: asm.alloc_node(ptr),
                     tpe: asm.alloc_type(Type::Int(Int::U8)),
-                    volitale: false,
+                    volatile: false,
                 }
             }
             V1Node::LDIndU16 { ptr } => {
@@ -365,7 +365,7 @@ impl CILNode {
                 Self::LdInd {
                     addr: asm.alloc_node(ptr),
                     tpe: asm.alloc_type(Type::Int(Int::U16)),
-                    volitale: false,
+                    volatile: false,
                 }
             }
             V1Node::LDIndU32 { ptr } => {
@@ -373,7 +373,7 @@ impl CILNode {
                 Self::LdInd {
                     addr: asm.alloc_node(ptr),
                     tpe: asm.alloc_type(Type::Int(Int::U32)),
-                    volitale: false,
+                    volatile: false,
                 }
             }
             V1Node::LDIndU64 { ptr } => {
@@ -381,7 +381,7 @@ impl CILNode {
                 Self::LdInd {
                     addr: asm.alloc_node(ptr),
                     tpe: asm.alloc_type(Type::Int(Int::U64)),
-                    volitale: false,
+                    volatile: false,
                 }
             }
             V1Node::LDIndUSize { ptr } => {
@@ -389,7 +389,7 @@ impl CILNode {
                 Self::LdInd {
                     addr: asm.alloc_node(ptr),
                     tpe: asm.alloc_type(Type::Int(Int::USize)),
-                    volitale: false,
+                    volatile: false,
                 }
             }
             V1Node::LDIndI8 { ptr } => {
@@ -397,7 +397,7 @@ impl CILNode {
                 Self::LdInd {
                     addr: asm.alloc_node(ptr),
                     tpe: asm.alloc_type(Type::Int(Int::I8)),
-                    volitale: false,
+                    volatile: false,
                 }
             }
             V1Node::LDIndI16 { ptr } => {
@@ -405,7 +405,7 @@ impl CILNode {
                 Self::LdInd {
                     addr: asm.alloc_node(ptr),
                     tpe: asm.alloc_type(Type::Int(Int::I16)),
-                    volitale: false,
+                    volatile: false,
                 }
             }
             V1Node::LDIndI32 { ptr } => {
@@ -413,7 +413,7 @@ impl CILNode {
                 Self::LdInd {
                     addr: asm.alloc_node(ptr),
                     tpe: asm.alloc_type(Type::Int(Int::I32)),
-                    volitale: false,
+                    volatile: false,
                 }
             }
             V1Node::LDIndI64 { ptr } => {
@@ -421,7 +421,7 @@ impl CILNode {
                 Self::LdInd {
                     addr: asm.alloc_node(ptr),
                     tpe: asm.alloc_type(Type::Int(Int::I64)),
-                    volitale: false,
+                    volatile: false,
                 }
             }
             V1Node::LDIndISize { ptr } => {
@@ -429,7 +429,7 @@ impl CILNode {
                 Self::LdInd {
                     addr: asm.alloc_node(ptr),
                     tpe: asm.alloc_type(Type::Int(Int::ISize)),
-                    volitale: false,
+                    volatile: false,
                 }
             }
             V1Node::LDIndF32 { ptr } => {
@@ -437,7 +437,7 @@ impl CILNode {
                 Self::LdInd {
                     addr: asm.alloc_node(ptr),
                     tpe: asm.alloc_type(Type::Float(Float::F32)),
-                    volitale: false,
+                    volatile: false,
                 }
             }
             V1Node::LDIndF64 { ptr } => {
@@ -445,7 +445,7 @@ impl CILNode {
                 Self::LdInd {
                     addr: asm.alloc_node(ptr),
                     tpe: asm.alloc_type(Type::Float(Float::F64)),
-                    volitale: false,
+                    volatile: false,
                 }
             }
             V1Node::LdObj { ptr, obj } => {
@@ -453,7 +453,7 @@ impl CILNode {
                 Self::LdInd {
                     addr: asm.alloc_node(ptr),
                     tpe: asm.alloc_type(*obj.as_ref()),
-                    volitale: false,
+                    volatile: false,
                 }
             }
             V1Node::LDIndPtr { ptr, loaded_ptr } => {
@@ -462,7 +462,7 @@ impl CILNode {
                 Self::LdInd {
                     addr: asm.alloc_node(ptr),
                     tpe: asm.alloc_type(*loaded_ptr.as_ref()),
-                    volitale: false,
+                    volatile: false,
                 }
             }
             // Casts
@@ -817,7 +817,7 @@ impl CILNode {
             V1Node::LDFtn(method_ref) => Self::LdFtn(*method_ref),
             V1Node::Volatile(inner) => {
                 let mut tmp = Self::from_v1(inner, asm);
-                if let Self::LdInd { volitale, .. } = &mut tmp {
+                if let Self::LdInd { volatile: volitale, .. } = &mut tmp {
                     *volitale = true;
                 } else {
                     panic!()
@@ -950,13 +950,13 @@ impl CILNode {
             CILNode::LdInd {
                 addr,
                 tpe,
-                volitale,
+                volatile: volitale,
             } => {
                 let addr = asm.get_node(addr).clone().map(asm, map);
                 let node = CILNode::LdInd {
                     addr: asm.alloc_node(addr),
                     tpe,
-                    volitale,
+                    volatile: volitale,
                 };
                 map(node, asm)
             }

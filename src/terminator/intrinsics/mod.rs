@@ -267,10 +267,7 @@ pub fn handle_intrinsic<'tcx>(
             };
             place_set(
                 destination,
-                CILNode::Sub(
-                    atomic_add(dst, add_ammount.clone(), src_type, ctx).into(),
-                    add_ammount.into(),
-                ),
+                atomic_add(dst, add_ammount.clone(), src_type, ctx).into(),
                 ctx,
             )
         }

@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <mm_malloc.h>
 /*
 #include <unistd.h>
 #include <sys/uio.h>
@@ -47,8 +48,6 @@ void *System_Runtime_InteropServices_NativeMemory_AlignedReallocpvususpv(void *p
 }
 
 #define System_Collections_IEnumerator_MoveNext14System_Runtime40System_Collections_IDictionaryEnumeratorb(arg) false
-#define System_UInt128__ctorru16u8u8v(high, low) ((unsigned __int128)(low) | ((unsigned __int128)(high) << 64))
-#define System_Int128__ctorri16u8u8v(high, low) (__int128)((unsigned __int128)(low) | ((unsigned __int128)(high) << 64))
 
 #define System_UInt128_op_Additionu16u16u16(lhs, rhs) (lhs + rhs)
 #define System_Int128_op_Additioni16i16i16(lhs, rhs) (__int128)((unsigned __int128)lhs + (unsigned __int128)rhs)
@@ -69,8 +68,11 @@ void *System_Runtime_InteropServices_NativeMemory_AlignedReallocpvususpv(void *p
 #define System_Int128_op_Multiplyi16i16i16(lhs, rhs) ((unsigned __int128)lhs * (unsigned __int128)rhs)
 
 #define System_UInt128_op_Divisionu16u16u16(lhs, rhs) (lhs / rhs)
+#define System_UInt128_op_RightShiftu16i4u16(val, ammount) val >> ammount
+#define System_Int128_op_RightShifti16i4i16(val, ammount) val >> ammount
 
-#define System_Int128_op_UnaryNegationi16i16(val) (__int128_t)(0 - ((__uint128_t)(val)))
+#define System_Int128_op_LeftShifti16i4i16(val, ammount) val << ammount
+#define System_UInt128_op_LeftShiftu16i4u16(val, ammount) val << ammount
 
 #define System_Int128_op_BitwiseOri16i16i16(lhs, rhs) (lhs | rhs)
 #define System_UInt128_op_BitwiseOru16u16u16(lhs, rhs) (lhs | rhs)
@@ -81,11 +83,7 @@ void *System_Runtime_InteropServices_NativeMemory_AlignedReallocpvususpv(void *p
 #define System_Int128_op_BitwiseAndi16i16i16(lhs, rhs) (lhs & rhs)
 #define System_UInt128_op_BitwiseAndu16u16u16(lhs, rhs) (lhs & rhs)
 
-#define System_UInt128_op_RightShiftu16i4u16(val, ammount) val >> ammount
-#define System_Int128_op_RightShifti16i4i16(val, ammount) val >> ammount
-
-#define System_Int128_op_LeftShifti16i4i16(val, ammount) val << ammount
-#define System_UInt128_op_LeftShiftu16i4u16(val, ammount) val << ammount
+#define System_Int128_op_UnaryNegationi16i16(val) (__int128_t)(0 - ((__uint128_t)(val)))
 
 #define System_UInt128_op_Explicitu16u8(val) (uint64_t)(val)
 #define System_UInt128_op_Explicitu16u4(val) (uint32_t)(val)
@@ -309,6 +307,10 @@ double fabsf64(double val);
 #define System_Single_Powf8f8f8 pow
 #define System_Double_Powf8f8f8 pow
 #define System_Int128_get_Zeroi16(v) ((__int128_t)0)
+#define System_Math_Minisisis(x, y) (((x) < (y)) ? (x) : (y))
+#define System_Math_Maxisisis(x, y) (((x) > (y)) ? (x) : (y))
+#define System_Math_Minususus(x, y) (((x) < (y)) ? (x) : (y))
+#define System_Math_Maxususus(x, y) (((x) > (y)) ? (x) : (y))
 float System_Single_Exp2f4f4(float input)
 {
     fprintf(stderr, "Can't System_Single_Exp2f4f4 yet.\n");
@@ -351,6 +353,12 @@ double System_Double_Log10f8f8(double input)
     abort();
     return 0.0f;
 }
+double System_Math_Ceilingf8f8(double input)
+{
+    fprintf(stderr, "Can't System_Math_Ceilingf8f8 yet.\n");
+    abort();
+    return 0.0f;
+}
 double System_Math_Truncatef8f8(double input)
 {
     fprintf(stderr, "Can't System_Math_Truncatef8f8 yet.\n");
@@ -371,9 +379,16 @@ uint8_t System_Byte_RotateRightu1i4u1(uint8_t val, int32_t ammount)
 }
 uint32_t System_Threading_Interlocked_CompareExchangeru4u4u4u4(uint32_t *addr, uint32_t value, uint32_t comparand)
 {
-    fprintf(stderr, "Can't System_Threading_Interlocked_CompareExchangeru4u4u4u4 yet.\n");
-    abort();
-    return 0;
+    uint32_t res = 0;
+    if (__atomic_compare_exchange_n(addr, &comparand, value, true, 5, 5))
+    {
+        return comparand;
+    }
+    else
+    {
+        // On failure, value is written to comparand.
+        return comparand;
+    }
 }
 uint64_t System_Threading_Interlocked_CompareExchangeru8u8u8u8(uint64_t *addr, uint64_t value, uint64_t comparand)
 {
@@ -396,9 +411,9 @@ intptr_t System_Threading_Interlocked_CompareExchangerisisisis(intptr_t *addr, i
 
 uint32_t System_Threading_Interlocked_Exchangeru4u4u4(uint32_t *addr, uint32_t val)
 {
-    fprintf(stderr, "Can't System_Threading_Interlocked_Exchangeru4u4u4 yet.\n");
-    abort();
-    return 0;
+    uint32_t ret;
+    __atomic_exchange(addr, &val, &ret, 5);
+    return ret;
 }
 uintptr_t System_Threading_Interlocked_Exchangerususus(uintptr_t *addr, uintptr_t val)
 {
@@ -572,3 +587,8 @@ const float inff = 1.0 / 0.0;
 const double inf = 1.0 / 0.0;
 int fcntl(int fd, int op, ...);
 long syscall(long number, ...);
+uint8_t **get_environ()
+{
+    extern char **environ;
+    return (uint8_t **)environ;
+}

@@ -116,13 +116,13 @@ pub fn opt_node(original: CILNode, asm: &mut Assembly, fuel: &mut OptFuel) -> CI
         CILNode::LdInd {
             addr,
             tpe,
-            volitale,
+            volatile: volitale,
         } => match asm.get_node(addr) {
             CILNode::RefToPtr(inner) => opt_if_fuel(
                 CILNode::LdInd {
                     addr: *inner,
                     tpe,
-                    volitale,
+                    volatile: volitale,
                 },
                 original,
                 fuel,
@@ -183,7 +183,7 @@ pub fn opt_node(original: CILNode, asm: &mut Assembly, fuel: &mut OptFuel) -> CI
             CILNode::LdInd {
                 addr,
                 tpe,
-                volitale: _,
+                volatile: _,
             } => {
                 if let Type::ClassRef(tpe) = asm[*tpe] {
                     if tpe == asm.get_field(field).owner() {

@@ -35,7 +35,7 @@ pub fn call_alias(
                                 asm.alloc_node(CILNode::LdInd {
                                     addr: ptr_address,
                                     tpe,
-                                    volitale: false,
+                                    volatile: false,
                                 })
                             }
                             (

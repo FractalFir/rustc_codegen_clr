@@ -36,7 +36,7 @@ pub fn emulate_uint8_cmp_xchng(asm: &mut Assembly, patcher: &mut MissingMethodPa
         let arg0_val = asm.alloc_node(CILNode::LdInd {
             addr: ldarg_0,
             tpe: uint8_idx,
-            volitale: true,
+            volatile: true,
         });
         let set_tmp = asm.alloc_root(CILRoot::StLoc(0, arg0_val));
         // Copy arg1 to addr0
@@ -91,22 +91,27 @@ pub fn generate_atomic(
             mref,
             Box::new([ldarg_0, op, ldloc_0]),
         ))));
-
+        let zero = asm.alloc_node(int.zero());
+        let entry_block = vec![
+            asm.alloc_root(CILRoot::StLoc(1, zero)),
+            asm.alloc_root(CILRoot::Branch(Box::new((1, 0, None)))),
+        ];
         let loop_block = vec![
             asm.alloc_root(CILRoot::StLoc(0, ldloc_1)),
             asm.alloc_root(CILRoot::StLoc(1, call)),
             asm.alloc_root(CILRoot::Branch(Box::new((
                 0,
-                0,
+                1,
                 Some(BranchCond::Ne(ldloc_0, ldloc_1)),
             )))),
-            asm.alloc_root(CILRoot::Branch(Box::new((1, 0, None)))),
+            asm.alloc_root(CILRoot::Branch(Box::new((2, 0, None)))),
         ];
         let exit_block = vec![asm.alloc_root(CILRoot::Ret(ldloc_0))];
         MethodImpl::MethodBody {
             blocks: vec![
-                BasicBlock::new(loop_block, 0, None),
-                BasicBlock::new(exit_block, 1, None),
+                BasicBlock::new(entry_block, 0, None),
+                BasicBlock::new(loop_block, 1, None),
+                BasicBlock::new(exit_block, 2, None),
             ],
             locals: vec![(None, asm.alloc_type(tpe)), (None, asm.alloc_type(tpe))],
         }
@@ -133,6 +138,12 @@ pub fn generate_atomic_for_ints(
 }
 /// Adds all the builitn atomic functions to the patcher, allowing for their use.
 pub fn generate_all_atomics(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
+    generate_atomic_for_ints(asm, patcher, "add", |asm, lhs, rhs, _| {
+        asm.alloc_node(CILNode::BinOp(lhs, rhs, BinOp::Add))
+    });
+    generate_atomic_for_ints(asm, patcher, "sub", |asm, lhs, rhs, _| {
+        asm.alloc_node(CILNode::BinOp(lhs, rhs, BinOp::Sub))
+    });
     // XOR
     generate_atomic_for_ints(asm, patcher, "xor", |asm, lhs, rhs, _| {
         asm.alloc_node(CILNode::BinOp(lhs, rhs, BinOp::XOr))

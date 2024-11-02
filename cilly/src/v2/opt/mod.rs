@@ -152,7 +152,7 @@ impl CILNode {
             CILNode::LdInd {
                 addr,
                 tpe: tpe2,
-                volitale,
+                volatile: volitale,
             } => {
                 let addr = asm.get_node(*addr).clone();
                 let addr = addr.propagate_locals(asm, idx, tpe, new_node, fuel);
@@ -160,7 +160,7 @@ impl CILNode {
                 CILNode::LdInd {
                     addr,
                     tpe: *tpe2,
-                    volitale: *volitale,
+                    volatile: *volitale,
                 }
             }
             CILNode::IsInst(_, _) => todo!(),

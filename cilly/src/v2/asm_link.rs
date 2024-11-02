@@ -199,7 +199,7 @@ impl Assembly {
             CILNode::LdInd {
                 addr,
                 tpe,
-                volitale,
+                volatile: volitale,
             } => {
                 let addr = self.translate_node(source, source.get_node(*addr).clone());
                 let addr = self.alloc_node(addr);
@@ -208,7 +208,7 @@ impl Assembly {
                 CILNode::LdInd {
                     addr,
                     tpe,
-                    volitale: *volitale,
+                    volatile: *volitale,
                 }
             }
             CILNode::SizeOf(tpe) => {
