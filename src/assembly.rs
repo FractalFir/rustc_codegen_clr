@@ -16,6 +16,7 @@ use cilly::{
     cil_node::CILNode,
     cil_root::CILRoot,
     cil_tree::CILTree,
+    cilnode::PtrCastRes,
     conv_isize,
     method::{Method, MethodType},
     utilis::{self, encode},
@@ -580,13 +581,15 @@ pub fn add_item<'tcx>(
             let alloc = tcx.eval_static_initializer(stotic).unwrap();
             let alloc_id = tcx.reserve_and_set_memory_alloc(alloc);
             let attrs = tcx.codegen_fn_attrs(stotic);
-            let uint8_ptr = asm.nptr(Type::Int(Int::U8));
-            let uint8_ptr_ptr = asm.nptr(uint8_ptr);
+
+            let int8_ptr = asm.nptr(Type::Int(Int::I8));
+            let int8_ptr_ptr = asm.nptr(int8_ptr);
             if let Some(section) = attrs.link_section {
                 if section.to_string().contains(".init_array") {
                     let argc = utilis::argc_argv_init_method(asm);
                     let init_argc =
                         asm.alloc_root(cilly::v2::CILRoot::Call(Box::new((argc, Box::new([])))));
+
                     asm.add_user_init(&[init_argc]);
                     let get_environ: MethodRefIdx = utilis::get_environ(asm);
                     let fn_ptr = alloc.0.provenance().ptrs().iter().next().unwrap();
@@ -617,15 +620,21 @@ pub fn add_item<'tcx>(
                     let main_module = asm.main_module();
                     let mref = asm.alloc_methodref(init_call_site);
                     let argv =
-                        asm.alloc_sfld(StaticFieldDesc::new(*main_module, argv, uint8_ptr_ptr));
+                        asm.alloc_sfld(StaticFieldDesc::new(*main_module, argv, int8_ptr_ptr));
                     let argc = asm.alloc_sfld(StaticFieldDesc::new(
                         *main_module,
                         argc,
                         Type::Int(Int::I32),
                     ));
+                    let argv = asm.alloc_node(cilly::v2::CILNode::LdStaticField(argv));
+                    let uint8_ptr = asm.nptr(Int::U8);
+                    let uint8_ptr_idx = asm.alloc_type(uint8_ptr);
                     let args = [
                         asm.alloc_node(cilly::v2::CILNode::LdStaticField(argc)),
-                        asm.alloc_node(cilly::v2::CILNode::LdStaticField(argv)),
+                        asm.alloc_node(cilly::v2::CILNode::PtrCast(
+                            argv,
+                            Box::new(PtrCastRes::Ptr(uint8_ptr_idx)),
+                        )),
                         asm.alloc_node(cilly::v2::CILNode::Call(Box::new((
                             get_environ,
                             Box::new([]),

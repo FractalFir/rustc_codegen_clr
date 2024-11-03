@@ -246,6 +246,23 @@ fn main() {
             final_assembly.new_methodref(marshal, "FreeHGlobal", sig, MethodKind::Static, []);
         let mref = final_assembly[allochglobal].clone();
         call_alias(&mut overrides, &mut final_assembly, "free", mref);
+    } else {
+        let void_ptr = final_assembly.nptr(Type::Void);
+        let sig = final_assembly.sig(
+            [void_ptr, void_ptr, void_ptr, void_ptr],
+            Type::Int(Int::I32),
+        );
+        let main_module = final_assembly.main_module();
+        let allochglobal = final_assembly.new_methodref(
+            *main_module,
+            "pthread_create_wrapper",
+            sig,
+            MethodKind::Static,
+            [],
+        );
+        let mref = final_assembly[allochglobal].clone();
+        externs.insert("pthread_create_wrapper", LIBC.clone());
+        call_alias(&mut overrides, &mut final_assembly, "pthread_create", mref);
     }
     if !*PANIC_MANAGED_BT {
         overrides.insert(
@@ -372,11 +389,44 @@ fn main() {
         externs.insert("_mm_malloc", LIBC.clone());
         externs.insert("_mm_free", LIBC.clone());
         externs.insert("abort", LIBC.clone());
+        for fnc in [
+            "pthread_getattr_np",
+            "pthread_attr_getguardsize",
+            "pthread_attr_getstack",
+            "pthread_attr_destroy",
+            "pthread_self",
+            "pthread_create",
+            "pthread_detach",
+            "pthread_attr_setstacksize",
+            "pthread_attr_init",
+            "pthread_setname_np",
+            "pthread_key_create",
+            "pthread_key_delete",
+            "pthread_join",
+            "pthread_setspecific",
+        ] {
+            externs.insert(fnc, LIBC.clone());
+        }
+        overrides.insert(
+            final_assembly.alloc_string("argc_argv_init"),
+            Box::new(|_, asm| {
+                let blocks = vec![BasicBlock::new(
+                    vec![asm.alloc_root(CILRoot::VoidRet)],
+                    0,
+                    None,
+                )];
+                MethodImpl::MethodBody {
+                    blocks,
+                    locals: vec![],
+                }
+            }),
+        );
     } else {
         cilly::v2::builtins::instert_threading(&mut final_assembly, &mut overrides);
         cilly::v2::builtins::math::math(&mut final_assembly, &mut overrides);
         cilly::v2::builtins::simd::simd(&mut final_assembly, &mut overrides);
         cilly::v2::builtins::insert_exception(&mut final_assembly, &mut overrides);
+        cilly::v2::builtins::argc_argv_init(&mut final_assembly, &mut overrides);
     }
 
     // Ensure the cctor and tcctor exist!

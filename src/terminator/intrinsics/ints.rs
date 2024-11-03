@@ -110,9 +110,39 @@ pub fn ctlz<'tcx>(
     );
     // TODO: this assumes a 64 bit system!
     let sub = match tpe {
-        Type::Int(Int::ISize | Int::USize) | Type::Ptr(_) => {
-            CILNode::V2(ctx.alloc_node(64_i32))
-                - (CILNode::V2(ctx.size_of(tpe).into_idx(ctx)) * CILNode::V2(ctx.alloc_node(8_i32)))
+        Type::Int(int @ (Int::ISize | Int::USize)) => {
+            let mref = MethodRef::new(
+                ClassRef::bit_operations(ctx),
+                ctx.alloc_string("LeadingZeroCount"),
+                ctx.sig([Type::Int(int)], Type::Int(Int::I32)),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            return place_set(
+                destination,
+                conv_u32!(call!(
+                    ctx.alloc_methodref(mref),
+                    [handle_operand(&args[0].node, ctx)]
+                )),
+                ctx,
+            );
+        }
+        Type::Ptr(_) => {
+            let mref = MethodRef::new(
+                ClassRef::bit_operations(ctx),
+                ctx.alloc_string("LeadingZeroCount"),
+                ctx.sig([Type::Int(Int::USize)], Type::Int(Int::I32)),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            return place_set(
+                destination,
+                conv_u32!(call!(
+                    ctx.alloc_methodref(mref),
+                    [handle_operand(&args[0].node, ctx)]
+                )),
+                ctx,
+            );
         }
         Type::Int(Int::I64 | Int::U64) => CILNode::V2(ctx.alloc_node(0_i32)),
         Type::Int(Int::I32 | Int::U32) => CILNode::V2(ctx.alloc_node(32_i32)),

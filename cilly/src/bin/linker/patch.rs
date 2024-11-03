@@ -1,4 +1,5 @@
 use cilly::{
+    cilnode::PtrCastRes,
     v2::{asm::MissingMethodPatcher, Assembly, CILNode, CILRoot, Int, MethodRef, Type},
     IString,
 };
@@ -32,6 +33,7 @@ pub fn call_alias(
                                 // Transmute to a pointer
                                 let ptr_address = asm.alloc_node(CILNode::LdArgA(arg as u32));
                                 let tpe = asm.alloc_type(*target_type);
+                                let ptr_address =  asm.alloc_node(CILNode::PtrCast(ptr_address, Box::new(PtrCastRes::Ptr(tpe))));
                                 asm.alloc_node(CILNode::LdInd {
                                     addr: ptr_address,
                                     tpe,
@@ -57,6 +59,20 @@ pub fn call_alias(
                                 let src =  asm.alloc_node(CILNode::LdArg(arg as u32));
                                 asm.alloc_node(CILNode::IntCast { input: src, target:*int, extend:cilly::cilnode::ExtendKind::ZeroExtend })
                             },
+                            (
+                                Type::Ptr(dst) , 
+                                Type::Ptr(_) | Type::Int(Int::ISize | Int::USize) | Type::FnPtr(_) ,
+                            )=>{
+                                let arg = asm.alloc_node(CILNode::LdArg(arg as u32));
+                                asm.alloc_node(CILNode::PtrCast(arg, Box::new(PtrCastRes::Ptr(*dst))))
+                            }
+                            (
+                                Type::FnPtr(dst) ,
+                                Type::Ptr(_) | Type::Int(Int::ISize | Int::USize) | Type::FnPtr(_) ,
+                            )=>{
+                                let arg = asm.alloc_node(CILNode::LdArg(arg as u32));
+                                asm.alloc_node(CILNode::PtrCast(arg, Box::new(PtrCastRes::FnPtr(*dst))))
+                            }
                             (
                                 Type::Ptr(_) | Type::Int(Int::ISize | Int::USize) | Type::FnPtr(_),
                                 Type::Ptr(_) | Type::Int(Int::ISize | Int::USize) | Type::FnPtr(_),

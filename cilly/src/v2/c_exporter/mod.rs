@@ -886,10 +886,20 @@ impl CExporter {
                 lib,
                 preserve_errno,
             } => match mname.as_str() {
-                "printf" | "puts" | "memcmp" | "memcpy" | "strlen" | "rename" | "realpath"
-                | "unsetenv" | "setenv" | "getenv" | "syscall" | "fcntl" | "execvp" => {
-                    return Ok(())
-                }
+                "printf"
+                | "puts"
+                | "memcmp"
+                | "memcpy"
+                | "strlen"
+                | "rename"
+                | "realpath"
+                | "unsetenv"
+                | "setenv"
+                | "getenv"
+                | "syscall"
+                | "fcntl"
+                | "execvp"
+                | "pthread_create_wrapper" => return Ok(()),
                 _ => {
                     let inputs = def
                         .ref_to()
@@ -1055,6 +1065,7 @@ impl CExporter {
     }
     fn export_to_write(&self, asm: &super::Assembly, out: &mut impl Write) -> std::io::Result<()> {
         let mut asm = asm.clone();
+        asm.tcctor();
         let mut method_defs = Vec::new();
         let mut method_decls = Vec::new();
         let mut type_defs = Vec::new();
@@ -1083,7 +1094,7 @@ impl CExporter {
         out.write_all(&method_defs)?;
         if !self.is_lib {
             let cctor_call = if asm.has_cctor() { "_cctor();" } else { "" };
-            writeln!(out,"void main(int argc, char** argv){{_argcStaticStorage = argc; _argvStaticStorage = argv; {cctor_call}entrypoint((void *)0);}}")?;
+            writeln!(out,"void main(int argc_input, char** argv_input){{argc = argc_input; argv = argv_input; {cctor_call}entrypoint((void *)0);}}")?;
         }
         Ok(())
     }

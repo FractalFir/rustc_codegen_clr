@@ -229,6 +229,10 @@ fn complex_function8(arg0: i32, arg1: &CustomEnum, arg2: f32, arg3: &CustomStruc
     var0
 }
 fn main() {
+    test_eq!(capacity_to_buckets(1), Some(4));
+    test_eq!(capacity_to_buckets(2), Some(4));
+    test_eq!(capacity_to_buckets(4), Some(8));
+    test_eq!(capacity_to_buckets(8), Some(16));
     let res = complex_function1(
         black_box(8),
         444.8,
@@ -260,4 +264,61 @@ fn main() {
     );
     Put::putnl(res);
     test_eq!(res, 1717935880);
+}
+fn capacity_to_buckets(cap: usize) -> Option<usize> {
+    debug_assert_ne!(cap, 0);
+
+    // For small tables we require at least 1 empty bucket so that lookups are
+    // guaranteed to terminate if an element doesn't exist in the table.
+    if cap < 8 {
+        // We don't bother with a table size of 2 buckets since that can only
+        // hold a single element. Instead we skip directly to a 4 bucket table
+        // which can hold 3 elements.
+        return Some(if cap < 4 { 4 } else { 8 });
+    }
+
+    // Otherwise require 1/8 buckets to be empty (87.5% load)
+    //
+    // Be careful when modifying this, calculate_layout relies on the
+    // overflow check here.
+    let adjusted_cap = cap.checked_mul(8)? / 7;
+
+    // Any overflows will have been caught by the checked_mul. Also, any
+    // rounding errors from the division above will be cleaned up by
+    // next_power_of_two (which can't overflow because of the previous division).
+
+    let npwr = next_power_of_two(adjusted_cap);
+    unsafe {
+        printf(
+            c"cap:%lu adjusted_cap:%lu npwr:%lu\n".as_ptr(),
+            cap as u64,
+            adjusted_cap as u64,
+            npwr as u64,
+        )
+    };
+    Some(npwr)
+}
+pub fn next_power_of_two(val: usize) -> usize {
+    one_less_than_next_power_of_two(val) + 1
+}
+fn one_less_than_next_power_of_two(val: usize) -> usize {
+    if val <= 1 {
+        return 0;
+    }
+
+    let p = val - 1;
+    // SAFETY: Because `p > 0`, it cannot consist entirely of leading zeros.
+    // That means the shift is always in-bounds, and some processors
+    // (such as intel pre-haswell) have more efficient ctlz
+    // intrinsics when the argument is non-zero.
+    let z = unsafe { core::intrinsics::ctlz_nonzero(p) };
+    unsafe {
+        printf(
+            c"z:%lu p:%lu  usize::MAX >> z:%lu\n".as_ptr(),
+            z as u64,
+            p as u64,
+            usize::MAX >> z as u64,
+        )
+    };
+    usize::MAX >> z
 }

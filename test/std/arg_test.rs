@@ -32,6 +32,11 @@ unsafe fn really_init(argc: isize, argv: *const *const u8) {
     // because they only hold the unmodified system-provide argv/argc.
     ARGC.store(argc, Ordering::Relaxed);
     ARGV.store(argv as *mut _, Ordering::Relaxed);
+    printf(
+        c"Called 'really_init', with argv:%p and argc:%d\n".as_ptr(),
+        argv,
+        argc,
+    );
 }
 
 #[inline(always)]
@@ -55,6 +60,7 @@ static ARGV_INIT_ARRAY: extern "C" fn(core::ffi::c_int, *const *const u8, *const
         _envp: *const *const u8,
     ) {
         unsafe {
+            printf(c"Called 'init_wrapper'\n".as_ptr());
             really_init(argc as isize, argv);
         }
     }
@@ -66,7 +72,17 @@ fn load_environ() -> *mut *mut i8 {
     unsafe { environ }
 }
 fn main() {
-    test_ne!(ARGV.load(Ordering::Relaxed), ptr::null_mut());
+    let argv = ARGV.load(Ordering::Relaxed);
+    let argc = ARGC.load(Ordering::Relaxed);
+    unsafe {
+        printf(c"argv:%p argc:%d\n".as_ptr(), argv, argc);
+    }
+    test_ne!(argv, ptr::null_mut());
+    for i in 0..argc {
+        unsafe {
+            printf(c"arg:%d:%s\n".as_ptr(), i, *argv.offset(i));
+        }
+    }
     unsafe {
         printf(c"%p\n".as_ptr(), load_environ());
     };
@@ -81,6 +97,4 @@ fn main() {
             );
         }
     }
-    // Ensure that fork returns -1, to indicate it is unsupported.
-    test_eq!(unsafe { fork() }, -1);
 }

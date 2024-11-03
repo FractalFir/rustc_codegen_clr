@@ -1,4 +1,6 @@
-use std::num::NonZeroU32;
+use std::num::{NonZeroU32, NonZeroU8};
+
+use crate::{IntoAsmIndex, StaticFieldDesc};
 
 use super::{
     asm::MissingMethodPatcher,
@@ -36,14 +38,14 @@ pub fn insert_swap_at_generic(asm: &mut Assembly, patcher: &mut MissingMethodPat
         let tmp_to_buf2 = asm.alloc_root(CILRoot::CpBlk(Box::new((buf2, tmp, size))));
         // Ret
         let ret = asm.alloc_root(CILRoot::VoidRet);
-        let void_ptr = asm.nptr(Type::Void);
+        let uint8_ptr = asm.nptr(Type::Int(Int::U8));
         MethodImpl::MethodBody {
             blocks: vec![BasicBlock::new(
                 vec![alloc_buff, buf1_to_tmp, buf2_to_buff1, tmp_to_buf2, ret],
                 0,
                 None,
             )],
-            locals: vec![(Some(asm.alloc_string("tmp")), asm.alloc_type(void_ptr))],
+            locals: vec![(Some(asm.alloc_string("tmp")), asm.alloc_type(uint8_ptr))],
         }
     };
     patcher.insert(name, Box::new(generator));
@@ -525,3 +527,239 @@ fn insert_catch_unwind(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
 }
 const ALLOC_CAP: u64 = u32::MAX as u64;
 pub(crate) const UNMANAGED_THREAD_START: &str = "UnmanagedThreadStart";
+pub fn argc_argv_init(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
+    let name = asm.alloc_string("argc_argv_init");
+    let generator = move |_, asm: &mut Assembly| {
+        let main_module = asm.main_module();
+        use crate::cil_node::CILNode;
+        use crate::cil_root::CILRoot;
+        use crate::method::Method;
+        use crate::FnSig;
+        let mut init_method = Method::new(
+            crate::access_modifier::AccessModifer::Extern,
+            crate::method::MethodType::Static,
+            FnSig::new(Box::new([]), Type::Void),
+            "argc_argv_init",
+            vec![],
+            vec![],
+            vec![],
+            asm,
+        );
+
+        // Allocate the variables necesarry for initializng args.
+        let argc =
+            u32::try_from(init_method.add_local(Type::Int(Int::I32), Some("argument_count"), asm))
+                .unwrap();
+        let uint8_ptr = asm.nptr(Type::Int(Int::I8));
+        let argv =
+            u32::try_from(init_method.add_local(asm.nptr(uint8_ptr), Some("argument_array"), asm))
+                .unwrap();
+        let managed_args = u32::try_from(init_method.add_local(
+            Type::PlatformArray {
+                elem: asm.alloc_type(Type::PlatformString),
+                dims: NonZeroU8::new(1).unwrap(),
+            },
+            Some("managed_args"),
+            asm,
+        ))
+        .unwrap();
+        let arg_idx =
+            u32::try_from(init_method.add_local(Type::Int(Int::I32), Some("arg_idx"), asm))
+                .unwrap();
+        // Get managed args
+        let string = asm.alloc_type(Type::PlatformString);
+        let mref = MethodRef::new(
+            ClassRef::enviroment(asm),
+            asm.alloc_string("GetCommandLineArgs"),
+            asm.sig(
+                [],
+                Type::PlatformArray {
+                    elem: string,
+                    dims: NonZeroU8::new(1).unwrap(),
+                },
+            ),
+            MethodKind::Static,
+            vec![].into(),
+        );
+        let margs_init = CILRoot::STLoc {
+            local: managed_args,
+            tree: crate::call!(asm.alloc_methodref(mref), []),
+        };
+        // Calculate argc
+        let argc_init = CILRoot::STLoc {
+            local: argc,
+            tree: crate::conv_i32!(CILNode::LDLen {
+                arr: CILNode::LDLoc(managed_args).into()
+            }),
+        };
+        let aligned_alloc = MethodRef::aligned_alloc(asm);
+        // Alloc argv
+        let tree = crate::call!(
+            asm.alloc_methodref(aligned_alloc),
+            [
+                CILNode::Mul(
+                    crate::conv_usize!(CILNode::LDLoc(argc)).into(),
+                    crate::conv_usize!(CILNode::V2(asm.size_of(Int::USize).into_idx(asm))).into()
+                ),
+                crate::conv_usize!(CILNode::V2(asm.alloc_node(8_i32)))
+            ]
+        )
+        .cast_ptr(asm.nptr(uint8_ptr));
+        let argv_alloc = CILRoot::STLoc { local: argv, tree };
+        // Create the block which allocates argv and calculates argc.
+        let start_bb = init_method.new_bb();
+        let mut blocks = init_method.blocks_mut();
+
+        // Fill up the start block
+        let start_block = &mut blocks[start_bb as usize];
+        let status = StaticFieldDesc::new(
+            *asm.main_module(),
+            asm.alloc_string("argv_argc_init_status"),
+            Type::Bool,
+        );
+        start_block.trees_mut().push(
+            CILRoot::BTrue {
+                target: start_bb + 3,
+                sub_target: 0,
+                cond: CILNode::LDStaticField(Box::new(status)),
+            }
+            .into(),
+        );
+        start_block.trees_mut().push(margs_init.into());
+        start_block.trees_mut().push(argc_init.into());
+        start_block.trees_mut().push(argv_alloc.into());
+        // Init arg_idx to 0
+        start_block.trees_mut().push(
+            CILRoot::STLoc {
+                local: arg_idx,
+                tree: CILNode::V2(asm.alloc_node(0_i32)),
+            }
+            .into(),
+        );
+        start_block.trees_mut().push(
+            CILRoot::GoTo {
+                target: start_bb + 1,
+                sub_target: 0,
+            }
+            .into(),
+        );
+        drop(blocks);
+        // Set-up the arg convertion loop
+        let loop_bb = init_method.new_bb();
+        let mut blocks = init_method.blocks_mut();
+        let loop_block = &mut blocks[loop_bb as usize];
+        // Load nth argument
+        let arg_nth = CILNode::LDElelemRef {
+            arr: CILNode::LDLoc(managed_args).into(),
+            idx: CILNode::LDLoc(arg_idx).into(),
+        };
+        // Convert the nth managed argument to UTF16
+        let uarg = crate::utilis::mstring_to_utf8ptr(arg_nth, asm);
+        // Store the converted arg at idx+1
+        loop_block.trees_mut().push(
+            CILRoot::STIndPtr(
+                CILNode::LDLoc(argv)
+                    + crate::conv_usize!(
+                        CILNode::V2(asm.size_of(Int::USize).into_idx(asm))
+                            * CILNode::LDLoc(arg_idx)
+                    ),
+                uarg,
+                Box::new(Type::Int(Int::I8)),
+            )
+            .into(),
+        );
+        // Incr the arg_idx
+        loop_block.trees_mut().push(
+            CILRoot::STLoc {
+                local: arg_idx,
+                tree: CILNode::LDLoc(arg_idx) + CILNode::V2(asm.alloc_node(1_i32)),
+            }
+            .into(),
+        );
+        //If no args left, jump to exit
+        loop_block.trees_mut().push(
+            CILRoot::BTrue {
+                target: loop_bb + 1,
+                sub_target: 0,
+                cond: crate::eq!(
+                    crate::lt!(
+                        CILNode::LDLoc(arg_idx),
+                        crate::conv_i32!(CILNode::LDLen {
+                            arr: CILNode::LDLoc(managed_args).into()
+                        })
+                    ),
+                    CILNode::V2(asm.alloc_node(false))
+                ),
+            }
+            .into(),
+        );
+        //If some args left, jump back to loop head!
+        loop_block.trees_mut().push(
+            CILRoot::GoTo {
+                target: loop_bb,
+                sub_target: 0,
+            }
+            .into(),
+        );
+        drop(blocks);
+        // first block after the loop, sets the relevant statics.
+        let loop_end_bb = init_method.new_bb();
+        let mut blocks = init_method.blocks_mut();
+        let loop_end_block = &mut blocks[loop_end_bb as usize];
+        let argv_static = StaticFieldDesc::new(
+            *asm.main_module(),
+            asm.alloc_string("argv"),
+            asm.nptr(uint8_ptr),
+        );
+        loop_end_block.trees_mut().push(
+            CILRoot::SetStaticField {
+                descr: Box::new(argv_static),
+                value: CILNode::LDLoc(argv),
+            }
+            .into(),
+        );
+        let argc_static = StaticFieldDesc::new(
+            *asm.main_module(),
+            asm.alloc_string("argc"),
+            Type::Int(Int::I32),
+        );
+        loop_end_block.trees_mut().push(
+            CILRoot::SetStaticField {
+                descr: Box::new(argc_static),
+                value: CILNode::LDLoc(argc),
+            }
+            .into(),
+        );
+        loop_end_block.trees_mut().push(
+            CILRoot::GoTo {
+                target: loop_end_bb + 1,
+                sub_target: 0,
+            }
+            .into(),
+        );
+        loop_end_block.trees_mut().push(
+            CILRoot::SetStaticField {
+                descr: Box::new(status),
+                value: CILNode::V2(asm.alloc_node(true)),
+            }
+            .into(),
+        );
+        drop(blocks);
+        // Final block, just returns.
+        let final_bb = init_method.new_bb();
+        let mut blocks = init_method.blocks_mut();
+        let final_block = &mut blocks[final_bb as usize];
+        final_block.trees_mut().push(CILRoot::VoidRet.into());
+        drop(blocks);
+        let def = MethodDef::from_v1(&init_method, asm, main_module);
+        asm.new_method(def);
+        asm.add_static(Type::Bool, "argv_argc_init_status", false, main_module);
+        let uint8_ptr_ptr = asm.nptr(uint8_ptr);
+        asm.add_static(uint8_ptr_ptr, "argv", false, main_module);
+        asm.add_static(Type::Int(Int::I32), "argc", false, main_module);
+        MethodDef::from_v1(&init_method, asm, main_module)
+            .implementation()
+            .clone()
+    };
+    patcher.insert(name, Box::new(generator));
+}

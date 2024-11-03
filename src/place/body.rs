@@ -103,10 +103,10 @@ fn body_field<'a>(
                     ));
                    (
                     field_ty.into(),
-                    CILNode::transmute_on_stack(CILNode::LdObj {
+                    CILNode::stack_addr(CILNode::transmute_on_stack(CILNode::LdObj {
                                     ptr: Box::new(parrent_node),
                                     obj: Box::new(curr_type),
-                                }, curr_type, field_type, ctx)
+                                }, curr_type, field_type, ctx),ctx.alloc_type(field_type))
                     )
                 }
             }

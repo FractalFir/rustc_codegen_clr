@@ -117,6 +117,7 @@ pub enum TypeCheckError {
         rhs: Type,
     },
     FieldAssignWrongType {
+        field_tpe: Type,
         fld: FieldIdx,
         val: Type,
     },
@@ -939,10 +940,14 @@ impl CILRoot {
             Self::SetField(boxed) => {
                 let (fld, addr, val) = boxed.as_ref();
                 let addr = asm[*addr].clone().typecheck(sig, locals, asm)?;
-                let val = asm[*val].clone().typecheck(sig, locals, asm)?;
+                let val: Type = asm[*val].clone().typecheck(sig, locals, asm)?;
                 let field_tpe = asm[*fld].tpe();
                 if !val.is_assignable_to(field_tpe, asm) {
-                    return Err(TypeCheckError::FieldAssignWrongType { fld: *fld, val });
+                    return Err(TypeCheckError::FieldAssignWrongType {
+                        field_tpe,
+                        fld: *fld,
+                        val,
+                    });
                 }
                 Ok(())
             }

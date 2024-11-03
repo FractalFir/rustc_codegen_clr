@@ -165,7 +165,9 @@ void *System_Runtime_InteropServices_NativeMemory_AlignedReallocpvususpv(void *p
 #define System_Numerics_BitOperations_TrailingZeroCountusi4(val) (int32_t) __builtin_ctzl((uint64_t)val)
 #define System_Numerics_BitOperations_TrailingZeroCountu4i4(val) (int32_t) __builtin_ctzl((uint64_t)val)
 #define System_Numerics_BitOperations_TrailingZeroCountu8i4(val) (int32_t) __builtin_ctzl((uint64_t)val)
-#define System_Numerics_BitOperations_LeadingZeroCountu8i4(val) (int32_t) __builtin_ctzl((uint64_t)val)
+int32_t System_Numerics_BitOperations_LeadingZeroCountu8i4(uint64_t val) { return __builtin_clzl(val); }
+int32_t System_Numerics_BitOperations_LeadingZeroCountusi4(uintptr_t val) { return __builtin_clzl((uint64_t)val); }
+
 #define System_Numerics_BitOperations_PopCountusi4(val) __builtin_popcountl((uint64_t)val)
 #define System_Numerics_BitOperations_PopCountu4i4(val) __builtin_popcountl((uint32_t)val)
 #define System_Numerics_BitOperations_PopCountu8i4(val) __builtin_popcountl((uint64_t)val)
@@ -311,6 +313,36 @@ double fabsf64(double val);
 #define System_Math_Maxisisis(x, y) (((x) > (y)) ? (x) : (y))
 #define System_Math_Minususus(x, y) (((x) < (y)) ? (x) : (y))
 #define System_Math_Maxususus(x, y) (((x) > (y)) ? (x) : (y))
+typedef struct TSWData
+{
+    void *start_routine;
+    void *arg
+} TSWData;
+void _tcctor();
+void *thread_start_wrapper(TSWData *data)
+{
+    _tcctor();
+    void *(*start_routine)(void *) = (void *)data->start_routine;
+    void *arg = data->arg;
+    free(data);
+    return start_routine(arg);
+}
+int32_t pthread_create(void *thread,
+                       void *attr,
+                       void *(*start_routine)(void *),
+                       void *threadarg);
+int32_t pthread_create_wrapper(void *thread,
+                               void *attr,
+                               void *start_routine,
+                               void *arg)
+{
+    TSWData *data = malloc(sizeof(TSWData));
+    data->start_routine = start_routine;
+    data->arg = arg;
+
+    return pthread_create(thread, attr, (void *)thread_start_wrapper, data);
+}
+#define pthread_create pthread_create_alias
 float System_Single_Exp2f4f4(float input)
 {
     fprintf(stderr, "Can't System_Single_Exp2f4f4 yet.\n");
@@ -392,21 +424,42 @@ uint32_t System_Threading_Interlocked_CompareExchangeru4u4u4u4(uint32_t *addr, u
 }
 uint64_t System_Threading_Interlocked_CompareExchangeru8u8u8u8(uint64_t *addr, uint64_t value, uint64_t comparand)
 {
-    fprintf(stderr, "Can't System_Threading_Interlocked_CompareExchangeru8u8u8u8 yet.\n");
-    abort();
-    return 0;
+    uint64_t res = 0;
+    if (__atomic_compare_exchange_n(addr, &comparand, value, true, 5, 5))
+    {
+        return comparand;
+    }
+    else
+    {
+        // On failure, value is written to comparand.
+        return comparand;
+    }
 }
 uintptr_t System_Threading_Interlocked_CompareExchangerusususus(uintptr_t *addr, uintptr_t value, uintptr_t comparand)
 {
-    fprintf(stderr, "Can't System_Threading_Interlocked_CompareExchangerusususus yet.\n");
-    abort();
-    return 0;
+    uintptr_t res = 0;
+    if (__atomic_compare_exchange_n(addr, &comparand, value, true, 5, 5))
+    {
+        return comparand;
+    }
+    else
+    {
+        // On failure, value is written to comparand.
+        return comparand;
+    }
 }
 intptr_t System_Threading_Interlocked_CompareExchangerisisisis(intptr_t *addr, intptr_t value, intptr_t comparand)
 {
-    fprintf(stderr, "Can't System_Threading_Interlocked_CompareExchangerisisisis yet.\n");
-    abort();
-    return 0;
+    intptr_t res = 0;
+    if (__atomic_compare_exchange_n(addr, &comparand, value, true, 5, 5))
+    {
+        return comparand;
+    }
+    else
+    {
+        // On failure, value is written to comparand.
+        return comparand;
+    }
 }
 
 uint32_t System_Threading_Interlocked_Exchangeru4u4u4(uint32_t *addr, uint32_t val)
@@ -417,9 +470,9 @@ uint32_t System_Threading_Interlocked_Exchangeru4u4u4(uint32_t *addr, uint32_t v
 }
 uintptr_t System_Threading_Interlocked_Exchangerususus(uintptr_t *addr, uintptr_t val)
 {
-    fprintf(stderr, "Can't System_Threading_Interlocked_Exchangerususus yet.\n");
-    abort();
-    return 0;
+    uintptr_t ret;
+    __atomic_exchange(addr, &val, &ret, 5);
+    return ret;
 }
 
 uint32_t System_Threading_Interlocked_Addru4u4u4(uint32_t *addr, uint32_t addend)
@@ -457,8 +510,8 @@ uint16_t System_UInt128_RotateLeftu16i4u16(uint16_t val, int32_t ammount)
 
 uint64_t System_UInt64_RotateLeftu8i4u8(uint64_t val, int32_t ammount)
 {
-    fprintf(stderr, "Can't System_UInt64_RotateLeftu8i4u8 yet.\n");
-    abort();
+    ammount = ammount % 64;
+    return (val << ammount) | (val >> (64 - ammount));
 }
 unsigned __int128 System_UInt128_RotateRightu16i4u16(unsigned __int128 val, int32_t amount)
 {
@@ -561,12 +614,19 @@ double System_Double_Exp2f8f8(double val)
     abort();
 }
 void System_Threading_Thread_MemoryBarrierv() {}
-static int _argcStaticStorage;
-static char **_argvStaticStorage;
-char **System_Environment_GetCommandLineArgsa1st() { return _argvStaticStorage; }
+static int argc;
+static char **argv;
+char **System_Environment_GetCommandLineArgsa1st() { return argv; }
 uintptr_t ld_len(void *arr)
 {
-    return strlen((const char *)arr) / sizeof(uintptr_t);
+    void **elem = (void **)arr;
+    uintptr_t len = 0;
+    while (*elem != 0)
+    {
+        len += 1;
+        elem += 1;
+    }
+    return len;
 }
 intptr_t System_Runtime_InteropServices_Marshal_StringToCoTaskMemUTF8stis(char *str)
 {

@@ -3,23 +3,90 @@
 use core::str;
 use std::collections::HashSet;
 use std::path::Path;
+#[macro_export]
+macro_rules! config {
+    ($name:ident,bool,$default:expr) => {
+        pub static $name: std::sync::LazyLock<bool> = std::sync::LazyLock::new(|| {
+            std::env::vars()
+                .find_map(|(key, value)| {
+                    if key == stringify!($name) {
+                        Some(value)
+                    } else {
+                        None
+                    }
+                })
+                .map(|value| match value.as_ref() {
+                    "0" | "false" | "False" | "FALSE" => false,
+                    "1" | "true" | "True" | "TRUE" => true,
+                    _ => panic!(
+                        "Boolean enviroment variable {} has invalid value {}",
+                        stringify!($name),
+                        value
+                    ),
+                })
+                .unwrap_or($default)
+        });
+    };
+    ($name:ident,bool,$default:expr,$comment:literal) => {
+        #[doc = $comment]
+        pub static $name: std::sync::LazyLock<bool> = std::sync::LazyLock::new(|| {
+            std::env::vars()
+                .find_map(|(key, value)| {
+                    if key == stringify!($name) {
+                        Some(value)
+                    } else {
+                        None
+                    }
+                })
+                .map(|value| match value.as_ref() {
+                    "0" | "false" | "False" | "FALSE" => false,
+                    "1" | "true" | "True" | "TRUE" => true,
+                    _ => panic!(
+                        "Boolean enviroment variable {} has invalid value {}",
+                        stringify!($name),
+                        value
+                    ),
+                })
+                .unwrap_or($default)
+        });
+    };
+}
+config!(C_MODE, bool, false);
 fn get_test_list(exec_path: &String) -> Vec<String> {
-    let mut cmd = std::process::Command::new("dotnet");
-    cmd.arg(exec_path.clone());
-    cmd.arg("--list");
-    let out = cmd.output().unwrap();
-    let stdout = std::str::from_utf8(&out.stdout).unwrap();
-    stdout
-        .split('\n')
-        .map(|name| {
-            name.trim()
-                .rsplit_once(':')
-                .unwrap_or(("", ""))
-                .0
-                .to_owned()
-        })
-        .filter(|name| !name.is_empty())
-        .collect()
+    if *C_MODE {
+        let mut cmd = std::process::Command::new(exec_path);
+        cmd.arg("--list");
+        let out = cmd.output().unwrap();
+        let stdout = std::str::from_utf8(&out.stdout).unwrap();
+        stdout
+            .split('\n')
+            .map(|name| {
+                name.trim()
+                    .rsplit_once(':')
+                    .unwrap_or(("", ""))
+                    .0
+                    .to_owned()
+            })
+            .filter(|name| !name.is_empty())
+            .collect()
+    } else {
+        let mut cmd = std::process::Command::new("dotnet");
+        cmd.arg(exec_path.clone());
+        cmd.arg("--list");
+        let out = cmd.output().unwrap();
+        let stdout = std::str::from_utf8(&out.stdout).unwrap();
+        stdout
+            .split('\n')
+            .map(|name| {
+                name.trim()
+                    .rsplit_once(':')
+                    .unwrap_or(("", ""))
+                    .0
+                    .to_owned()
+            })
+            .filter(|name| !name.is_empty())
+            .collect()
+    }
 }
 
 fn run_test(
@@ -33,7 +100,10 @@ fn run_test(
     cmd.arg("-k");
     cmd.arg("20");
     cmd.arg("20");
-    cmd.arg("dotnet");
+    if !*C_MODE {
+        cmd.arg("dotnet");
+    }
+
     cmd.arg(exec_path);
     cmd.arg(test_name);
     let out = cmd.output().unwrap();
@@ -52,7 +122,12 @@ fn run_test(
     }
 }
 fn successes_from_disk(exec_name: &str) -> Vec<String> {
-    let Ok(file) = std::fs::File::open(format!("success_{exec_name}.txt")) else {
+    let name = if *C_MODE {
+        format!("c_success_{exec_name}.txt")
+    } else {
+        format!("success_{exec_name}.txt")
+    };
+    let Ok(file) = std::fs::File::open(name) else {
         return Vec::default();
     };
     use std::io::BufRead;
@@ -63,8 +138,13 @@ fn successes_from_disk(exec_name: &str) -> Vec<String> {
 }
 fn successes_to_disk(successes: &[String], exec_name: &str) {
     use std::io::Write;
-    std::fs::File::create(format!("success_{exec_name}.txt"))
-        .unwrap()
+    let name = if *C_MODE {
+        format!("c_success_{exec_name}.txt")
+    } else {
+        format!("success_{exec_name}.txt")
+    };
+    std::fs::File::create(&name)
+        .unwrap_or_else(|err| panic!("file {name} could not be created due to {err:?}"))
         .write_all(
             successes
                 .iter()

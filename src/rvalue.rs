@@ -125,7 +125,7 @@ pub fn handle_rvalue<'tcx>(
         Rvalue::Cast(
             CastKind::PointerCoercion(PointerCoercion::ClosureFnPointer(_), _),
             ref operand,
-            _to_ty,
+            to_ty,
         ) => match ctx.monomorphize(operand.ty(ctx.body(), ctx.tcx())).kind() {
             TyKind::Closure(def_id, args) => {
                 let instance = Instance::resolve_closure(
@@ -138,14 +138,32 @@ pub fn handle_rvalue<'tcx>(
                 let call_info = CallInfo::sig_from_instance_(instance, ctx);
 
                 let function_name = crate::utilis::function_name(ctx.tcx().symbol_name(instance));
+                let fn_ptr_sig = ctx.alloc_sig(call_info.sig().clone());
                 let call_site = MethodRef::new(
                     *ctx.main_module(),
                     ctx.alloc_string(function_name),
-                    ctx.alloc_sig(call_info.sig().clone()),
+                    fn_ptr_sig,
                     MethodKind::Static,
                     vec![].into(),
                 );
-                (vec![], CILNode::LDFtn(ctx.alloc_methodref(call_site)))
+                let target_type = ctx.type_from_cache(*to_ty);
+                let Type::FnPtr(target_sig) = target_type else {
+                    rustc_middle::bug!(
+                        "ClosureFnPointer target not a fn ptr. {}",
+                        target_type.mangle(ctx)
+                    )
+                };
+                if target_sig == fn_ptr_sig {
+                    (vec![], CILNode::LDFtn(ctx.alloc_methodref(call_site)))
+                } else {
+                    eprintln!(
+                        "Possible bug. ClosureFnPointer target:{} and source {} don't match.",
+                        target_type.mangle(ctx),
+                        Type::FnPtr(fn_ptr_sig).mangle(ctx)
+                    );
+                    let src = CILNode::LDFtn(ctx.alloc_methodref(call_site));
+                    (vec![], CILNode::cast_ptr(src, target_type))
+                }
             }
             _ => panic!(
                 "{} cannot be cast to a fn ptr",
