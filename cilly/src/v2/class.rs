@@ -315,7 +315,7 @@ impl ClassRef {
         asm.alloc_class_ref(ClassRef::new(name, asm_name, true, [].into()))
     }
     #[must_use]
-    pub fn fixed_array(element: Type, length: usize, asm: &mut Assembly) -> ClassRefIdx {
+    pub fn fixed_array(element: Type, length: u64, asm: &mut Assembly) -> ClassRefIdx {
         let name = format!("{element}_{length}", element = element.mangle(asm));
         let name = asm.alloc_string(name);
         let cref = ClassRef::new(name, None, true, [].into());

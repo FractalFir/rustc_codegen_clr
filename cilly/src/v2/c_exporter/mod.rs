@@ -1147,7 +1147,7 @@ impl Exporter for CExporter {
         .arg("-o")
         .arg(exe_out)
         .arg("-g")
-        .args(["-fsanitize=undefined","-fno-sanitize-recover"])
+        .args(["-fsanitize=undefined,address,alignment","-fno-sanitize=leak","-fno-sanitize-recover"])
         .arg("-Ofast")
         // .arg("-FOLD") saves up on space, consider enabling.
         ;

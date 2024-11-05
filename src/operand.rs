@@ -29,7 +29,7 @@ pub(crate) fn operand_address<'tcx>(
         Operand::Constant(const_val) => {
             let local_type = ctx.type_from_cache(operand.ty(ctx.body(), ctx.tcx()));
             let constant = crate::constant::handle_constant(const_val, ctx);
-            let ptr = CILNode::stack_addr(constant, ctx.alloc_type(local_type));
+            let ptr = CILNode::stack_addr(constant, ctx.alloc_type(local_type), ctx);
             crate::place::deref_op(
                 crate::place::PlaceTy::Ty(operand.ty(ctx.body(), ctx.tcx())),
                 ctx,

@@ -66,41 +66,14 @@ pub(crate) fn load_const_value<'tcx>(
             CILNode::uninit_val(tpe, ctx)
         }
         ConstValue::Slice { data, meta } => {
-            let slice_type = get_type(const_ty, ctx);
+            let slice_type = ctx.type_from_cache(const_ty);
             let slice_dotnet = slice_type.as_class_ref().expect("Slice type invalid!");
-            let metadata_field = FieldDesc::new(
-                slice_dotnet,
-                ctx.alloc_string(crate::METADATA),
-                cilly::v2::Type::Int(Int::USize),
-            );
-            let ptr_field = FieldDesc::new(
-                slice_dotnet,
-                ctx.alloc_string(crate::DATA_PTR),
-                ctx.nptr(cilly::v2::Type::Void),
-            );
-            // TODO: find a better way to get an alloc_id. This is likely to be incoreect.
+
             let alloc_id = ctx.tcx().reserve_and_set_memory_alloc(data);
             let alloc_id: u64 = crate::utilis::alloc_id_to_u64(alloc_id);
-            let slice_type = ctx.type_from_cache(const_ty);
-            CILNode::TemporaryLocal(Box::new((
-                ctx.alloc_type(slice_type),
-                [
-                    CILRoot::SetField {
-                        addr: Box::new(CILNode::LoadAddresOfTMPLocal),
-                        value: Box::new(CILNode::V2(ctx.alloc_node(Const::USize(meta)))),
-                        desc: ctx.alloc_field(metadata_field),
-                    },
-                    CILRoot::SetField {
-                        addr: Box::new(CILNode::LoadAddresOfTMPLocal),
-                        value: Box::new(
-                            CILNode::LoadGlobalAllocPtr { alloc_id }.cast_ptr(ctx.nptr(Type::Void)),
-                        ),
-                        desc: ctx.alloc_field(ptr_field),
-                    },
-                ]
-                .into(),
-                CILNode::LoadTMPLocal,
-            )))
+            let meta = CILNode::V2(ctx.alloc_node(Const::USize(meta)));
+            let ptr = CILNode::LoadGlobalAllocPtr { alloc_id }.cast_ptr(ctx.nptr(Type::Void));
+            CILNode::create_slice(slice_dotnet, ctx, meta, ptr)
         }
         ConstValue::Indirect { alloc_id, offset } => {
             create_const_from_data(const_ty, alloc_id, offset.bytes(), ctx)
@@ -152,6 +125,7 @@ fn load_scalar_ptr(
                         site: ctx.alloc_methodref(mref),
                     })),
                     ctx.alloc_type(u8_ptr_ptr),
+                    ctx,
                 );
             }
             let attrs = ctx.tcx().codegen_fn_attrs(def_id);
@@ -160,7 +134,7 @@ fn load_scalar_ptr(
                 // TODO: this could cause issues if the pointer to the static is not imediatly dereferenced.
                 let site = get_fn_from_static_name(&name, ctx);
                 let ptr_sig = Type::FnPtr(ctx[site].sig());
-                return CILNode::stack_addr(CILNode::LDFtn(site), ctx.alloc_type(ptr_sig));
+                return CILNode::stack_addr(CILNode::LDFtn(site), ctx.alloc_type(ptr_sig), ctx);
             }
             if let Some(section) = attrs.link_section {
                 panic!("static {name} requires special linkage in section {section:?}");

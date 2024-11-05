@@ -745,6 +745,17 @@ pub fn add_allocation(alloc_id: u64, asm: &mut cilly::v2::Assembly, tcx: TyCtxt<
 
     CILNode::LDStaticField(Box::new(field_desc))
 }
+/*
+pub fn alloc_buff_tpe(asm: &mut cilly::v2::Assembly, len: u64) -> Option<Type> {
+    match len {
+        0 => None,
+        1 => Some(Type::Int(Int::U8)),
+        2 => Some(Type::Int(Int::U16)),
+        4 => Some(Type::Int(Int::U32)),
+        8 => Some(Type::Int(Int::U64)),
+        _ => array_type(),
+    }
+}*/
 pub fn add_const_value(asm: &mut cilly::v2::Assembly, bytes: u128) -> StaticFieldDesc {
     let uint8_ptr = Type::Int(Int::U128);
     let main_module_id = asm.main_module();

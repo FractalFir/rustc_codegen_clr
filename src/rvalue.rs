@@ -66,7 +66,7 @@ pub fn handle_rvalue<'tcx>(
             dst,
         ) => (vec![], ptr_to_ptr(ctx, operand, *dst)),
         Rvalue::Cast(CastKind::PointerCoercion(PointerCoercion::Unsize, _), operand, target) => {
-            (vec![], crate::unsize::unsize2(ctx, operand, *target))
+            crate::unsize::unsize2(ctx, operand, *target, *target_location)
         }
         Rvalue::BinaryOp(binop, operands) => (
             vec![],

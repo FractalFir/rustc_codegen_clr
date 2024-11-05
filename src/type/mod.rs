@@ -14,7 +14,7 @@ use cilly::{
         cilnode::MethodKind, Access, BasicBlock, CILNode, CILRoot, ClassDef, ClassDefIdx, ClassRef,
         ClassRefIdx, Float, Int, MethodDef, MethodImpl, StringIdx, Type,
     },
-    IntoAsmIndex,
+    Assembly, IntoAsmIndex,
 };
 pub use r#type::*;
 use rustc_middle::ty::{AdtDef, AdtKind, FloatTy, IntTy, List, ParamEnv, Ty, TyKind, UintTy};
@@ -118,7 +118,7 @@ pub fn get_type<'tcx>(ty: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_>) -> Typ
             // Allocate a class reference to the closure
             let cref = ctx.alloc_class_ref(ClassRef::new(name, None, true, [].into()));
             // If there is no defition of this closure present, create the closure.
-            if ctx.asm().class_ref_to_def(cref).is_none() {
+            if ctx.class_ref_to_def(cref).is_none() {
                 let type_def = closure_typedef(&fields, layout.layout, ctx, name);
                 ctx.class_def(type_def);
             }
@@ -127,7 +127,7 @@ pub fn get_type<'tcx>(ty: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_>) -> Typ
         TyKind::Dynamic(_list, _, _) => {
             let name = ctx.alloc_string("Dyn");
             let cref = ctx.alloc_class_ref(ClassRef::new(name, None, true, [].into()));
-            if ctx.asm().class_ref_to_def(cref).is_none() {
+            if ctx.class_ref_to_def(cref).is_none() {
                 ctx.class_def(ClassDef::new(
                     name,
                     true,
@@ -191,7 +191,7 @@ pub fn get_type<'tcx>(ty: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_>) -> Typ
                 let name = ctx.alloc_string(name);
                 let cref = ClassRef::new(name, None, true, [].into());
                 // This only checks if a refernce to this class has already been allocated. In theory, allocating a class reference beforhand could break this, and make it not add the type definition
-                if !ctx.asm().contains_ref(&cref) {
+                if !ctx.contains_ref(&cref) {
                     let layout = ctx.layout_of(ty);
                     let _ = tuple_typedef(&types, layout.layout, ctx, name);
                 }
@@ -276,115 +276,8 @@ pub fn get_type<'tcx>(ty: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_>) -> Typ
             // Get the layout and size of this array
             let layout = ctx.layout_of(ty);
             let arr_size = layout.layout.size().bytes();
-
-            // Get the reference to the array class
-            let cref = ClassRef::fixed_array(element, length, ctx);
-
-            // If the array definition not already present, add it.
-            if ctx.asm().class_ref_to_def(cref).is_none() {
-                let fields = vec![(element, ctx.alloc_string("f0"), Some(0))];
-                let class_ref = ctx.asm().class_ref(cref).clone();
-                let arr_align = layout.layout.align().pref.bytes();
-                let size = if let Ok(size) = std::convert::TryInto::<u32>::try_into(arr_size) {
-                    size
-                } else if *crate::config::ABORT_ON_ERROR {
-                    panic!("Array {ty:?} size {arr_size} >= 2^32. Unsuported.")
-                } else {
-                    eprintln!("WARNING: Array {ty:?} excceeds max size of 2^32. Clamping the size, this can cause UB.");
-                    u32::MAX
-                };
-                let arr = ctx.class_def(ClassDef::new(
-                    class_ref.name(),
-                    true,
-                    0,
-                    None,
-                    fields,
-                    vec![],
-                    Access::Public,
-                    Some(NonZeroU32::new(size).unwrap()),
-                    NonZeroU32::new(arr_align.try_into().unwrap()),
-                ));
-                // Common nodes
-                let ldarg_2 = ld_arg!(2).into_idx(ctx);
-                let elem_tpe_idx = ctx.alloc_type(element);
-                let elem_addr = add!(
-                    ptr_cast!(ld_arg!(0), *elem_tpe_idx),
-                    mul!(ld_arg!(1), cilly::size_of!(elem_tpe_idx))
-                )
-                .into_idx(ctx);
-                // Defintion of the set_Item method.
-                let set_item = ctx.alloc_string("set_Item");
-                let this_ref = ctx.nref(Type::ClassRef(cref));
-                let set_sig = ctx.sig([this_ref, Type::Int(Int::USize), element], Type::Void);
-                let arg_names = vec![
-                    Some(ctx.alloc_string("this")),
-                    Some(ctx.alloc_string("idx")),
-                    Some(ctx.alloc_string("elem")),
-                ];
-                let set_root = ctx.alloc_root(CILRoot::StInd(Box::new((
-                    elem_addr, ldarg_2, element, false,
-                ))));
-                let void_ret = ctx.alloc_root(CILRoot::VoidRet);
-                ctx.new_method(MethodDef::new(
-                    Access::Public,
-                    arr,
-                    set_item,
-                    set_sig,
-                    MethodKind::Instance,
-                    MethodImpl::MethodBody {
-                        blocks: vec![BasicBlock::new(vec![set_root, void_ret], 0, None)],
-                        locals: vec![],
-                    },
-                    arg_names,
-                ));
-                // Implementation of the get_Item method
-                let get_item = ctx.alloc_string("get_Item");
-                let get_sig = ctx.sig([this_ref, Type::Int(Int::USize)], element);
-                let arg_names = vec![
-                    Some(ctx.alloc_string("this")),
-                    Some(ctx.alloc_string("idx")),
-                ];
-                let elem_val = ctx.alloc_node(CILNode::LdInd {
-                    addr: elem_addr,
-                    tpe: elem_tpe_idx,
-                    volatile: false,
-                });
-                let elem_ret = ctx.alloc_root(CILRoot::Ret(elem_val));
-                ctx.new_method(MethodDef::new(
-                    Access::Public,
-                    arr,
-                    get_item,
-                    get_sig,
-                    MethodKind::Instance,
-                    MethodImpl::MethodBody {
-                        blocks: vec![BasicBlock::new(vec![elem_ret], 0, None)],
-                        locals: vec![],
-                    },
-                    arg_names,
-                ));
-                // Implementation of the get_Address method
-                let get_address = ctx.alloc_string("get_Address");
-                let elem_ref_tpe = ctx.nptr(element);
-                let addr_sig = ctx.sig([this_ref, Type::Int(Int::USize)], elem_ref_tpe);
-                let arg_names = vec![
-                    Some(ctx.alloc_string("this")),
-                    Some(ctx.alloc_string("idx")),
-                ];
-
-                let elem_ret = ctx.alloc_root(CILRoot::Ret(elem_addr));
-                ctx.new_method(MethodDef::new(
-                    Access::Public,
-                    arr,
-                    get_address,
-                    addr_sig,
-                    MethodKind::Instance,
-                    MethodImpl::MethodBody {
-                        blocks: vec![BasicBlock::new(vec![elem_ret], 0, None)],
-                        locals: vec![],
-                    },
-                    arg_names,
-                ));
-            }
+            let arr_align = layout.layout.align().pref.bytes();
+            let cref = fixed_array(ctx, element, length as u64, arr_size, arr_align);
             Type::ClassRef(cref)
         }
         TyKind::Alias(_, _) => panic!("Attempted to get the .NET type of an unmorphized type"),
@@ -405,7 +298,7 @@ pub fn get_type<'tcx>(ty: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_>) -> Typ
             // Allocate a class reference to the coroutine
             let cref = ctx.alloc_class_ref(ClassRef::new(name, None, true, [].into()));
             // If there is no defition of this coroutine present, create the coroutine.
-            if ctx.asm().class_ref_to_def(cref).is_none() {
+            if ctx.class_ref_to_def(cref).is_none() {
                 let mut type_def = closure_typedef(&fields, layout.layout, ctx, name);
                 handle_tag(&layout.layout, ctx, ty, type_def.fields_mut());
                 ctx.class_def(type_def);
@@ -416,15 +309,133 @@ pub fn get_type<'tcx>(ty: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_>) -> Typ
         _ => todo!("Can't yet get type {ty:?} from type cache."),
     }
 }
+//
+fn fixed_array(
+    asm: &mut Assembly,
+    element: Type,
+    length: u64,
+    arr_size: u64,
+    align: u64,
+) -> ClassRefIdx {
+    // Get the reference to the array class
+    let cref = ClassRef::fixed_array(element, length, asm);
+
+    // If the array definition not already present, add it.
+    if asm.class_ref_to_def(cref).is_none() {
+        let fields = vec![(element, asm.alloc_string("f0"), Some(0))];
+        let class_ref = asm.class_ref(cref).clone();
+
+        let size = if let Ok(size) = std::convert::TryInto::<u32>::try_into(arr_size) {
+            size
+        } else {
+            panic!(
+                "Array of {element:?} with size {arr_size} >= 2^32. Unsuported.",
+                element = element.mangle(asm)
+            )
+        };
+        let arr = asm.class_def(ClassDef::new(
+            class_ref.name(),
+            true,
+            0,
+            None,
+            fields,
+            vec![],
+            Access::Public,
+            Some(NonZeroU32::new(size).unwrap()),
+            NonZeroU32::new(align.try_into().unwrap()),
+        ));
+        // Common nodes
+        let ldarg_2 = ld_arg!(2).into_idx(asm);
+        let elem_tpe_idx = asm.alloc_type(element);
+        let elem_addr = add!(
+            ptr_cast!(ld_arg!(0), *elem_tpe_idx),
+            mul!(ld_arg!(1), cilly::size_of!(elem_tpe_idx))
+        )
+        .into_idx(asm);
+        // Defintion of the set_Item method.
+        let set_item = asm.alloc_string("set_Item");
+        let this_ref = asm.nref(Type::ClassRef(cref));
+        let set_sig = asm.sig([this_ref, Type::Int(Int::USize), element], Type::Void);
+        let arg_names = vec![
+            Some(asm.alloc_string("this")),
+            Some(asm.alloc_string("idx")),
+            Some(asm.alloc_string("elem")),
+        ];
+        let set_root = asm.alloc_root(CILRoot::StInd(Box::new((
+            elem_addr, ldarg_2, element, false,
+        ))));
+        let void_ret = asm.alloc_root(CILRoot::VoidRet);
+        asm.new_method(MethodDef::new(
+            Access::Public,
+            arr,
+            set_item,
+            set_sig,
+            MethodKind::Instance,
+            MethodImpl::MethodBody {
+                blocks: vec![BasicBlock::new(vec![set_root, void_ret], 0, None)],
+                locals: vec![],
+            },
+            arg_names,
+        ));
+        // Implementation of the get_Item method
+        let get_item = asm.alloc_string("get_Item");
+        let get_sig = asm.sig([this_ref, Type::Int(Int::USize)], element);
+        let arg_names = vec![
+            Some(asm.alloc_string("this")),
+            Some(asm.alloc_string("idx")),
+        ];
+        let elem_val = asm.alloc_node(CILNode::LdInd {
+            addr: elem_addr,
+            tpe: elem_tpe_idx,
+            volatile: false,
+        });
+        let elem_ret = asm.alloc_root(CILRoot::Ret(elem_val));
+        asm.new_method(MethodDef::new(
+            Access::Public,
+            arr,
+            get_item,
+            get_sig,
+            MethodKind::Instance,
+            MethodImpl::MethodBody {
+                blocks: vec![BasicBlock::new(vec![elem_ret], 0, None)],
+                locals: vec![],
+            },
+            arg_names,
+        ));
+        // Implementation of the get_Address method
+        let get_address = asm.alloc_string("get_Address");
+        let elem_ref_tpe = asm.nptr(element);
+        let addr_sig = asm.sig([this_ref, Type::Int(Int::USize)], elem_ref_tpe);
+        let arg_names = vec![
+            Some(asm.alloc_string("this")),
+            Some(asm.alloc_string("idx")),
+        ];
+
+        let elem_ret = asm.alloc_root(CILRoot::Ret(elem_addr));
+        asm.new_method(MethodDef::new(
+            Access::Public,
+            arr,
+            get_address,
+            addr_sig,
+            MethodKind::Instance,
+            MethodImpl::MethodBody {
+                blocks: vec![BasicBlock::new(vec![elem_ret], 0, None)],
+                locals: vec![],
+            },
+            arg_names,
+        ));
+    }
+    cref
+}
 
 /// Returns a fat pointer to an inner type.
 pub fn fat_ptr_to<'tcx>(mut inner: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_>) -> ClassRefIdx {
     inner = ctx.monomorphize(inner);
     let inner_tpe = get_type(inner, ctx);
-    let name = format!("FatPtr{elem}", elem = inner_tpe.mangle(ctx.asm()));
+    let name = format!("FatPtr{elem}", elem = inner_tpe.mangle(ctx));
     let name = ctx.alloc_string(name);
     let cref = ctx.alloc_class_ref(ClassRef::new(name, None, true, [].into()));
-    if ctx.asm().class_ref_to_def(cref).is_none() {
+    if ctx.class_ref_to_def(cref).is_none() {
         let def = ClassDef::new(
             name,
             true,
@@ -458,7 +469,7 @@ pub fn closure_name(
     _sig: cilly::v2::SigIdx,
     ctx: &mut MethodCompileCtx<'_, '_>,
 ) -> String {
-    let mangled_fields: String = fields.iter().map(|tpe| tpe.mangle(ctx.asm())).collect();
+    let mangled_fields: String = fields.iter().map(|tpe| tpe.mangle(ctx)).collect();
     format!(
         "Closure{field_count}{mangled_fields}",
         field_count = fields.len()
@@ -470,7 +481,7 @@ pub fn coroutine_name(
     fields: &[Type],
     ctx: &mut MethodCompileCtx<'_, '_>,
 ) -> String {
-    let mangled_fields: String = fields.iter().map(|tpe| tpe.mangle(ctx.asm())).collect();
+    let mangled_fields: String = fields.iter().map(|tpe| tpe.mangle(ctx)).collect();
     format!(
         "Coroutine{def_id:?}{field_count}{mangled_fields}",
         field_count = fields.len()

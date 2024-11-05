@@ -383,6 +383,7 @@ fn main() {
     cilly::v2::builtins::int128::i128_mul_ovf_check(&mut final_assembly, &mut overrides);
     cilly::v2::builtins::f16::generate_f16_ops(&mut final_assembly, &mut overrides, *C_MODE);
     cilly::v2::builtins::atomics::generate_all_atomics(&mut final_assembly, &mut overrides);
+    cilly::v2::builtins::stack_addr(&mut final_assembly, &mut overrides);
     if *C_MODE {
         cilly::v2::builtins::insert_exeception_stub(&mut final_assembly, &mut overrides);
         externs.insert("__dso_handle", LIBC.clone());

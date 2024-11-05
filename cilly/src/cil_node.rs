@@ -224,9 +224,17 @@ pub enum CILNode {
 }
 
 impl CILNode {
-    pub fn stack_addr(val: Self, tpe: TypeIdx) -> Self {
+    pub fn stack_addr(val: Self, tpe_idx: TypeIdx, asm: &mut Assembly) -> Self {
+        /*let main_module = *asm.main_module();
+        let tpe = asm[tpe_idx];
+        let sig = asm.sig([tpe], Type::Ptr(tpe_idx));
+        let mref = asm.new_methodref(main_module, "stack_addr", sig, MethodKind::Static, vec![]);
+        CILNode::Call(Box::new(CallOpArgs {
+            args: Box::new([val]),
+            site: mref,
+        }))*/
         CILNode::TemporaryLocal(Box::new((
-            tpe,
+            tpe_idx,
             [CILRoot::SetTMPLocal { value: val }].into(),
             CILNode::LoadAddresOfTMPLocal,
         )))
@@ -403,13 +411,9 @@ impl CILNode {
         )))
     }
     pub fn transmute_on_stack(self, src: Type, target: Type, asm: &mut Assembly) -> Self {
-        let tmp_loc = Self::TemporaryLocal(Box::new((
-            asm.alloc_type(src),
-            Box::new([CILRoot::SetTMPLocal { value: self }]),
-            CILNode::LoadAddresOfTMPLocal,
-        )));
+        let stack_addr = Self::stack_addr(self, asm.alloc_type(src), asm);
         Self::LdObj {
-            ptr: Box::new(CILNode::MRefToRawPtr(Box::new(tmp_loc)).cast_ptr(asm.nptr(target))),
+            ptr: Box::new(stack_addr.cast_ptr(asm.nptr(target))),
             obj: Box::new(target),
         }
     }

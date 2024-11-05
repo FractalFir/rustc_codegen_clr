@@ -1,12 +1,16 @@
-# rustc_codegen_clr
+# rustc_codegen_clr 
 
 > [!WARNING]
 > This project is still early in its developement. Bugs, crashes and miscompilations are expected. DO NOT USE IT FOR ANYTHING SERIOUS.
 
-`rustc_codegen_clr` is an experimental Rust to .NET compiler backend. It allows the Rust compiler to turn Rust code into .NET assemblies. This translation is very high-level, and preserves things like types,
-field/varaible names. 
+`rustc_codegen_clr` is an experimental Rust compiler backend(plugin), which allows you to transpile Rust into .NET assebmlies, or C source files. 
+
+The end goal of the project is allowing Rust to be used in places where it could not be used before. 
+
+## .NET Interop layer
 
 The project aims to provide a way to easily use Rust libraries in .NET. It comes with a Rust/.NET interop layer, which allows you to easily interact with .NET code from Rust:
+
 ```
 use mychorizza::*;
 fn main(){
@@ -18,7 +22,10 @@ fn main(){
     mstring.AppendChar('.');
 }
 ```
-The project will also include support for defining .NET classes from Rust. This is currently heavily WIP, and any feedback is appreciated.
+This should allow you to integrate Rust code with exisitng .NET codebases, and should allow you to use .NET-specific libraries or APIs from Rust.
+
+The project will also include support for defining .NET classes from Rust, allowing .NET code to easily call Rust.
+This is currently heavily WIP, and any feedback is appreciated.
 ```
 // Early WIP syntax, subject to change.
 dotnet_typedef! {
@@ -29,23 +36,47 @@ dotnet_typedef! {
   }
 }
 ```
+
+With this approach, the classes and APIs exposed to .NET can be easily used from other .NET languages, like F# or C#. The safety of this glue layer can be checked by the Rust compiler, which should make interop issues much less likely.
+## C support
+
+While .NET is the main foccus of my work, this project can also be used to compile Rust to C, by setting the `C_MODE` enviroment flag to `1`.
+
+This may seem like a strange and unrelated feature, but the project was written in such a way that this is not only possible, but relatively easy.
+
+My representation of .NETs IR maps nicely to C, which means that I was able to add support for compiling Rust to C in 2-3K LOC. Almost all of the codebase is reused, with the C and .NET specific code only 
+present in the very last stage of compilation.
+
+This means that, instead of having to maintain 2 separate projects, I can maintian one project. Bug fixes to the .NET side of things also fix C bugs. 
+Because of that, the support for C  in the project is almost as good as support for .NET
+
 ## Current state of the project
 
-The project currently supports most Rust features (except async and proc macros), but it is not bug-free. It can compile a mostly working version of Rust std, but there are many minor bugs make such `std` not 100% functional.
+The project currently supports most Rust features (except proc macros), but it is not bug-free. It can compile a mostly working version of Rust std, but there are many minor bugs make such `std` not 100% functional.
 
-Most compoenets of `std` are about 95% working.
+Most components of `std` are about 95% working in .NET, and 80% working in C.
+
+Currently, the GCC and clang C compilers are supported, with plans to add support
+for `tcc`, and maybe even `sdcc`.
 
 So, you *can* compile a lot of existing Rust code, but it may not necessarily *work*.
 ### core, std, and alloc uint tests.
+.NET
 
 | Name | Pass	| Faliure	| Crash \ Timeout| OK precentage
 |--------------------|--------|-------|-------|------|
-| Core tests |	1635	| 38	| 41	| 95.39% |
+| Core tests |	1662	| 39	| 12	| 97.02% |
 | Alloc tests | 	616	|8 |	40 |	92.77% |
 | Alloc benches	| 464	| 0	| 0 |	100.00% |
 | Test Harness tests |	57 |	0	| 100.00% |
-| std tests	| 955| 33 | 17 |	95.02% |
-| Core benches	| 490 | 2| | 98.39% |
+| std tests	| 931 | 43 | 64 |	89.69% |
+| Core benches	| 491 | 1| | 98.99% |
+
+C
+
+| Name | Pass	| Faliure	| OK precentage
+|--------------------|--------|-------|------|
+| Core tests |	1419	| 294	| 82.83% |
 ## FAQ
 
 ### Q: What is it?

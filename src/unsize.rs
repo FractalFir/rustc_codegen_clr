@@ -1,5 +1,6 @@
 use crate::assembly::MethodCompileCtx;
 use crate::operand::{handle_operand, operand_address};
+use crate::place::{place_address_raw, place_adress};
 use crate::r#type::fat_ptr_to;
 use cilly::cil_node::CILNode;
 use cilly::cil_root::CILRoot;
@@ -8,7 +9,7 @@ use cilly::v2::{FieldDesc, Int};
 use cilly::{conv_u32, conv_usize, IntoAsmIndex};
 use cilly::{Const, Type};
 use rustc_middle::{
-    mir::Operand,
+    mir::{Operand, Place},
     ty::{layout::TyAndLayout, ParamEnv, PolyExistentialTraitRef, Ty, TyKind, UintTy},
 };
 use rustc_target::abi::FIRST_VARIANT;
@@ -18,7 +19,8 @@ pub fn unsize2<'tcx>(
     ctx: &mut MethodCompileCtx<'tcx, '_>,
     operand: &Operand<'tcx>,
     target: Ty<'tcx>,
-) -> CILNode {
+    destination: Place<'tcx>,
+) -> (Vec<CILRoot>, CILNode) {
     // Get the monomorphized source and target type
     let target = ctx.monomorphize(target);
     let source = ctx.monomorphize(operand.ty(ctx.body(), ctx.tcx()));
@@ -47,8 +49,8 @@ pub fn unsize2<'tcx>(
         ctx.alloc_string(crate::DATA_PTR),
         ctx.nptr(cilly::v2::Type::Void),
     );
-
-    let target_ptr = CILNode::LoadAddresOfTMPLocal;
+    let dst = place_address_raw(&destination, ctx);
+    let target_ptr = dst.clone();
 
     let init_metadata = CILRoot::set_field(
         target_ptr.clone().cast_ptr(ctx.nptr(fat_ptr_type)),
@@ -96,7 +98,7 @@ pub fn unsize2<'tcx>(
             Box::new(addr),
             Box::new(CILNode::V2(ctx.alloc_node(8_isize))),
         );
-        let dst_addr = CILNode::MRefToRawPtr(Box::new(CILNode::LoadAddresOfTMPLocal));
+        let dst_addr = CILNode::MRefToRawPtr(Box::new(dst.clone()));
         let const_16 = CILNode::V2(ctx.alloc_node(16_isize));
         let dst_addr = CILNode::Add(Box::new(dst_addr), Box::new(const_16));
         eprintln!("WARNING:Can't propely unsize types with sized fields yet. unsize assumes that layout of Wrapper<&T> ==   layout of Wrapper<FatPtr<T>>!");
@@ -108,17 +110,13 @@ pub fn unsize2<'tcx>(
     } else {
         CILRoot::Nop
     };
-    CILNode::LdObj {
-        ptr: Box::new(
-            CILNode::TemporaryLocal(Box::new((
-                ctx.alloc_type(Type::ClassRef(fat_ptr_type)),
-                [copy_val, init_metadata, init_ptr].into(),
-                CILNode::LoadAddresOfTMPLocal,
-            )))
-            .cast_ptr(ctx.nptr(target_type)),
-        ),
-        obj: Box::new(target_type),
-    }
+    (
+        [copy_val, init_metadata, init_ptr].into(),
+        CILNode::LdObj {
+            ptr: Box::new(dst.cast_ptr(ctx.nptr(target_type))),
+            obj: Box::new(target_type),
+        },
+    )
 }
 /// Adopted from <https://github.com/rust-lang/rustc_codegen_cranelift/blob/45600348c009303847e8cddcfa8483f1f3d56625/src/unsize.rs#L64>
 fn unsized_info<'tcx>(

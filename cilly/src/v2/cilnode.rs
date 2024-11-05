@@ -817,7 +817,10 @@ impl CILNode {
             V1Node::LDFtn(method_ref) => Self::LdFtn(*method_ref),
             V1Node::Volatile(inner) => {
                 let mut tmp = Self::from_v1(inner, asm);
-                if let Self::LdInd { volatile: volitale, .. } = &mut tmp {
+                if let Self::LdInd {
+                    volatile: volitale, ..
+                } = &mut tmp
+                {
                     *volitale = true;
                 } else {
                     panic!()
