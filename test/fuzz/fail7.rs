@@ -1,4 +1,4 @@
-#![feature(custom_mir, core_intrinsics, const_hash)]
+#![feature(custom_mir, core_intrinsics)]
 use core::intrinsics::mir::*;
 use std::ffi::{c_char, c_int};
 #[custom_mir(dialect = "runtime", phase = "initial")]

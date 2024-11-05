@@ -1,4 +1,4 @@
-#![feature(custom_mir, core_intrinsics, const_hash)]
+#![feature(custom_mir, core_intrinsics)]
 #![allow(
     unused_parens,
     unused_assignments,

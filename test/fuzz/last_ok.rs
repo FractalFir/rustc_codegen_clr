@@ -1,4 +1,4 @@
-#![feature(custom_mir, core_intrinsics, const_hash)]
+#![feature(custom_mir, core_intrinsics)]
 use std::intrinsics::mir::*;
 use std::ffi::{c_char, c_int};
 extern "C" {

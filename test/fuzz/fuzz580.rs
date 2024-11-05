@@ -1,5 +1,5 @@
 #![allow(dead_code,unused_variables)]#![recursion_limit = "1024"]
-    #![feature(custom_mir, core_intrinsics, const_hash)]
+    #![feature(custom_mir, core_intrinsics)]
     #![allow(unused_parens, unused_assignments, overflowing_literals,internal_features)]
     extern crate core;
     use core::intrinsics::mir::*;
