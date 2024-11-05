@@ -1,6 +1,7 @@
+const BIG: i64 = 100_000_000;
 fn bench_for_each_chain_fold() -> i64 {
     let mut acc = 0;
-    let iter = (0i64..1000000).chain(0..1000000).map(std::hint::black_box);
+    let iter = (0i64..BIG).chain(0..BIG).map(std::hint::black_box);
     for_each_fold(iter, |x| acc += x);
     acc
 }

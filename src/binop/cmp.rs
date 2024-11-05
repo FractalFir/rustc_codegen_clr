@@ -29,9 +29,10 @@ pub fn eq_unchecked(
     match ty_a.kind() {
         TyKind::Uint(uint) => match uint {
             UintTy::U128 => {
+                let main_module = *asm.main_module();
                 let mref = MethodRef::new(
-                    ClassRef::uint_128(asm),
-                    asm.alloc_string("op_Equality"),
+                    main_module,
+                    asm.alloc_string("eq_u128"),
                     asm.sig([Type::Int(Int::U128), Type::Int(Int::U128)], Type::Bool),
                     MethodKind::Static,
                     vec![].into(),
@@ -42,9 +43,10 @@ pub fn eq_unchecked(
         },
         TyKind::Int(int) => match int {
             IntTy::I128 => {
+                let main_module = *asm.main_module();
                 let mref = MethodRef::new(
-                    ClassRef::int_128(asm),
-                    asm.alloc_string("op_Equality"),
+                    main_module,
+                    asm.alloc_string("eq_i128"),
                     asm.sig([Type::Int(Int::I128), Type::Int(Int::I128)], Type::Bool),
                     MethodKind::Static,
                     vec![].into(),

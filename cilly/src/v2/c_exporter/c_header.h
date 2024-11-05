@@ -6,37 +6,26 @@
 #include <string.h>
 #include <math.h>
 #include <mm_malloc.h>
+
+#include <alloca.h>
+
 /*
 #include <unistd.h>
 #include <sys/uio.h>
 #include <poll.h>
 #include <sched.h>
 #include "threads.h"*/
-#ifdef __STDC_VERSION__
-
-#else
-#error "C version too old(< C99), and unsuported"
+#ifndef __SIZEOF_INT128__
+#define __int128 long long
 #endif
-
 #define eprintf(...) fprintf(stderr, __VA_ARGS__)
-union System_Collections_IDictionary
-{
-};
-union System_Collections_IDictionaryEnumerator
-{
-};
-union System_Collections_DictionaryEntry
-{
-};
-union System_String
-{
-};
+
 int execvp(void *file, void *argv);
 #define System_Runtime_InteropServices_Marshal_AllocHGlobali4is(size) malloc(size)
 #define System_Runtime_InteropServices_Marshal_AllocHGlobalisis(size) malloc(size)
 #define System_Runtime_InteropServices_Marshal_ReAllocHGlobalisisis(ptr, new_size) realloc(ptr, new_size)
 #define System_Runtime_InteropServices_Marshal_FreeHGlobalisv(ptr) free(ptr)
-#define System_Collections_ICollection_get_Count14System_Runtime30System_Collections_IDictionaryi4(dict) 0
+
 #define System_Runtime_InteropServices_NativeMemory_AlignedAllocususpv(size, align) aligned_alloc(align, size)
 #define System_Runtime_InteropServices_NativeMemory_AlignedFreepvv free
 void *System_Runtime_InteropServices_NativeMemory_AlignedReallocpvususpv(void *ptr, uintptr_t size, uintptr_t align)
@@ -47,16 +36,11 @@ void *System_Runtime_InteropServices_NativeMemory_AlignedReallocpvususpv(void *p
     return new_buff;
 }
 
-#define System_Collections_IEnumerator_MoveNext14System_Runtime40System_Collections_IDictionaryEnumeratorb(arg) false
-
 #define System_UInt128_op_Additionu16u16u16(lhs, rhs) (lhs + rhs)
 #define System_Int128_op_Additioni16i16i16(lhs, rhs) (__int128)((unsigned __int128)lhs + (unsigned __int128)rhs)
 
 #define System_UInt128_op_Subtractionu16u16u16(lhs, rhs) (lhs - rhs)
 #define System_Int128_op_Subtractioni16i16i16(lhs, rhs) (__int128)((unsigned __int128)lhs - (unsigned __int128)rhs)
-
-#define System_UInt128_op_Equalityu16u16b(lhs, rhs) (lhs == rhs)
-#define System_Int128_op_Equalityi16i16b(lhs, rhs) (lhs == rhs)
 
 #define System_Int128_op_LessThani16i16b(lhs, rhs) (lhs < rhs)
 #define System_UInt128_op_LessThanu16u16b(lhs, rhs) (lhs < rhs)
@@ -158,8 +142,8 @@ void *System_Runtime_InteropServices_NativeMemory_AlignedReallocpvususpv(void *p
 #define System_Buffers_Binary_BinaryPrimitives_ReverseEndiannessi4i4(val) (int32_t) __builtin_bswap32((uint32_t)val)
 #define System_Buffers_Binary_BinaryPrimitives_ReverseEndiannessu2u2 __builtin_bswap16
 #define System_Buffers_Binary_BinaryPrimitives_ReverseEndiannessi2i2(val) (int16_t) __builtin_bswap16((uint16_t)val)
-// Assumes a 64 bit OS.
-#define System_Buffers_Binary_BinaryPrimitives_ReverseEndiannessisis(val) (intptr_t) __builtin_bswap64((ulong)val)
+/*Assumes a 64 bit OS.*/
+#define System_Buffers_Binary_BinaryPrimitives_ReverseEndiannessisis(val) (intptr_t) __builtin_bswap64((uint64_t)val)
 #define System_Buffers_Binary_BinaryPrimitives_ReverseEndiannessusus __builtin_bswap64
 
 #define System_Numerics_BitOperations_TrailingZeroCountusi4(val) (int32_t) __builtin_ctzl((uint64_t)val)
@@ -172,50 +156,26 @@ int32_t System_Numerics_BitOperations_LeadingZeroCountusi4(uintptr_t val) { retu
 #define System_Numerics_BitOperations_PopCountu4i4(val) __builtin_popcountl((uint32_t)val)
 #define System_Numerics_BitOperations_PopCountu8i4(val) __builtin_popcountl((uint64_t)val)
 
-union System_Collections_IDictionary System_Environment_GetEnvironmentVariables14System_Runtime30System_Collections_IDictionary()
-{
-    union System_Collections_IDictionary res;
-    return res;
-};
-union System_Collections_IDictionaryEnumerator System_Collections_IDictionary_GetEnumerator14System_Runtime30System_Collections_IDictionary14System_Runtime40System_Collections_IDictionaryEnumerator(union System_Collections_IDictionary dict)
-{
-    union System_Collections_IDictionaryEnumerator res;
-    return res;
-}
-union System_Collections_DictionaryEntry System_Collections_IEnumerator_get_Current14System_Runtime40System_Collections_IDictionaryEnumeratoro(union System_Collections_IDictionaryEnumerator dict)
-{
-    union System_Collections_DictionaryEntry res;
-    return res;
-}
-union System_String System_String_Concat_()
-{
-    union System_String res;
-    return res;
-}
-const char *System_Runtime_InteropServices_Marshal_StringToCoTaskMemUTF8sis(union System_String str)
-{
-    char *res = (char *)malloc(1);
-    res[0] = '\0';
-    return res;
-}
-void System_Console_WriteLineu8v(ulong arg)
+#define System_Console_WriteLinestv(msg) printf("%s", msg)
+#define System_String_Concatststst(a, b) a b
+#define System_String_Concatstststst(a, b, c) a b c
+#define System_String_Concatststststst(a, b, c, d) a b c d
+void System_Console_WriteLineu8v(uint64_t arg)
 {
     printf("%lu\n", arg);
 }
-void System_Console_WriteLinei8v(long arg)
+void System_Console_WriteLinei8v(int64_t arg)
 {
     printf("%ld\n", arg);
 }
-void System_Console_WriteLineu4v(uint arg)
+void System_Console_WriteLineu4v(uint32_t arg)
 {
     printf("%u\n", arg);
 }
-void System_Console_WriteLinei4v(int arg)
+void System_Console_WriteLinei4v(int32_t arg)
 {
     printf("%u\n", arg);
 }
-
-#define System_String_Concatooos(...) System_String_Concat_()
 
 #define System_UIntPtr_get_MaxValueus() UINTPTR_MAX
 #define System_UIntPtr_get_MinValueus() ((uintptr_t)0)
@@ -279,16 +239,36 @@ float System_Single_FusedMultiplyAddf4f4f4f4(float left, float right, float adde
 float System_Single_CopySignf4f4f4(float mag, float sign)
 {
     if (sign > 0)
-        return fabs(mag);
+    {
+        if (mag > 0)
+            return mag;
+        else
+            return -mag;
+    }
     else
-        return -fabs(mag);
+    {
+        if (mag > 0)
+            return -mag;
+        else
+            return mag;
+    }
 }
 double System_Double_CopySignf8f8f8(double mag, double sign)
 {
     if (sign > 0)
-        return fabs(mag);
+    {
+        if (mag > 0)
+            return mag;
+        else
+            return -mag;
+    }
     else
-        return -fabs(mag);
+    {
+        if (mag > 0)
+            return -mag;
+        else
+            return mag;
+    }
 }
 float System_MathF_Truncatef4f4(float val)
 {
@@ -316,7 +296,7 @@ double fabsf64(double val);
 typedef struct TSWData
 {
     void *start_routine;
-    void *arg
+    void *arg;
 } TSWData;
 void _tcctor();
 void *thread_start_wrapper(TSWData *data)
@@ -367,36 +347,18 @@ float System_Single_Log10f4f4(float input)
     abort();
     return 0.0f;
 }
-float System_Math_Floorf8f8(float input)
-{
-    fprintf(stderr, "Can't System_Math_Floorf8f8 yet.\n");
-    abort();
-    return 0.0f;
-}
-double System_Math_Sqrtf8f8(double input)
-{
-    fprintf(stderr, "Can't System_Math_Sqrtf8f8 yet.\n");
-    abort();
-    return 0.0f;
-}
+#define System_Math_Floorf8f8(input) floor(input)
+#define System_Math_Sqrtf8f8(input) sqrt(input)
+
 double System_Double_Log10f8f8(double input)
 {
     fprintf(stderr, "Can't System_Double_Log10f8f8 yet.\n");
     abort();
     return 0.0f;
 }
-double System_Math_Ceilingf8f8(double input)
-{
-    fprintf(stderr, "Can't System_Math_Ceilingf8f8 yet.\n");
-    abort();
-    return 0.0f;
-}
-double System_Math_Truncatef8f8(double input)
-{
-    fprintf(stderr, "Can't System_Math_Truncatef8f8 yet.\n");
-    abort();
-    return 0.0f;
-}
+#define System_Math_Ceilingf8f8(input) celi(input)
+#define System_Math_Truncatef8f8(input) trunc(input)
+
 uint32_t System_UInt32_RotateRightu4i4u4(uint32_t val, int32_t ammount)
 {
     fprintf(stderr, "Can't System_UInt32_RotateRightu4i4u4 yet.\n");
@@ -418,7 +380,7 @@ uint32_t System_Threading_Interlocked_CompareExchangeru4u4u4u4(uint32_t *addr, u
     }
     else
     {
-        // On failure, value is written to comparand.
+        /* On failure, value is written to comparand. */
         return comparand;
     }
 }
@@ -431,7 +393,7 @@ uint64_t System_Threading_Interlocked_CompareExchangeru8u8u8u8(uint64_t *addr, u
     }
     else
     {
-        // On failure, value is written to comparand.
+        /* On failure, value is written to comparand. */
         return comparand;
     }
 }
@@ -444,7 +406,7 @@ uintptr_t System_Threading_Interlocked_CompareExchangerusususus(uintptr_t *addr,
     }
     else
     {
-        // On failure, value is written to comparand.
+        /* On failure, value is written to comparand. */
         return comparand;
     }
 }
@@ -457,7 +419,7 @@ intptr_t System_Threading_Interlocked_CompareExchangerisisisis(intptr_t *addr, i
     }
     else
     {
-        // On failure, value is written to comparand.
+        /* On failure, value is written to comparand. */
         return comparand;
     }
 }

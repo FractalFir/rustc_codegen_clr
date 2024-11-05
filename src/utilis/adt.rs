@@ -307,12 +307,12 @@ pub fn get_discr<'tcx>(
                 // } else {
                 //     untagged_variant
                 // }
-
+                let main_module = *ctx.main_module();
                 let is_niche = match tag_tpe {
                     Type::Int(Int::U128) => {
                         let mref = MethodRef::new(
-                            ClassRef::uint_128(ctx),
-                            ctx.alloc_string("op_Equality"),
+                            main_module,
+                            ctx.alloc_string("u128_eq"),
                             ctx.sig([Type::Int(Int::U128), Type::Int(Int::U128)], Type::Bool),
                             MethodKind::Static,
                             vec![].into(),
@@ -330,8 +330,8 @@ pub fn get_discr<'tcx>(
                     }
                     Type::Int(Int::I128) => {
                         let mref = MethodRef::new(
-                            ClassRef::int_128(ctx),
-                            ctx.alloc_string("op_Equality"),
+                            main_module,
+                            ctx.alloc_string("in128_eq"),
                             ctx.sig([Type::Int(Int::I128), Type::Int(Int::I128)], Type::Bool),
                             MethodKind::Static,
                             vec![].into(),

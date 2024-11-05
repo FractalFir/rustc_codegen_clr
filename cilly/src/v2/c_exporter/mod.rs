@@ -10,6 +10,7 @@ use crate::{
     v2::{asm::LINKER_RECOVER, BiMap, MethodImpl, StringIdx},
 };
 config!(NO_SFI, bool, false);
+config!(ANSI_C, bool, false);
 use super::{
     asm::MAIN_MODULE,
     bimap::IntoBiMapIndex,
@@ -262,7 +263,7 @@ impl CExporter {
                 },
                 _ => todo!(),
             },
-            BinOp::LtUn | BinOp::Lt => match tpe {
+            BinOp::Lt => match tpe {
                 Type::Ptr(type_idx) | Type::Ref(type_idx) => {
                     format!("(void*)({lhs}) < (void*)({rhs})",)
                 }
@@ -270,12 +271,30 @@ impl CExporter {
                 Type::Bool | Type::Float(_) | Type::Int(_) => format!("({lhs}) < ({rhs})"),
                 _ => todo!(),
             },
-            BinOp::GtUn | BinOp::Gt => match tpe {
+            BinOp::LtUn => match tpe {
+                Type::Ptr(type_idx) | Type::Ref(type_idx) => {
+                    format!("(void*)({lhs}) < (void*)({rhs})",)
+                }
+                Type::FnPtr(_) => format!("({lhs}) < ({rhs})"),
+                Type::Bool | Type::Int(_) => format!("({lhs}) < ({rhs})"),
+                Type::Float(_) => format!("!(({lhs}) >= ({rhs}))"),
+                _ => todo!(),
+            },
+            BinOp::Gt => match tpe {
                 Type::Ptr(type_idx) | Type::Ref(type_idx) => {
                     format!("(void*)({lhs}) > (void*)({rhs})",)
                 }
                 Type::FnPtr(_) => format!("({lhs}) > ({rhs})"),
                 Type::Bool | Type::Float(_) | Type::Int(_) => format!("({lhs}) > ({rhs})"),
+                _ => todo!(),
+            },
+            BinOp::GtUn => match tpe {
+                Type::Ptr(type_idx) | Type::Ref(type_idx) => {
+                    format!("(void*)({lhs}) > (void*)({rhs})",)
+                }
+                Type::FnPtr(_) => format!("({lhs}) > ({rhs})"),
+                Type::Bool | Type::Int(_) => format!("({lhs}) > ({rhs})"),
+                Type::Float(_) => format!("!(({lhs}) <= ({rhs}))"),
                 _ => todo!(),
             },
             BinOp::Or => match tpe {
@@ -361,7 +380,7 @@ impl CExporter {
                 Const::I8(v) => format!("(int8_t)0x{v:x}"),
                 Const::I16(v) => format!("(int16_t)0x{v:x}"),
                 Const::I32(v) => format!("((int32_t)0x{v:x})"),
-                Const::I64(v) => format!("0x{v:x}L"),
+                Const::I64(v) => format!("((int64_t)0x{v:x}L)"),
                 Const::I128(v) => {
                     let low = *v as u128 as u64;
                     let high = ((*v as u128) >> 64) as u64;
@@ -627,7 +646,7 @@ impl CExporter {
                 format!("((*({ret}(*)({args}))({fn_ptr})))({call_args})")
             }
             CILNode::LocAlloc { size } => format!(
-                "alloca({})",
+                "((uint8_t*)alloca({}))",
                 Self::node_to_string(asm[size].clone(), asm, locals, inputs, sig)?
             ),
             CILNode::LdStaticField(static_field_idx) => {
@@ -651,7 +670,10 @@ impl CExporter {
             ),
             // TODO: loc alloc aligned does not respect the aligement ATM.
             CILNode::LocAllocAlgined { tpe, align } => {
-                format!("alloca(sizeof({tpe}))", tpe = c_tpe(asm[tpe], asm))
+                format!(
+                    "({tpe}*)(alloca(sizeof({tpe})))",
+                    tpe = c_tpe(asm[tpe], asm)
+                )
             }
             //TODO: ld elem ref is not really supported in C, and is only there due to the argc emulation.
             CILNode::LdElelemRef { array, index } => {
@@ -749,7 +771,7 @@ impl CExporter {
                         lhs = Self::node_to_string(asm[*lhs].clone(), asm, locals, inputs, sig)?,
                         rhs = Self::node_to_string(asm[*rhs].clone(), asm, locals, inputs, sig)?
                     ),
-                    BranchCond::Lt(lhs, rhs, _cmp_kind) => format!(
+                    BranchCond::Lt(lhs, rhs, cmp_kind) => format!(
                         "if(({lhs}) < ({rhs})) goto bb{target};",
                         lhs = Self::node_to_string(asm[*lhs].clone(), asm, locals, inputs, sig)?,
                         rhs = Self::node_to_string(asm[*rhs].clone(), asm, locals, inputs, sig)?
@@ -988,7 +1010,12 @@ impl CExporter {
                 );
 
                 match root {
-                    Ok(root) => writeln!(method_defs, "{root}")?,
+                    Ok(root) => {
+                        if root.is_empty() {
+                            continue;
+                        }
+                        writeln!(method_defs, "{root}")?
+                    }
                     Err(err) => {
                         eprintln!("Typecheck error:{err:?}");
                         writeln!(method_defs, "fprintf(stderr,\"Attempted to execute a statement which failed to compile.\" {err:?}); abort();",err = format!("{err:?}"))?
@@ -1032,10 +1059,12 @@ impl CExporter {
                 continue;
             };
             let field_tpe = c_tpe(*field_tpe, asm);
-            writeln!(
-                type_defs,
-                "struct {{char pad[{offset}]; {field_tpe} f;}}{fname};"
-            )?;
+            let pad = if *offset != 0 {
+                format!("char pad[{offset}];")
+            } else {
+                "".into()
+            };
+            writeln!(type_defs, "struct {{{pad} {field_tpe} f;}}{fname};")?;
         }
         if let Some(size) = class.explict_size() {
             writeln!(type_defs, "char force_size[{size}];", size = size.get())?;
@@ -1118,12 +1147,15 @@ impl Exporter for CExporter {
         .arg("-o")
         .arg(exe_out)
         .arg("-g")
-        .args(["-fsanitize=undefined"])
+        .args(["-fsanitize=undefined","-fno-sanitize-recover"])
         .arg("-Ofast")
         // .arg("-FOLD") saves up on space, consider enabling.
         ;
         if self.is_lib {
             cmd.arg("-c");
+        }
+        if *ANSI_C {
+            cmd.arg("-std=c89");
         }
         let out = cmd.output().unwrap();
         let stdout = String::from_utf8_lossy(&out.stdout);

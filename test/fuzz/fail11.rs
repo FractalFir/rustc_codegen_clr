@@ -69,10 +69,7 @@ impl PrintFDebug for f32 {
         if self.is_nan() {
             printf(c"NaN".as_ptr());
         } else {
-            printf(
-                c"%f".as_ptr(),
-                *self as core::ffi::c_double,
-            );
+            printf(c"%f".as_ptr(), *self as core::ffi::c_double);
         }
     }
 }
@@ -81,10 +78,7 @@ impl PrintFDebug for f64 {
         if self.is_nan() {
             printf(c"NaN".as_ptr());
         } else {
-            printf(
-                c"%f".as_ptr(),
-                *self as core::ffi::c_double,
-            );
+            printf(c"%f".as_ptr(), *self as core::ffi::c_double);
         }
     }
 }
@@ -125,11 +119,7 @@ impl PrintFDebug for i128 {
 }
 impl PrintFDebug for u128 {
     unsafe fn printf_debug(&self) {
-        printf(
-            c"%lx%lx".as_ptr(),
-            (*self >> 64) as u64,
-            *self as u64,
-        );
+        printf(c"%lx%lx".as_ptr(), (*self >> 64) as u64, *self as u64);
     }
 }
 impl PrintFDebug for isize {

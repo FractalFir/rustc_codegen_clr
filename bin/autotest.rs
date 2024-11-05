@@ -1,7 +1,55 @@
 #!/usr/bin/env -S cargo +nightly -Zscript
 use core::str;
 use std::collections::HashSet;
-
+#[macro_export]
+macro_rules! config {
+    ($name:ident,bool,$default:expr) => {
+        pub static $name: std::sync::LazyLock<bool> = std::sync::LazyLock::new(|| {
+            std::env::vars()
+                .find_map(|(key, value)| {
+                    if key == stringify!($name) {
+                        Some(value)
+                    } else {
+                        None
+                    }
+                })
+                .map(|value| match value.as_ref() {
+                    "0" | "false" | "False" | "FALSE" => false,
+                    "1" | "true" | "True" | "TRUE" => true,
+                    _ => panic!(
+                        "Boolean enviroment variable {} has invalid value {}",
+                        stringify!($name),
+                        value
+                    ),
+                })
+                .unwrap_or($default)
+        });
+    };
+    ($name:ident,bool,$default:expr,$comment:literal) => {
+        #[doc = $comment]
+        pub static $name: std::sync::LazyLock<bool> = std::sync::LazyLock::new(|| {
+            std::env::vars()
+                .find_map(|(key, value)| {
+                    if key == stringify!($name) {
+                        Some(value)
+                    } else {
+                        None
+                    }
+                })
+                .map(|value| match value.as_ref() {
+                    "0" | "false" | "False" | "FALSE" => false,
+                    "1" | "true" | "True" | "TRUE" => true,
+                    _ => panic!(
+                        "Boolean enviroment variable {} has invalid value {}",
+                        stringify!($name),
+                        value
+                    ),
+                })
+                .unwrap_or($default)
+        });
+    };
+}
+config!(C_MODE, bool, false);
 fn main() {
     let exec_path = std::env::args().nth(1).unwrap();
     let mut ok: HashSet<String> = HashSet::default();
@@ -14,7 +62,10 @@ fn main() {
         cmd.arg("-k");
         cmd.arg(&timeout);
         cmd.arg(&timeout);
-        cmd.arg("dotnet");
+        if !*C_MODE {
+            cmd.arg("dotnet");
+        }
+
         cmd.arg(exec_path.clone());
         if shuffles > 0 {
             cmd.arg("--shuffle");
@@ -81,10 +132,17 @@ fn main() {
         println!("{faliure}");
     }
     println!("COMMAND:");
-    let mut cmd = std::process::Command::new("dotnet");
-    cmd.arg(exec_path.clone());
-    cmd.args(broken.iter().flat_map(|arg| ["--skip", arg]));
-    println!("{cmd:?}");
+    if *C_MODE {
+        let mut cmd = std::process::Command::new(exec_path.clone());
+
+        cmd.args(broken.iter().flat_map(|arg| ["--skip", arg]));
+        println!("{cmd:?}");
+    } else {
+        let mut cmd = std::process::Command::new("dotnet");
+        cmd.arg(exec_path.clone());
+        cmd.args(broken.iter().flat_map(|arg| ["--skip", arg]));
+        println!("{cmd:?}");
+    }
     println!(
         "\nsearch result: ok:{ok}, failures:{failures} broken:{broken}",
         ok = ok.len(),

@@ -220,9 +220,10 @@ pub fn mul<'tcx>(
             )
         }
         TyKind::Int(IntTy::I64) => {
+            let main_module = *ctx.main_module();
             let op_mul = MethodRef::new(
-                ClassRef::int_128(ctx),
-                ctx.alloc_string("op_Multiply"),
+                main_module,
+                ctx.alloc_string("mul_i128"),
                 ctx.sig(
                     [Type::Int(Int::I128), Type::Int(Int::I128)],
                     Type::Int(Int::I128),
@@ -248,8 +249,8 @@ pub fn mul<'tcx>(
                 ]
             );
             let op_greater_than = MethodRef::new(
-                ClassRef::int_128(ctx),
-                ctx.alloc_string("op_GreaterThan"),
+                main_module,
+                ctx.alloc_string("gt_i128"),
                 ctx.sig([Type::Int(Int::I128), Type::Int(Int::I128)], Type::Bool),
                 MethodKind::Static,
                 vec![].into(),
@@ -262,8 +263,8 @@ pub fn mul<'tcx>(
                 ]
             );
             let op_lt = MethodRef::new(
-                ClassRef::int_128(ctx),
-                ctx.alloc_string("op_LessThan"),
+                main_module,
+                ctx.alloc_string("lt_i128"),
                 ctx.sig([Type::Int(Int::I128), Type::Int(Int::I128)], Type::Bool),
                 MethodKind::Static,
                 vec![].into(),
@@ -279,9 +280,10 @@ pub fn mul<'tcx>(
         }
 
         TyKind::Uint(UintTy::Usize) => {
+            let main_module = *ctx.main_module();
             let op_mul = MethodRef::new(
-                ClassRef::uint_128(ctx),
-                ctx.alloc_string("op_Multiply"),
+                main_module,
+                ctx.alloc_string("mul_u128"),
                 ctx.sig(
                     [Type::Int(Int::U128), Type::Int(Int::U128)],
                     Type::Int(Int::U128),
@@ -307,8 +309,8 @@ pub fn mul<'tcx>(
                 ]
             );
             let op_gt = MethodRef::new(
-                ClassRef::uint_128(ctx),
-                ctx.alloc_string("op_GreaterThan"),
+                main_module,
+                ctx.alloc_string("gt_u128"),
                 ctx.sig([Type::Int(Int::U128), Type::Int(Int::U128)], Type::Bool),
                 MethodKind::Static,
                 vec![].into(),
@@ -327,9 +329,10 @@ pub fn mul<'tcx>(
             )
         }
         TyKind::Int(IntTy::Isize) => {
+            let main_module = *ctx.main_module();
             let op_mul = MethodRef::new(
-                ClassRef::int_128(ctx),
-                ctx.alloc_string("op_Multiply"),
+                main_module,
+                ctx.alloc_string("mul_i128"),
                 ctx.sig(
                     [Type::Int(Int::I128), Type::Int(Int::I128)],
                     Type::Int(Int::I128),
@@ -355,8 +358,8 @@ pub fn mul<'tcx>(
                 ]
             );
             let op_greater_than = MethodRef::new(
-                ClassRef::int_128(ctx),
-                ctx.alloc_string("op_GreaterThan"),
+                main_module,
+                ctx.alloc_string("gt_i128"),
                 ctx.sig([Type::Int(Int::I128), Type::Int(Int::I128)], Type::Bool),
                 MethodKind::Static,
                 vec![].into(),
@@ -374,8 +377,8 @@ pub fn mul<'tcx>(
                 ]
             );
             let op_lt = MethodRef::new(
-                ClassRef::int_128(ctx),
-                ctx.alloc_string("op_LessThan"),
+                main_module,
+                ctx.alloc_string("lt_i128"),
                 ctx.sig([Type::Int(Int::I128), Type::Int(Int::I128)], Type::Bool),
                 MethodKind::Static,
                 vec![].into(),
