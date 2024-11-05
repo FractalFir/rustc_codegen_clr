@@ -113,15 +113,13 @@ pub fn handle_rvalue<'tcx>(
                 (vec![], CILNode::V2(ctx.alloc_node(ub_checks)))
             }
         },
-        Rvalue::Aggregate(aggregate_kind, field_index) => (
-            vec![],
-            crate::aggregate::handle_aggregate(
-                ctx,
-                target_location,
-                aggregate_kind.as_ref(),
-                field_index,
-            ),
+        Rvalue::Aggregate(aggregate_kind, field_index) => crate::aggregate::handle_aggregate(
+            ctx,
+            target_location,
+            aggregate_kind.as_ref(),
+            field_index,
         ),
+
         Rvalue::Cast(
             CastKind::PointerCoercion(PointerCoercion::ClosureFnPointer(_), _),
             ref operand,

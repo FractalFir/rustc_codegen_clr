@@ -23,7 +23,7 @@ pub fn handle_aggregate<'tcx>(
     target_location: &Place<'tcx>,
     aggregate_kind: &AggregateKind<'tcx>,
     value_index: &IndexVec<FieldIdx, Operand<'tcx>>,
-) -> CILNode {
+) -> (Vec<CILRoot>, CILNode) {
     // Get CIL ops for each value
     let values: Vec<_> = value_index
         .iter()
@@ -65,7 +65,7 @@ pub fn handle_aggregate<'tcx>(
             // Check if this array is made up from uninit values
             if crate::operand::is_uninit(&value_index[FieldIdx::from_usize(0)], ctx) {
                 // This array is created from uninitalized data, so it itsefl is uninitialzed, so we can skip initializing it.
-                return super::place::place_get(target_location, ctx);
+                return (vec![], super::place::place_get(target_location, ctx));
             }
             let element = ctx.monomorphize(*element);
             let element = ctx.type_from_cache(element);
@@ -94,11 +94,7 @@ pub fn handle_aggregate<'tcx>(
                     .into(),
                 });
             }
-
-            CILNode::SubTrees(Box::new((
-                sub_trees.into(),
-                Box::new(super::place::place_get(target_location, ctx)),
-            )))
+            (sub_trees, (super::place::place_get(target_location, ctx)))
         }
         AggregateKind::Tuple => {
             let tuple_getter = super::place::place_adress(target_location, ctx);
@@ -129,10 +125,7 @@ pub fn handle_aggregate<'tcx>(
                     )),
                 });
             }
-            CILNode::SubTrees(Box::new((
-                sub_trees.into(),
-                Box::new(super::place::place_get(target_location, ctx)),
-            )))
+            (sub_trees, (super::place::place_get(target_location, ctx)))
         }
         AggregateKind::Closure(_def_id, _args) => {
             let closure_ty = ctx
@@ -156,10 +149,7 @@ pub fn handle_aggregate<'tcx>(
                 });
             }
 
-            CILNode::SubTrees(Box::new((
-                sub_trees.into(),
-                Box::new(place_get(target_location, ctx)),
-            )))
+            (sub_trees, (place_get(target_location, ctx)))
         }
         AggregateKind::Coroutine(_def_id, _args) => {
             let coroutine_ty = ctx
@@ -196,10 +186,7 @@ pub fn handle_aggregate<'tcx>(
                     ctx,
                 ));
             }
-            CILNode::SubTrees(Box::new((
-                sub_trees.into(),
-                Box::new(place_get(target_location, ctx)),
-            )))
+            (sub_trees, (place_get(target_location, ctx)))
         }
         AggregateKind::RawPtr(pointee, mutability) => {
             let pointee = ctx.monomorphize(*pointee);
@@ -223,15 +210,15 @@ pub fn handle_aggregate<'tcx>(
                 let ptr_tpe = ctx.type_from_cache(pointee);
                 assert_ne!(data_type, Type::Void);
                 // Pointer is thin, just directly assign
-                return CILNode::SubTrees(Box::new((
+                return (
                     [place_set(
                         target_location,
                         handle_operand(data, ctx).cast_ptr(ctx.nptr(ptr_tpe)),
                         ctx,
                     )]
                     .into(),
-                    Box::new(place_get(target_location, ctx)),
-                )));
+                    (place_get(target_location, ctx)),
+                );
             }
             assert!(pointer_to_is_fat(pointee,ctx.tcx(), ctx.instance()), "A pointer to {pointee:?} is not fat, but its metadata is {meta_ty:?}, and not a zst:{is_meta_zst}",is_meta_zst = crate::utilis::is_zst(meta_ty,  ctx.tcx()));
             let fat_ptr_type = get_type(fat_ptr, ctx);
@@ -258,10 +245,10 @@ pub fn handle_aggregate<'tcx>(
                 )),
             };
 
-            CILNode::SubTrees(Box::new((
+            (
                 [assign_ptr, assign_metadata].into(),
-                Box::new(place_get(target_location, ctx)),
-            )))
+                (place_get(target_location, ctx)),
+            )
         }
         _ => todo!("Unsuported aggregate kind {aggregate_kind:?}"),
     }
@@ -276,7 +263,7 @@ fn aggregate_adt<'tcx>(
     variant_idx: u32,
     fields: Vec<(u32, CILNode)>,
     active_field: Option<FieldIdx>,
-) -> CILNode {
+) -> (Vec<CILRoot>, CILNode) {
     let adt_type = ctx.monomorphize(adt_type);
     let adt_type_ref = get_type(adt_type, ctx).as_class_ref().unwrap();
     match adt.adt_kind() {
@@ -304,10 +291,7 @@ fn aggregate_adt<'tcx>(
                     desc: (field_desc),
                 });
             }
-            CILNode::SubTrees(Box::new((
-                sub_trees.into(),
-                Box::new(crate::place::place_get(target_location, ctx)),
-            )))
+            (sub_trees, (crate::place::place_get(target_location, ctx)))
         }
         AdtKind::Enum => {
             let adt_adress_ops = crate::place::place_adress(target_location, ctx);
@@ -352,10 +336,7 @@ fn aggregate_adt<'tcx>(
                 ));
             }
 
-            CILNode::SubTrees(Box::new((
-                sub_trees.into(),
-                Box::new(crate::place::place_get(target_location, ctx)),
-            )))
+            (sub_trees, (crate::place::place_get(target_location, ctx)))
         }
         AdtKind::Union => {
             let obj_getter = crate::place::place_adress(target_location, ctx);
@@ -372,7 +353,7 @@ fn aggregate_adt<'tcx>(
             let field_type = get_type(field_ty, ctx);
             // Seting a void field is a no-op.
             if field_type == cilly::v2::Type::Void {
-                return crate::place::place_get(target_location, ctx);
+                return (vec![], crate::place::place_get(target_location, ctx));
             }
 
             let field_name = field_name(adt_type, active_field.as_u32());
@@ -383,10 +364,7 @@ fn aggregate_adt<'tcx>(
                 value: Box::new(fields[0].1.clone()),
                 desc: ctx.alloc_field(desc),
             });
-            CILNode::SubTrees(Box::new((
-                sub_trees.into(),
-                Box::new(crate::place::place_get(target_location, ctx)),
-            )))
+            (sub_trees, (crate::place::place_get(target_location, ctx)))
         }
     }
 }
