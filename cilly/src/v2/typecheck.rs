@@ -121,6 +121,11 @@ pub enum TypeCheckError {
         fld: FieldIdx,
         val: Type,
     },
+    FieldNotPresent {
+        tpe: Type,
+        name: super::StringIdx,
+        owner: super::ClassRefIdx,
+    },
 }
 pub fn typecheck_err_to_string(
     root_idx: super::RootIdx,
@@ -718,6 +723,20 @@ impl CILNode {
                         field,
                     });
                 }
+                // Check that this type owns a matching field
+                if let Some(cdef) = asm.class_ref_to_def(field.owner()) {
+                    if !asm[cdef]
+                        .fields()
+                        .iter()
+                        .any(|(tpe, name, _offset)| *tpe == field.tpe() && *name == field.name())
+                    {
+                        return Err(TypeCheckError::FieldNotPresent {
+                            tpe: field.tpe(),
+                            name: field.name(),
+                            owner: field.owner(),
+                        });
+                    }
+                }
                 match addr_tpe {
                     Type::Ref(_) => Ok(asm.nref(field.tpe())),
                     Type::Ptr(_) => Ok(asm.nptr(field.tpe())),
@@ -749,6 +768,20 @@ impl CILNode {
                         expected_owner: field.owner(),
                         field,
                     });
+                }
+                // Check that this type owns a matching field
+                if let Some(cdef) = asm.class_ref_to_def(field.owner()) {
+                    if !asm[cdef]
+                        .fields()
+                        .iter()
+                        .any(|(tpe, name, _offset)| *tpe == field.tpe() && *name == field.name())
+                    {
+                        return Err(TypeCheckError::FieldNotPresent {
+                            tpe: field.tpe(),
+                            name: field.name(),
+                            owner: field.owner(),
+                        });
+                    }
                 }
                 Ok(field.tpe())
             }
@@ -941,13 +974,44 @@ impl CILRoot {
                 let (fld, addr, val) = boxed.as_ref();
                 let addr = asm[*addr].clone().typecheck(sig, locals, asm)?;
                 let val: Type = asm[*val].clone().typecheck(sig, locals, asm)?;
-                let field_tpe = asm[*fld].tpe();
+                let field = asm[*fld];
+                let field_tpe = field.tpe();
                 if !val.is_assignable_to(field_tpe, asm) {
                     return Err(TypeCheckError::FieldAssignWrongType {
                         field_tpe,
                         fld: *fld,
                         val,
                     });
+                }
+                let Some(pointed_tpe) = addr.pointed_to().map(|tpe| asm[tpe]) else {
+                    return Err(TypeCheckError::TypeNotPtr { tpe: addr });
+                };
+                let Type::ClassRef(pointed_owner) = pointed_tpe else {
+                    return Err(TypeCheckError::FieldAccessInvalidType {
+                        tpe: pointed_tpe,
+                        field,
+                    });
+                };
+                if pointed_owner != field.owner() {
+                    return Err(TypeCheckError::FieldOwnerMismatch {
+                        owner: pointed_owner,
+                        expected_owner: field.owner(),
+                        field,
+                    });
+                }
+                // Check that this type owns a matching field
+                if let Some(cdef) = asm.class_ref_to_def(field.owner()) {
+                    if !asm[cdef]
+                        .fields()
+                        .iter()
+                        .any(|(tpe, name, _offset)| *tpe == field.tpe() && *name == field.name())
+                    {
+                        return Err(TypeCheckError::FieldNotPresent {
+                            tpe: field.tpe(),
+                            name: field.name(),
+                            owner: field.owner(),
+                        });
+                    }
                 }
                 Ok(())
             }

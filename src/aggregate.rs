@@ -265,7 +265,9 @@ fn aggregate_adt<'tcx>(
     active_field: Option<FieldIdx>,
 ) -> (Vec<CILRoot>, CILNode) {
     let adt_type = ctx.monomorphize(adt_type);
-    let adt_type_ref = get_type(adt_type, ctx).as_class_ref().unwrap();
+    let adt_type_ref = get_type(adt_type, ctx)
+        .as_class_ref()
+        .unwrap_or_else(|| panic!("Type {adt_type:?} is not a valuetype."));
     match adt.adt_kind() {
         AdtKind::Struct => {
             let obj_getter = crate::place::place_adress(target_location, ctx);

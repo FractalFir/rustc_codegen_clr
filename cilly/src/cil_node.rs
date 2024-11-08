@@ -268,7 +268,6 @@ impl CILNode {
     }
     pub fn create_slice(
         slice_tpe: ClassRefIdx,
-
         asm: &mut Assembly,
         metadata: Self,
         ptr: Self,
@@ -411,11 +410,29 @@ impl CILNode {
         )))
     }
     pub fn transmute_on_stack(self, src: Type, target: Type, asm: &mut Assembly) -> Self {
-        let stack_addr = Self::stack_addr(self, asm.alloc_type(src), asm);
+        let main_module = *asm.main_module();
+
+        let sig = asm.sig([src], target);
+        let mref = asm.new_methodref(main_module, "transmute", sig, MethodKind::Static, vec![]);
+        CILNode::Call(Box::new(CallOpArgs {
+            args: Box::new([self]),
+            site: mref,
+        }))
+        /*
+        let stack_addr = {
+            let tpe_idx = asm.alloc_type(src);
+            let asm: &mut Assembly = asm;
+            /**/
+            CILNode::TemporaryLocal(Box::new((
+                tpe_idx,
+                [CILRoot::SetTMPLocal { value: self }].into(),
+                CILNode::LoadAddresOfTMPLocal,
+            )))
+        };
         Self::LdObj {
             ptr: Box::new(stack_addr.cast_ptr(asm.nptr(target))),
             obj: Box::new(target),
-        }
+        }*/
     }
     pub fn cxchng_res_val(
         old_val: Self,

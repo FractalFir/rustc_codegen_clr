@@ -20,7 +20,12 @@ mod native_passtrough;
 mod patch;
 use fxhash::FxHashMap;
 use patch::call_alias;
-use std::{env, io::Write, num::NonZeroU32, path::Path};
+use std::{
+    env,
+    io::Write,
+    num::NonZeroU32,
+    path::{Path, PathBuf},
+};
 mod aot;
 
 fn add_mandatory_statics(asm: &mut cilly::v2::Assembly) {
@@ -41,7 +46,17 @@ fn add_mandatory_statics(asm: &mut cilly::v2::Assembly) {
 
 static LIBC: std::sync::LazyLock<String> = std::sync::LazyLock::new(get_libc_);
 static LIBM: std::sync::LazyLock<String> = std::sync::LazyLock::new(get_libm_);
-
+static BACKUP_STD: std::sync::LazyLock<Option<PathBuf>> = std::sync::LazyLock::new(|| {
+    std::env::vars()
+        .filter_map(|(key, value)| {
+            if key == "BACKUP_STD" {
+                Some(value.into())
+            } else {
+                None
+            }
+        })
+        .next()
+});
 #[cfg(target_os = "linux")]
 fn get_libc_() -> String {
     let mut libc = None;
@@ -138,6 +153,25 @@ fn get_out_path<'a>(args: &'a [String]) -> &'a str {
         .next()
         .expect(&format!("No output file! {args:?}"))
 }
+fn link_dir(path: &Path, ar_to_link: &mut Vec<String>) {
+    let dir = std::fs::read_dir(path).unwrap();
+    for entry in dir {
+        let entry = entry.unwrap();
+        let metadata = entry.metadata().unwrap();
+        if metadata.is_file() && entry.file_name().to_str().unwrap().contains(".rlib") {
+            ar_to_link.push(entry.path().to_str().unwrap().to_owned());
+            eprintln!("Linking file {:?}.", entry.file_name());
+        }
+    }
+}
+// Links a prebuilt std if none present
+fn link_backup_std(to_link: &[&String], ar_to_link: &mut Vec<String>, backup: &Path) {
+    if !to_link.iter().chain(to_link).any(|linkable| {
+        linkable.contains("std") | linkable.contains("core") | linkable.contains("alloc")
+    }) {
+        link_dir(backup, ar_to_link);
+    }
+}
 fn main() {
     // Parse command line arguments
 
@@ -148,12 +182,15 @@ fn main() {
         .iter()
         .filter(|arg| arg.contains(".bc") || arg.contains(".cilly"))
         .collect();
-    let ar_to_link: Vec<_> = args
+    let mut ar_to_link: Vec<_> = args
         .iter()
         .filter(|arg| arg.contains(".rlib"))
         .cloned()
         .collect();
 
+    if let Some(backup_std) = BACKUP_STD.as_ref() {
+        link_backup_std(&to_link[..], &mut ar_to_link, backup_std);
+    }
     //ar_to_link.extend(link_dir_files(args));
     let output_file_path = get_out_path(args);
     // Configs
@@ -384,6 +421,9 @@ fn main() {
     cilly::v2::builtins::f16::generate_f16_ops(&mut final_assembly, &mut overrides, *C_MODE);
     cilly::v2::builtins::atomics::generate_all_atomics(&mut final_assembly, &mut overrides);
     cilly::v2::builtins::stack_addr(&mut final_assembly, &mut overrides);
+    cilly::v2::builtins::transmute(&mut final_assembly, &mut overrides);
+    cilly::v2::builtins::create_slice(&mut final_assembly, &mut overrides);
+
     if *C_MODE {
         cilly::v2::builtins::insert_exeception_stub(&mut final_assembly, &mut overrides);
         externs.insert("__dso_handle", LIBC.clone());

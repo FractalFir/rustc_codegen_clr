@@ -8,13 +8,13 @@ use crate::{
     utilis::{adt::FieldOffsetIterator, garg_to_string},
 };
 use cilly::{
-    add, ld_arg, mul, ptr_cast,
+    add, ld_arg, ptr_cast,
     tpe::simd::SIMDVector,
     v2::{
         cilnode::MethodKind, Access, BasicBlock, CILNode, CILRoot, ClassDef, ClassDefIdx, ClassRef,
         ClassRefIdx, Float, Int, MethodDef, MethodImpl, StringIdx, Type,
     },
-    Assembly, IntoAsmIndex,
+    Assembly, IntoAsmIndex, MethodRefIdx,
 };
 pub use r#type::*;
 use rustc_middle::ty::{AdtDef, AdtKind, FloatTy, IntTy, List, ParamEnv, Ty, TyKind, UintTy};
@@ -349,7 +349,7 @@ fn fixed_array(
         let elem_tpe_idx = asm.alloc_type(element);
         let elem_addr = add!(
             ptr_cast!(ld_arg!(0), *elem_tpe_idx),
-            mul!(ld_arg!(1), cilly::size_of!(elem_tpe_idx))
+            cilly::mul!(ld_arg!(1), cilly::size_of!(elem_tpe_idx))
         )
         .into_idx(asm);
         // Defintion of the set_Item method.

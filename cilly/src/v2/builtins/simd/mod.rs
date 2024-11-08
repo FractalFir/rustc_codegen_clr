@@ -213,6 +213,7 @@ pub fn simd(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
     simd_vec_from_val(asm, patcher);
     simd_or(asm, patcher);
     simd_add(asm, patcher);
+    simd_and(asm, patcher);
     simd_sub(asm, patcher);
     simd_allset(asm, patcher);
     simd_eq_all(asm, patcher);

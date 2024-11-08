@@ -1162,6 +1162,21 @@ pub fn handle_intrinsic<'tcx>(
             let eq = main_module.static_mref(&[vec, vec], vec, name, ctx);
             place_set(destination, call!(eq, [lhs, rhs]), ctx)
         }
+        "simd_and" => {
+            let vec = ctx.type_from_cache(
+                call_instance.args[0]
+                    .as_type()
+                    .expect("simd_and works only on types!"),
+            );
+
+            let lhs = handle_operand(&args[0].node, ctx);
+            let rhs = handle_operand(&args[1].node, ctx);
+            let name = ctx.alloc_string("simd_and");
+            let main_module = ctx.main_module();
+            let main_module = ctx[*main_module].clone();
+            let eq = main_module.static_mref(&[vec, vec], vec, name, ctx);
+            place_set(destination, call!(eq, [lhs, rhs]), ctx)
+        }
         "simd_sub" => {
             let vec = ctx.type_from_cache(
                 call_instance.args[0]
@@ -1174,14 +1189,14 @@ pub fn handle_intrinsic<'tcx>(
             let name = ctx.alloc_string("simd_sub");
             let main_module = ctx.main_module();
             let main_module = ctx[*main_module].clone();
-            let eq = main_module.static_mref(&[vec, vec], vec, name, ctx);
-            place_set(destination, call!(eq, [lhs, rhs]), ctx)
+            let sub = main_module.static_mref(&[vec, vec], vec, name, ctx);
+            place_set(destination, call!(sub, [lhs, rhs]), ctx)
         }
         "simd_mul" => {
             let vec = ctx.type_from_cache(
                 call_instance.args[0]
                     .as_type()
-                    .expect("simd_sub works only on types!"),
+                    .expect("simd_mul works only on types!"),
             );
 
             let lhs = handle_operand(&args[0].node, ctx);
@@ -1189,22 +1204,43 @@ pub fn handle_intrinsic<'tcx>(
             let name = ctx.alloc_string("simd_mul");
             let main_module = ctx.main_module();
             let main_module = ctx[*main_module].clone();
-            let eq = main_module.static_mref(&[vec, vec], vec, name, ctx);
-            place_set(destination, call!(eq, [lhs, rhs]), ctx)
+            let mul = main_module.static_mref(&[vec, vec], vec, name, ctx);
+            place_set(destination, call!(mul, [lhs, rhs]), ctx)
         }
         "simd_fabs" => {
             let vec = ctx.type_from_cache(
                 call_instance.args[0]
                     .as_type()
-                    .expect("simd_sub works only on types!"),
+                    .expect("simd_fabs works only on types!"),
             );
 
             let lhs = handle_operand(&args[0].node, ctx);
             let name = ctx.alloc_string("simd_abs");
             let main_module = ctx.main_module();
             let main_module = ctx[*main_module].clone();
-            let eq = main_module.static_mref(&[vec], vec, name, ctx);
-            place_set(destination, call!(eq, [lhs,]), ctx)
+            let abs = main_module.static_mref(&[vec], vec, name, ctx);
+            place_set(destination, call!(abs, [lhs,]), ctx)
+        }
+        "simd_bitmask" => {
+            let vec: Type = ctx.type_from_cache(
+                call_instance.args[0]
+                    .as_type()
+                    .expect("simd_bitmask works only on types!"),
+            );
+            let int = ctx.type_from_cache(
+                call_instance.args[1]
+                    .as_type()
+                    .expect("simd_bitmask works only on types!"),
+            );
+            let int = int
+                .as_int()
+                .expect("simd_bitmask only currently supports bitpacking ints.");
+            let lhs = handle_operand(&args[0].node, ctx);
+            let name = ctx.alloc_string("simd_get_most_significant_bits");
+            let main_module = ctx.main_module();
+            let main_module = ctx[*main_module].clone();
+            let most_significant_bits = main_module.static_mref(&[vec], Type::Int(int), name, ctx);
+            place_set(destination, call!(most_significant_bits, [lhs]), ctx)
         }
         "simd_neg" => {
             let vec = ctx.type_from_cache(

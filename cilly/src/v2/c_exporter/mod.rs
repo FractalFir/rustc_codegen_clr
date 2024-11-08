@@ -11,6 +11,8 @@ use crate::{
 };
 config!(NO_SFI, bool, false);
 config!(ANSI_C, bool, false);
+config!(UB_CHECKS, bool, true);
+
 use super::{
     asm::MAIN_MODULE,
     bimap::IntoBiMapIndex,
@@ -54,7 +56,7 @@ fn escape_ident(ident: &str) -> String {
     // Check if reserved.
     match escaped.as_str() {
         "int" | "default" | "float" | "double" | "long" | "short" | "register" | "stderr"
-        | "environ" => {
+        | "environ" | "struct" | "union" | "linux" => {
             format!("i{}", encode(hash64(&escaped)))
         }
         _ => escaped,
@@ -123,6 +125,8 @@ fn mref_to_name(mref: &MethodRef, asm: &Assembly) -> String {
             .stack_inputs(asm)
             .iter()
             .any(|tpe| matches!(tpe, Type::SIMDVector(_)))
+        || mname == "transmute"
+        || mname == "create_slice"
     {
         let mangled = escape_ident(
             &asm[mref.sig()]
@@ -1143,14 +1147,16 @@ impl Exporter for CExporter {
         let exe_out = target;
 
         let mut cmd = std::process::Command::new(std::env::var("CC").unwrap_or("cc".to_owned()));
-        cmd.arg(c_path)
-        .arg("-o")
-        .arg(exe_out)
-        .arg("-g")
-        .args(["-fsanitize=undefined,address,alignment","-fno-sanitize=leak","-fno-sanitize-recover"])
-        .arg("-Ofast")
-        // .arg("-FOLD") saves up on space, consider enabling.
-        ;
+        cmd.arg(c_path).arg("-o").arg(exe_out).arg("-g");
+
+        if *UB_CHECKS {
+            cmd.args([
+                "-fsanitize=undefined,alignment",
+                "-fno-sanitize=leak",
+                "-fno-sanitize-recover",
+            ])
+            .arg("-Ofast");
+        }
         if self.is_lib {
             cmd.arg("-c");
         }

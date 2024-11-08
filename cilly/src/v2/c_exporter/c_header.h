@@ -365,6 +365,13 @@ uint32_t System_UInt32_RotateRightu4i4u4(uint32_t val, int32_t ammount)
     abort();
     return 0;
 }
+
+uintptr_t System_UIntPtr_RotateRightusi4us(uintptr_t val, uintptr_t ammount)
+{
+    fprintf(stderr, "Can't System_UIntPtr_RotateRightusi4us yet.\n");
+    abort();
+    return 0;
+}
 uint8_t System_Byte_RotateRightu1i4u1(uint8_t val, int32_t ammount)
 {
     fprintf(stderr, "Can't System_Byte_RotateRightu1i4u1 yet.\n");
@@ -597,14 +604,24 @@ intptr_t System_Runtime_InteropServices_Marshal_StringToCoTaskMemUTF8stis(char *
     memcpy(ptr, str, len + 1);
     return len;
 }
-typedef struct __simdvecf44
-{
-    float arr[4];
-} __simdvecf44;
-typedef struct __simdveci44
-{
-    int32_t arr[4];
-} __simdveci44;
+
+#define TYPEDEF_SIMDVEC(TYPE, MANGLED, SIZE) \
+    typedef struct __simdvec##MANGLED##SIZE  \
+    {                                        \
+        TYPE arr[SIZE];                      \
+    } __simdvec##MANGLED##SIZE;
+#define TYPEDEF_SIMDVECS_TYPE(TYPE, MANGLED) TYPEDEF_SIMDVEC(TYPE, MANGLED, 2) TYPEDEF_SIMDVEC(TYPE, MANGLED, 4) TYPEDEF_SIMDVEC(TYPE, MANGLED, 8) TYPEDEF_SIMDVEC(TYPE, MANGLED, 16) TYPEDEF_SIMDVEC(TYPE, MANGLED, 32) TYPEDEF_SIMDVEC(TYPE, MANGLED, 64)
+TYPEDEF_SIMDVECS_TYPE(int8_t, i1)
+TYPEDEF_SIMDVECS_TYPE(int16_t, i2)
+TYPEDEF_SIMDVECS_TYPE(int32_t, i4)
+TYPEDEF_SIMDVECS_TYPE(int64_t, i8)
+TYPEDEF_SIMDVECS_TYPE(uint8_t, u1)
+TYPEDEF_SIMDVECS_TYPE(uint16_t, u2)
+TYPEDEF_SIMDVECS_TYPE(uint32_t, u4)
+TYPEDEF_SIMDVECS_TYPE(uint64_t, u8)
+TYPEDEF_SIMDVECS_TYPE(float, f4)
+TYPEDEF_SIMDVECS_TYPE(double, f8)
+
 const float inff = 1.0 / 0.0;
 const double inf = 1.0 / 0.0;
 int fcntl(int fd, int op, ...);
