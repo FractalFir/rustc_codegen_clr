@@ -12,6 +12,7 @@ use crate::{
 config!(NO_SFI, bool, false);
 config!(ANSI_C, bool, false);
 config!(UB_CHECKS, bool, true);
+config!(SHORT_TYPENAMES, bool, false);
 
 use super::{
     asm::MAIN_MODULE,
@@ -42,6 +43,7 @@ fn escape_ident(ident: &str) -> String {
     let mut escaped = ident
         .replace(['.', ' '], "_")
         .replace('~', "_tilda_")
+        .replace('=', "_eq_")
         .replace("#", "_pound_")
         .replace(":", "_col_")
         .replace("[", "_srpar_")
@@ -56,7 +58,8 @@ fn escape_ident(ident: &str) -> String {
     // Check if reserved.
     match escaped.as_str() {
         "int" | "default" | "float" | "double" | "long" | "short" | "register" | "stderr"
-        | "environ" | "struct" | "union" | "linux" => {
+        | "environ" | "struct" | "union" | "linux" | "inline" | "asm" | "signed" | "bool"
+        | "char" | "case" | "switch" | "volatile" => {
             format!("i{}", encode(hash64(&escaped)))
         }
         _ => escaped,
@@ -1154,8 +1157,9 @@ impl Exporter for CExporter {
                 "-fsanitize=undefined,alignment",
                 "-fno-sanitize=leak",
                 "-fno-sanitize-recover",
-            ])
-            .arg("-Ofast");
+            ]);
+        } else {
+            cmd.arg("-Ofast");
         }
         if self.is_lib {
             cmd.arg("-c");

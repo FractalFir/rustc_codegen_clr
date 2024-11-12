@@ -7,12 +7,12 @@ use super::{
     MethodRefIdx, NodeIdx, RootIdx, SigIdx, StaticFieldDesc, StaticFieldIdx, StringIdx, Type,
     TypeIdx,
 };
-use crate::{asm::Assembly as V1Asm, v2::MethodImpl};
+use crate::{asm::Assembly as V1Asm, utilis::encode, v2::MethodImpl};
 use crate::{config, IString};
-use fxhash::{FxHashMap, FxHashSet};
+use fxhash::{hash64, FxHashMap, FxHashSet};
 
 use serde::{Deserialize, Serialize};
-use std::{any::type_name, ops::Index};
+use std::{any::type_name, collections::HashSet, ops::Index};
 
 pub type MissingMethodPatcher =
     FxHashMap<StringIdx, Box<dyn Fn(MethodRefIdx, &mut Assembly) -> MethodImpl>>;
@@ -972,24 +972,39 @@ impl Assembly {
     ) {
         (&mut self.class_defs, &self.strings)
     }
-
+    pub fn iter_nodes(&self) -> impl Iterator<Item = &CILNode> {
+        self.nodes.0.iter()
+    }
+    pub fn iter_roots(&self) -> impl Iterator<Item = &CILRoot> {
+        self.roots.0.iter()
+    }
     pub fn remove_dead_statics(&mut self) {
-        let defs: Vec<_> = self.iter_class_def_ids().copied().collect();
-        for class_id in defs {
-            let class = self.get_class_def(class_id);
-            // Collect all statics which, to which there exists a corresponding static field desc.
-            let statics: Vec<_> = class
-                .static_fields()
-                .iter()
-                .copied()
-                .filter(|(tpe, name, _)| {
-                    self.statics
-                        .contais_val(StaticFieldDesc::new(*class_id, *name, *tpe))
-                })
-                .collect();
-            let class = self.class_mut(class_id);
-            *class.static_fields_mut() = statics;
-        }
+        /*// Check which statics are referenced by real code.
+                let alive_statics: FxHashSet<StaticFieldIdx> = self
+                    .iter_nodes()
+                    .filter_map(|node| match node {
+                        CILNode::LdStaticField(fld) | CILNode::LdStaticFieldAdress(fld) => Some(*fld),
+                        _ => None,
+                    })
+                    .collect();
+                let defs: Vec<_> = self.iter_class_def_ids().copied().collect();
+                for class_id in defs {
+                    let class = self.get_class_def(class_id).clone();
+                    // Collect all statics which, to which there exists a corresponding static field desc.
+                    let statics: Vec<_> = class
+                        .static_fields()
+                        .iter()
+                        .copied()
+                        .filter(|(tpe, name, _)| {
+                            alive_statics
+                                .contains(&self.alloc_sfld(StaticFieldDesc::new(*class_id, *name, *tpe)))
+                        })
+                        .collect();
+                    let class = self.class_mut(class_id);
+                    *class.static_fields_mut() = statics;
+                }
+                // After removing all statics whose address nor value is not taken, replace any writes to those statics with pops.
+        */
     }
     pub fn fix_aligement(&mut self) {
         let method_def_idxs: Box<[_]> = self.method_defs.keys().copied().collect();
@@ -1026,6 +1041,20 @@ impl Assembly {
     pub fn method_refs(&self) -> &BiMap<MethodRefIdx, MethodRef> {
         &self.method_refs
     }
+
+    pub fn strings(&self) -> &StringMap {
+        &self.strings
+    }
+
+    pub fn shorten_strings(&mut self, size_cap: usize) {
+        self.strings.map_values(|string| {
+            if string.len() > size_cap {
+                eprint!("shortening {string}");
+                *string = encode(hash64(string)).into();
+                eprintln!("to {string}");
+            }
+        })
+    }
 }
 /// An initializer, which runs before everything else. By convention, it is used to initialize static / const data. Should not execute any user code
 pub const CCTOR: &str = ".cctor";
@@ -1042,7 +1071,7 @@ fn test_encoded_stats() {
     assert_eq!(encoded_stats(&u64::MAX), (type_name::<u64>(), 10));
     assert_eq!(encoded_stats(&0_i32), (type_name::<i32>(), 1));
 }
-fn encoded_stats<T: Serialize + for<'a> Deserialize<'a>>(val: &T) -> (&'static str, usize) {
+pub fn encoded_stats<T: Serialize + for<'a> Deserialize<'a>>(val: &T) -> (&'static str, usize) {
     let buff = postcard::to_allocvec(val).unwrap();
     let start = std::time::Instant::now();
     let _: T = postcard::from_bytes(&buff).unwrap();

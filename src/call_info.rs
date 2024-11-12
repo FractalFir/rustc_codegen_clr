@@ -24,8 +24,11 @@ impl CallInfo {
             Err(_error) => todo!(),
         };
         let conv = fn_abi.conv;
+        #[allow(clippy::match_same_arms)]
         match conv {
             Conv::C | Conv::Rust => (),
+            // TODO: check this is 100% correct!
+            Conv::X86_64SysV => (),
             _ => panic!("ERROR:calling using convention {conv:?} is not supported!"),
         }
         //assert!(!fn_abi.c_variadic);
@@ -50,7 +53,8 @@ impl CallInfo {
             | TargetAbi::RustIntrinsic
             | TargetAbi::Rust
             | TargetAbi::RustCold
-            | TargetAbi::Unadjusted => false,
+            | TargetAbi::Unadjusted
+            | TargetAbi::SysV64 { unwind: _ } => false,
 
             TargetAbi::RustCall => true, /*Err(CodegenError::FunctionABIUnsuported(
             "\"rust_call\" ABI, used for things like clsoures, is not supported yet!",

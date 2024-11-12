@@ -1044,45 +1044,6 @@ pub fn cargo_build_env() -> String {
     } else {
         ""
     };
-    let liblet_path = build_liblets(&backend, &linker, link_args, radomize_layout)
-        .display()
-        .to_string();
-    format!("-Z codegen-backend={backend} -C linker={linker} -C link-args={link_args} -C link_args={liblet_path}  {radomize_layout}")
-}
-fn build_liblets(backend: &str, linker: &str, link_args: &str, _: &str) -> PathBuf {
-    let panic_info = include_str!("liblets/panic_info.rs");
-    let mut tmp = std::env::current_exe().unwrap();
-    tmp.pop();
-    tmp.push("panic_info.rs");
-    let mut out = std::env::current_exe().unwrap();
-    out.pop();
-    out.push("liblets.rlib");
-    if std::fs::exists(&out).unwrap() {
-        return out;
-    }
 
-    std::io::Write::write(
-        &mut std::fs::File::create(&tmp).unwrap(),
-        panic_info.as_bytes(),
-    )
-    .unwrap();
-    let mut cmd = std::process::Command::new("rustc");
-    cmd.args([
-        "-Z",
-        &format!("codegen-backend={backend}"),
-        "-C",
-        &format!("linker={linker}"),
-        "-C",
-        &format!("link-args={link_args}"),
-        &tmp.display().to_string(),
-        "--crate-type=rlib",
-        "-O",
-        "-o",
-        &out.display().to_string(),
-        "--edition=2021",
-    ]);
-    let _ = cmd.output().unwrap();
-    out
+    format!("-Z codegen-backend={backend} -C linker={linker} -C link-args={link_args}   {radomize_layout}")
 }
-/*
- */

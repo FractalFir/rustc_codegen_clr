@@ -710,14 +710,21 @@ pub fn add_allocation(alloc_id: u64, asm: &mut cilly::v2::Assembly, tcx: TyCtxt<
     let byte_hash = calculate_hash(&bytes);
     let alloc_fld: IString = if let Some(krate) = krate {
         format!(
-            "al_{}_{}_{}",
+            "al_{}_{}_{}_{thread_local}_{}",
             encode(alloc_id),
             encode(byte_hash),
+            const_allocation.len(),
             encode(u64::from(krate.as_u32())),
         )
         .into()
     } else {
-        format!("al_{}_{}", encode(alloc_id), encode(byte_hash)).into()
+        format!(
+            "al_{}_{}_{}_{thread_local}",
+            encode(alloc_id),
+            encode(byte_hash),
+            const_allocation.len()
+        )
+        .into()
     };
     let name = asm.alloc_string(alloc_fld.clone());
     let field_desc = StaticFieldDesc::new(*asm.main_module(), name, asm.nptr(Type::Int(Int::U8)));
@@ -727,6 +734,8 @@ pub fn add_allocation(alloc_id: u64, asm: &mut cilly::v2::Assembly, tcx: TyCtxt<
     if main_module.has_static_field(name, field_desc.tpe()) {
         return CILNode::LDStaticField(Box::new(field_desc));
     }
+    asm.add_static(uint8_ptr, &*alloc_fld, thread_local, main_module_id);
+
     let init_method = allocation_initializer_method(const_allocation, &alloc_fld, asm, tcx);
     let init_method = MethodDef::from_v1(&init_method, asm, main_module_id);
     let initialzer = asm.new_method(init_method);
@@ -740,8 +749,6 @@ pub fn add_allocation(alloc_id: u64, asm: &mut cilly::v2::Assembly, tcx: TyCtxt<
     } else {
         asm.add_cctor(&[root]);
     };
-
-    asm.add_static(uint8_ptr, alloc_fld, thread_local, main_module_id);
 
     CILNode::LDStaticField(Box::new(field_desc))
 }

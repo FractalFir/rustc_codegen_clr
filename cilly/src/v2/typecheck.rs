@@ -1015,6 +1015,31 @@ impl CILRoot {
                 }
                 Ok(())
             }
+            Self::Call(boxed) => {
+                let (mref, args) = boxed.as_ref();
+                let mref = asm[*mref].clone();
+                let call_sig = asm[mref.sig()].clone();
+                match mref.kind() {
+                    crate::cilnode::MethodKind::Static => {
+                        let expected = call_sig.inputs().len();
+                        let got = args.len();
+                        if expected != got {
+                            return Err(TypeCheckError::CallArgcWrong {
+                                expected,
+                                got,
+                                mname: asm[mref.name()].into(),
+                            });
+                        }
+                    }
+                    crate::cilnode::MethodKind::Instance
+                    | crate::cilnode::MethodKind::Virtual
+                    | crate::cilnode::MethodKind::Constructor => (),
+                }
+                for arg in args {
+                    let _arg = asm[*arg].clone().typecheck(sig, locals, asm)?;
+                }
+                Ok(())
+            }
             _ => {
                 for node in self.nodes() {
                     asm.get_node(*node).clone().typecheck(sig, locals, asm)?;

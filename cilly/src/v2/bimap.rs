@@ -65,6 +65,19 @@ impl<Key: IntoBiMapIndex + Eq + Hash + Clone + Debug, Value: Eq + Hash + Clone +
     pub fn iter_keys(&self) -> impl Iterator<Item = Key> {
         (1..(self.0.len() as u32)).map(|key| Key::from_index(NonZeroU32::new(key).unwrap()))
     }
+
+    pub fn map_values(&mut self, map: impl Fn(&mut Value)) {
+        self.0.iter_mut().map(&map);
+        self.1 = self
+            .1
+            .iter()
+            .map(|(value, key)| {
+                let mut value = value.clone();
+                map(&mut value);
+                (value, key.clone())
+            })
+            .collect();
+    }
 }
 pub type BiMapIndex = NonZeroU32;
 pub trait IntoBiMapIndex {

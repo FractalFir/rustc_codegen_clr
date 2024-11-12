@@ -9,8 +9,10 @@ use std::{
 use cilly::{
     c_exporter::CExporter,
     v2::{
-        asm::Assembly, cillyir_exporter::CillyIRExpoter, il_exporter::ILExporter, Access, CILIter,
-        MethodImpl, MethodRefIdx,
+        asm::{encoded_stats, Assembly},
+        cillyir_exporter::CillyIRExpoter,
+        il_exporter::ILExporter,
+        Access, CILIter, MethodImpl, MethodRefIdx,
     },
     BasicBlock, CILNode, CILRoot, MethodDef,
 };
@@ -242,13 +244,20 @@ fn main() {
                 misolate(&mut asm, *isolate_id)
             }
             "find_invalid_c" => find_invalid_c(&asm),
-            "asmstats" => println!(
-                "methoddefs:{}",
-                asm.method_refs()
-                    .iter_keys()
-                    .filter_map(|key| asm.method_ref_to_def(key))
-                    .count()
-            ),
+            "asmstats" => {
+                println!(
+                    "methoddefs:{}",
+                    asm.method_refs()
+                        .iter_keys()
+                        .filter_map(|key| asm.method_ref_to_def(key))
+                        .count()
+                );
+                println!("strings:{:?}", encoded_stats(asm.strings()));
+            }
+            "shorten_strings" => {
+                let size_cap: usize = body.parse().unwrap();
+                asm.shorten_strings(size_cap)
+            }
             _ => eprintln!("unknown command {cmd:?}"),
         }
     }

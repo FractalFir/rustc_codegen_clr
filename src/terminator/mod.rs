@@ -26,6 +26,7 @@ pub fn handle_call_terminator<'tycxt>(
     let mut trees = Vec::new();
 
     let func_ty = func.ty(ctx.body(), ctx.tcx());
+    let fn_ty = ctx.monomorphize(func_ty);
     // Get the pointed type, if byref;
     let func_ty = match func_ty.builtin_deref(true) {
         None => func_ty,
@@ -33,8 +34,6 @@ pub fn handle_call_terminator<'tycxt>(
     };
     match func_ty.kind() {
         TyKind::FnDef(_, _) => {
-            let fn_ty = ctx.monomorphize(func_ty);
-
             assert!(
                 fn_ty.is_fn(),
                 "fn_ty{fn_ty:?} in call is not a function type!"
@@ -47,9 +46,7 @@ pub fn handle_call_terminator<'tycxt>(
         TyKind::FnPtr(sig, _) => {
             //eprintln!("Calling FnPtr:{func_ty:?}");
 
-            let sig = ctx
-                .tcx()
-                .normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), *sig);
+            let sig = ctx.tcx().instantiate_bound_regions_with_erased(*sig);
             let sig = crate::function_sig::from_poly_sig(ctx, sig);
             let mut arg_operands = Vec::new();
             for arg in args {

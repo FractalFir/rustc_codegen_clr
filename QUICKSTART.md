@@ -36,7 +36,9 @@ This tool supports both the "Core" and "Mono" flavours of ILASM. While you *can*
 
 ### Checking the dependencies 
 
-After you installed `dotnet` and `ilasm`, run `cargo run --bin rustflags` to check if you installed `ilasm` and `dotnet` correctly. This program will check your enviroment, build the project, and print the flags you need to use it.
+After you installed `dotnet` and `ilasm`, run `./bin/rustflags.rs` to check if you installed `ilasm` and `dotnet` correctly. 
+
+This script uses the experimental `cargo-script` feaure to will check your enviroment, build the project, and print the flags you need to use it.
 
 ### Running tests
 

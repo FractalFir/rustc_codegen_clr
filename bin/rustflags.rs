@@ -1,15 +1,8 @@
-use cilly::v2::asm::ILASM_PATH;
-
-fn ilasm_check() {
-    match std::process::Command::new(&*ILASM_PATH).output(){
-        Ok(_)=>println!("An CIL assembler has been detected."),
-        Err(err)=>panic!("Could not find the CIL assembler at name/path {:?}, due to {err:?}. 
-Please instal the CIL assembler, and/or set the ILASM_PATH enviroment variable to point to your CIL assembler.",*ILASM_PATH)
-    }
-}
-
+#!/usr/bin/env -S cargo +nightly -Zscript
+mod build_backend;
+use crate::build_backend::ilasm_check;
 fn main() {
-    let build_env = rustc_codegen_clr::compile_test::cargo_build_env();
+    let build_env = crate::build_backend::cargo_build_env();
     let print_raw_env = std::env::args().any(|arg| arg == "--print_raw_env");
     let setup_command = std::env::args().any(|arg| arg == "--setup_command");
     if print_raw_env {
