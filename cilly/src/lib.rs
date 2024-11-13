@@ -86,6 +86,20 @@ macro_rules! config {
                 .unwrap_or($default)
         });
     };
+    ($name:ident,$tpe:ty,$default:expr) => {
+        pub static $name: std::sync::LazyLock<$tpe> = std::sync::LazyLock::new(|| {
+            std::env::vars()
+                .find_map(|(key, value)| {
+                    if key == stringify!($name) {
+                        Some(value)
+                    } else {
+                        None
+                    }
+                })
+                .map(|value| value.parse().unwrap())
+                .unwrap_or($default)
+        });
+    };
 }
 config! {DEAD_CODE_ELIMINATION,bool,true}
 

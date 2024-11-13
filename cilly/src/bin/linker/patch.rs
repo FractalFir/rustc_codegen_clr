@@ -60,7 +60,7 @@ pub fn call_alias(
                                 asm.alloc_node(CILNode::IntCast { input: src, target:*int, extend:cilly::cilnode::ExtendKind::ZeroExtend })
                             },
                             (
-                                Type::Ptr(dst) , 
+                                Type::Ptr(dst),
                                 Type::Ptr(_) | Type::Int(Int::ISize | Int::USize) | Type::FnPtr(_) ,
                             )=>{
                                 let arg = asm.alloc_node(CILNode::LdArg(arg as u32));

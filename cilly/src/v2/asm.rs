@@ -12,7 +12,7 @@ use crate::{config, IString};
 use fxhash::{hash64, FxHashMap, FxHashSet};
 
 use serde::{Deserialize, Serialize};
-use std::{any::type_name, collections::HashSet, ops::Index};
+use std::{any::type_name, collections::HashSet, num::NonZero, ops::Index};
 
 pub type MissingMethodPatcher =
     FxHashMap<StringIdx, Box<dyn Fn(MethodRefIdx, &mut Assembly) -> MethodImpl>>;
@@ -522,9 +522,60 @@ impl Assembly {
             vec![].into(),
         ))
     }
-    pub fn has_cctor(&mut self) -> bool {
-        let cctor = self.cctor_mref();
+    pub fn has_cctor(&self) -> bool {
+        let Some(main_module) = self.get_prealllocated_string(MAIN_MODULE) else {
+            return false;
+        };
+        let class_def = ClassDef::new(
+            main_module,
+            false,
+            0,
+            None,
+            vec![],
+            vec![],
+            Access::Public,
+            None,
+            None,
+        );
+
+        let Some(cref) = self.get_prealllocated_class_ref(class_def.ref_to()) else {
+            return false;
+        };
+        // Check if that definition already exists
+        let main_module = if self.class_defs.contains_key(&ClassDefIdx(cref)) {
+            ClassDefIdx(cref)
+        } else {
+            return false;
+        };
+
+        let Some(user_init) = self.get_prealllocated_string(CCTOR) else {
+            return false;
+        };
+        let input = [];
+        let output = Type::Void;
+        let Some(ctor_sig) = self.get_prealllocated_sig(FnSig::new(input.into(), output)) else {
+            return false;
+        };
+        let Some(cctor) = self.get_prealllocated_methodref(MethodRef::new(
+            *main_module,
+            user_init,
+            ctor_sig,
+            MethodKind::Static,
+            vec![].into(),
+        )) else {
+            return false;
+        };
+
         self.method_ref_to_def(cctor).is_some()
+    }
+    pub fn get_prealllocated_class_ref(&self, cref: ClassRef) -> Option<ClassRefIdx> {
+        self.class_refs.1.get(&(cref.into())).copied()
+    }
+    pub fn get_prealllocated_sig(&self, sig: FnSig) -> Option<SigIdx> {
+        self.sigs.1.get(&(sig.into())).copied()
+    }
+    pub fn get_prealllocated_methodref(&self, mref: MethodRef) -> Option<MethodRefIdx> {
+        self.method_refs.1.get(&(mref.into())).copied()
     }
     /// Returns a reference to the static initializer
     pub fn cctor(&mut self) -> MethodDefIdx {
@@ -1006,6 +1057,48 @@ impl Assembly {
                 // After removing all statics whose address nor value is not taken, replace any writes to those statics with pops.
         */
     }
+    pub fn split_to_parts(&self, parts: u32) -> Vec<Self> {
+        let lib_name = StringIdx::from_index(std::num::NonZeroU32::new(1).unwrap());
+        let mut part_asms = vec![];
+        for rem in 0..parts {
+            let mut part = self.clone();
+            part.method_defs.iter_mut().for_each(|(idx, def)| {
+                if idx.as_bimap_index().get()%parts != rem{
+                    /*if let MethodImpl::MethodBody {
+                        blocks: _,
+                        locals: _,
+                    } = def.resolved_implementation(self).clone()
+                    {
+                        *def.implementation_mut() = MethodImpl::Extern {
+                            lib: lib_name,
+                            preserve_errno: false,
+                        }
+                    }*/
+                    *def.implementation_mut() = MethodImpl::Extern {
+                        lib: lib_name,
+                        preserve_errno: false,
+                    }
+                }
+            });
+            part.eliminate_dead_types();
+            part = part.link_gc();
+            part_asms.push(part);
+        }
+        part_asms
+    }
+    pub fn only_statics(&self) -> Self {
+        let lib_name = StringIdx::from_index(std::num::NonZeroU32::new(1).unwrap());
+        let mut empty = self.clone();
+        empty.method_defs.iter_mut().for_each(|(_, def)| {
+            *def.implementation_mut() = MethodImpl::Extern {
+                lib: lib_name,
+                preserve_errno: false,
+            }
+        });
+        empty.eliminate_dead_types();
+        empty = empty.link_gc();
+        empty
+    }
     pub fn fix_aligement(&mut self) {
         let method_def_idxs: Box<[_]> = self.method_defs.keys().copied().collect();
         for method in method_def_idxs {
@@ -1054,6 +1147,12 @@ impl Assembly {
                 eprintln!("to {string}");
             }
         })
+    }
+
+    fn link_gc(self) -> Self {
+        let mut clone = self.clone();
+        clone = clone.link(self);
+        clone
     }
 }
 /// An initializer, which runs before everything else. By convention, it is used to initialize static / const data. Should not execute any user code
@@ -1109,6 +1208,20 @@ pub fn ilasm_path() -> &'static str {
     ILASM_PATH.as_str()
 }
 
+fn chunked_range(top: u32, parts: u32) -> impl Iterator<Item = std::ops::Range<u32>> {
+    let chunk_size = top.div_ceil(parts); // Ceiling of n / m
+
+    assert!(parts < top);
+    (0..top).filter_map(move |i| {
+        let start = i * chunk_size;
+        let end = std::cmp::min(start + chunk_size, top);
+        if start < top {
+            Some(start..end)
+        } else {
+            None
+        }
+    })
+}
 #[doc = "Specifies the path to the IL assembler."]
 pub static ILASM_PATH: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
     std::env::vars()
@@ -1126,6 +1239,25 @@ pub static ILASM_PATH: std::sync::LazyLock<String> = std::sync::LazyLock::new(||
 /// Finds the default instance of the IL assembler.
 fn get_default_ilasm() -> String {
     "ilasm".into()
+}
+#[test]
+fn test_chunked_range() {
+    for count in 1..100 {
+        for parts in 1..count {
+            let range = chunked_range(count, parts);
+            assert_eq!(
+                range.flatten().max().unwrap(),
+                count - 1,
+                "count:{count},parts:{parts},range:"
+            );
+            let range = chunked_range(count, parts);
+            assert_eq!(
+                range.flatten().count(),
+                count.try_into().unwrap(),
+                "count:{count},parts:{parts},range:"
+            );
+        }
+    }
 }
 #[test]
 fn test_get_default_ilasm() {

@@ -1,6 +1,6 @@
 // This exporter is WIP.
 #![allow(dead_code, unused_imports, unused_variables, clippy::let_unit_value)]
-use std::{collections::HashSet, io::Write};
+use std::{collections::HashSet, io::Write, path::Path};
 // Strips debuginfo: `#line [0-9]+ "[a-z/.\-0-9_]+"`
 use fxhash::{hash64, FxHashSet, FxHasher};
 
@@ -13,7 +13,7 @@ config!(NO_SFI, bool, false);
 config!(ANSI_C, bool, false);
 config!(UB_CHECKS, bool, true);
 config!(SHORT_TYPENAMES, bool, false);
-
+config!(PARTS, u32, 1);
 use super::{
     asm::MAIN_MODULE,
     bimap::IntoBiMapIndex,
@@ -58,8 +58,8 @@ fn escape_ident(ident: &str) -> String {
     // Check if reserved.
     match escaped.as_str() {
         "int" | "default" | "float" | "double" | "long" | "short" | "register" | "stderr"
-        | "environ" | "struct" | "union" | "linux" | "inline" | "asm" | "signed" | "bool"
-        | "char" | "case" | "switch" | "volatile" => {
+        | "environ" | "struct" | "union" | "linux" | "inline" | "asm" | "signed" | "unsigned"
+        | "bool" | "char" | "case" | "switch" | "volatile" | "auto" | "void" | "unix" => {
             format!("i{}", encode(hash64(&escaped)))
         }
         _ => escaped,
@@ -928,7 +928,14 @@ impl CExporter {
                 | "syscall"
                 | "fcntl"
                 | "execvp"
-                | "pthread_create_wrapper" => return Ok(()),
+                | "pthread_create_wrapper"
+                | "pthread_getattr_np"
+                | "ioctl"
+                | "pthread_attr_destroy"
+                | "pthread_attr_init"
+                | "pthread_attr_getstack"
+                | "sched_getaffinity"
+                | "poll" => return Ok(()),
                 _ => {
                     let inputs = def
                         .ref_to()
@@ -1042,6 +1049,7 @@ impl CExporter {
         type_defs: &mut impl Write,
         defined_types: &mut FxHashSet<ClassDefIdx>,
         delayed_defs: &mut FxHashSet<ClassDefIdx>,
+        extrn:bool,
     ) -> std::io::Result<()> {
         let class = asm[defid].clone();
         // Checks if this def needs to be delayed, if one of its fields is not yet defined
@@ -1081,10 +1089,15 @@ impl CExporter {
             let fname = escape_ident(&asm[*sfname]);
             let field_tpe = c_tpe(*sfield_tpe, asm);
             let fname = class_member_name(&class_name, &fname);
+            let extrn = if extrn {
+                "extern"
+            }else{
+                ""
+            };
             if *is_thread_local {
-                writeln!(type_defs, "static _Thread_local {field_tpe} {fname};")?;
+                writeln!(type_defs, "{extrn} _Thread_local {field_tpe} {fname};")?;
             } else {
-                writeln!(type_defs, "static {field_tpe} {fname};")?;
+                writeln!(type_defs, "{extrn} {field_tpe} {fname};")?;
             }
         }
         for method in class.methods() {
@@ -1099,7 +1112,13 @@ impl CExporter {
         defined_types.insert(defid);
         Ok(())
     }
-    fn export_to_write(&self, asm: &super::Assembly, out: &mut impl Write) -> std::io::Result<()> {
+    fn export_to_write(
+        &self,
+        asm: &super::Assembly,
+        out: &mut impl Write,
+        lib: bool,
+        extrn:bool,
+    ) -> std::io::Result<()> {
         let mut asm = asm.clone();
         asm.tcctor();
         let mut method_defs = Vec::new();
@@ -1119,6 +1138,7 @@ impl CExporter {
                     &mut type_defs,
                     &mut defined_types,
                     &mut delayed_defs,
+                    extrn
                 )?;
             }
             delayed_defs_copy.clear();
@@ -1128,41 +1148,48 @@ impl CExporter {
         out.write_all(&type_defs)?;
         out.write_all(&method_decls)?;
         out.write_all(&method_defs)?;
-        if !self.is_lib {
-            let cctor_call = if asm.has_cctor() { "_cctor();" } else { "" };
-            writeln!(out,"void main(int argc_input, char** argv_input){{argc = argc_input; argv = argv_input; {cctor_call}entrypoint((void *)0);}}")?;
+        if !lib {
+            call_entry(out, &mut asm)?;
         }
         Ok(())
     }
 }
-
-impl Exporter for CExporter {
-    type Error = std::io::Error;
-
-    fn export(&self, asm: &super::Assembly, target: &std::path::Path) -> Result<(), Self::Error> {
-        // The IL file should be next to the target
-        let c_path = target.with_extension("c");
+fn call_entry(out: &mut impl Write, asm: &Assembly) -> Result<(), std::io::Error> {
+    let cctor_call = if asm.has_cctor() { "_cctor();" } else { "" };
+    writeln!(out,"int main(int argc_input, char** argv_input){{argc = argc_input; argv = argv_input; {cctor_call}entrypoint((void *)0); return 0;}}")?;
+    Ok(())
+}
+impl CExporter {
+    fn export_to_file(
+        &self,
+        c_path: &Path,
+        asm: &Assembly,
+        target: &Path,
+        lib: bool,
+        extrn:bool,
+    ) -> Result<(), std::io::Error> {
         let mut c_out = std::io::BufWriter::new(std::fs::File::create(&c_path)?);
-        self.export_to_write(asm, &mut c_out)?;
+        self.export_to_write(asm, &mut c_out, lib,extrn)?;
         // Needed to ensure the IL file is valid!
         c_out.flush().unwrap();
         drop(c_out);
-        let exe_out = target;
 
         let mut cmd = std::process::Command::new(std::env::var("CC").unwrap_or("cc".to_owned()));
-        cmd.arg(c_path).arg("-o").arg(exe_out).arg("-g");
+        cmd.arg(c_path).arg("-o").arg(target).arg("-g");
 
-        if *UB_CHECKS {
+        if *UB_CHECKS && *PARTS == 1 {
             cmd.args([
                 "-fsanitize=undefined,alignment",
                 "-fno-sanitize=leak",
-                "-fno-sanitize-recover",
+                "-fno-sanitize-recover", "-O0"
             ]);
         } else {
             cmd.arg("-Ofast");
         }
-        if self.is_lib {
+        if lib {
             cmd.arg("-c");
+        } else {
+            cmd.arg("-lm");
         }
         if *ANSI_C {
             cmd.arg("-std=c89");
@@ -1180,6 +1207,57 @@ impl Exporter for CExporter {
         }
 
         Ok(())
+    }
+}
+impl Exporter for CExporter {
+    type Error = std::io::Error;
+
+    fn export(&self, asm: &super::Assembly, target: &std::path::Path) -> Result<(), Self::Error> {
+        if *PARTS == 1 {
+            // The IL file should be next to the target
+            let c_path = target.with_extension("c");
+            self.export_to_file(&c_path, asm, target, self.is_lib,false)
+        } else {
+            let mut parts = vec![];
+            for (id, part) in asm.split_to_parts(*PARTS).iter().enumerate() {
+                let name = target.file_stem().unwrap().to_string_lossy().into_owned();
+                let target = target
+                    .with_file_name(format!("{name}_{id}"))
+                    .with_extension("o");
+                let c_path = target.with_extension("c");
+                self.export_to_file(&c_path, part, &target, true,true)?;
+                parts.push(target);
+            }
+            let mut cmd =
+                std::process::Command::new(std::env::var("CC").unwrap_or("cc".to_owned()));
+            cmd.args(parts);
+            cmd.arg("-o").arg(target).arg("-g").arg("-lm");
+            if !self.is_lib {
+                let c_path = target.with_extension("c");
+                let only_statics = asm.only_statics();
+     
+                self.export_to_file(&c_path, &only_statics, target, true,false)?;   
+                let mut option = std::fs::OpenOptions::new();
+                option.read(true);
+                option.append(true);
+                let mut c_file = option.open(&c_path).unwrap();
+                call_entry(&mut c_file, asm).unwrap();
+                cmd.arg(c_path);
+            }
+            let out = cmd.output().unwrap();
+            let stdout = String::from_utf8_lossy(&out.stdout);
+            let stderr = String::from_utf8_lossy(&out.stderr);
+            if !*LINKER_RECOVER {
+                assert!(
+                    !(stderr.contains("error") || stderr.contains("fatal")),
+                    "stdout:{} stderr:{} cmd:{cmd:?}",
+                    stdout,
+                    String::from_utf8_lossy(&out.stderr)
+                );
+            }
+
+            Ok(())
+        }
     }
 }
 

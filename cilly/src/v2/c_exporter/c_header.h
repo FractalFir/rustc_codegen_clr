@@ -28,7 +28,7 @@ int execvp(void *file, void *argv);
 
 #define System_Runtime_InteropServices_NativeMemory_AlignedAllocususpv(size, align) aligned_alloc(align, size)
 #define System_Runtime_InteropServices_NativeMemory_AlignedFreepvv free
-void *System_Runtime_InteropServices_NativeMemory_AlignedReallocpvususpv(void *ptr, uintptr_t size, uintptr_t align)
+static inline void *System_Runtime_InteropServices_NativeMemory_AlignedReallocpvususpv(void *ptr, uintptr_t size, uintptr_t align)
 {
     void *new_buff = aligned_alloc(align, size);
     memcpy(new_buff, ptr, size);
@@ -149,8 +149,9 @@ void *System_Runtime_InteropServices_NativeMemory_AlignedReallocpvususpv(void *p
 #define System_Numerics_BitOperations_TrailingZeroCountusi4(val) (int32_t) __builtin_ctzl((uint64_t)val)
 #define System_Numerics_BitOperations_TrailingZeroCountu4i4(val) (int32_t) __builtin_ctzl((uint64_t)val)
 #define System_Numerics_BitOperations_TrailingZeroCountu8i4(val) (int32_t) __builtin_ctzl((uint64_t)val)
-int32_t System_Numerics_BitOperations_LeadingZeroCountu8i4(uint64_t val) { return __builtin_clzl(val); }
-int32_t System_Numerics_BitOperations_LeadingZeroCountusi4(uintptr_t val) { return __builtin_clzl((uint64_t)val); }
+static inline int32_t System_Numerics_BitOperations_LeadingZeroCountu8i4(uint64_t val) { return __builtin_clzl(val); }
+static inline int32_t System_Numerics_BitOperations_LeadingZeroCountusi4(uintptr_t val) { return __builtin_clzl((uint64_t)val); }
+__uint128_t __builtin_bswap128(__uint128_t val);
 
 #define System_Numerics_BitOperations_PopCountusi4(val) __builtin_popcountl((uint64_t)val)
 #define System_Numerics_BitOperations_PopCountu4i4(val) __builtin_popcountl((uint32_t)val)
@@ -160,19 +161,16 @@ int32_t System_Numerics_BitOperations_LeadingZeroCountusi4(uintptr_t val) { retu
 #define System_String_Concatststst(a, b) a b
 #define System_String_Concatstststst(a, b, c) a b c
 #define System_String_Concatststststst(a, b, c, d) a b c d
-void System_Console_WriteLineu8v(uint64_t arg)
+static inline void System_Console_WriteLineu8v(uint64_t arg)
 {
     printf("%lu\n", arg);
 }
-void System_Console_WriteLinei8v(int64_t arg)
+static inline void System_Console_WriteLinei8v(int64_t arg)
 {
     printf("%ld\n", arg);
 }
-void System_Console_WriteLineu4v(uint32_t arg)
-{
-    printf("%u\n", arg);
-}
-void System_Console_WriteLinei4v(int32_t arg)
+#define System_Console_WriteLineu4v(arg) printf("%u\n", arg)
+static inline void System_Console_WriteLinei4v(int32_t arg)
 {
     printf("%u\n", arg);
 }
@@ -186,17 +184,17 @@ void System_Console_WriteLinei4v(int32_t arg)
 #define System_Exception__ctor14System_Runtime16System_Exceptionsv
 #define System_Exception__ctorp14System_Runtime16System_Exceptionsv
 #define System_Exception__ctorp14System_Runtime16System_Exceptionstv
-float System_Single_Clampf4f4f4f4(float d, float min, float max)
+static inline float System_Single_Clampf4f4f4f4(float d, float min, float max)
 {
     const float t = d < min ? min : d;
     return t > max ? max : t;
 }
-double System_Double_Clampf8f8f8f8(double d, double min, double max)
+static inline double System_Double_Clampf8f8f8f8(double d, double min, double max)
 {
     const double t = d < min ? min : d;
     return t > max ? max : t;
 }
-double System_Double_FusedMultiplyAddf8f8f8f8(double left, double right, double addend)
+static inline double System_Double_FusedMultiplyAddf8f8f8f8(double left, double right, double addend)
 {
     return left * right + addend;
 }
@@ -204,39 +202,39 @@ double System_Double_FusedMultiplyAddf8f8f8f8(double left, double right, double 
 #define System_Type_GetTypeFromHandlep14System_Runtime24System_RuntimeTypeHandle14System_Runtime11System_Type
 #define System_Object_GetHashCode14System_Runtime11System_Typei4
 #define System_Object_GetHashCodep14System_Runtime11System_Typei4
-float System_Single_MaxNumberf4f4f4(float a, float b)
+static inline float System_Single_MaxNumberf4f4f4(float a, float b)
 {
     if (a > b)
         return a;
     else
         return b;
 }
-double System_Double_MaxNumberf8f8f8(double a, double b)
+static inline double System_Double_MaxNumberf8f8f8(double a, double b)
 {
     if (a > b)
         return a;
     else
         return b;
 }
-float System_Single_MinNumberf4f4f4(float a, float b)
+static inline float System_Single_MinNumberf4f4f4(float a, float b)
 {
     if (a < b)
         return a;
     else
         return b;
 }
-double System_Double_MinNumberf8f8f8(double a, double b)
+static inline double System_Double_MinNumberf8f8f8(double a, double b)
 {
     if (a < b)
         return a;
     else
         return b;
 }
-float System_Single_FusedMultiplyAddf4f4f4f4(float left, float right, float addend)
+static inline float System_Single_FusedMultiplyAddf4f4f4f4(float left, float right, float addend)
 {
     return left * right + addend;
 }
-float System_Single_CopySignf4f4f4(float mag, float sign)
+static inline float System_Single_CopySignf4f4f4(float mag, float sign)
 {
     if (sign > 0)
     {
@@ -253,7 +251,7 @@ float System_Single_CopySignf4f4f4(float mag, float sign)
             return mag;
     }
 }
-double System_Double_CopySignf8f8f8(double mag, double sign)
+static inline double System_Double_CopySignf8f8f8(double mag, double sign)
 {
     if (sign > 0)
     {
@@ -270,7 +268,7 @@ double System_Double_CopySignf8f8f8(double mag, double sign)
             return mag;
     }
 }
-float System_MathF_Truncatef4f4(float val)
+static inline float System_MathF_Truncatef4f4(float val)
 {
     fprintf(stderr, "Can't System_MathF_Truncatef4f4 yet.\n");
     abort();
@@ -299,7 +297,7 @@ typedef struct TSWData
     void *arg;
 } TSWData;
 void _tcctor();
-void *thread_start_wrapper(TSWData *data)
+static inline void *thread_start_wrapper(TSWData *data)
 {
     _tcctor();
     void *(*start_routine)(void *) = (void *)data->start_routine;
@@ -311,7 +309,7 @@ int32_t pthread_create(void *thread,
                        void *attr,
                        void *(*start_routine)(void *),
                        void *threadarg);
-int32_t pthread_create_wrapper(void *thread,
+static inline int32_t pthread_create_wrapper(void *thread,
                                void *attr,
                                void *start_routine,
                                void *arg)
@@ -323,25 +321,25 @@ int32_t pthread_create_wrapper(void *thread,
     return pthread_create(thread, attr, (void *)thread_start_wrapper, data);
 }
 #define pthread_create pthread_create_alias
-float System_Single_Exp2f4f4(float input)
+static inline float System_Single_Exp2f4f4(float input)
 {
     fprintf(stderr, "Can't System_Single_Exp2f4f4 yet.\n");
     abort();
     return 0.0f;
 }
-float System_Single_Logf4f4(float input)
+static inline float System_Single_Logf4f4(float input)
 {
     fprintf(stderr, "Can't System_Single_Logf4f4 yet.\n");
     abort();
     return 0.0f;
 }
-float System_Single_Log2f4f4(float input)
+static inline float System_Single_Log2f4f4(float input)
 {
     fprintf(stderr, "Can't System_Single_Log2f4f4 yet.\n");
     abort();
     return 0.0f;
 }
-float System_Single_Log10f4f4(float input)
+static inline float System_Single_Log10f4f4(float input)
 {
     fprintf(stderr, "Can't System_Single_Log10f4f4 yet.\n");
     abort();
@@ -350,35 +348,35 @@ float System_Single_Log10f4f4(float input)
 #define System_Math_Floorf8f8(input) floor(input)
 #define System_Math_Sqrtf8f8(input) sqrt(input)
 
-double System_Double_Log10f8f8(double input)
+static inline double System_Double_Log10f8f8(double input)
 {
     fprintf(stderr, "Can't System_Double_Log10f8f8 yet.\n");
     abort();
     return 0.0f;
 }
-#define System_Math_Ceilingf8f8(input) celi(input)
+#define System_Math_Ceilingf8f8(input) ceil(input)
 #define System_Math_Truncatef8f8(input) trunc(input)
 
-uint32_t System_UInt32_RotateRightu4i4u4(uint32_t val, int32_t ammount)
+static inline uint32_t System_UInt32_RotateRightu4i4u4(uint32_t val, int32_t ammount)
 {
     fprintf(stderr, "Can't System_UInt32_RotateRightu4i4u4 yet.\n");
     abort();
     return 0;
 }
 
-uintptr_t System_UIntPtr_RotateRightusi4us(uintptr_t val, uintptr_t ammount)
+static inline uintptr_t System_UIntPtr_RotateRightusi4us(uintptr_t val, uintptr_t ammount)
 {
     fprintf(stderr, "Can't System_UIntPtr_RotateRightusi4us yet.\n");
     abort();
     return 0;
 }
-uint8_t System_Byte_RotateRightu1i4u1(uint8_t val, int32_t ammount)
+static inline uint8_t System_Byte_RotateRightu1i4u1(uint8_t val, int32_t ammount)
 {
     fprintf(stderr, "Can't System_Byte_RotateRightu1i4u1 yet.\n");
     abort();
     return 0;
 }
-uint32_t System_Threading_Interlocked_CompareExchangeru4u4u4u4(uint32_t *addr, uint32_t value, uint32_t comparand)
+static inline uint32_t System_Threading_Interlocked_CompareExchangeru4u4u4u4(uint32_t *addr, uint32_t value, uint32_t comparand)
 {
     uint32_t res = 0;
     if (__atomic_compare_exchange_n(addr, &comparand, value, true, 5, 5))
@@ -391,7 +389,7 @@ uint32_t System_Threading_Interlocked_CompareExchangeru4u4u4u4(uint32_t *addr, u
         return comparand;
     }
 }
-uint64_t System_Threading_Interlocked_CompareExchangeru8u8u8u8(uint64_t *addr, uint64_t value, uint64_t comparand)
+static inline uint64_t System_Threading_Interlocked_CompareExchangeru8u8u8u8(uint64_t *addr, uint64_t value, uint64_t comparand)
 {
     uint64_t res = 0;
     if (__atomic_compare_exchange_n(addr, &comparand, value, true, 5, 5))
@@ -404,7 +402,7 @@ uint64_t System_Threading_Interlocked_CompareExchangeru8u8u8u8(uint64_t *addr, u
         return comparand;
     }
 }
-uintptr_t System_Threading_Interlocked_CompareExchangerusususus(uintptr_t *addr, uintptr_t value, uintptr_t comparand)
+static inline uintptr_t System_Threading_Interlocked_CompareExchangerusususus(uintptr_t *addr, uintptr_t value, uintptr_t comparand)
 {
     uintptr_t res = 0;
     if (__atomic_compare_exchange_n(addr, &comparand, value, true, 5, 5))
@@ -417,7 +415,7 @@ uintptr_t System_Threading_Interlocked_CompareExchangerusususus(uintptr_t *addr,
         return comparand;
     }
 }
-intptr_t System_Threading_Interlocked_CompareExchangerisisisis(intptr_t *addr, intptr_t value, intptr_t comparand)
+static inline intptr_t System_Threading_Interlocked_CompareExchangerisisisis(intptr_t *addr, intptr_t value, intptr_t comparand)
 {
     intptr_t res = 0;
     if (__atomic_compare_exchange_n(addr, &comparand, value, true, 5, 5))
@@ -431,85 +429,86 @@ intptr_t System_Threading_Interlocked_CompareExchangerisisisis(intptr_t *addr, i
     }
 }
 
-uint32_t System_Threading_Interlocked_Exchangeru4u4u4(uint32_t *addr, uint32_t val)
+static inline uint32_t System_Threading_Interlocked_Exchangeru4u4u4(uint32_t *addr, uint32_t val)
 {
     uint32_t ret;
     __atomic_exchange(addr, &val, &ret, 5);
     return ret;
 }
-uintptr_t System_Threading_Interlocked_Exchangerususus(uintptr_t *addr, uintptr_t val)
+static inline uintptr_t System_Threading_Interlocked_Exchangerususus(uintptr_t *addr, uintptr_t val)
 {
     uintptr_t ret;
     __atomic_exchange(addr, &val, &ret, 5);
     return ret;
 }
-
-uint32_t System_Threading_Interlocked_Addru4u4u4(uint32_t *addr, uint32_t addend)
+static inline uint32_t System_Threading_Interlocked_Addru4u4u4(uint32_t *addr, uint32_t addend)
 {
     fprintf(stderr, "Can't System_Threading_Interlocked_Addru4u4u4 yet.\n");
     abort();
 }
-uint32_t System_UInt32_RotateLeftu4i4u4(uint32_t val, int32_t ammount)
+static inline uint32_t System_UInt32_RotateLeftu4i4u4(uint32_t val, int32_t ammount)
 {
     fprintf(stderr, "Can't System_UInt32_RotateLeftu4i4u4 yet.\n");
     abort();
 }
-uint16_t System_UInt16_RotateRightu2i4u2(uint16_t val, int32_t ammount)
+static inline uintptr_t System_UIntPtr_RotateLeftusi4us(uintptr_t val, uintptr_t ammount)
+{
+    fprintf(stderr, "Can't System_UIntPtr_RotateLeftusi4us yet.\n");
+    abort();
+}
+
+static inline uint16_t System_UInt16_RotateRightu2i4u2(uint16_t val, int32_t ammount)
 {
     fprintf(stderr, "Can't System_UInt16_RotateRightu2i4u2 yet.\n");
     abort();
 }
-uint16_t System_UInt16_RotateLeftu2i4u2(uint16_t val, int32_t ammount)
+static inline uint16_t System_UInt16_RotateLeftu2i4u2(uint16_t val, int32_t ammount)
 {
     fprintf(stderr, "Can't System_UInt16_RotateLeftu2i4u2 yet.\n");
     abort();
 }
 
-uint64_t System_UInt64_RotateRightu8i4u8(uint64_t val, int32_t ammount)
+static inline uint64_t System_UInt64_RotateRightu8i4u8(uint64_t val, int32_t ammount)
 {
     fprintf(stderr, "Can't System_UInt64_RotateRightu8i4u8 yet.\n");
     abort();
 }
-
-uint16_t System_UInt128_RotateLeftu16i4u16(uint16_t val, int32_t ammount)
+static inline uint16_t System_UInt128_RotateLeftu16i4u16(uint16_t val, int32_t ammount)
 {
     fprintf(stderr, "Can't System_UInt128_RotateLeftu16i4u16 yet.\n");
     abort();
 }
-
-uint64_t System_UInt64_RotateLeftu8i4u8(uint64_t val, int32_t ammount)
+static inline uint64_t System_UInt64_RotateLeftu8i4u8(uint64_t val, int32_t ammount)
 {
     ammount = ammount % 64;
     return (val << ammount) | (val >> (64 - ammount));
 }
-unsigned __int128 System_UInt128_RotateRightu16i4u16(unsigned __int128 val, int32_t amount)
+static inline unsigned __int128 System_UInt128_RotateRightu16i4u16(unsigned __int128 val, int32_t amount)
 {
     fprintf(stderr, "Can't System_UInt128_RotateRightu16i4u16 yet.\n");
     abort();
 }
-
-uint8_t System_Byte_RotateLeftu1i4u1(uint8_t val, int32_t ammount)
+static inline uint8_t System_Byte_RotateLeftu1i4u1(uint8_t val, int32_t ammount)
 {
     fprintf(stderr, "Can't System_Byte_RotateLeftu1i4u1 yet.\n");
     abort();
 }
-unsigned __int128 System_UInt128_LeadingZeroCountu16u16(unsigned __int128 val)
+static inline unsigned __int128 System_UInt128_LeadingZeroCountu16u16(unsigned __int128 val)
 {
     fprintf(stderr, "Can't System_UInt128_LeadingZeroCountu16u16 yet.\n");
     abort();
 }
-unsigned __int128 System_UInt128_PopCountu16u16(unsigned __int128 val)
+static inline unsigned __int128 System_UInt128_PopCountu16u16(unsigned __int128 val)
 {
     fprintf(stderr, "Can't System_UInt128_PopCountu16u16 yet.\n");
     abort();
 }
-unsigned __int128 System_UInt128_TrailingZeroCountu16u16(unsigned __int128 val)
+static inline unsigned __int128 System_UInt128_TrailingZeroCountu16u16(unsigned __int128 val)
 {
     fprintf(stderr, "Can't System_UInt128_TrailingZeroCountu16u16 yet.\n");
     abort();
 }
-
-uint32_t System_Math_Minu4u4u4(uint32_t lhs, uint32_t rhs)
+static inline uint32_t System_Math_Minu4u4u4(uint32_t lhs, uint32_t rhs)
 {
     if (lhs > rhs)
     {
@@ -520,7 +519,7 @@ uint32_t System_Math_Minu4u4u4(uint32_t lhs, uint32_t rhs)
         return lhs;
     }
 }
-int32_t System_Math_Clampi4i4i4i4(int32_t val, int32_t min, int32_t max)
+static inline int32_t System_Math_Clampi4i4i4i4(int32_t val, int32_t min, int32_t max)
 {
     if (val > max)
     {
@@ -535,7 +534,7 @@ int32_t System_Math_Clampi4i4i4i4(int32_t val, int32_t min, int32_t max)
         return val;
     }
 }
-int64_t System_Math_Clampi8i8i8i8(int64_t val, int64_t min, int64_t max)
+static inline int64_t System_Math_Clampi8i8i8i8(int64_t val, int64_t min, int64_t max)
 {
     if (val > max)
     {
@@ -551,7 +550,7 @@ int64_t System_Math_Clampi8i8i8i8(int64_t val, int64_t min, int64_t max)
     }
 }
 
-__int128 System_Int128_Clampi16i16i16i16(__int128 val, __int128 min, __int128 max)
+static inline __int128 System_Int128_Clampi16i16i16i16(__int128 val, __int128 min, __int128 max)
 {
     if (val > max)
     {
@@ -566,27 +565,27 @@ __int128 System_Int128_Clampi16i16i16i16(__int128 val, __int128 min, __int128 ma
         return val;
     }
 }
-__int128 System_Int128_get_MinValuei16()
+static inline __int128 System_Int128_get_MinValuei16()
 {
     fprintf(stderr, "Can't System_Int128_get_MinValuei16 yet.\n");
     abort();
 }
-__int128 System_Int128_get_MaxValuei16()
+static inline __int128 System_Int128_get_MaxValuei16()
 {
     fprintf(stderr, "Can't System_Int128_get_MinValuei16 yet.\n");
     abort();
 }
 
-double System_Double_Exp2f8f8(double val)
+static inline double System_Double_Exp2f8f8(double val)
 {
     fprintf(stderr, "Can't System_Double_Exp2f8f8 yet.\n");
     abort();
 }
-void System_Threading_Thread_MemoryBarrierv() {}
+static inline void System_Threading_Thread_MemoryBarrierv() {}
 static int argc;
 static char **argv;
-char **System_Environment_GetCommandLineArgsa1st() { return argv; }
-uintptr_t ld_len(void *arr)
+static inline char **System_Environment_GetCommandLineArgsa1st() { return argv; }
+static inline uintptr_t ld_len(void *arr)
 {
     void **elem = (void **)arr;
     uintptr_t len = 0;
@@ -597,7 +596,7 @@ uintptr_t ld_len(void *arr)
     }
     return len;
 }
-intptr_t System_Runtime_InteropServices_Marshal_StringToCoTaskMemUTF8stis(char *str)
+static inline intptr_t System_Runtime_InteropServices_Marshal_StringToCoTaskMemUTF8stis(char *str)
 {
     uintptr_t len = strlen(str);
     char *ptr = (char *)malloc(len + 1);
@@ -622,12 +621,25 @@ TYPEDEF_SIMDVECS_TYPE(uint64_t, u8)
 TYPEDEF_SIMDVECS_TYPE(float, f4)
 TYPEDEF_SIMDVECS_TYPE(double, f8)
 
-const float inff = 1.0 / 0.0;
-const double inf = 1.0 / 0.0;
+static const float inff = 1.0 / 0.0;
+static const double inf = 1.0 / 0.0;
 int fcntl(int fd, int op, ...);
 long syscall(long number, ...);
-uint8_t **get_environ()
+static inline uint8_t **get_environ()
 {
     extern char **environ;
     return (uint8_t **)environ;
 }
+union System_MidpointRounding{int32_t inner;};
+static inline float System_Math_Roundf814System_Runtime23System_MidpointRoundingf8(float val,union System_MidpointRounding rounding){
+	return roundf(val);
+}
+int ioctl(int fd, unsigned long op, ...);
+int pthread_attr_init(void* attr);
+int pthread_attr_destroy(void* attr);
+int poll(void *fds, uint64_t nfds, int timeout);
+int pthread_getattr_np(uint64_t thread, void *attr);
+int pthread_attr_getstack(void *attr,
+                          void **stackaddr, size_t *stacksize);
+int sched_getaffinity(int32_t pid, size_t cpusetsize,
+                      void *mask);
