@@ -126,7 +126,7 @@ impl Assembly {
     pub fn class_defs(&self) -> &FxHashMap<ClassDefIdx, ClassDef> {
         &self.class_defs
     }
- 
+
     #[must_use]
     pub fn method_ref_to_def(&self, method: MethodRefIdx) -> Option<MethodDefIdx> {
         if self.method_defs.contains_key(&MethodDefIdx(method)) {
@@ -523,7 +523,7 @@ impl Assembly {
             vec![].into(),
         ))
     }
-    fn has_builtin(&self, name:&str,input:impl Into<Box<[Type]>>,output:Type)->bool{
+    fn has_builtin(&self, name: &str, input: impl Into<Box<[Type]>>, output: Type) -> bool {
         let Some(main_module) = self.get_prealllocated_string(MAIN_MODULE) else {
             return false;
         };
@@ -569,10 +569,10 @@ impl Assembly {
         self.method_ref_to_def(cctor).is_some()
     }
     pub fn has_cctor(&self) -> bool {
-        self.has_builtin(CCTOR,[],Type::Void)
+        self.has_builtin(CCTOR, [], Type::Void)
     }
     pub fn has_tcctor(&self) -> bool {
-        self.has_builtin(TCCTOR,[],Type::Void)
+        self.has_builtin(TCCTOR, [], Type::Void)
     }
     pub fn get_prealllocated_class_ref(&self, cref: ClassRef) -> Option<ClassRefIdx> {
         self.class_refs.1.get(&cref).copied()
@@ -744,7 +744,7 @@ impl Assembly {
     pub(crate) fn method_def_from_ref(&self, mref: MethodRefIdx) -> Option<&MethodDef> {
         self.method_defs.get(&MethodDefIdx(mref))
     }
-    pub(crate) fn eliminate_dead_fns(&mut self, only_imports:bool) {
+    pub(crate) fn eliminate_dead_fns(&mut self, only_imports: bool) {
         // 1st. Collect all "extern" method definitons, since those are always alive.
         let mut previosly_ressurected: FxHashSet<MethodDefIdx> = self
             .method_defs
@@ -755,8 +755,13 @@ impl Assembly {
         let mut to_resurrect: FxHashSet<MethodDefIdx> = FxHashSet::default();
         let mut alive: FxHashSet<MethodDefIdx> = FxHashSet::default();
         // If only cleaning up imports, assume all non-import fns are alive.
-        if only_imports{
-            alive.extend(self.method_defs.iter().filter(|(_,def)|!matches!(def.implementation(),MethodImpl::Extern { ..})).map(|(id,def)|*id));
+        if only_imports {
+            alive.extend(
+                self.method_defs
+                    .iter()
+                    .filter(|(_, def)| !matches!(def.implementation(), MethodImpl::Extern { .. }))
+                    .map(|(id, def)| *id),
+            );
         }
         while !previosly_ressurected.is_empty() {
             for def in previosly_ressurected
@@ -794,7 +799,7 @@ impl Assembly {
             previosly_ressurected = to_resurrect;
             to_resurrect = FxHashSet::default();
         }
-       
+
         // Some cheap sanity checks
         assert!(previosly_ressurected.is_empty());
         assert!(to_resurrect.is_empty());
@@ -997,7 +1002,7 @@ impl Assembly {
             None
         }
     }
-    
+
     #[must_use]
     pub fn link(mut self, other: Self) -> Self {
         let original_str = self.alloc_string(MAIN_MODULE);
@@ -1074,90 +1079,98 @@ impl Assembly {
     /// 2. They are not accessible from outside of it.
     /// WARNING: This gc is highly conservative, and will often not collect some things.
     /// To improve its accuracy, first do `link_gc`.
-    pub fn shallow_methodef_gc(&mut self){
-        let live:FxHashSet<MethodRefIdx> = self.iter_nodes().filter_map(|node|match node{
-            CILNode::Call(boxed) => Some(boxed.0),
-            CILNode::LdFtn(method_ref_idx) => Some(*method_ref_idx),
-            CILNode::Const(_) |
-            CILNode::BinOp(_,_,_) |
-            CILNode::UnOp(_, _) |
-            CILNode::LdLoc(_) |
-            CILNode::LdLocA(_) |
-            CILNode::LdArg(_) |
-            CILNode::LdArgA(_) |
-            CILNode::IntCast {.. } |
-            CILNode::FloatCast { .. } |
-            CILNode::RefToPtr(_) |
-            CILNode::PtrCast(_, _) |
-            CILNode::LdFieldAdress {.. } |
-            CILNode::LdField { .. } |
-            CILNode::LdInd { .. } |
-            CILNode::SizeOf(_) |
-            CILNode::GetException |
-            CILNode::IsInst(_, _) |
-            CILNode::CheckedCast(_, _) |
-            CILNode::CallI(_) |
-            CILNode::LocAlloc { .. } |
-            CILNode::LdStaticField(_) |
-            CILNode::LdStaticFieldAdress(_) |
-            CILNode::LdTypeToken(_) |
-            CILNode::LdLen(_) |
-            CILNode::LocAllocAlgined {.. } |
-            CILNode::LdElelemRef { .. } |
-            CILNode::UnboxAny { .. } => None,
-        }).chain(self.iter_roots().filter_map(|root|match root{
-            CILRoot::Call(boxed) =>Some(boxed.0),
-            CILRoot::StLoc(_, _) |
-            CILRoot::StArg(_, _) |
-            CILRoot::Ret(_) |
-            CILRoot::Pop(_) |
-            CILRoot::Throw(_) |
-            CILRoot::VoidRet |
-            CILRoot::Break |
-            CILRoot::Nop |
-            CILRoot::Branch(_) |
-            CILRoot::SourceFileInfo { .. } |
-            CILRoot::SetField(_) |
-            CILRoot::StInd(_) |
-            CILRoot::InitBlk(_) |
-            CILRoot::CpBlk(_) |
-            CILRoot::CallI(_) |
-            CILRoot::ExitSpecialRegion {.. } |
-            CILRoot::ReThrow |
-            CILRoot::SetStaticField {.. } |
-            CILRoot::CpObj {.. } |
-            CILRoot::Unreachable(_) =>None,
-        })).collect();
- 
-        let mut live:FxHashSet<MethodDefIdx> = live.into_iter().filter_map(|mref|self.method_ref_to_def(mref)).collect();
+    pub fn shallow_methodef_gc(&mut self) {
+        let live: FxHashSet<MethodRefIdx> = self
+            .iter_nodes()
+            .filter_map(|node| match node {
+                CILNode::Call(boxed) => Some(boxed.0),
+                CILNode::LdFtn(method_ref_idx) => Some(*method_ref_idx),
+                CILNode::Const(_)
+                | CILNode::BinOp(_, _, _)
+                | CILNode::UnOp(_, _)
+                | CILNode::LdLoc(_)
+                | CILNode::LdLocA(_)
+                | CILNode::LdArg(_)
+                | CILNode::LdArgA(_)
+                | CILNode::IntCast { .. }
+                | CILNode::FloatCast { .. }
+                | CILNode::RefToPtr(_)
+                | CILNode::PtrCast(_, _)
+                | CILNode::LdFieldAdress { .. }
+                | CILNode::LdField { .. }
+                | CILNode::LdInd { .. }
+                | CILNode::SizeOf(_)
+                | CILNode::GetException
+                | CILNode::IsInst(_, _)
+                | CILNode::CheckedCast(_, _)
+                | CILNode::CallI(_)
+                | CILNode::LocAlloc { .. }
+                | CILNode::LdStaticField(_)
+                | CILNode::LdStaticFieldAdress(_)
+                | CILNode::LdTypeToken(_)
+                | CILNode::LdLen(_)
+                | CILNode::LocAllocAlgined { .. }
+                | CILNode::LdElelemRef { .. }
+                | CILNode::UnboxAny { .. } => None,
+            })
+            .chain(self.iter_roots().filter_map(|root| match root {
+                CILRoot::Call(boxed) => Some(boxed.0),
+                CILRoot::StLoc(_, _)
+                | CILRoot::StArg(_, _)
+                | CILRoot::Ret(_)
+                | CILRoot::Pop(_)
+                | CILRoot::Throw(_)
+                | CILRoot::VoidRet
+                | CILRoot::Break
+                | CILRoot::Nop
+                | CILRoot::Branch(_)
+                | CILRoot::SourceFileInfo { .. }
+                | CILRoot::SetField(_)
+                | CILRoot::StInd(_)
+                | CILRoot::InitBlk(_)
+                | CILRoot::CpBlk(_)
+                | CILRoot::CallI(_)
+                | CILRoot::ExitSpecialRegion { .. }
+                | CILRoot::ReThrow
+                | CILRoot::SetStaticField { .. }
+                | CILRoot::CpObj { .. }
+                | CILRoot::Unreachable(_) => None,
+            }))
+            .collect();
+
+        let mut live: FxHashSet<MethodDefIdx> = live
+            .into_iter()
+            .filter_map(|mref| self.method_ref_to_def(mref))
+            .collect();
         if live.len() == self.method_defs.len() {
             println!("shallow_methodref_gc failed(no unreferenced methods)");
             return;
         }
-        self.method_defs.retain(|id,def| if live.contains(id){
-            true
-        } else if !matches!(def.implementation(),MethodImpl::Extern{..}){
-            live.insert(*id);
-            true
-        }else{
-            false
+        self.method_defs.retain(|id, def| {
+            if live.contains(id) {
+                true
+            } else if !matches!(def.implementation(), MethodImpl::Extern { .. }) {
+                live.insert(*id);
+                true
+            } else {
+                false
+            }
         });
         if live.len() == self.method_defs.len() {
             println!("shallow_methodref_gc failed(no unreferenced, externaly invisible methods)");
         }
         self.class_defs.values_mut().for_each(|tdef| {
             tdef.methods_mut()
-            .retain(|methodef|live.contains(methodef) );
+                .retain(|methodef| live.contains(methodef));
         });
-    
     }
     pub fn split_to_parts(&self, parts: u32) -> impl Iterator<Item = Self> + use<'_> {
         let lib_name = StringIdx::from_index(std::num::NonZeroU32::new(1).unwrap());
         let div = (self.method_refs.len().div_ceil(parts as usize)) as u32;
-        (0..parts).map(move |rem|{
+        (0..parts).map(move |rem| {
             let mut part = self.clone();
             part.method_defs.iter_mut().for_each(|(idx, def)| {
-                if idx.as_bimap_index().get()/div != rem{
+                if idx.as_bimap_index().get() / div != rem {
                     /*if let MethodImpl::MethodBody {
                         blocks: _,
                         locals: _,
@@ -1180,7 +1193,6 @@ impl Assembly {
             part.shallow_methodef_gc();
             part
         })
-  
     }
     pub fn only_statics(&self) -> Self {
         let lib_name = StringIdx::from_index(std::num::NonZeroU32::new(1).unwrap());

@@ -9,7 +9,7 @@ use crate::{call, call_virt, conv_usize, IntoAsmIndex, MethodDef, Type};
 
 pub fn argc_argv_init_method(asm: &mut Assembly) -> MethodRefIdx {
     let main_module = asm.main_module();
-    
+
     let init_cs = MethodRef::new(
         *asm.main_module(),
         asm.alloc_string("argc_argv_init"),
@@ -17,7 +17,6 @@ pub fn argc_argv_init_method(asm: &mut Assembly) -> MethodRefIdx {
         MethodKind::Static,
         vec![].into(),
     );
-    
 
     asm.alloc_methodref(init_cs)
 }

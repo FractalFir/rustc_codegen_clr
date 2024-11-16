@@ -342,24 +342,26 @@ fn main() {
             }),
         );
     }
+    if !*C_MODE {
+        overrides.insert(
+            final_assembly.alloc_string("_Unwind_Backtrace"),
+            Box::new(|mref, asm| {
+                // 1 Get the output of the method.
+                let mref = &asm[mref];
+                let sig = asm[mref.sig()].clone();
+                let output = sig.output();
+                // 2. Create one local of the output type
+                let loc_name = asm.alloc_string("uninit");
+                let locals = vec![(Some(loc_name), asm.alloc_type(*output))];
+                // 3. Create CIL returning an uninitalized value of this type. TODO: even tough this value is shortly discarded on the Rust side, this is UB. Consider zero-initializing it.
+                let loc = asm.alloc_node(CILNode::LdLoc(0));
+                let ret = asm.alloc_root(CILRoot::Ret(loc));
+                let blocks = vec![BasicBlock::new(vec![ret], 0, None)];
+                MethodImpl::MethodBody { blocks, locals }
+            }),
+        );
+    }
 
-    overrides.insert(
-        final_assembly.alloc_string("_Unwind_Backtrace"),
-        Box::new(|mref, asm| {
-            // 1 Get the output of the method.
-            let mref = &asm[mref];
-            let sig = asm[mref.sig()].clone();
-            let output = sig.output();
-            // 2. Create one local of the output type
-            let loc_name = asm.alloc_string("uninit");
-            let locals = vec![(Some(loc_name), asm.alloc_type(*output))];
-            // 3. Create CIL returning an uninitalized value of this type. TODO: even tough this value is shortly discarded on the Rust side, this is UB. Consider zero-initializing it.
-            let loc = asm.alloc_node(CILNode::LdLoc(0));
-            let ret = asm.alloc_root(CILRoot::Ret(loc));
-            let blocks = vec![BasicBlock::new(vec![ret], 0, None)];
-            MethodImpl::MethodBody { blocks, locals }
-        }),
-    );
     overrides.insert(
         final_assembly.alloc_string("_Unwind_DeleteException"),
         Box::new(|_, asm| {
@@ -467,7 +469,7 @@ fn main() {
         cilly::v2::builtins::math::math(&mut final_assembly, &mut overrides);
         cilly::v2::builtins::simd::simd(&mut final_assembly, &mut overrides);
         cilly::v2::builtins::insert_exception(&mut final_assembly, &mut overrides);
-        cilly::v2::builtins::argc_argv_init(&mut final_assembly, &mut overrides);
+        //cilly::v2::builtins::argc_argv_init(&mut final_assembly, &mut overrides);
     }
 
     // Ensure the cctor and tcctor exist!

@@ -8,24 +8,15 @@
 #include <mm_malloc.h>
 
 #include <alloca.h>
-
-/*
-#include <unistd.h>
-#include <sys/uio.h>
-#include <poll.h>
-#include <sched.h>
-#include "threads.h"*/
+/* Backup for targets that don't support i128 - TODO: replace this with software emulation!*/
 #ifndef __SIZEOF_INT128__
 #define __int128 long long
 #endif
-#define eprintf(...) fprintf(stderr, __VA_ARGS__)
-
-int execvp(void *file, void *argv);
+/* Allocator APIs*/
 #define System_Runtime_InteropServices_Marshal_AllocHGlobali4is(size) malloc(size)
 #define System_Runtime_InteropServices_Marshal_AllocHGlobalisis(size) malloc(size)
 #define System_Runtime_InteropServices_Marshal_ReAllocHGlobalisisis(ptr, new_size) realloc(ptr, new_size)
 #define System_Runtime_InteropServices_Marshal_FreeHGlobalisv(ptr) free(ptr)
-
 #define System_Runtime_InteropServices_NativeMemory_AlignedAllocususpv(size, align) aligned_alloc(align, size)
 #define System_Runtime_InteropServices_NativeMemory_AlignedFreepvv free
 static inline void *System_Runtime_InteropServices_NativeMemory_AlignedReallocpvususpv(void *ptr, uintptr_t size, uintptr_t align)
@@ -35,7 +26,10 @@ static inline void *System_Runtime_InteropServices_NativeMemory_AlignedReallocpv
     free(ptr);
     return new_buff;
 }
-
+/*Utility macros*/
+#define eprintf(...) fprintf(stderr, __VA_ARGS__)
+#define BUILTIN_UNSUPORTED(NAME,OUTPUT, ARGLIST) static inline OUTPUT NAME ARGLIST { eprintf("Function " #NAME "is not yet supported!"); abort();}
+/*Wrappers for certain 128 bit ops: TODO: remove this once all ops are ported to new cilly builtins*/
 #define System_UInt128_op_Additionu16u16u16(lhs, rhs) (lhs + rhs)
 #define System_Int128_op_Additioni16i16i16(lhs, rhs) (__int128)((unsigned __int128)lhs + (unsigned __int128)rhs)
 
@@ -174,6 +168,7 @@ static inline void System_Console_WriteLinei4v(int32_t arg)
 {
     printf("%u\n", arg);
 }
+int execvp(void *file, void *argv);
 
 #define System_UIntPtr_get_MaxValueus() UINTPTR_MAX
 #define System_UIntPtr_get_MinValueus() ((uintptr_t)0)
@@ -268,12 +263,8 @@ static inline double System_Double_CopySignf8f8f8(double mag, double sign)
             return mag;
     }
 }
-static inline float System_MathF_Truncatef4f4(float val)
-{
-    fprintf(stderr, "Can't System_MathF_Truncatef4f4 yet.\n");
-    abort();
-    return 0;
-}
+BUILTIN_UNSUPORTED(System_MathF_Truncatef4f4,float,(float val))
+
 double fabsf64(double val);
 #define System_Single_Cosf4f4(x) ((float)cos(x))
 #define System_Double_Cosf8f8 cos
@@ -283,6 +274,7 @@ double fabsf64(double val);
 #define System_Single_Absf4f4 fabsf32
 #define System_MathF_Sqrtf4f4(x) (float)sqrt((double)x)
 #define System_MathF_Sqrtf8f8 sqrt
+#define System_MathF_Roundf4f4(x) (float)round((double)x)
 #define System_Single_Powf4f4f4(a, b) (float)pow(a, b)
 #define System_Single_Powf8f8f8 pow
 #define System_Double_Powf8f8f8 pow
@@ -291,6 +283,7 @@ double fabsf64(double val);
 #define System_Math_Maxisisis(x, y) (((x) > (y)) ? (x) : (y))
 #define System_Math_Minususus(x, y) (((x) < (y)) ? (x) : (y))
 #define System_Math_Maxususus(x, y) (((x) > (y)) ? (x) : (y))
+
 typedef struct TSWData
 {
     void *start_routine;
@@ -321,64 +314,28 @@ static inline int32_t pthread_create_wrapper(void *thread,
     return pthread_create(thread, attr, (void *)thread_start_wrapper, data);
 }
 #define pthread_create pthread_create_alias
-static inline float System_Single_Exp2f4f4(float input)
-{
-    fprintf(stderr, "Can't System_Single_Exp2f4f4 yet.\n");
-    abort();
-    return 0.0f;
-}
-static inline float System_Single_Logf4f4(float input)
-{
-    fprintf(stderr, "Can't System_Single_Logf4f4 yet.\n");
-    abort();
-    return 0.0f;
-}
-static inline float System_Single_Log2f4f4(float input)
-{
-    fprintf(stderr, "Can't System_Single_Log2f4f4 yet.\n");
-    abort();
-    return 0.0f;
-}
-static inline float System_Single_Log10f4f4(float input)
-{
-    fprintf(stderr, "Can't System_Single_Log10f4f4 yet.\n");
-    abort();
-    return 0.0f;
-}
+BUILTIN_UNSUPORTED(System_Single_Exp2f4f4,float,(float input));
+BUILTIN_UNSUPORTED(System_Double_Log10f8f8,double,(double input));
+BUILTIN_UNSUPORTED(System_Single_Expf4f4,float,(float input));
+BUILTIN_UNSUPORTED(System_Double_Expf8f8,double,(double input));
+BUILTIN_UNSUPORTED(System_Single_Logf4f4,float,(float input));
+BUILTIN_UNSUPORTED(System_Single_Log2f4f4,float,(float input));
+BUILTIN_UNSUPORTED(System_Single_Log10f4f4,float,(float input));
+BUILTIN_UNSUPORTED(System_Double_Logf8f8,double,(double input));
+BUILTIN_UNSUPORTED(System_Double_Log2f8f8,double,(double input));
+#define System_Math_Roundf8f8(input) round(input)
 #define System_Math_Floorf8f8(input) floor(input)
 #define System_Math_Sqrtf8f8(input) sqrt(input)
-
-static inline double System_Double_Log10f8f8(double input)
-{
-    fprintf(stderr, "Can't System_Double_Log10f8f8 yet.\n");
-    abort();
-    return 0.0f;
-}
 #define System_Math_Ceilingf8f8(input) ceil(input)
 #define System_MathF_Ceilingf4f4(input) (float)ceil((double)input)
 #define System_Math_Floorf8f8(input) floor(input)
 #define System_MathF_Floorf4f4(input) (float)floor((double)input)
 #define System_Math_Truncatef8f8(input) trunc(input)
+BUILTIN_UNSUPORTED(System_UInt32_RotateRightu4i4u4,uint32_t,(uint32_t val, int32_t ammount))
+BUILTIN_UNSUPORTED(System_UIntPtr_RotateRightusi4us,uintptr_t,(uintptr_t val, uintptr_t ammount))
+BUILTIN_UNSUPORTED(System_Byte_RotateRightu1i4u1,uint8_t,(uint8_t val, int32_t ammount))
 
-static inline uint32_t System_UInt32_RotateRightu4i4u4(uint32_t val, int32_t ammount)
-{
-    fprintf(stderr, "Can't System_UInt32_RotateRightu4i4u4 yet.\n");
-    abort();
-    return 0;
-}
 
-static inline uintptr_t System_UIntPtr_RotateRightusi4us(uintptr_t val, uintptr_t ammount)
-{
-    fprintf(stderr, "Can't System_UIntPtr_RotateRightusi4us yet.\n");
-    abort();
-    return 0;
-}
-static inline uint8_t System_Byte_RotateRightu1i4u1(uint8_t val, int32_t ammount)
-{
-    fprintf(stderr, "Can't System_Byte_RotateRightu1i4u1 yet.\n");
-    abort();
-    return 0;
-}
 static inline uint32_t System_Threading_Interlocked_CompareExchangeru4u4u4u4(uint32_t *addr, uint32_t value, uint32_t comparand)
 {
     uint32_t res = 0;
@@ -606,7 +563,8 @@ static inline intptr_t System_Runtime_InteropServices_Marshal_StringToCoTaskMemU
     memcpy(ptr, str, len + 1);
     return len;
 }
-
+float fabsf32(float input);
+#define System_Half_op_Explicitf4f2(f)(_Float16)(f)
 #define TYPEDEF_SIMDVEC(TYPE, MANGLED, SIZE) \
     typedef struct __simdvec##MANGLED##SIZE  \
     {                                        \
@@ -634,15 +592,19 @@ static inline uint8_t **get_environ()
     return (uint8_t **)environ;
 }
 union System_MidpointRounding{int32_t inner;};
-static inline float System_Math_Roundf814System_Runtime23System_MidpointRoundingf8(float val,union System_MidpointRounding rounding){
+static inline double System_Math_Roundf814System_Runtime23System_MidpointRoundingf8(double val,union System_MidpointRounding rounding){
+	return round(val);
+}
+static inline float System_MathF_Roundf414System_Runtime23System_MidpointRoundingf4(float val,union System_MidpointRounding rounding){
 	return roundf(val);
 }
+
 int ioctl(int fd, unsigned long op, ...);
 int pthread_attr_init(void* attr);
 int pthread_attr_destroy(void* attr);
 int poll(void *fds, uint64_t nfds, int timeout);
 int pthread_getattr_np(uint64_t thread, void *attr);
 int pthread_attr_getstack(void *attr,
-                          void **stackaddr, size_t *stacksize);
+                          void *stackaddr, size_t *stacksize);
 int sched_getaffinity(int32_t pid, size_t cpusetsize,
                       void *mask);

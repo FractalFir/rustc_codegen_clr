@@ -28,16 +28,26 @@ use super::{
     Const, Exporter, Int, MethodDef, MethodRef, NodeIdx, RootIdx, SigIdx, Type,
 };
 fn local_name(locals: &[LocalDef], asm: &Assembly, loc: u32) -> String {
+    // If the name of this local repeats, use the L form.
     if locals
         .iter()
         .filter(|(name, _)| *name == locals[loc as usize].0)
         .count()
         > 1
     {
+    
         return format!("L{loc}");
     }
     match locals[loc as usize].0 {
-        Some(local_name) => escape_ident(&asm[local_name]),
+        Some(local_name) => {
+            let ident = escape_ident(&asm[local_name]);
+            match ident.as_str() {
+                "socket" => {
+                    format!("i{}", encode(hash64(&ident)))
+                }
+                _ => ident,
+            }
+        }
         None => format!("L{loc}"),
     }
 }
@@ -94,7 +104,7 @@ fn c_tpe(field_tpe: Type, asm: &Assembly) -> String {
             format!("union {}", escape_ident(&asm[asm[class_ref_idx].name()]))
         }
         Type::Float(float) => match float {
-            super::Float::F16 => todo!(),
+            super::Float::F16 => "_Float16".into(),
             super::Float::F32 => "float".into(),
             super::Float::F64 => "double".into(),
             super::Float::F128 => "_Float128".into(),
@@ -132,6 +142,7 @@ fn mref_to_name(mref: &MethodRef, asm: &Assembly) -> String {
             .any(|tpe| matches!(tpe, Type::SIMDVector(_)))
         || mname == "transmute"
         || mname == "create_slice"
+        || mname == "_Unwind_Backtrace"
     {
         let mangled = escape_ident(
             &asm[mref.sig()]
@@ -706,25 +717,10 @@ impl CExporter {
     ) -> Result<String, TypeCheckError> {
         Ok(match root {
             CILRoot::StLoc(id, node_idx) => {
-                if locals
-                .iter()
-                .filter(|(name, _)| *name == locals[id as usize].0)
-                .count()
-                > 1
-            {
-                return Ok(format!("L{id} = {node};", node = Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig)?,));
-            }
-                match locals[id as usize].0 {
-                Some(name) => format!(
-                    "{name} = {node};",
-                    node = Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig)?,
-                    name = escape_ident(&asm[name]),
-                ),
-                None => format!(
-                    "L{id} = {node};",
-                    node = Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig)?,
-                ),
-            }},
+
+                let name = local_name(locals, asm, id);
+                return Ok(format!("{name} = {node};", node = Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig)?,));
+            },
             CILRoot::StArg(arg, node_idx) =>match inputs[arg as usize].1 {
                 Some(name) => format!(
                     "{name} = {node};",
@@ -983,29 +979,16 @@ impl CExporter {
             .collect::<String>();
         writeln!(method_defs, "{output} {method_name}({inputs}){{")?;
         let locals: Vec<_> = def.iter_locals(asm).copied().collect();
-        for (idx, (local_name, local_type)) in locals.iter().enumerate() {
+        for (idx, (lname, local_type)) in locals.iter().enumerate() {
             // If the name of this local is found multiple times, use the L form.
-            if locals.iter().filter(|(name, _)| name == local_name).count() > 1 {
-                writeln!(
-                    method_defs,
-                    "{local_type} L{idx};",
-                    local_type = nonvoid_c_type(asm[*local_type], asm),
-                )?;
-                continue;
-            }
-            match local_name {
-                Some(local_name) => writeln!(
-                    method_defs,
-                    "{local_type} {local_name};",
-                    local_name = escape_ident(&asm[*local_name]),
-                    local_type = nonvoid_c_type(asm[*local_type], asm),
-                ),
-                None => writeln!(
-                    method_defs,
-                    "{local_type} L{idx};",
-                    local_type = nonvoid_c_type(asm[*local_type], asm),
-                ),
-            }?;
+           
+            writeln!(
+                method_defs,
+                "{local_type} {lname};",
+                lname = local_name(&locals, asm, idx as u32),
+                local_type = nonvoid_c_type(asm[*local_type], asm),
+            )?;
+         
         }
         let blocks = def.blocks(asm).unwrap().to_vec();
         for block in blocks {
@@ -1051,7 +1034,7 @@ impl CExporter {
         type_defs: &mut impl Write,
         defined_types: &mut FxHashSet<ClassDefIdx>,
         delayed_defs: &mut FxHashSet<ClassDefIdx>,
-        extrn:bool,
+        extrn: bool,
     ) -> std::io::Result<()> {
         let class = asm[defid].clone();
         // Checks if this def needs to be delayed, if one of its fields is not yet defined
@@ -1091,11 +1074,7 @@ impl CExporter {
             let fname = escape_ident(&asm[*sfname]);
             let field_tpe = c_tpe(*sfield_tpe, asm);
             let fname = class_member_name(&class_name, &fname);
-            let extrn = if extrn {
-                "extern"
-            }else{
-                ""
-            };
+            let extrn = if extrn { "extern" } else { "" };
             if *is_thread_local {
                 writeln!(type_defs, "{extrn} _Thread_local {field_tpe} {fname};")?;
             } else {
@@ -1119,10 +1098,10 @@ impl CExporter {
         asm: &super::Assembly,
         out: &mut impl Write,
         lib: bool,
-        extrn:bool,
+        extrn: bool,
     ) -> std::io::Result<()> {
         let mut asm = asm.clone();
-       
+
         let mut method_defs = Vec::new();
         let mut method_decls = Vec::new();
         let mut type_defs = Vec::new();
@@ -1140,23 +1119,23 @@ impl CExporter {
                     &mut type_defs,
                     &mut defined_types,
                     &mut delayed_defs,
-                    extrn
+                    extrn,
                 )?;
             }
             delayed_defs_copy.clear();
         }
-        let mut header:String = include_str!("c_header.h").into();
-        if !asm.has_tcctor(){
+        let mut header: String = include_str!("c_header.h").into();
+        if !asm.has_tcctor() {
             header = header.replace("void _tcctor();", "");
             header = header.replace("_tcctor();", "");
         }
- 
+
         out.write_all(header.as_bytes())?;
-        out.write_all(b"\n/*END OF BUILTIN HEADER*/\n")?; 
+        out.write_all(b"\n/*END OF BUILTIN HEADER*/\n")?;
         out.write_all(&type_defs)?;
-        out.write_all(b"\n/*END OF TYPEDEFS*/\n")?; 
+        out.write_all(b"\n/*END OF TYPEDEFS*/\n")?;
         out.write_all(&method_decls)?;
-        out.write_all(b"\n/*END OF METHODECLS*/\n")?; 
+        out.write_all(b"\n/*END OF METHODECLS*/\n")?;
         out.write_all(&method_defs)?;
         if !lib {
             call_entry(out, &asm)?;
@@ -1177,12 +1156,12 @@ impl CExporter {
         asm: &Assembly,
         target: &Path,
         lib: bool,
-        extrn:bool,
+        extrn: bool,
     ) -> Result<(), std::io::Error> {
         let mut c_out = std::io::BufWriter::new(std::fs::File::create(c_path)?);
         println!("Exporting {c_path:?}");
-    
-        self.export_to_write(asm, &mut c_out, lib,extrn)?;
+
+        self.export_to_write(asm, &mut c_out, lib, extrn)?;
         println!("Exported {c_path:?}");
         // Needed to ensure the IL file is valid!
         c_out.flush().unwrap();
@@ -1195,11 +1174,12 @@ impl CExporter {
             cmd.args([
                 "-fsanitize=undefined,alignment",
                 "-fno-sanitize=leak",
-                "-fno-sanitize-recover", "-O0"
+                "-fno-sanitize-recover",
+                "-O0",
             ]);
-        } else if !*NO_OPT{
+        } else if !*NO_OPT {
             cmd.arg("-Ofast");
-        } else{
+        } else {
             cmd.arg("-O0");
         };
         if lib {
@@ -1234,7 +1214,7 @@ impl Exporter for CExporter {
         if *PARTS == 1 {
             // The IL file should be next to the target
             let c_path = target.with_extension("c");
-            self.export_to_file(&c_path, asm, target, self.is_lib,false)
+            self.export_to_file(&c_path, asm, target, self.is_lib, false)
         } else {
             let mut parts = vec![];
             for (id, part) in asm.split_to_parts(*PARTS).enumerate() {
@@ -1243,31 +1223,31 @@ impl Exporter for CExporter {
                     .with_file_name(format!("{name}_{id}"))
                     .with_extension("o");
                 let c_path = target.with_extension("c");
-                self.export_to_file(&c_path, &part, &target, true,true)?;
+                self.export_to_file(&c_path, &part, &target, true, true)?;
                 parts.push(target);
             }
-         
+
             let mut cmd =
                 std::process::Command::new(std::env::var("CC").unwrap_or("cc".to_owned()));
-           
+
             cmd.args(parts);
             cmd.arg("-o").arg(target).arg("-g").arg("-lm");
-         
-                let c_path = target.with_extension("c");
-                let only_statics = asm.only_statics();
-     
-                self.export_to_file(&c_path, &only_statics, target, true,false)?;   
-                let mut option = std::fs::OpenOptions::new();
-                option.read(true);
-                option.append(true);
-                if !self.is_lib {
+
+            let c_path = target.with_extension("c");
+            let only_statics = asm.only_statics();
+
+            self.export_to_file(&c_path, &only_statics, target, true, false)?;
+            let mut option = std::fs::OpenOptions::new();
+            option.read(true);
+            option.append(true);
+            if !self.is_lib {
                 let mut c_file = option.open(&c_path).unwrap();
                 call_entry(&mut c_file, asm).unwrap();
-                } else {
-                    cmd.arg("-c");
-                }
-                cmd.arg(c_path);
-        
+            } else {
+                cmd.arg("-c");
+            }
+            cmd.arg(c_path);
+
             println!("Linking {target:?}");
             let out = cmd.output().unwrap();
             println!("Linked {target:?}");
