@@ -1,6 +1,6 @@
 use crate::assembly::MethodCompileCtx;
 use crate::operand::{handle_operand, operand_address};
-use crate::place::{place_address_raw, place_adress};
+use crate::place::place_address_raw;
 use crate::r#type::fat_ptr_to;
 use cilly::cil_node::CILNode;
 use cilly::cil_root::CILRoot;

@@ -17,7 +17,6 @@ use cilly::{
     cil_root::CILRoot,
     cil_tree::CILTree,
     cilnode::PtrCastRes,
-    conv_isize,
     method::{Method, MethodType},
     utilis::{self, encode},
     v2::{

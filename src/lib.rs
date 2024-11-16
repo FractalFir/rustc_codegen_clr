@@ -307,7 +307,7 @@ impl CodegenBackend for MyBackend {
     ) -> Result<(), ErrorGuaranteed> {
         use rustc_codegen_ssa::back::link::link_binary;
         //panic!();
-        link_binary(sess, &RlibArchiveBuilder, &codegen_results, outputs)
+        link_binary(sess, &RlibArchiveBuilder, codegen_results, outputs)
             .expect("Could not link the binary into a .rlib file!");
         Ok(())
     }
@@ -325,7 +325,7 @@ impl ArchiveBuilderBuilder for RlibArchiveBuilder {
         &self,
         _sess: &Session,
         _lib_name: &str,
-        _dll_imports: std::vec::Vec<(std::string::String, std::option::Option<u16>)>,
+        _dll_imports: std::vec::Vec<rustc_codegen_ssa::back::archive::ImportLibraryItem>,
         _tmpdir: &Path,
     ) {
         unimplemented!("creating dll imports is not supported");

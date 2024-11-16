@@ -5,7 +5,7 @@ use cilly::{
     cil_root::CILRoot,
     conv_i16, conv_i32, conv_i8, conv_isize, conv_u16, conv_u32, conv_u64, conv_u8, rem_un,
     v2::{cilnode::MethodKind, ClassRef, MethodRef},
-    Assembly, Int, IntoAsmIndex, Type,
+    Assembly, Int, Type,
 };
 use rustc_middle::{
     mir::{Operand, Place},

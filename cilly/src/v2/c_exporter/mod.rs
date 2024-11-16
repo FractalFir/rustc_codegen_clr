@@ -11,6 +11,8 @@ use crate::{
 };
 config!(NO_SFI, bool, false);
 config!(ANSI_C, bool, false);
+config!(NO_OPT, bool, false);
+
 config!(UB_CHECKS, bool, true);
 config!(SHORT_TYPENAMES, bool, false);
 config!(PARTS, u32, 1);
@@ -400,7 +402,7 @@ impl CExporter {
                 Const::U64(v) => format!("0x{v:x}uL"),
                 Const::U128(v) => {
                     let low = *v as u64;
-                    let high = ((*v as u128) >> 64) as u64;
+                    let high = ({ *v } >> 64) as u64;
                     format!("((unsigned __int128)(0x{low:x}) | ((unsigned __int128)(0x{high:x}) << 64))")
                 }
                 Const::USize(v) => format!("(uintptr_t)0x{v:x}uL"),
@@ -1120,7 +1122,7 @@ impl CExporter {
         extrn:bool,
     ) -> std::io::Result<()> {
         let mut asm = asm.clone();
-        asm.tcctor();
+       
         let mut method_defs = Vec::new();
         let mut method_decls = Vec::new();
         let mut type_defs = Vec::new();
@@ -1143,19 +1145,28 @@ impl CExporter {
             }
             delayed_defs_copy.clear();
         }
-        out.write_all(include_bytes!("c_header.h"))?;
-        out.write_all(b"\n")?;
+        let mut header:String = include_str!("c_header.h").into();
+        if !asm.has_tcctor(){
+            header = header.replace("void _tcctor();", "");
+            header = header.replace("_tcctor();", "");
+        }
+ 
+        out.write_all(header.as_bytes())?;
+        out.write_all(b"\n/*END OF BUILTIN HEADER*/\n")?; 
         out.write_all(&type_defs)?;
+        out.write_all(b"\n/*END OF TYPEDEFS*/\n")?; 
         out.write_all(&method_decls)?;
+        out.write_all(b"\n/*END OF METHODECLS*/\n")?; 
         out.write_all(&method_defs)?;
         if !lib {
-            call_entry(out, &mut asm)?;
+            call_entry(out, &asm)?;
         }
         Ok(())
     }
 }
 fn call_entry(out: &mut impl Write, asm: &Assembly) -> Result<(), std::io::Error> {
     let cctor_call = if asm.has_cctor() { "_cctor();" } else { "" };
+
     writeln!(out,"int main(int argc_input, char** argv_input){{argc = argc_input; argv = argv_input; {cctor_call}entrypoint((void *)0); return 0;}}")?;
     Ok(())
 }
@@ -1168,8 +1179,11 @@ impl CExporter {
         lib: bool,
         extrn:bool,
     ) -> Result<(), std::io::Error> {
-        let mut c_out = std::io::BufWriter::new(std::fs::File::create(&c_path)?);
+        let mut c_out = std::io::BufWriter::new(std::fs::File::create(c_path)?);
+        println!("Exporting {c_path:?}");
+    
         self.export_to_write(asm, &mut c_out, lib,extrn)?;
+        println!("Exported {c_path:?}");
         // Needed to ensure the IL file is valid!
         c_out.flush().unwrap();
         drop(c_out);
@@ -1183,9 +1197,11 @@ impl CExporter {
                 "-fno-sanitize=leak",
                 "-fno-sanitize-recover", "-O0"
             ]);
-        } else {
+        } else if !*NO_OPT{
             cmd.arg("-Ofast");
-        }
+        } else{
+            cmd.arg("-O0");
+        };
         if lib {
             cmd.arg("-c");
         } else {
@@ -1194,7 +1210,9 @@ impl CExporter {
         if *ANSI_C {
             cmd.arg("-std=c89");
         }
+        println!("Compiling {c_path:?}");
         let out = cmd.output().unwrap();
+        println!("Compiled {c_path:?}");
         let stdout = String::from_utf8_lossy(&out.stdout);
         let stderr = String::from_utf8_lossy(&out.stderr);
         if !*LINKER_RECOVER {
@@ -1219,20 +1237,22 @@ impl Exporter for CExporter {
             self.export_to_file(&c_path, asm, target, self.is_lib,false)
         } else {
             let mut parts = vec![];
-            for (id, part) in asm.split_to_parts(*PARTS).iter().enumerate() {
+            for (id, part) in asm.split_to_parts(*PARTS).enumerate() {
                 let name = target.file_stem().unwrap().to_string_lossy().into_owned();
                 let target = target
                     .with_file_name(format!("{name}_{id}"))
                     .with_extension("o");
                 let c_path = target.with_extension("c");
-                self.export_to_file(&c_path, part, &target, true,true)?;
+                self.export_to_file(&c_path, &part, &target, true,true)?;
                 parts.push(target);
             }
+         
             let mut cmd =
                 std::process::Command::new(std::env::var("CC").unwrap_or("cc".to_owned()));
+           
             cmd.args(parts);
             cmd.arg("-o").arg(target).arg("-g").arg("-lm");
-            if !self.is_lib {
+         
                 let c_path = target.with_extension("c");
                 let only_statics = asm.only_statics();
      
@@ -1240,11 +1260,17 @@ impl Exporter for CExporter {
                 let mut option = std::fs::OpenOptions::new();
                 option.read(true);
                 option.append(true);
+                if !self.is_lib {
                 let mut c_file = option.open(&c_path).unwrap();
                 call_entry(&mut c_file, asm).unwrap();
+                } else {
+                    cmd.arg("-c");
+                }
                 cmd.arg(c_path);
-            }
+        
+            println!("Linking {target:?}");
             let out = cmd.output().unwrap();
+            println!("Linked {target:?}");
             let stdout = String::from_utf8_lossy(&out.stdout);
             let stderr = String::from_utf8_lossy(&out.stderr);
             if !*LINKER_RECOVER {

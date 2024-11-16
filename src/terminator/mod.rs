@@ -9,7 +9,7 @@ use cilly::{
 };
 use rustc_middle::{
     mir::{BasicBlock, Operand, Place, SwitchTargets, Terminator, TerminatorKind},
-    ty::{Instance, InstanceKind, ParamEnv, Ty, TyKind},
+    ty::{Instance, InstanceKind, Ty, TyKind},
 };
 use rustc_span::source_map::Spanned;
 

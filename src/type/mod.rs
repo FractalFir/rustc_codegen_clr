@@ -14,7 +14,7 @@ use cilly::{
         cilnode::MethodKind, Access, BasicBlock, CILNode, CILRoot, ClassDef, ClassDefIdx, ClassRef,
         ClassRefIdx, Float, Int, MethodDef, MethodImpl, StringIdx, Type,
     },
-    Assembly, IntoAsmIndex, MethodRefIdx,
+    Assembly, IntoAsmIndex,
 };
 pub use r#type::*;
 use rustc_middle::ty::{AdtDef, AdtKind, FloatTy, IntTy, List, ParamEnv, Ty, TyKind, UintTy};

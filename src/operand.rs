@@ -1,5 +1,4 @@
 use cilly::cil_node::CILNode;
-use cilly::cil_root::CILRoot;
 use cilly::Type;
 use rustc_middle::{
     mir::{ConstValue, Operand},

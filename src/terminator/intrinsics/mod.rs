@@ -267,7 +267,7 @@ pub fn handle_intrinsic<'tcx>(
             };
             place_set(
                 destination,
-                atomic_add(dst, add_ammount.clone(), src_type, ctx).into(),
+                atomic_add(dst, add_ammount.clone(), src_type, ctx),
                 ctx,
             )
         }

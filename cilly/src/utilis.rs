@@ -4,12 +4,12 @@ use crate::method::Method;
 
 use crate::v2::cilnode::MethodKind;
 use crate::v2::{ClassRef, FnSig, Int, MethodRef, MethodRefIdx, StaticFieldDesc};
-use crate::{asm::Assembly, cil_node::CILNode, cil_root::CILRoot, eq, lt};
-use crate::{call, call_virt, conv_i32, conv_usize, IntoAsmIndex, MethodDef, Type};
+use crate::{asm::Assembly, cil_node::CILNode, cil_root::CILRoot};
+use crate::{call, call_virt, conv_usize, IntoAsmIndex, MethodDef, Type};
 
 pub fn argc_argv_init_method(asm: &mut Assembly) -> MethodRefIdx {
     let main_module = asm.main_module();
-    use std::num::NonZeroU8;
+    
     let init_cs = MethodRef::new(
         *asm.main_module(),
         asm.alloc_string("argc_argv_init"),
@@ -17,9 +17,9 @@ pub fn argc_argv_init_method(asm: &mut Assembly) -> MethodRefIdx {
         MethodKind::Static,
         vec![].into(),
     );
-    let init_cs = asm.alloc_methodref(init_cs);
+    
 
-    return init_cs;
+    asm.alloc_methodref(init_cs)
 }
 pub fn mstring_to_utf8ptr(mstring: CILNode, asm: &mut Assembly) -> CILNode {
     let mref = MethodRef::new(

@@ -1,15 +1,14 @@
 use core::f16;
 
-use crate::{assembly::MethodCompileCtx, r#type::get_type};
+use crate::assembly::MethodCompileCtx;
 
 use cilly::{
     call,
     cil_node::{CILNode, CallOpArgs},
-    cil_root::CILRoot,
     v2::{
         cilnode::MethodKind,
         hashable::{HashableF32, HashableF64},
-        Assembly, ClassRef, FieldDesc, Float, Int, MethodRef, MethodRefIdx, StaticFieldDesc,
+        Assembly, ClassRef, Float, Int, MethodRef, MethodRefIdx, StaticFieldDesc,
     },
     Const, NodeIdx, Type,
 };

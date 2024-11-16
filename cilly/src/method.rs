@@ -1,4 +1,4 @@
-use fxhash::{FxBuildHasher, FxHashMap, FxHashSet};
+use fxhash::{FxBuildHasher, FxHashSet};
 use serde::{Deserialize, Serialize};
 use std::{
     hash::{Hash, Hasher},
@@ -9,9 +9,7 @@ use crate::{
     access_modifier::AccessModifer,
     basic_block::BasicBlock,
     cil_iter::{CILIterElem, CILIterTrait},
-    cil_iter_mut::CILIterElemMut,
     cil_node::CILNode,
-    cil_root::CILRoot,
     cil_tree::CILTree,
     v2::{cilnode::MethodKind, method::LocalDef, Assembly, FnSig, MethodRef, MethodRefIdx},
     IString, IntoAsmIndex, StringIdx, Type, TypeIdx,

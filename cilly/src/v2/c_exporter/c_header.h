@@ -276,11 +276,11 @@ static inline float System_MathF_Truncatef4f4(float val)
 }
 double fabsf64(double val);
 #define System_Single_Cosf4f4(x) ((float)cos(x))
-#define System_Single_Cosf8f8 cos
+#define System_Double_Cosf8f8 cos
 #define System_Single_Sinf4f4(x) ((float)sin(x))
-#define System_Single_Sinf8f8 sin
+#define System_Double_Sinf8f8 sin
 #define System_Double_Absf8f8 fabsf64
-#define System_Double_Absf4f4 fabsf32
+#define System_Single_Absf4f4 fabsf32
 #define System_MathF_Sqrtf4f4(x) (float)sqrt((double)x)
 #define System_MathF_Sqrtf8f8 sqrt
 #define System_Single_Powf4f4f4(a, b) (float)pow(a, b)
@@ -355,6 +355,9 @@ static inline double System_Double_Log10f8f8(double input)
     return 0.0f;
 }
 #define System_Math_Ceilingf8f8(input) ceil(input)
+#define System_MathF_Ceilingf4f4(input) (float)ceil((double)input)
+#define System_Math_Floorf8f8(input) floor(input)
+#define System_MathF_Floorf4f4(input) (float)floor((double)input)
 #define System_Math_Truncatef8f8(input) trunc(input)
 
 static inline uint32_t System_UInt32_RotateRightu4i4u4(uint32_t val, int32_t ammount)
