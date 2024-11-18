@@ -3,13 +3,7 @@ use crate::v2::MethodImpl;
 use std::{io::Write, path::Path};
 
 use super::{
-    asm::{IlasmFlavour, ILASM_FLAVOUR, ILASM_PATH},
-    cilnode::{ExtendKind, UnOp},
-    cilroot::BranchCond,
-    method::LocalDef,
-    tpe::simd::SIMDElem,
-    Assembly, BinOp, CILIter, CILIterElem, CILNode, ClassRefIdx, Exporter, Int, NodeIdx, RootIdx,
-    SigIdx, Type,
+    asm::{IlasmFlavour, ILASM_FLAVOUR, ILASM_PATH}, cilnode::{ExtendKind, UnOp}, cilroot::BranchCond, method::LocalDef, tpe::simd::SIMDElem, Assembly, BinOp, CILIter, CILIterElem, CILNode, ClassRefIdx, Exporter, Int, MethodDefIdx, NodeIdx, RootIdx, SigIdx, Type
 };
 
 pub struct ILExporter {
@@ -87,6 +81,8 @@ impl ILExporter {
                     writeln!(out,".custom instance void [System.Runtime]System.ThreadStaticAttribute::.ctor() = (01 00 00 00)")?;
                 };
             }
+            // Debug check
+            let mut ensure_unqiue:std::collections::HashSet<MethodDefIdx> = std::collections::HashSet::new();
             // Export all methods
 
             for method_id in class_def.methods() {
@@ -146,6 +142,7 @@ impl ILExporter {
                     out,
                     ".method {vis} hidebysig {kind} {pinvoke} {ret} '{name}'({inputs}) cil managed {preservesig}{{// Method ID {method_id:?}"
                 )?;
+                debug_assert!(ensure_unqiue.insert(*method_id));
                 let stack_size = match method.resolved_implementation(asm_mut) {
                     MethodImpl::MethodBody { blocks, .. } => blocks
                         .iter()
