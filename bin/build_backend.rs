@@ -72,7 +72,7 @@ pub fn cargo_build_env() -> String {
 pub fn ilasm_check() {
     match std::process::Command::new(&*ILASM_PATH).output(){
         Ok(_)=>println!("An CIL assembler has been detected."),
-        Err(err)=>panic!("Could not find the CIL assembler at name/path {:?}, due to {err:?}. 
+        Err(err)=>panic!("Could not find the CIL assembler at name/path {:?}, due to {err:?}.
 Please instal the CIL assembler, and/or set the ILASM_PATH enviroment variable to point to your CIL assembler.",*ILASM_PATH)
     }
 }
@@ -97,7 +97,9 @@ pub fn absolute_backend_path() -> PathBuf {
         } else if cfg!(target_os = "windows") {
             std::fs::canonicalize("../target/debug/rustc_codegen_clr.dll").unwrap()
         } else if cfg!(target_os = "macos") {
-            std::fs::canonicalize("../target/debug/librustc_codegen_clr.dylib").unwrap()
+            let current_dir = std::env::current_dir().unwrap();
+            let dylib_path = current_dir.join("target/debug/librustc_codegen_clr.dylib");
+            std::fs::canonicalize(dylib_path).expect("Could not find the backend dylib")
         } else {
             panic!("Unsupported target OS");
         }
@@ -106,7 +108,9 @@ pub fn absolute_backend_path() -> PathBuf {
     } else if cfg!(target_os = "windows") {
         std::fs::canonicalize("../target/release/rustc_codegen_clr.dll").unwrap()
     } else if cfg!(target_os = "macos") {
-        std::fs::canonicalize("../target/release/librustc_codegen_clr.dylib").unwrap()
+        let current_dir = std::env::current_dir().unwrap();
+        let dylib_path = current_dir.join("target/release/librustc_codegen_clr.dylib");
+        std::fs::canonicalize(dylib_path).expect("Could not find the backend dylib")
     } else {
         panic!("Unsupported target OS");
     }
@@ -156,7 +160,9 @@ static RUSTC_CODEGEN_CLR_LINKER: std::sync::LazyLock<PathBuf> = std::sync::LazyL
             .unwrap();
         //TODO: Fix this for other platforms
         if cfg!(target_os = "linux") || cfg!(target_os = "macos") {
-            std::fs::canonicalize("../target/debug/linker").unwrap()
+            let current_dir = std::env::current_dir().unwrap();
+            let linker_path = current_dir.join("target/debug/linker");
+            std::fs::canonicalize(linker_path).unwrap()
         } else if cfg!(target_os = "windows") {
             std::fs::canonicalize("../target/debug/linker.exe").unwrap()
         } else {
@@ -169,7 +175,9 @@ static RUSTC_CODEGEN_CLR_LINKER: std::sync::LazyLock<PathBuf> = std::sync::LazyL
             .unwrap();
         //TODO: Fix this for other platforms
         if cfg!(target_os = "linux") || cfg!(target_os = "macos") {
-            std::fs::canonicalize("../target/release/linker").unwrap()
+            let current_dir = std::env::current_dir().unwrap();
+            let linker_path = current_dir.join("target/release/linker");
+            std::fs::canonicalize(linker_path).unwrap()
         } else if cfg!(target_os = "windows") {
             std::fs::canonicalize("../target/release/linker.exe").unwrap()
         } else {
@@ -187,13 +195,14 @@ fn build_backend() -> Result<(), String> {
         .args(["build", "--lib", "--release"])
         .output()
         .map_err(|err| err.to_string())?;
+    let current_dir = std::env::current_dir().unwrap();
     let _out = std::process::Command::new("cargo")
-        .current_dir("../cilly")
+        .current_dir(current_dir.join("cilly"))
         .args(["build", "--bin", "linker"])
         .output()
         .expect("could not build the backend");
     let _out = std::process::Command::new("cargo")
-        .current_dir("../cilly")
+        .current_dir(current_dir.join("cilly"))
         .args(["build", "--bin", "linker", "--release"])
         .output()
         .expect("could not build the backend");
