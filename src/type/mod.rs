@@ -98,9 +98,10 @@ pub fn get_type<'tcx>(ty: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_>) -> Typ
             // Extract the sig
             let mut sig = closure.sig();
             sig = ctx.monomorphize(sig);
-            let sig = ctx
-                .tcx()
-                .normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), sig);
+            let sig = ctx.tcx().normalize_erasing_late_bound_regions(
+                rustc_middle::ty::TypingEnv::fully_monomorphized(),
+                sig,
+            );
             let inputs: Box<_> = sig.inputs().iter().map(|ty| get_type(*ty, ctx)).collect();
             let output = get_type(sig.output(), ctx);
             let sig = ctx.sig(inputs, output);
@@ -146,9 +147,10 @@ pub fn get_type<'tcx>(ty: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_>) -> Typ
         TyKind::Foreign(_foregin) => Type::Void,
         TyKind::FnDef(_did, _subst) => Type::Void,
         TyKind::FnPtr(sig, _) => {
-            let sig = ctx
-                .tcx()
-                .normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), *sig);
+            let sig = ctx.tcx().normalize_erasing_late_bound_regions(
+                rustc_middle::ty::TypingEnv::fully_monomorphized(),
+                *sig,
+            );
             //let sig = crate::function_sig::from_poly_sig(method, tcx, self, sig);
             let output = get_type(ctx.monomorphize(sig.output()), ctx);
             let inputs: Box<[Type]> = sig

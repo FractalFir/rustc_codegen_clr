@@ -1,5 +1,5 @@
 use cilly::v2::FnSig;
-use rustc_middle::ty::{Instance, List, ParamEnv, ParamEnvAnd, TyKind};
+use rustc_middle::ty::{Instance, List, ParamEnv, PseudoCanonicalInput, TyKind};
 use rustc_target::abi::call::Conv;
 use rustc_target::spec::abi::Abi as TargetAbi;
 
@@ -15,8 +15,8 @@ impl CallInfo {
         function: Instance<'tcx>,
         ctx: &mut MethodCompileCtx<'tcx, '_>,
     ) -> Self {
-        let fn_abi = ctx.tcx().fn_abi_of_instance(ParamEnvAnd {
-            param_env: ParamEnv::reveal_all(),
+        let fn_abi = ctx.tcx().fn_abi_of_instance(PseudoCanonicalInput {
+            typing_env: rustc_middle::ty::TypingEnv::fully_monomorphized(),
             value: (function, List::empty()),
         });
         let fn_abi = match fn_abi {
@@ -39,7 +39,10 @@ impl CallInfo {
             args.push(get_type(arg.layout.ty, ctx));
         }
         // There are 2 ABI enums for some reasons(they differ in what memebers they have)
-        let fn_ty = function.ty(ctx.tcx(), ParamEnv::reveal_all());
+        let fn_ty = function.ty(
+            ctx.tcx(),
+            rustc_middle::ty::TypingEnv::fully_monomorphized(),
+        );
         let internal_abi = match fn_ty.kind() {
             TyKind::FnDef(_, _) => fn_ty.fn_sig(ctx.tcx()).abi(),
             TyKind::Closure(_, args) => args.as_closure().sig().abi(),

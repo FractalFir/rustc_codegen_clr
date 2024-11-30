@@ -181,6 +181,7 @@ use rustc_session::{
     config::{OutputFilenames, OutputType},
     Session,
 };
+
 use rustc_span::ErrorGuaranteed;
 
 use std::{any::Any, path::Path};
@@ -216,7 +217,7 @@ impl CodegenBackend for MyBackend {
             }
 
             if let Some((entrypoint, _kind)) = tcx.entry_fn(()) {
-                let penv = rustc_middle::ty::ParamEnv::reveal_all();
+                let penv = rustc_middle::ty::TypingEnv::fully_monomorphized();
                 let entrypoint = rustc_middle::ty::Instance::try_resolve(
                     tcx,
                     penv,

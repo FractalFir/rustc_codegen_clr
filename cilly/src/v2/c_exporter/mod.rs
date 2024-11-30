@@ -35,7 +35,6 @@ fn local_name(locals: &[LocalDef], asm: &Assembly, loc: u32) -> String {
         .count()
         > 1
     {
-    
         return format!("L{loc}");
     }
     match locals[loc as usize].0 {
@@ -981,14 +980,13 @@ impl CExporter {
         let locals: Vec<_> = def.iter_locals(asm).copied().collect();
         for (idx, (lname, local_type)) in locals.iter().enumerate() {
             // If the name of this local is found multiple times, use the L form.
-           
+
             writeln!(
                 method_defs,
                 "{local_type} {lname};",
                 lname = local_name(&locals, asm, idx as u32),
                 local_type = nonvoid_c_type(asm[*local_type], asm),
             )?;
-         
         }
         let blocks = def.blocks(asm).unwrap().to_vec();
         for block in blocks {

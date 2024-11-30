@@ -2,7 +2,7 @@ use crate::codegen_error::CodegenError;
 use crate::fn_ctx::MethodCompileCtx;
 use crate::r#type::get_type;
 use cilly::{v2::FnSig, Type};
-use rustc_middle::ty::{Instance, List, ParamEnv, ParamEnvAnd, Ty, TyCtxt, TyKind};
+use rustc_middle::ty::{Instance, List, ParamEnv, PseudoCanonicalInput, Ty, TyCtxt, TyKind};
 use rustc_target::abi::call::Conv;
 use rustc_target::spec::abi::Abi as TargetAbi;
 
@@ -25,10 +25,12 @@ pub fn sig_from_instance_<'tcx>(
     function: Instance<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> Result<FnSig, CodegenError> {
-    let fn_abi = ctx.tcx().fn_abi_of_instance(ParamEnvAnd {
-        param_env: ParamEnv::reveal_all(),
-        value: (function, List::empty()),
-    });
+    let fn_abi = ctx
+        .tcx()
+        .fn_abi_of_instance(rustc_middle::ty::PseudoCanonicalInput {
+            typing_env: rustc_middle::ty::TypingEnv::fully_monomorphized(),
+            value: (function, List::empty()),
+        });
     let fn_abi = match fn_abi {
         Ok(abi) => abi,
         Err(_error) => todo!(),
@@ -47,7 +49,10 @@ pub fn sig_from_instance_<'tcx>(
         args.push(get_type(arg, ctx));
     }
     // There are 2 ABI enums for some reasons(they differ in what memebers they have)
-    let fn_ty = function.ty(ctx.tcx(), ParamEnv::reveal_all());
+    let fn_ty = function.ty(
+        ctx.tcx(),
+        rustc_middle::ty::TypingEnv::fully_monomorphized(),
+    );
     let internal_abi = match fn_ty.kind() {
         TyKind::FnDef(_, _) => fn_ty.fn_sig(ctx.tcx()),
         TyKind::Closure(_, args) => args.as_closure().sig(),

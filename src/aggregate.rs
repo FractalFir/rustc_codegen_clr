@@ -37,7 +37,7 @@ pub fn handle_aggregate<'tcx>(
         .collect();
     match aggregate_kind {
         AggregateKind::Adt(adt_def, variant_idx, subst, _utai, active_field) => {
-            let penv = ParamEnv::reveal_all();
+            let penv = rustc_middle::ty::TypingEnv::fully_monomorphized();
             let subst = ctx.monomorphize(*subst);
             //eprintln!("Preparing to resolve {adt_def:?} {subst:?}");
             let adt_type = Instance::try_resolve(ctx.tcx(), penv, *adt_def, subst);

@@ -48,7 +48,11 @@ pub(crate) fn is_uninit<'tcx>(
             let constant = const_val.const_;
             let constant = ctx.monomorphize(constant);
             let evaluated = constant
-                .eval(ctx.tcx(), ParamEnv::reveal_all(), const_val.span)
+                .eval(
+                    ctx.tcx(),
+                    rustc_middle::ty::TypingEnv::fully_monomorphized(),
+                    const_val.span,
+                )
                 .expect("Could not evaluate constant!");
             match evaluated {
                 ConstValue::Scalar(_) => false, // Scalars are never uninitialized.

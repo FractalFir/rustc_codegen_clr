@@ -125,9 +125,11 @@ fn unsized_info<'tcx>(
     target: Ty<'tcx>,
     old_info: Option<CILNode>,
 ) -> CILNode {
-    let (source, target) =
-        ctx.tcx()
-            .struct_lockstep_tails_for_codegen(source, target, ParamEnv::reveal_all());
+    let (source, target) = ctx.tcx().struct_lockstep_tails_for_codegen(
+        source,
+        target,
+        rustc_middle::ty::TypingEnv::fully_monomorphized(),
+    );
     match (&source.kind(), &target.kind()) {
         (&TyKind::Array(_, len), &TyKind::Slice(_)) => {
             let len = len

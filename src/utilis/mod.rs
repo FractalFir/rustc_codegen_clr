@@ -6,8 +6,8 @@ use cilly::{
 use rustc_middle::{
     mir::interpret::AllocId,
     ty::{
-        AdtDef, Const, ConstKind, EarlyBinder, GenericArg, Instance, List, ParamEnv, SymbolName,
-        Ty, TyCtxt, TyKind, TypeFoldable,
+        AdtDef, Const, ConstKind, EarlyBinder, GenericArg, Instance, List, ParamEnv,
+        PseudoCanonicalInput, SymbolName, Ty, TyCtxt, TyKind, TypeFoldable,
     },
 };
 pub mod adt;
@@ -43,9 +43,14 @@ pub fn adt_name<'tcx>(
         rustc_middle::ty::print::with_no_trimmed_paths! {tcx.def_path_str(adt.did())}
     };
     let krate = adt.did().krate;
-    let adt_instance = Instance::try_resolve(tcx, ParamEnv::reveal_all(), adt.did(), gargs)
-        .unwrap()
-        .unwrap();
+    let adt_instance = Instance::try_resolve(
+        tcx,
+        rustc_middle::ty::TypingEnv::fully_monomorphized(),
+        adt.did(),
+        gargs,
+    )
+    .unwrap()
+    .unwrap();
     // Get the mangled path: it is absolute, and not poluted by types being rexported
     let auto_mangled =
         rustc_symbol_mangling::symbol_name_for_instance_in_crate(tcx, adt_instance, krate);
@@ -112,7 +117,7 @@ pub fn monomorphize<'tcx, T: TypeFoldable<TyCtxt<'tcx>> + Clone>(
 ) -> T {
     instance.instantiate_mir_and_normalize_erasing_regions(
         ctx,
-        ParamEnv::reveal_all(),
+        rustc_middle::ty::TypingEnv::fully_monomorphized(),
         EarlyBinder::bind(ty),
     )
 }
@@ -279,8 +284,8 @@ pub fn garag_to_bool<'tcx>(garg: GenericArg<'tcx>, _ctx: TyCtxt<'tcx>) -> bool {
 /// This function returns the size of a type at the compile time. This should be used ONLY for handling constants. It currently assumes a 64 bit env
 pub fn compiletime_sizeof<'tcx>(ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> u64 {
     let layout = tcx
-        .layout_of(rustc_middle::ty::ParamEnvAnd {
-            param_env: ParamEnv::reveal_all(),
+        .layout_of(PseudoCanonicalInput {
+            typing_env: rustc_middle::ty::TypingEnv::fully_monomorphized(),
             value: ty,
         })
         .expect("Can't get layout of a type.")
@@ -317,8 +322,8 @@ pub fn is_fn_intrinsic<'tcx>(fn_ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> bool {
 }
 pub fn align_of<'tcx>(ty: rustc_middle::ty::Ty<'tcx>, tcx: TyCtxt<'tcx>) -> u64 {
     let layout = tcx
-        .layout_of(rustc_middle::ty::ParamEnvAnd {
-            param_env: ParamEnv::reveal_all(),
+        .layout_of(PseudoCanonicalInput {
+            typing_env: rustc_middle::ty::TypingEnv::fully_monomorphized(),
             value: ty,
         })
         .expect("Can't get layout of a type.")
@@ -329,8 +334,8 @@ pub fn align_of<'tcx>(ty: rustc_middle::ty::Ty<'tcx>, tcx: TyCtxt<'tcx>) -> u64 
 }
 pub fn is_zst<'tcx>(ty: rustc_middle::ty::Ty<'tcx>, tcx: TyCtxt<'tcx>) -> bool {
     let layout = tcx
-        .layout_of(rustc_middle::ty::ParamEnvAnd {
-            param_env: ParamEnv::reveal_all(),
+        .layout_of(PseudoCanonicalInput {
+            typing_env: rustc_middle::ty::TypingEnv::fully_monomorphized(),
             value: ty,
         })
         .expect("Can't get layout of a type.")

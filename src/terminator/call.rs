@@ -335,7 +335,7 @@ pub fn call<'tcx>(
     let fn_type = ctx.monomorphize(fn_type);
     let (instance, subst_ref) = if let TyKind::FnDef(def_id, subst_ref) = fn_type.kind() {
         let subst = ctx.monomorphize(*subst_ref);
-        let env = ParamEnv::reveal_all();
+        let env = rustc_middle::ty::TypingEnv::fully_monomorphized();
         let Some(instance) =
             Instance::try_resolve(ctx.tcx(), env, *def_id, subst).expect("Invalid function def")
         else {

@@ -27,7 +27,11 @@ pub fn handle_constant<'tcx>(
     let constant = constant_op.const_;
     let constant = ctx.monomorphize(constant);
     let evaluated = constant
-        .eval(ctx.tcx(), ParamEnv::reveal_all(), constant_op.span)
+        .eval(
+            ctx.tcx(),
+            rustc_middle::ty::TypingEnv::fully_monomorphized(),
+            constant_op.span,
+        )
         .expect("Could not evaluate constant!");
     load_const_value(evaluated, constant.ty(), ctx)
 }

@@ -3,7 +3,13 @@ use crate::v2::MethodImpl;
 use std::{io::Write, path::Path};
 
 use super::{
-    asm::{IlasmFlavour, ILASM_FLAVOUR, ILASM_PATH}, cilnode::{ExtendKind, UnOp}, cilroot::BranchCond, method::LocalDef, tpe::simd::SIMDElem, Assembly, BinOp, CILIter, CILIterElem, CILNode, ClassRefIdx, Exporter, Int, MethodDefIdx, NodeIdx, RootIdx, SigIdx, Type
+    asm::{IlasmFlavour, ILASM_FLAVOUR, ILASM_PATH},
+    cilnode::{ExtendKind, UnOp},
+    cilroot::BranchCond,
+    method::LocalDef,
+    tpe::simd::SIMDElem,
+    Assembly, BinOp, CILIter, CILIterElem, CILNode, ClassRefIdx, Exporter, Int, MethodDefIdx,
+    NodeIdx, RootIdx, SigIdx, Type,
 };
 
 pub struct ILExporter {
@@ -82,7 +88,8 @@ impl ILExporter {
                 };
             }
             // Debug check
-            let mut ensure_unqiue:std::collections::HashSet<MethodDefIdx> = std::collections::HashSet::new();
+            let mut ensure_unqiue: std::collections::HashSet<MethodDefIdx> =
+                std::collections::HashSet::new();
             // Export all methods
 
             for method_id in class_def.methods() {

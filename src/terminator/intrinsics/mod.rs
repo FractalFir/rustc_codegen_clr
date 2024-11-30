@@ -79,6 +79,7 @@ pub fn handle_intrinsic<'tcx>(
     match fn_name {
         "arith_offset" => arith_offset(args, destination, call_instance, ctx),
         "breakpoint" => breakpoint(args),
+        "cold_path" | "assert_inhabited" | "assert_zero_valid" | "const_deallocate"=>CILRoot::Nop,
         "black_box" => black_box(args, destination, call_instance, ctx),
         "caller_location" => caller_location(destination, ctx, span),
         "compare_bytes" => place_set(
@@ -115,7 +116,10 @@ pub fn handle_intrinsic<'tcx>(
                     .as_type()
                     .expect("needs_drop works only on types!"),
             );
-            let needs_drop = tpe.needs_drop(ctx.tcx(), ParamEnv::reveal_all());
+            let needs_drop = tpe.needs_drop(
+                ctx.tcx(),
+                rustc_middle::ty::TypingEnv::fully_monomorphized(),
+            );
             let needs_drop = i32::from(needs_drop);
             place_set(destination, CILNode::V2(ctx.alloc_node(needs_drop)), ctx)
         }
@@ -535,7 +539,11 @@ pub fn handle_intrinsic<'tcx>(
         "type_name" => {
             let const_val = ctx
                 .tcx()
-                .const_eval_instance(ParamEnv::reveal_all(), call_instance, span)
+                .const_eval_instance(
+                    rustc_middle::ty::TypingEnv::fully_monomorphized(),
+                    call_instance,
+                    span,
+                )
                 .unwrap();
             place_set(
                 destination,
@@ -1042,7 +1050,11 @@ pub fn handle_intrinsic<'tcx>(
         "variant_count" => {
             let const_val = ctx
                 .tcx()
-                .const_eval_instance(ParamEnv::reveal_all(), call_instance, span)
+                .const_eval_instance(
+                    rustc_middle::ty::TypingEnv::fully_monomorphized(),
+                    call_instance,
+                    span,
+                )
                 .unwrap();
             place_set(
                 destination,

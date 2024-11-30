@@ -10,6 +10,7 @@ use cilly::{
     Type,
 };
 use rustc_middle::ty::{AdtDef, ConstKind, GenericArg, ParamEnv, Ty, TyCtxt, TyKind};
+use rustc_middle::ty::PseudoCanonicalInput;
 /// This struct represetnts either a primitive .NET type (F32,F64), or stores information on how to lookup a more complex type (struct,class,array)
 use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, PartialEq, Clone, Eq, Hash, Debug)]
@@ -168,8 +169,8 @@ pub fn is_fat_ptr<'tcx>(
     use rustc_target::abi::BackendRepr;
     let ptr_type = monomorphize(&method, ptr_type, tcx);
     let layout = tcx
-        .layout_of(rustc_middle::ty::ParamEnvAnd {
-            param_env: ParamEnv::reveal_all(),
+        .layout_of(PseudoCanonicalInput {
+            typing_env: rustc_middle::ty::TypingEnv::fully_monomorphized(),
             value: ptr_type,
         })
         .expect("Can't get layout of a type.")

@@ -499,7 +499,7 @@ impl ClassDef {
         assert_eq!(self.generics, 0);
         ClassRef::new(self.name, None, self.is_valuetype, vec![].into())
     }
-    pub fn add_def(&mut self,val:MethodDefIdx){
+    pub fn add_def(&mut self, val: MethodDefIdx) {
         self.methods.push(val);
         assert_unique(self.methods(), "add_def failed: method were not unique!");
     }
@@ -582,8 +582,6 @@ impl ClassDef {
         // Check accessibility matches
         assert_eq!(self.access(), translated.access());
     }
-
-  
 
     pub fn align(&self) -> Option<NonZeroU32> {
         self.align

@@ -431,13 +431,12 @@ impl Assembly {
         let def_class = def.class();
         let ref_idx = self.alloc_methodref(mref);
         // Check that this def is unique
-        if !self.method_defs.contains_key(&MethodDefIdx(ref_idx)){
+        if !self.method_defs.contains_key(&MethodDefIdx(ref_idx)) {
             self.class_defs
-            .get_mut(&def_class)
-            .expect("Method added without a class")
-            .add_def(MethodDefIdx(ref_idx));
+                .get_mut(&def_class)
+                .expect("Method added without a class")
+                .add_def(MethodDefIdx(ref_idx));
         }
-      
 
         self.method_defs.insert(MethodDefIdx(ref_idx), def);
 

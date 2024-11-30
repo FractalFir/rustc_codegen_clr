@@ -104,7 +104,11 @@ pub fn handle_rvalue<'tcx>(
                 let layout = ctx.layout_of(*ty);
                 let offset = ctx
                     .tcx()
-                    .offset_of_subfield(ParamEnv::reveal_all(), layout, fields.iter())
+                    .offset_of_subfield(
+                        rustc_middle::ty::TypingEnv::fully_monomorphized(),
+                        layout,
+                        fields.iter(),
+                    )
                     .bytes();
                 (vec![], CILNode::V2(ctx.alloc_node(Const::USize(offset))))
             }
@@ -266,7 +270,7 @@ pub fn handle_rvalue<'tcx>(
             let (instance, _subst_ref) = if let TyKind::FnDef(def_id, subst_ref) = operand_ty.kind()
             {
                 let subst = ctx.monomorphize(*subst_ref);
-                let env = ParamEnv::reveal_all();
+                let env = rustc_middle::ty::TypingEnv::fully_monomorphized();
                 let Some(instance) = Instance::try_resolve(ctx.tcx(), env, *def_id, subst)
                     .expect("Invalid function def")
                 else {

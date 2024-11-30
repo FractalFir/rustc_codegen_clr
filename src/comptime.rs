@@ -77,7 +77,7 @@ pub fn interpret<'tcx>(
                         func_ty.kind()
                     {
                         let subst_ref = ctx.monomorphize(*subst_ref);
-                        let env = ParamEnv::reveal_all();
+                        let env = rustc_middle::ty::TypingEnv::fully_monomorphized();
                         let Some(call_instance) =
                             Instance::try_resolve(ctx.tcx(), env, *def_id, subst_ref)
                                 .expect("Invalid function def")
@@ -183,7 +183,7 @@ pub fn interpret<'tcx>(
                         {
                             let subst_ref =
                                 crate::utilis::monomorphize(&instance, *subst_ref, ctx.tcx());
-                            let env = ParamEnv::reveal_all();
+                            let env = rustc_middle::ty::TypingEnv::fully_monomorphized();
                             let Some(instance) =
                                 Instance::try_resolve(ctx.tcx(), env, *def_id, subst_ref)
                                     .expect("Invalid function def")

@@ -339,7 +339,13 @@ pub fn add_fn<'tcx, 'asm, 'a: 'asm>(
     name: &str,
     ctx: &'a mut MethodCompileCtx<'tcx, 'asm>,
 ) -> Result<(), MethodCodegenError> {
-    let kind = ctx.instance().ty(ctx.tcx(), ParamEnv::reveal_all()).kind();
+    let kind = ctx
+        .instance()
+        .ty(
+            ctx.tcx(),
+            rustc_middle::ty::TypingEnv::fully_monomorphized(),
+        )
+        .kind();
     if let TyKind::FnDef(_, _) = kind {
         //ALL OK.
     } else if let TyKind::Closure(_, _) = kind {

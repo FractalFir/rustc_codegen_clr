@@ -87,6 +87,7 @@ pub fn handle_statement<'tcx>(
         StatementKind::FakeRead(_) => {
             panic!("Fake reads should not be passed from the backend to the forntend!")
         }
+        rustc_middle::mir::StatementKind::BackwardIncompatibleDropHint { .. } => todo!(),
         StatementKind::PlaceMention(place) => vec![CILRoot::Pop {
             tree: place_get(place, ctx),
         }

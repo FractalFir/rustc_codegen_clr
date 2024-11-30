@@ -1,8 +1,8 @@
+use crate::r#type::get_type;
 use cilly::v2::Assembly;
 use cilly::Type;
-use rustc_middle::ty::{Instance, ParamEnv, TyCtxt};
-
-use crate::r#type::get_type;
+use rustc_middle::ty::layout::HasTypingEnv;
+use rustc_middle::ty::{Instance, PseudoCanonicalInput, TyCtxt};
 pub struct MethodCompileCtx<'tcx, 'asm> {
     tcx: TyCtxt<'tcx>,
     method: Option<&'tcx rustc_middle::mir::Body<'tcx>>,
@@ -78,7 +78,7 @@ impl<'tcx, 'asm> MethodCompileCtx<'tcx, 'asm> {
         self.instance()
             .instantiate_mir_and_normalize_erasing_regions(
                 self.tcx(),
-                ParamEnv::reveal_all(),
+                rustc_middle::ty::TypingEnv::fully_monomorphized(),
                 rustc_middle::ty::EarlyBinder::bind(ty),
             )
     }
@@ -93,8 +93,8 @@ impl<'tcx, 'asm> MethodCompileCtx<'tcx, 'asm> {
     ) -> rustc_middle::ty::layout::TyAndLayout<'tcx> {
         let ty = self.monomorphize(ty);
         self.tcx
-            .layout_of(rustc_middle::ty::ParamEnvAnd {
-                param_env: ParamEnv::reveal_all(),
+            .layout_of(PseudoCanonicalInput {
+                typing_env: rustc_middle::ty::TypingEnv::fully_monomorphized(),
                 value: ty,
             })
             .expect("Could not get type layout!")
@@ -118,8 +118,8 @@ impl rustc_abi::HasDataLayout for MethodCompileCtx<'_, '_> {
         self.tcx.data_layout()
     }
 }
-impl<'tcx> rustc_middle::ty::layout::HasParamEnv<'tcx> for MethodCompileCtx<'tcx, '_> {
-    fn param_env(&self) -> ParamEnv<'tcx> {
-        ParamEnv::reveal_all()
+impl<'tcx> HasTypingEnv<'tcx> for MethodCompileCtx<'tcx, '_> {
+    fn typing_env(&self) -> rustc_middle::ty::TypingEnv<'tcx> {
+        rustc_middle::ty::TypingEnv::fully_monomorphized()
     }
 }
