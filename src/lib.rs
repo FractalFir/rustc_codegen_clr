@@ -305,12 +305,11 @@ impl CodegenBackend for MyBackend {
         sess: &Session,
         codegen_results: CodegenResults,
         outputs: &OutputFilenames,
-    ) -> Result<(), ErrorGuaranteed> {
+    )  {
         use rustc_codegen_ssa::back::link::link_binary;
         //panic!();
         link_binary(sess, &RlibArchiveBuilder, codegen_results, outputs)
-            .expect("Could not link the binary into a .rlib file!");
-        Ok(())
+       
     }
 }
 // Inspired by cranelifts glue code. Is responsible for turing the files produced by teh backend into

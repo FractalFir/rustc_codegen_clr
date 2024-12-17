@@ -42,6 +42,7 @@ macro_rules! test {
                 (),
                 u32,
             >(line!());
+            #[allow(unused_unsafe)]
             unsafe { core::intrinsics::breakpoint() };
             core::intrinsics::abort();
         }
@@ -65,6 +66,7 @@ macro_rules! test_eq {
                 (),
                 u32,
             >(line!());
+            #[allow(unused_unsafe)]
             unsafe { core::intrinsics::breakpoint() };
             core::intrinsics::abort();
         }
@@ -86,6 +88,7 @@ macro_rules! test_ne {
                 (),
                 u32,
             >(line!());
+            #[allow(unused_unsafe)]
             unsafe { core::intrinsics::breakpoint() };
             core::intrinsics::abort();
         }

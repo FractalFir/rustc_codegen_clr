@@ -136,7 +136,7 @@ pub fn handle_rvalue<'tcx>(
                     args,
                     rustc_middle::ty::ClosureKind::FnOnce,
                 )
-                .polymorphize(ctx.tcx());
+              ;
                 let call_info = CallInfo::sig_from_instance_(instance, ctx);
 
                 let function_name = crate::utilis::function_name(ctx.tcx().symbol_name(instance));

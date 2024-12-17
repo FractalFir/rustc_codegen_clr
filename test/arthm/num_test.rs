@@ -26,6 +26,7 @@ fn check_float_nan() {
     test_eq!((-9.0_f32).max(f32::NAN), -9.0);
     //test_eq!((-9.0_f64).max(f64::NAN), -9.0);
 }
+#[allow(unpredictable_function_pointer_comparisons)]
 pub fn test_variadic_fnptr() {
     extern "C" {
         // This needs to use the correct function signature even though it isn't called as some
