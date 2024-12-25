@@ -620,6 +620,7 @@ fn handle_tag<'tcx>(
                 fields.push((tag_type, ctx.alloc_string(crate::ENUM_TAG), Some(offset)));
             }
         }
+        rustc_target::abi::Variants::Empty => (),
         rustc_target::abi::Variants::Multiple {
             tag: _,
             tag_encoding,

@@ -338,34 +338,6 @@ pub fn handle_rvalue<'tcx>(
                 )
             }
         }
-        Rvalue::Len(operand) => {
-            let ty = ctx.monomorphize(operand.ty(ctx.body(), ctx.tcx()));
-            match ty.ty.kind() {
-                TyKind::Slice(inner) => {
-                    let slice_tpe = fat_ptr_to(*inner, ctx);
-                    let descriptor = FieldDesc::new(
-                        slice_tpe,
-                        ctx.alloc_string(crate::METADATA),
-                        cilly::v2::Type::Int(Int::USize),
-                    );
-                    let addr = crate::place::place_address_raw(operand, ctx);
-                    assert!(
-                        !matches!(addr, CILNode::LDLoc(_)),
-                        "improper addr {addr:?}. operand:{operand:?}"
-                    );
-                    (vec![], ld_field!(addr, ctx.alloc_field(descriptor)))
-                }
-                TyKind::Array(_ty, length) => {
-                    let len =
-                        crate::utilis::try_resolve_const_size(ctx.monomorphize(*length)).unwrap();
-                    (
-                        vec![],
-                        CILNode::V2(ctx.alloc_node(Const::USize(len as u64))),
-                    )
-                }
-                _ => todo!("Get length of type {ty:?}"),
-            }
-        }
         Rvalue::Repeat(operand, times) => repeat(rvalue, ctx, operand, *times, target_location),
         Rvalue::ThreadLocalRef(def_id) => {
             if !def_id.is_local() && ctx.tcx().needs_thread_local_shim(*def_id) {

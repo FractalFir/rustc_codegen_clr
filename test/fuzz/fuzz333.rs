@@ -841,7 +841,7 @@ pub fn fn1(mut _1: f64, mut _2: char, mut _3: i128) -> i64 {
     {
     RET = (-1862555209_i32) as i64;
     RET = !2978883428705732703_i64;
-    _1 = 22087_i16 as f64;
+    _1 = 2_i32 as f64;
     RET = 7469067570071337310_i64;
     _3 = 138924407888664610422382143887634307467_i128;
     RET = -6060649836288376761_i64;
@@ -989,7 +989,7 @@ pub fn fn1(mut _1: f64, mut _2: char, mut _3: i128) -> i64 {
     Call(_32 = dump_var(1_usize, 24_usize, Move(_24), 14_usize, Move(_14), 10_usize, Move(_10), 28_usize, Move(_28)), ReturnTo(bb17), UnwindUnreachable())
     }
     bb17 = {
-    Call(_32 = dump_var(1_usize, 19_usize, Move(_19), 13_usize, _13, 33_usize, _33, 33_usize, _33), ReturnTo(bb18), UnwindUnreachable())
+    Call(_32 = dump_var(1_usize, 19_usize, Move(_19), 1_usize, _1, 33_usize, _33, 33_usize, _33), ReturnTo(bb18), UnwindUnreachable())
     }
     bb18 = {
     Return()

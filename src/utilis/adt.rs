@@ -1,10 +1,5 @@
 use cilly::{
-    call,
-    cil_node::CILNode,
-    cil_root::CILRoot,
-    eq, gt_un,
-    v2::{cilnode::MethodKind, Assembly, ClassRef, ClassRefIdx, FieldDesc, Float, Int, MethodRef},
-    Type,
+    call, cil_node::CILNode, cil_root::CILRoot, eq, gt_un, v2::{cilnode::MethodKind, Assembly, ClassRef, ClassRefIdx, FieldDesc, Float, Int, MethodRef}, Const, Type
 };
 use rustc_middle::ty::{AdtDef, Ty};
 use rustc_target::abi::{
@@ -111,6 +106,7 @@ pub fn enum_tag_info(r#enum: Layout<'_>, asm: &mut Assembly) -> (Type, u32) {
                 .nth(*tag_field)
                 .unwrap_or(0),
         ),
+        Variants::Empty => (Type::Void,0),
     }
 }
 fn scalr_to_type(scalar: rustc_target::abi::Scalar, asm: &mut Assembly) -> Type {
@@ -150,6 +146,7 @@ pub fn get_variant_at_index(
     match layout.variants {
         Variants::Single { .. } => layout,
         Variants::Multiple { variants, .. } => variants[variant_index].clone(),
+        Variants::Empty => todo!("Empty variants have no variants."),
     }
 }
 pub fn set_discr<'tcx>(
@@ -170,6 +167,7 @@ pub fn set_discr<'tcx>(
         );
     }
     match layout.variants {
+        Variants::Empty => CILRoot::Nop,
         Variants::Single { index } => {
             assert_eq!(index, variant_index);
             CILRoot::Nop
@@ -255,6 +253,7 @@ pub fn get_discr<'tcx>(
         Variants::Multiple {
             ref tag_encoding, ..
         } => tag_encoding,
+        Variants::Empty =>   return crate::casts::int_to_int(Type::Int(Int::U64), tag_tpe, CILNode::V2(ctx.alloc_node(Const::U64(0))), ctx),
     };
 
     // Decode the discriminant (specifically if it's niche-encoded).

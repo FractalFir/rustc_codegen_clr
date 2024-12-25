@@ -40,6 +40,7 @@ pub fn test_variadic_fnptr() {
     test!(!(p < q));
 }
 fn main() {
+    unsafe{printf(c"val:%f\n".as_ptr(),core::hint::black_box(cst_f64()))};
     isqrt_test();
     unsafe { black_box(ldexpf(black_box(434.43), 1232.3434)) };
     check_float_nan();
@@ -418,4 +419,8 @@ fn isqrt_test() {
             .map(|isqrt_n_plus_1_squared| n < isqrt_n_plus_1_squared)
             .unwrap_or(true));
     }
+}
+#[no_mangle]
+pub extern fn cst_f64()->f64{
+    core::hint::black_box(2_i32) as f64
 }
