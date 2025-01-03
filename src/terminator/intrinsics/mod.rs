@@ -509,7 +509,7 @@ pub fn handle_intrinsic<'tcx>(
         "powif32" => powif32(args, destination, call_instance, ctx),
         "powif64" => powif64(args, destination, call_instance, ctx),
         "size_of_val" => size_of_val(args, destination, ctx, call_instance),
-        "typed_swap" => {
+        "typed_swap_nonoverlapping" => {
             let pointed_ty = ctx.monomorphize(
                 call_instance.args[0]
                     .as_type()

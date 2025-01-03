@@ -272,13 +272,18 @@ pub fn get_type<'tcx>(ty: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_>) -> Typ
             // Get the lenght of thid array
             let length = ctx.monomorphize(*length);
             let length: usize = crate::utilis::try_resolve_const_size(length).unwrap();
-            // Get the element of the arrau
+            // Get the element of the array
             let element = ctx.monomorphize(*element);
             let element = get_type(element, ctx);
             // Get the layout and size of this array
             let layout = ctx.layout_of(ty);
             let arr_size = layout.layout.size().bytes();
             let arr_align = layout.layout.align().pref.bytes();
+            // An array of this size can't be represented on the .NET side
+            if std::convert::TryInto::<u32>::try_into(arr_size).is_err(){
+                eprintln!("WARNING: Array {ty:?} of size {arr_size:?} can't be represented on the .NET side. Repleacing it with an unsided void.");
+                return Type::Void;
+            }
             let cref = fixed_array(ctx, element, length as u64, arr_size, arr_align);
             Type::ClassRef(cref)
         }

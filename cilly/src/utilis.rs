@@ -346,9 +346,14 @@ pub fn encode(mut int: u64) -> String {
 /// Checks if all elements in a slice are truly unquie.
 #[track_caller]
 pub fn assert_unique<T: std::hash::Hash + PartialEq + Eq>(val: &[T], msg: impl Debug) {
-    let mut set = std::collections::HashSet::new();
-    set.extend(val.iter());
-    assert_eq!(set.len(), val.len(), "{msg:?}");
+    #[cfg(debug_assertions)]
+    {
+
+        let mut set = std::collections::HashSet::new();
+        set.extend(val.iter());
+        assert_eq!(set.len(), val.len(), "{msg:?}");
+    }
+  
 }
 #[must_use]
 pub fn escape_class_name(name: &str) -> String {
