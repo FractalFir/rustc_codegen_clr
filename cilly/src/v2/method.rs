@@ -451,11 +451,21 @@ impl MethodDef {
         let Some(blocks) = self.implementation().blocks() else {
             return;
         };
+        // Check if the entry block does not jump anywhere(no targets) and has no handler - if so, only keep it.
+        if blocks[0].targets(asm).count() == 0 && blocks[0].handler().is_none(){
+            let entry = blocks[0].clone();
+            *self.implementation_mut().blocks_mut().unwrap() = vec![entry];
+            return;
+        }
         let mut alive: FxHashSet<_> = blocks.iter().flat_map(|block| block.targets(asm)).collect();
         // entry block is always live
         alive.insert(blocks[0].block_id());
         // if alive < total, then there are some dead blocks, then remove them.
-        if alive.len() < blocks.len() {
+        if alive.len() >= blocks.len() {
+            return;
+        }
+        // If handlers jump to normal blocks, do not GC.
+        if blocks.iter().flat_map(|block|block.handler()).flatten().flat_map(|block|block.roots()).any(|root|matches!(asm[*root],CILRoot::ExitSpecialRegion { target: _, source: _ })){
             return;
         }
         //let blocks_copy = blocks.clone();
@@ -463,8 +473,7 @@ impl MethodDef {
             .blocks_mut()
             .unwrap()
             .retain(|block| alive.contains(&block.block_id()));
-        //assert!(!self.implementation().blocks().unwrap().is_empty(),"alive:{alive:?} blocks_copy:{blocks_copy:?}");
-        eprintln!("alive:{alive:?} {}", &asm[self.name]);
+       
     }
     
     pub(crate) fn locals(&self) -> Option<&[LocalDef]> {

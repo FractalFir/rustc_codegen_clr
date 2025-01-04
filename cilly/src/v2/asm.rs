@@ -177,6 +177,7 @@ impl Assembly {
         for method in method_def_idxs {
             let mut tmp_method = self.borrow_methoddef(method);
             tmp_method.optimize(self, cache, fuel);
+            tmp_method.remove_dead_blocks(self);
             self.return_methoddef(method, tmp_method);
             if fuel.exchausted() {
                 break;

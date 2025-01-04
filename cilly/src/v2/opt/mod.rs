@@ -515,7 +515,7 @@ impl MethodDef {
             self.implementation_mut().remove_duplicate_sfi(asm);
         }
         self.remove_useless_handlers(asm, fuel, cache);
-        //self.remove_dead_blocks(asm);
+        
     
     }
     fn remove_useless_handlers(
@@ -534,17 +534,17 @@ impl MethodDef {
                 .map(|block| (block.block_id(), block.clone()))
                 .collect();
             for block in blocks.iter_mut() {
-                /*if let CILRoot::Branch(info) =
+                if let CILRoot::Branch(info) =
                     &asm[*block.roots().last().expect("Blocks can't be empty")]
                 {
-                    let (target, _, _) = info.as_ref();
+                    /*let (target, _, None) = info.as_ref() else {continue;};
                     // Ret or throw
                     if !has_targets[target] {
                         let roots = block.roots_mut();
                         roots.pop();
                         roots.extend(blocks_copy[target].roots());
-                    }
-                }*/
+                    }*/
+                }
                 let Some(handler) = block.handler() else {
                     continue;
                 };
@@ -984,7 +984,7 @@ fn opt_init_obj(
                 false,
             )));
         }
-        Type::Float(float) if fuel.consume(1) => {
+        Type::Float(float) if fuel.consume(1) && matches!(float.size(),32|64) => {
             return CILRoot::StInd(Box::new((
                 addr,
                 asm.alloc_node(float.zero()),
