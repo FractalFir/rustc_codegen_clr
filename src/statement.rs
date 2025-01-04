@@ -51,6 +51,11 @@ pub fn handle_statement<'tcx>(
             if crate::utilis::is_zst(ctx.monomorphize(ty), ctx.tcx()) {
                 return vec![];
             }
+            let tpe = ctx.type_from_cache(ty);
+            let tpe = ctx.alloc_type(tpe);
+            if crate::rvalue::is_rvalue_const_0(rvalue, ctx) {
+                return vec![CILRoot::InitObj(crate::place::place_adress(&place, ctx), tpe).into()];
+            }
             let (mut trees, value_calc) = crate::rvalue::handle_rvalue(rvalue, &place, ctx);
             trees.push(crate::place::place_set(&place, value_calc, ctx));
             trees.into_iter().map(std::convert::Into::into).collect()

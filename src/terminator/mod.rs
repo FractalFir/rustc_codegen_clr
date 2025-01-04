@@ -153,8 +153,7 @@ pub fn handle_terminator<'tcx>(
         } => {
             let ty = ctx.monomorphize(place.ty(ctx.body(), ctx.tcx()).ty);
 
-            let drop_instance =
-                Instance::resolve_drop_in_place(ctx.tcx(), ty);
+            let drop_instance = Instance::resolve_drop_in_place(ctx.tcx(), ty);
             if let InstanceKind::DropGlue(_, None) = drop_instance.def {
                 //Empty drop, nothing needs to happen.
                 vec![CILRoot::GoTo {

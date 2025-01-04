@@ -143,6 +143,8 @@ fn successes_to_disk(successes: &[String], exec_name: &str) {
     } else {
         format!("success_{exec_name}.txt")
     };
+    let mut successes = successes.to_vec();
+    successes.sort();
     std::fs::File::create(&name)
         .unwrap_or_else(|err| panic!("file {name} could not be created due to {err:?}"))
         .write_all(

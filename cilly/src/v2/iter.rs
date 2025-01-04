@@ -181,6 +181,7 @@ impl Iterator for CILIter<'_> {
                     CILRoot::StLoc(_, val)
                     | CILRoot::StArg(_, val)
                     | CILRoot::Ret(val)
+                    | CILRoot::InitObj(val, _)
                     | CILRoot::Pop(val)
                     | CILRoot::Throw(val)
                     | CILRoot::SetStaticField { val, .. },
@@ -536,7 +537,9 @@ impl<'this, T: Iterator<Item = CILIterElem> + 'this> TpeIter<'this> for T {
                         let tpe = field.tpe();
                         Some(Box::new([class, tpe].into_iter()))
                     }
-                    CILRoot::CpObj { tpe, .. } => Some(Box::new(std::iter::once(asm[tpe]))),
+                    CILRoot::CpObj { tpe, .. } | CILRoot::InitObj(_, tpe) => {
+                        Some(Box::new(std::iter::once(asm[tpe])))
+                    }
                     // Since this method is called, then if it uses an "internal" type, we must assume it is defined in this module. Thus, its types are already included, and we don't need to include them again.
                     CILRoot::Call(_) | CILRoot::CallI(_) => None,
                     CILRoot::StInd(info) => Some(Box::new(std::iter::once(info.2))),

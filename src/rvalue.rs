@@ -38,6 +38,17 @@ pub fn is_rvalue_unint<'tcx>(rvalue: &Rvalue<'tcx>, ctx: &mut MethodCompileCtx<'
         _ => false,
     }
 }
+pub fn is_rvalue_const_0<'tcx>(
+    rvalue: &Rvalue<'tcx>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
+) -> bool {
+    match rvalue {
+        Rvalue::Repeat(operand, _) | Rvalue::Use(operand) => {
+            crate::operand::is_const_zero(operand, ctx)
+        }
+        _ => false,
+    }
+}
 pub fn handle_rvalue<'tcx>(
     rvalue: &Rvalue<'tcx>,
     target_location: &Place<'tcx>,
@@ -135,8 +146,7 @@ pub fn handle_rvalue<'tcx>(
                     *def_id,
                     args,
                     rustc_middle::ty::ClosureKind::FnOnce,
-                )
-              ;
+                );
                 let call_info = CallInfo::sig_from_instance_(instance, ctx);
 
                 let function_name = crate::utilis::function_name(ctx.tcx().symbol_name(instance));

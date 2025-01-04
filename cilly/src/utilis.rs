@@ -348,12 +348,10 @@ pub fn encode(mut int: u64) -> String {
 pub fn assert_unique<T: std::hash::Hash + PartialEq + Eq>(val: &[T], msg: impl Debug) {
     #[cfg(debug_assertions)]
     {
-
         let mut set = std::collections::HashSet::new();
         set.extend(val.iter());
         assert_eq!(set.len(), val.len(), "{msg:?}");
     }
-  
 }
 #[must_use]
 pub fn escape_class_name(name: &str) -> String {

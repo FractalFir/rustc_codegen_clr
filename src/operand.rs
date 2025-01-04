@@ -1,5 +1,6 @@
 use cilly::cil_node::CILNode;
 use cilly::Type;
+use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::{
     mir::{ConstValue, Operand},
     ty::ParamEnv,
@@ -96,6 +97,39 @@ pub(crate) fn is_uninit<'tcx>(
                     }
                     !only.is_init()
                 }
+            }
+        }
+    }
+}
+
+pub(crate) fn is_const_zero<'tcx>(
+    operand: &Operand<'tcx>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
+) -> bool {
+    match operand {
+        // Copy / Moves are not constants.
+        Operand::Copy(_) | Operand::Move(_) => false,
+        Operand::Constant(const_val) => {
+            let constant = const_val.const_;
+            let constant = ctx.monomorphize(constant);
+            let evaluated = constant
+                .eval(
+                    ctx.tcx(),
+                    rustc_middle::ty::TypingEnv::fully_monomorphized(),
+                    const_val.span,
+                )
+                .expect("Could not evaluate constant!");
+            match evaluated {
+                ConstValue::Scalar(scalar) => match scalar {
+                    Scalar::Int(int) => int.is_null(),
+                    Scalar::Ptr(_, _) => false,
+                }, // Scalars are never uninitialized.
+                ConstValue::ZeroSized => {
+                    // ZeroSized has no data, so it has only 0 values
+                    true
+                }
+                ConstValue::Slice { data, .. } => false,
+                ConstValue::Indirect { alloc_id, .. } => false,
             }
         }
     }

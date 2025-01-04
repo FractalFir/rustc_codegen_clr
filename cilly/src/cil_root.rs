@@ -3,6 +3,7 @@ use crate::v2::method::LocalDef;
 use crate::v2::{
     Assembly, ClassRef, FieldIdx, FnSig, MethodRef, MethodRefIdx, StaticFieldDesc, Type,
 };
+use crate::TypeIdx;
 use crate::{
     call,
     cil_node::{CILNode, CallOpArgs},
@@ -150,6 +151,7 @@ pub enum CILRoot {
     OptimizedSourceFileInfo(std::ops::Range<u64>, std::ops::Range<u64>, AsmString),
     /// Marks the inner pointer operation as volatile.
     Volatile(Box<Self>),
+    InitObj(CILNode, TypeIdx),
 }
 pub type SFI = Box<(std::ops::Range<u64>, std::ops::Range<u64>, IString)>;
 impl CILRoot {
@@ -276,6 +278,7 @@ impl CILRoot {
     pub fn allocate_tmps(&mut self, curr_loc: Option<u32>, locals: &mut Vec<LocalDef>) {
         match self {
             Self::Volatile(inner) => inner.allocate_tmps(curr_loc, locals),
+            Self::InitObj(inner, _) => inner.allocate_tmps(curr_loc, locals),
             Self::SourceFileInfo(_) => (),
             Self::OptimizedSourceFileInfo(_, _, _) => (),
             Self::STLoc { tree, .. } => {

@@ -300,16 +300,10 @@ impl CodegenBackend for MyBackend {
         .expect("Could not join_codegen")
     }
     /// Collects all the files emmited by the codegen for a specific crate, and turns them into a .rlib file containg the serialized assembly IR and metadata.
-    fn link(
-        &self,
-        sess: &Session,
-        codegen_results: CodegenResults,
-        outputs: &OutputFilenames,
-    )  {
+    fn link(&self, sess: &Session, codegen_results: CodegenResults, outputs: &OutputFilenames) {
         use rustc_codegen_ssa::back::link::link_binary;
         //panic!();
         link_binary(sess, &RlibArchiveBuilder, codegen_results, outputs)
-       
     }
 }
 // Inspired by cranelifts glue code. Is responsible for turing the files produced by teh backend into

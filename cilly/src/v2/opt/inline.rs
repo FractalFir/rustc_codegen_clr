@@ -1,4 +1,4 @@
-use super::OptFuel;
+use super::{OptFuel, SideEffectInfoCache};
 use crate::v2::{
     cilnode::MethodKind, Assembly, CILIter, CILIterElem, CILNode, CILRoot, MethodDef, MethodImpl,
     MethodRefIdx, NodeIdx, RootIdx,
@@ -47,20 +47,22 @@ fn trivial_inline_node(
     let CILRoot::Ret(tree) = asm.get_root(root) else {
         return None;
     };
-    let tree = asm.get_node(*tree).clone();
+    let tree_node = asm.get_node(*tree).clone();
 
-    // Can only trivialy inline methods if the address of the arguments is never taken - this is the only way to prove they are not overwritten.
+    // Can only trivialy inline methods if the address of the arguments is never taken  - this is the only way to prove they are not overwritten.
+    let mut sec = SideEffectInfoCache::default();
     // TODO: consider allocating new locals, and taking their address instead. That ought to gurantee the original data is not clobbered.
-    if CILIter::new(tree.clone(), asm)
+    if CILIter::new(tree_node.clone(), asm)
         .any(|node| matches!(node, CILIterElem::Node(CILNode::LdArgA(_))))
     {
         return None;
     }
+
     // This is a valid trivial-inline candiate.
     if !fuel.consume(10) {
         return None;
     }
-    let tree = tree.map(asm, &mut |node, asm| match node {
+    let tree = tree_node.map(asm, &mut |node, asm| match node {
         CILNode::LdArg(arg) => asm.get_node(call_args[arg as usize]).clone(),
         CILNode::LdArgA(_)  => panic!("Attempted to access the address of an argument when inlining a method - this is not supported and should not happen."),
         CILNode::LdLocA(_) | CILNode::LdLoc(_) => panic!("Attempted to access a local when inlining a method with no locals."),
@@ -117,7 +119,7 @@ fn trivial_inline_root(
         return None;
     }
     let root = root.clone().map(asm, &mut |root,_|{
-        assert!(matches!(root,CILRoot::Nop | CILRoot::Break |CILRoot::Call(_) | CILRoot::CallI(_) | CILRoot::SetField(_) | CILRoot::SetStaticField { .. } | CILRoot::StInd(_) | CILRoot::Pop(_) | CILRoot::InitBlk(_) | CILRoot::CpBlk(_) | CILRoot::Throw(_)), "Can't inline root {root:?}");
+        assert!(matches!(root,CILRoot::Nop | CILRoot::Break |CILRoot::Call(_) | CILRoot::CallI(_) | CILRoot::SetField(_) | CILRoot::SetStaticField { .. } | CILRoot::StInd(_) | CILRoot::Pop(_) | CILRoot::InitBlk(_) | CILRoot::CpBlk(_) | CILRoot::Throw(_) | CILRoot::InitObj(_, _)), "Can't inline root {root:?}");
         root
     },&mut |node, asm| match node {
         CILNode::LdArg(arg) => asm.get_node(call_args[arg as usize]).clone(),

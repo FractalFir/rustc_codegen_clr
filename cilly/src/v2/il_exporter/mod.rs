@@ -1083,6 +1083,10 @@ impl ILExporter {
                 let tpe = type_il(&asm[tpe], asm);
                 writeln!(out, "cpobj {tpe}")
             }
+            super::CILRoot::InitObj(addr, tpe) => {
+                self.export_node(asm, out, addr, sig, locals)?;
+                writeln!(out, "initobj {}", type_il(&asm[tpe], asm))
+            }
             super::CILRoot::StInd(stind) => {
                 self.export_node(asm, out, stind.0, sig, locals)?;
                 self.export_node(asm, out, stind.1, sig, locals)?;

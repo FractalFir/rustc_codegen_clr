@@ -280,7 +280,7 @@ pub fn get_type<'tcx>(ty: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_>) -> Typ
             let arr_size = layout.layout.size().bytes();
             let arr_align = layout.layout.align().pref.bytes();
             // An array of this size can't be represented on the .NET side
-            if std::convert::TryInto::<u32>::try_into(arr_size).is_err(){
+            if std::convert::TryInto::<u32>::try_into(arr_size).is_err() {
                 eprintln!("WARNING: Array {ty:?} of size {arr_size:?} can't be represented on the .NET side. Repleacing it with an unsided void.");
                 return Type::Void;
             }

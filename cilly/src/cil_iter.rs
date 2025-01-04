@@ -243,6 +243,18 @@ impl<'a> Iterator for CILIter<'a> {
                         continue;
                     }
                 },
+                CILIterElem::Root(CILRoot::InitObj(inner, _)) => match idx {
+                    1 => {
+                        *idx += 1;
+                        self.elems.push((0, CILIterElem::Node(inner)));
+                        continue;
+                    }
+
+                    _ => {
+                        self.elems.pop();
+                        continue;
+                    }
+                },
                 CILIterElem::Root(
                     CILRoot::SourceFileInfo(_)
                     | CILRoot::OptimizedSourceFileInfo(_, _, _)

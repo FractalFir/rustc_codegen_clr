@@ -449,6 +449,13 @@ impl Assembly {
                     tpe: self.alloc_type(tpe),
                 }
             }
+            CILRoot::InitObj(src, tpe) => {
+                let addr = self.translate_node(source, source.get_node(src).clone());
+                let addr = self.alloc_node(addr);
+
+                let tpe = self.translate_type(source, source[tpe]);
+                CILRoot::InitObj(addr, self.alloc_type(tpe))
+            }
             CILRoot::InitBlk(info) => {
                 let (dst, val, count) = info.as_ref();
                 let dst = self.translate_node(source, source.get_node(*dst).clone());

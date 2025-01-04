@@ -1,7 +1,8 @@
-use fxhash::FxHashMap;
+use fxhash::{FxHashMap, FxHashSet};
 use serde::{Deserialize, Serialize};
 
 use super::{
+    basic_block::BlockId,
     bimap::{BiMapIndex, IntoBiMapIndex},
     cilnode::MethodKind,
     Access, Assembly, BasicBlock, CILIterElem, CILNode, ClassDefIdx, ClassRef, ClassRefIdx, Int,
@@ -372,6 +373,7 @@ impl MethodDef {
         let MethodImpl::MethodBody { blocks, locals } = self.implementation_mut() else {
             return;
         };
+        assert!(!blocks.is_empty());
         let to_map: Vec<_> = locals
             .iter()
             .map(|(name, tpe)| (*name, *tpe, asm.alignof_type(*tpe)))
@@ -442,6 +444,32 @@ impl MethodDef {
         }
         preamble.extend(blocks[0].roots().iter().copied());
         *blocks[0].roots_mut() = preamble;
+    }
+
+    pub(crate) fn remove_dead_blocks(&mut self, asm: &Assembly) {
+        // This opt only makes sense if this method has an impl
+        let Some(blocks) = self.implementation().blocks() else {
+            return;
+        };
+        let mut alive: FxHashSet<_> = blocks.iter().flat_map(|block| block.targets(asm)).collect();
+        // entry block is always live
+        alive.insert(blocks[0].block_id());
+        // if alive < total, then there are some dead blocks, then remove them.
+        if alive.len() < blocks.len() {
+            return;
+        }
+        //let blocks_copy = blocks.clone();
+        self.implementation_mut()
+            .blocks_mut()
+            .unwrap()
+            .retain(|block| alive.contains(&block.block_id()));
+        //assert!(!self.implementation().blocks().unwrap().is_empty(),"alive:{alive:?} blocks_copy:{blocks_copy:?}");
+        eprintln!("alive:{alive:?} {}", &asm[self.name]);
+    }
+    
+    pub(crate) fn locals(&self) -> Option<&[LocalDef]> {
+        let MethodImpl::MethodBody { blocks:_, locals } = self.implementation() else {return None;};
+        Some(locals)
     }
 }
 pub type LocalDef = (Option<StringIdx>, TypeIdx);

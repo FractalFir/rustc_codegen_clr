@@ -79,7 +79,7 @@ pub fn handle_intrinsic<'tcx>(
     match fn_name {
         "arith_offset" => arith_offset(args, destination, call_instance, ctx),
         "breakpoint" => breakpoint(args),
-        "cold_path" | "assert_inhabited" | "assert_zero_valid" | "const_deallocate"=>CILRoot::Nop,
+        "cold_path" | "assert_inhabited" | "assert_zero_valid" | "const_deallocate" => CILRoot::Nop,
         "black_box" => black_box(args, destination, call_instance, ctx),
         "caller_location" => caller_location(destination, ctx, span),
         "compare_bytes" => place_set(

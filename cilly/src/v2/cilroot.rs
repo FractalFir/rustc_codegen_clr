@@ -57,6 +57,8 @@ pub enum CILRoot {
     },
     /// Executing this root is instant UB.
     Unreachable(StringIdx),
+    /// Zero-initializes the value at *adress* of *type*.
+    InitObj(NodeIdx, TypeIdx),
 }
 
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
@@ -124,6 +126,7 @@ impl CILRoot {
             | CILRoot::Ret(tree)
             | CILRoot::Pop(tree)
             | CILRoot::Throw(tree)
+            | CILRoot::InitObj(tree, _)
             | CILRoot::SetStaticField { val: tree, .. } => [tree].into(),
             CILRoot::SourceFileInfo { .. }
             | CILRoot::ExitSpecialRegion { .. }
@@ -174,6 +177,7 @@ impl CILRoot {
             | CILRoot::Ret(tree)
             | CILRoot::Pop(tree)
             | CILRoot::Throw(tree)
+            | CILRoot::InitObj(tree, _)
             | CILRoot::SetStaticField { val: tree, .. } => [tree].into(),
             CILRoot::SourceFileInfo { .. }
             | CILRoot::ExitSpecialRegion { .. }
@@ -467,6 +471,10 @@ impl CILRoot {
                     val: asm.alloc_node(val),
                 }
             }
+            V1Root::InitObj(addr, tpe) => {
+                let addr = CILNode::from_v1(addr, asm);
+                Self::InitObj(asm.alloc_node(addr), *tpe)
+            }
             _ => todo!("v1:{v1:?}"),
         }
     }
@@ -494,6 +502,11 @@ impl CILRoot {
             CILRoot::Ret(ret) => {
                 let ret = asm.get_node(ret).clone().map(asm, node_map);
                 let root = CILRoot::Ret(asm.alloc_node(ret));
+                root_map(root, asm)
+            }
+            CILRoot::InitObj(addr, tpe) => {
+                let addr = asm.get_node(addr).clone().map(asm, node_map);
+                let root = CILRoot::InitObj(asm.alloc_node(addr), tpe);
                 root_map(root, asm)
             }
             CILRoot::Pop(pop) => {
@@ -770,6 +783,7 @@ fn test_many_mut() {
     *many_mut(&mut [1, 2, 3, 4, 5])[2] = 3;
     *many_mut(&mut [1, 2, 3, 4, 5])[3] = 4;
     *many_mut(&mut [1, 2, 3, 4, 5])[4] = 5;
+    #[cfg(not(miri))]
     for i in 0..100 {
         let mut vec = vec![0; i];
         assert_eq!(many_mut(&mut vec).len(), i);

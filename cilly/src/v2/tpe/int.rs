@@ -25,6 +25,21 @@ impl From<Int> for Type {
     }
 }
 impl Int {
+    pub fn from_size_sign(size: u8, sign: bool) -> Self {
+        let res = match size {
+            1 => Self::U8,
+            2 => Self::U16,
+            4 => Self::U32,
+            8 => Self::U64,
+            16 => Self::U128,
+            _ => panic!("Unknown int size {size}"),
+        };
+        if sign {
+            res.as_signed()
+        } else {
+            res
+        }
+    }
     /// Returns a reference to a class representing this type.
     pub fn class(&self, asm: &mut Assembly) -> ClassRefIdx {
         match self {
@@ -283,6 +298,34 @@ impl Int {
     /// ```
     pub fn bits(&self) -> Option<u8> {
         self.size().map(|size| size * 8)
+    }
+
+    pub fn from_bytes(&self, bytes: &[u8]) -> Const {
+        let mut vec;
+        // Zero-pad bytes if too small.
+        let bytes = if bytes.len().is_power_of_two() {
+            bytes
+        } else {
+            let reminder = bytes.len().next_power_of_two() - bytes.len();
+            vec = bytes.to_vec();
+            vec.extend((0..reminder).map(|_| 0));
+            assert!(vec.len().is_power_of_two());
+            vec.as_slice()
+        };
+        match self {
+            Int::U8 => Const::U8(u8::from_ne_bytes(bytes.try_into().unwrap())),
+            Int::U16 => Const::U16(u16::from_ne_bytes(bytes.try_into().unwrap())),
+            Int::U32 => Const::U32(u32::from_ne_bytes(bytes.try_into().unwrap())),
+            Int::U64 => Const::U64(u64::from_ne_bytes(bytes.try_into().unwrap())),
+            Int::U128 => Const::U128(u128::from_ne_bytes(bytes.try_into().unwrap())),
+            Int::USize => todo!(),
+            Int::I8 => todo!(),
+            Int::I16 => todo!(),
+            Int::I32 => todo!(),
+            Int::I64 => todo!(),
+            Int::I128 => todo!(),
+            Int::ISize => todo!(),
+        }
     }
 }
 #[test]

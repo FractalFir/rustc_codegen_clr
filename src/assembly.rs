@@ -713,7 +713,7 @@ pub fn add_allocation(alloc_id: u64, asm: &mut cilly::v2::Assembly, tcx: TyCtxt<
     // Alloc ids are *not* unique across all crates. Adding the hash here ensures we don't overwrite allocations during linking
     // TODO:consider using something better here / making the hashes stable.
     let byte_hash = calculate_hash(&bytes);
-    let alloc_fld: IString = if let Some(krate) = krate {
+    let alloc_name: IString = if let Some(krate) = krate {
         format!(
             "al_{}_{}_{}_{thread_local}_{}",
             encode(alloc_id),
@@ -731,31 +731,67 @@ pub fn add_allocation(alloc_id: u64, asm: &mut cilly::v2::Assembly, tcx: TyCtxt<
         )
         .into()
     };
-    let name = asm.alloc_string(alloc_fld.clone());
-    let field_desc = StaticFieldDesc::new(*asm.main_module(), name, asm.nptr(Type::Int(Int::U8)));
-    // Currently, all static fields are in one module. Consider spliting them up.
-    let main_module = asm.class_mut(main_module_id);
+    let name = asm.alloc_string(alloc_name.clone());
 
-    if main_module.has_static_field(name, field_desc.tpe()) {
-        return CILNode::LDStaticField(Box::new(field_desc));
+    let align = const_allocation.align.bytes().max(1);
+    match (align, bytes.len()) {
+        // Assumes this constant is not a pointer.
+        (0..=1, 1) | (0..=2, 1..=2) | (0..=4, 1..=4) | (0..=8, 1..=16)
+            if const_allocation.provenance().ptrs().is_empty() =>
+        {
+            let tpe: Int = Int::from_size_sign((bytes.len() as u8).next_power_of_two(), false);
+            let field_desc = StaticFieldDesc::new(*asm.main_module(), name, cilly::Type::Int(tpe));
+            // Currently, all static fields are in one module. Consider spliting them up.
+            let main_module = asm.class_mut(main_module_id);
+            if main_module.has_static_field(name, field_desc.tpe()) {
+                return CILNode::AddressOfStaticField(Box::new(field_desc));
+            }
+
+            asm.add_static(
+                cilly::Type::Int(tpe),
+                &*alloc_name,
+                thread_local,
+                main_module_id,
+            );
+            let field = asm.alloc_sfld(field_desc);
+            let cst: Const = tpe.from_bytes(bytes);
+            let val = asm.alloc_node(cst);
+            let root = asm.alloc_root(cilly::v2::CILRoot::SetStaticField { field, val });
+            if thread_local {
+                asm.add_tcctor(&[root]);
+            } else {
+                asm.add_cctor(&[root]);
+            };
+            CILNode::AddressOfStaticField(Box::new(field_desc))
+        }
+        _ => {
+            let field_desc =
+                StaticFieldDesc::new(*asm.main_module(), name, asm.nptr(Type::Int(Int::U8)));
+            // Currently, all static fields are in one module. Consider spliting them up.
+            let main_module = asm.class_mut(main_module_id);
+            if main_module.has_static_field(name, field_desc.tpe()) {
+                return CILNode::LDStaticField(Box::new(field_desc));
+            }
+            asm.add_static(uint8_ptr, &*alloc_name, thread_local, main_module_id);
+
+            let init_method =
+                allocation_initializer_method(const_allocation, &alloc_name, asm, tcx);
+            let init_method = MethodDef::from_v1(&init_method, asm, main_module_id);
+            let initialzer = asm.new_method(init_method);
+            // Calls the static initialzer, and sets the static field to the returned pointer.
+            let val = asm.alloc_node(cilly::v2::CILNode::Call(Box::new((*initialzer, [].into()))));
+
+            let field = asm.alloc_sfld(field_desc);
+            let root = asm.alloc_root(cilly::v2::CILRoot::SetStaticField { field, val });
+            if thread_local {
+                asm.add_tcctor(&[root]);
+            } else {
+                asm.add_cctor(&[root]);
+            };
+
+            CILNode::LDStaticField(Box::new(field_desc))
+        }
     }
-    asm.add_static(uint8_ptr, &*alloc_fld, thread_local, main_module_id);
-
-    let init_method = allocation_initializer_method(const_allocation, &alloc_fld, asm, tcx);
-    let init_method = MethodDef::from_v1(&init_method, asm, main_module_id);
-    let initialzer = asm.new_method(init_method);
-    // Calls the static initialzer, and sets the static field to the returned pointer.
-    let val = asm.alloc_node(cilly::v2::CILNode::Call(Box::new((*initialzer, [].into()))));
-
-    let field = asm.alloc_sfld(field_desc);
-    let root = asm.alloc_root(cilly::v2::CILRoot::SetStaticField { field, val });
-    if thread_local {
-        asm.add_tcctor(&[root]);
-    } else {
-        asm.add_cctor(&[root]);
-    };
-
-    CILNode::LDStaticField(Box::new(field_desc))
 }
 /*
 pub fn alloc_buff_tpe(asm: &mut cilly::v2::Assembly, len: u64) -> Option<Type> {

@@ -716,7 +716,6 @@ impl CExporter {
     ) -> Result<String, TypeCheckError> {
         Ok(match root {
             CILRoot::StLoc(id, node_idx) => {
-
                 let name = local_name(locals, asm, id);
                 return Ok(format!("{name} = {node};", node = Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig)?,));
             },
@@ -827,6 +826,13 @@ impl CExporter {
                     .collect::<String>();
                 let method_name = mref_to_name(&method, asm);
                 format!("{method_name}({call_args});")
+            }
+            CILRoot::InitObj(addr,tpe) => {
+                let addr = Self::node_to_string(asm[addr].clone(), asm, locals, inputs, sig)?;
+                    format!(
+                        "memset({addr},0,sizeof(){tpe});",
+                        tpe = c_tpe(asm[tpe], asm)
+                    )
             }
             CILRoot::StInd(info) => {
                 let (addr, value, tpe, is_volitle) = info.as_ref();

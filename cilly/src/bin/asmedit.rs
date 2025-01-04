@@ -147,6 +147,7 @@ fn main() {
                 let path = path.trim().trim_matches('\'').trim();
                 let start = Instant::now();
                 println!("Preparing to export the assembly");
+                #[cfg(not(miri))]
                 asm.export(path, ILExporter::new(cilly::v2::IlasmFlavour::Clasic, true));
                 println!(
                     "Exported the assembly in {} ms",
@@ -158,6 +159,7 @@ fn main() {
                 let path = path.trim().trim_matches('\'').trim();
                 let start = Instant::now();
                 println!("Preparing to export the assembly");
+                #[cfg(not(miri))]
                 asm.export(path, CExporter::new(false));
                 println!(
                     "Exported the assembly in {} ms",
@@ -168,6 +170,7 @@ fn main() {
                 let path = body;
                 let path = path.trim().trim_matches('\'').trim();
                 println!("Preparing to export the assembly");
+                #[cfg(not(miri))]
                 asm.export(path, CillyIRExpoter::default())
             }
             "mmakemissing" => {
@@ -281,7 +284,14 @@ fn find_invalid_c(asm: &Assembly) {
     println!("Found {} faliures, saved to tmp", fail_id)
 }
 fn is_valid_c(asm: &Assembly, id: u32) -> bool {
-    catch_unwind(|| asm.export(format!("/tmp/test{id}.out"), CExporter::new(false))).is_ok()
+    #[cfg(not(miri))]
+    {
+        catch_unwind(|| asm.export(format!("/tmp/test{id}.out"), CExporter::new(false))).is_ok()
+    }
+    #[cfg(miri)]
+    {
+        true
+    }
 }
 fn misolate(asm: &mut Assembly, isolate_id: MethodRefIdx) {
     let externs: Vec<_> = asm

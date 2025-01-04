@@ -7,6 +7,7 @@ pub struct SideEffectInfoCache {
 }
 impl SideEffectInfoCache {
     /// Checks if a node may have side effects(if dupilcating it and poping the result would change the way a program runs).
+    /// This also includes mutating values trough pointers in any way, shape or form.
     #[allow(clippy::match_same_arms)]
     pub fn has_side_effects(&mut self, node: NodeIdx, asm: &Assembly) -> bool {
         if let Some(side_effect) = self.side_effects.get(&node) {

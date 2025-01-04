@@ -11,6 +11,7 @@ fn opt_int_cast(
     extend: ExtendKind,
 ) -> CILNode {
     match asm.get_node(input) {
+        CILNode::LdField { addr, field } if asm[*field].tpe() == Type::Int(target) => asm.get_node(input).clone(),
         CILNode::Const(cst) => match (cst.as_ref(), target) {
             (Const::U64(val), Int::USize) => opt_if_fuel(Const::USize(*val).into(), original, fuel),
             (Const::I64(val), Int::ISize) => opt_if_fuel(Const::ISize(*val).into(), original, fuel),

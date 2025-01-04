@@ -709,6 +709,7 @@ impl Assembly {
             crate::utilis::assert_unique(class.methods(), class.ref_to().display(self));
         });
     }
+    #[cfg(not(miri))]
     pub fn export(&self, out: impl AsRef<std::path::Path>, exporter: impl Exporter) {
         if *LINKER_RECOVER {
             eprintln!("{:?}", exporter.export(self, out.as_ref()));
@@ -1118,6 +1119,7 @@ impl Assembly {
             .chain(self.iter_roots().filter_map(|root| match root {
                 CILRoot::Call(boxed) => Some(boxed.0),
                 CILRoot::StLoc(_, _)
+                | CILRoot::InitObj(_, _)
                 | CILRoot::StArg(_, _)
                 | CILRoot::Ret(_)
                 | CILRoot::Pop(_)
@@ -1351,6 +1353,7 @@ fn get_default_ilasm() -> String {
     "ilasm".into()
 }
 #[test]
+#[cfg(not(miri))]
 fn test_chunked_range() {
     for count in 1..100 {
         for parts in 1..count {
@@ -1453,6 +1456,7 @@ fn export() {
         },
         vec![None],
     ));
+    #[cfg(not(miri))]
     asm.export("/tmp/export.exe", ILExporter::new(*ILASM_FLAVOUR, false));
 }
 #[test]
@@ -1509,6 +1513,7 @@ fn export2() {
     asm.add_user_init(&[uinit]);
     asm.eliminate_dead_code();
     asm.realloc_roots();
+    #[cfg(not(miri))]
     asm.export("/tmp/export2.exe", ILExporter::new(*ILASM_FLAVOUR, false));
 }
 #[test]
@@ -1574,6 +1579,7 @@ fn link() {
     let mut asm = asm1.link(asm2);
     asm.eliminate_dead_code();
     asm.realloc_roots();
+    #[cfg(not(miri))]
     asm.export("/tmp/link_test.exe", ILExporter::new(*ILASM_FLAVOUR, false));
 }
 config! {LINKER_RECOVER,bool,false}

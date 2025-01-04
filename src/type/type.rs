@@ -9,8 +9,8 @@ use cilly::{
     v2::{cilnode::MethodKind, Assembly, ClassRef, ClassRefIdx, Int, MethodRef},
     Type,
 };
-use rustc_middle::ty::{AdtDef, ConstKind, GenericArg, ParamEnv, Ty, TyCtxt, TyKind};
 use rustc_middle::ty::PseudoCanonicalInput;
+use rustc_middle::ty::{AdtDef, ConstKind, GenericArg, ParamEnv, Ty, TyCtxt, TyKind};
 /// This struct represetnts either a primitive .NET type (F32,F64), or stores information on how to lookup a more complex type (struct,class,array)
 use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, PartialEq, Clone, Eq, Hash, Debug)]

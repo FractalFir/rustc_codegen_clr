@@ -277,6 +277,7 @@ impl<'a> Iterator for CILIterMut<'a> {
                     | CILRoot::STLoc { tree, local: _ }
                     | CILRoot::STArg { tree, arg: _ }
                     | CILRoot::Ret { tree }
+                    | CILRoot::InitObj(tree, _)
                     | CILRoot::Pop { tree }
                     | CILRoot::BTrue { cond: tree, .. }
                     | CILRoot::BFalse { cond: tree, .. }
