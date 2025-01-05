@@ -93,20 +93,7 @@ impl Type {
             Type::SIMDVector(val) => val.name(),
             Type::Ptr(inner) => format!("p{}", asm[*inner].mangle(asm)),
             Type::Ref(inner) => format!("r{}", asm[*inner].mangle(asm)),
-            Type::Int(int) => match int {
-                Int::U8 => "u1".into(),
-                Int::U16 => "u2".into(),
-                Int::U32 => "u4".into(),
-                Int::U64 => "u8".into(),
-                Int::U128 => "u16".into(),
-                Int::USize => "us".into(),
-                Int::I8 => "i1".into(),
-                Int::I16 => "i2".into(),
-                Int::I32 => "i4".into(),
-                Int::I64 => "i8".into(),
-                Int::I128 => "i16".into(),
-                Int::ISize => "is".into(),
-            },
+            Type::Int(int) => int.name().to_owned(),
             Type::ClassRef(cref) => {
                 let cref = asm.class_ref(*cref);
                 let asm_name = match cref.asm() {
@@ -120,12 +107,7 @@ impl Type {
                 let name = &asm[cref.name()];
                 format!("{asm_name}{len}{name}", len = name.len())
             }
-            Type::Float(float) => match float {
-                Float::F16 => "f2".into(),
-                Float::F32 => "f4".into(),
-                Float::F64 => "f8".into(),
-                Float::F128 => "f16".into(),
-            },
+            Type::Float(float) => float.name().to_owned(),
             Type::PlatformString => "st".into(),
             Type::PlatformChar => "c".into(),
             Type::PlatformGeneric(_, _) => todo!(),

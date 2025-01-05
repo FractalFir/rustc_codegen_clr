@@ -331,7 +331,7 @@ pub fn call<'tcx>(
     args: &[Spanned<Operand<'tcx>>],
     destination: &Place<'tcx>,
     span: rustc_span::Span,
-) -> CILRoot {
+) -> Vec<CILRoot> {
     let fn_type = ctx.monomorphize(fn_type);
     let (instance, subst_ref) = if let TyKind::FnDef(def_id, subst_ref) = fn_type.kind() {
         let subst = ctx.monomorphize(*subst_ref);
@@ -436,17 +436,17 @@ pub fn call<'tcx>(
         );
         let is_ret_void = matches!(signature.output(), cilly::Type::Void);
         return if is_ret_void {
-            CILRoot::CallI {
+            vec![CILRoot::CallI {
                 sig: Box::new(signature),
                 fn_ptr: Box::new(fn_ptr),
                 args: call_args.into(),
-            }
+            }]
         } else {
-            crate::place::place_set(
+            vec![crate::place::place_set(
                 destination,
                 CILNode::CallI(Box::new((signature, fn_ptr, call_args.into()))),
                 ctx,
-            )
+            )]
         };
     }
     let call_info = CallInfo::sig_from_instance_(instance, ctx);
@@ -470,34 +470,34 @@ pub fn call<'tcx>(
             "Constructors may not use the `rust_call` calling convention!"
         );
         // Constructor
-        return call_ctor(subst_ref, &function_name, args, destination, ctx);
+        return vec![call_ctor(subst_ref, &function_name, args, destination, ctx)];
     } else if function_name.contains(MANAGED_CALL_VIRT_FN_NAME) {
         assert!(
             !call_info.split_last_tuple(),
             "Managed virtual calls may not use the `rust_call` calling convention!"
         );
         // Virtual (for interop)
-        return callvirt_managed(subst_ref, &function_name, args, destination, instance, ctx);
+        return vec![callvirt_managed(subst_ref, &function_name, args, destination, instance, ctx)];
     } else if function_name.contains(MANAGED_CALL_FN_NAME) {
         assert!(
             !call_info.split_last_tuple(),
             "Managed calls may not use the `rust_call` calling convention!"
         );
         // Not-Virtual (for interop)
-        return call_managed(subst_ref, &function_name, args, destination, instance, ctx);
+        return vec![call_managed(subst_ref, &function_name, args, destination, instance, ctx)];
     } else if function_name.contains(MANAGED_LD_LEN) {
         assert!(
             !call_info.split_last_tuple(),
             "Managed calls may not use the `rust_call` calling convention!"
         );
         // Not-Virtual (for interop)
-        return crate::place::place_set(
+        return vec![crate::place::place_set(
             destination,
             CILNode::LDLen {
                 arr: Box::new(crate::operand::handle_operand(&args[0].node, ctx)),
             },
             ctx,
-        );
+        )];
     } else if function_name.contains(MANAGED_LD_NULL) {
         assert!(
             !call_info.split_last_tuple(),
@@ -506,11 +506,11 @@ pub fn call<'tcx>(
         // Not-Virtual (for interop)
         let tpe = ctx.type_from_cache(subst_ref[0].as_type().unwrap());
 
-        return crate::place::place_set(
+        return vec![crate::place::place_set(
             destination,
             CILNode::LdNull(tpe.as_class_ref().unwrap()),
             ctx,
-        );
+        )];
     } else if function_name.contains(MANAGED_CHECKED_CAST) {
         let tpe = ctx
             .type_from_cache(subst_ref[0].as_type().unwrap())
@@ -518,11 +518,11 @@ pub fn call<'tcx>(
             .unwrap();
         let input = crate::operand::handle_operand(&args[0].node, ctx);
         // Not-Virtual (for interop)
-        return crate::place::place_set(
+        return vec![crate::place::place_set(
             destination,
             CILNode::CheckedCast(Box::new((input, tpe))),
             ctx,
-        );
+        )];
     } else if function_name.contains(MANAGED_IS_INST) {
         let tpe = ctx
             .type_from_cache(subst_ref[0].as_type().unwrap())
@@ -530,24 +530,24 @@ pub fn call<'tcx>(
             .unwrap();
         let input = crate::operand::handle_operand(&args[0].node, ctx);
         // Not-Virtual (for interop)
-        return crate::place::place_set(destination, CILNode::IsInst(Box::new((input, tpe))), ctx);
+        return vec![crate::place::place_set(destination, CILNode::IsInst(Box::new((input, tpe))), ctx)];
     } else if function_name.contains(MANAGED_LD_ELEM_REF) {
         assert!(
             !call_info.split_last_tuple(),
             "Managed calls may not use the `rust_call` calling convention!"
         );
         // Not-Virtual (for interop)
-        return crate::place::place_set(
+        return vec![crate::place::place_set(
             destination,
             CILNode::LDElelemRef {
                 arr: Box::new(crate::operand::handle_operand(&args[0].node, ctx)),
                 idx: Box::new(crate::operand::handle_operand(&args[1].node, ctx)),
             },
             ctx,
-        );
+        )];
     }
     if call_info.split_last_tuple() {
-        return call_closure(args, destination, signature, &function_name, ctx);
+        return vec![call_closure(args, destination, signature, &function_name, ctx)];
     }
 
     let mut call_args = Vec::new();
@@ -577,7 +577,7 @@ pub fn call<'tcx>(
     let is_void = matches!(signature.output(), cilly::Type::Void);
     //rustc_middle::ty::print::with_no_trimmed_paths! {call.push(CILOp::Comment(format!("Calling {instance:?}").into()))};
     if let InstanceKind::DropGlue(_def, None) = instance.def {
-        return CILRoot::Nop;
+        return vec![CILRoot::Nop];
     };
     let call_site = MethodRef::new(
         *ctx.main_module(),
@@ -589,12 +589,12 @@ pub fn call<'tcx>(
     // Hande
     let site = ctx.alloc_methodref(call_site);
     if is_void {
-        CILRoot::Call {
+        vec![CILRoot::Call {
             site,
             args: call_args.into(),
-        }
+        }]
     } else {
         let res_calc = call!(site, call_args);
-        crate::place::place_set(destination, res_calc, ctx)
+        vec![crate::place::place_set(destination, res_calc, ctx)]
     }
 }

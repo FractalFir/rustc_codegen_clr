@@ -13,15 +13,25 @@ pub fn emulate_uint8_cmp_xchng(asm: &mut Assembly, patcher: &mut MissingMethodPa
     generate_atomic(
         asm,
         patcher,
-        "cmpxchng",
+        "cmpxchng8",
         |asm, prev, arg, _| {
             // 1st, mask the previous value
-            let prev_mask = asm.alloc_node(Const::I32(0x00FF_FFFF));
+            let prev_mask = asm.alloc_node(Const::I32(0xFFFF_FF00_u32 as i32));
             let prev = asm.alloc_node(CILNode::BinOp(prev, prev_mask, BinOp::And));
-            // 2nd. Shift the byte into the least siginificant position(by 24 bytes)
-            let shift_ammount = asm.alloc_node(Const::I32(24));
-            let arg = asm.alloc_node(CILNode::BinOp(arg, shift_ammount, BinOp::Shl));
-            // Assemble those into a new value for the target memory.
+        
+            asm.alloc_node(CILNode::BinOp(prev, arg, BinOp::Or))
+        },
+        Int::I32,
+    );
+    generate_atomic(
+        asm,
+        patcher,
+        "cmpxchng16",
+        |asm, prev, arg, _| {
+            // 1st, mask the previous value
+            let prev_mask = asm.alloc_node(Const::I32(0xFFFF_0000_u32 as i32));
+            let prev = asm.alloc_node(CILNode::BinOp(prev, prev_mask, BinOp::And));
+          
             asm.alloc_node(CILNode::BinOp(prev, arg, BinOp::Or))
         },
         Int::I32,
@@ -54,6 +64,58 @@ pub fn emulate_uint8_cmp_xchng(asm: &mut Assembly, patcher: &mut MissingMethodPa
     };
     patcher.insert(name, Box::new(generator));
 }
+pub fn compare_exchange(asm:&mut Assembly,int:Int,addr:NodeIdx, value:NodeIdx, comaprand:NodeIdx)->NodeIdx{
+    match int.size().unwrap_or(8){
+        // u16 is buggy :(. TODO: fix it.
+        1 | 2=>{
+            let compare_exchange = asm.alloc_string("atomic_cmpxchng8_i32");
+
+            let i32 = Type::Int(int);
+            let i32_ref = asm.nref(i32);
+            let cmpxchng_sig = asm.sig([i32_ref, i32, i32], i32);
+            let main_mod = asm.main_module();
+            let mref = asm.alloc_methodref(MethodRef::new(
+                *main_mod,
+                compare_exchange,
+                cmpxchng_sig,
+                MethodKind::Static,
+                vec![].into(),
+            ));
+            let cast_value = asm.alloc_node(CILNode::IntCast { input: value, target: Int::I32, extend: crate::cilnode::ExtendKind::ZeroExtend });
+            let cast_comparand = asm.alloc_node(CILNode::IntCast { input: comaprand, target: Int::I32, extend: crate::cilnode::ExtendKind::ZeroExtend });
+            let addr = asm.alloc_node(CILNode::RefToPtr(addr));
+            let i32_tidx = asm.alloc_type(Type::Int(Int::I32));
+            let addr = asm.alloc_node(CILNode::PtrCast(addr, Box::new(crate::cilnode::PtrCastRes::Ptr(i32_tidx))));
+            let res = asm.alloc_node(CILNode::Call(Box::new((
+                mref,
+                Box::new([addr, cast_value, cast_comparand]),
+            ))));
+            asm.alloc_node(CILNode::IntCast { input: res, target: int, extend: crate::cilnode::ExtendKind::ZeroExtend })
+        }
+        4..=8 => {
+            let compare_exchange = asm.alloc_string("CompareExchange");
+
+            let tpe = Type::Int(int);
+            let tref = asm.nref(tpe);
+            let cmpxchng_sig = asm.sig([tref, tpe, tpe], tpe);
+            let interlocked = ClassRef::interlocked(asm);
+            let mref = asm.alloc_methodref(MethodRef::new(
+                interlocked,
+                compare_exchange,
+                cmpxchng_sig,
+                MethodKind::Static,
+                vec![].into(),
+            ));
+            
+            asm.alloc_node(CILNode::Call(Box::new((
+                mref,
+                Box::new([addr, value, comaprand]),
+            ))))
+        }
+        _=>todo!("Can't cmpxchng {int:?}")
+    }
+   
+}
 pub fn generate_atomic(
     asm: &mut Assembly,
     patcher: &mut MissingMethodPatcher,
@@ -72,25 +134,9 @@ pub fn generate_atomic(
 
         // The OP of this atomic
         let op = op(asm, ldloc_0, ldarg_1, int);
+        let call = compare_exchange(asm, int, ldarg_0, op, ldloc_0);
 
         let tpe = Type::Int(int);
-        let tref = asm.nref(tpe);
-
-        let cmpxchng_sig = asm.sig([tref, tpe, tpe], tpe);
-        let interlocked = ClassRef::interlocked(asm);
-
-        let compare_exchange = asm.alloc_string("CompareExchange");
-        let mref = asm.alloc_methodref(MethodRef::new(
-            interlocked,
-            compare_exchange,
-            cmpxchng_sig,
-            MethodKind::Static,
-            vec![].into(),
-        ));
-        let call = asm.alloc_node(CILNode::Call(Box::new((
-            mref,
-            Box::new([ldarg_0, op, ldloc_0]),
-        ))));
         let zero = asm.alloc_node(int.zero());
         let entry_block = vec![
             asm.alloc_root(CILRoot::StLoc(1, zero)),
@@ -124,7 +170,11 @@ pub fn generate_atomic_for_ints(
     op_name: &str,
     op: impl Fn(&mut Assembly, NodeIdx, NodeIdx, Int) -> NodeIdx + 'static + Clone,
 ) {
-    const ATOMIC_INTS: [Int; 6] = [
+    const ATOMIC_INTS: [Int; 10] = [
+        Int::U8,
+        Int::I8,
+        Int::U16,
+        Int::I16,
         Int::U32,
         Int::U64,
         Int::USize,

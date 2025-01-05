@@ -497,7 +497,6 @@ impl MethodDef {
         cache: &mut SideEffectInfoCache,
         fuel: &mut OptFuel,
     ) {
-      
         self.implementation_mut().propagate_locals(asm, cache, fuel);
         self.implementation_mut()
             .remove_dead_writes(asm, cache, fuel);
@@ -515,8 +514,6 @@ impl MethodDef {
             self.implementation_mut().remove_duplicate_sfi(asm);
         }
         self.remove_useless_handlers(asm, fuel, cache);
-        
-    
     }
     fn remove_useless_handlers(
         &mut self,
@@ -534,17 +531,17 @@ impl MethodDef {
                 .map(|block| (block.block_id(), block.clone()))
                 .collect();
             for block in blocks.iter_mut() {
-                if let CILRoot::Branch(info) =
+                /*if let CILRoot::Branch(info) =
                     &asm[*block.roots().last().expect("Blocks can't be empty")]
                 {
-                    /*let (target, _, None) = info.as_ref() else {continue;};
+                    let (target, _, None) = info.as_ref() else {continue;};
                     // Ret or throw
-                    if !has_targets[target] {
+                    if !has_targets[target] && blocks_copy[target].roots().len() < 20 {
                         let roots = block.roots_mut();
                         roots.pop();
                         roots.extend(blocks_copy[target].roots());
-                    }*/
-                }
+                    }
+                }*/
                 let Some(handler) = block.handler() else {
                     continue;
                 };
@@ -637,12 +634,13 @@ impl MethodDef {
         cache: &mut SideEffectInfoCache,
         asm: &mut Assembly,
     ) {
-        if self.implementation().blocks().is_none(){
+        if self.implementation().blocks().is_none() {
             return;
         }
         // TODO: this is a hack, which makes root inlining optimizations not consume fuel.
         let fuel = std::sync::Mutex::new(&mut *fuel);
-        let locals = self.locals().map(|locs|locs.to_vec()).unwrap();
+        let locals = self.locals().map(|locs| locs.to_vec()).unwrap();
+        let mut cache2 = SideEffectInfoCache::default();
         self.map_roots(
             asm,
             &mut |root, asm| {
@@ -662,11 +660,13 @@ impl MethodDef {
                     CILRoot::Call(info) => {
                         inline_trivial_call_root(info.0, &info.1, *root_fuel, asm)
                     }
-                   
+
                     CILRoot::StInd(ref info) => match asm.get_node(info.0) {
-                        CILNode::LdLocA(loc) if asm[locals[*loc as usize].1] == info.2 => CILRoot::StLoc(*loc,info.1),
+                        CILNode::LdLocA(loc) if asm[locals[*loc as usize].1] == info.2 => {
+                            CILRoot::StLoc(*loc, info.1)
+                        }
                         _ => root,
-                    }
+                    },
                     CILRoot::SetField(info) => {
                         let (field, mut addr, val) = info.as_ref();
                         if let CILNode::RefToPtr(inner) = asm[addr] {
@@ -956,7 +956,7 @@ impl MethodDef {
             },
             &mut |node, asm| {
                 let mut fuel = fuel.lock().unwrap();
-                opt_node::opt_node(node, asm, *fuel)
+                opt_node::opt_node(node, asm, *fuel, &mut cache2)
             },
         );
     }
@@ -984,7 +984,7 @@ fn opt_init_obj(
                 false,
             )));
         }
-        Type::Float(float) if fuel.consume(1) && matches!(float.size(),32|64) => {
+        Type::Float(float) if fuel.consume(1) && matches!(float.size(), 32 | 64) => {
             return CILRoot::StInd(Box::new((
                 addr,
                 asm.alloc_node(float.zero()),

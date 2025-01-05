@@ -1,6 +1,9 @@
-use crate::v2::{cilnode::ExtendKind, Assembly, CILNode, Const, Int, NodeIdx, Type};
+use crate::{
+    v2::{cilnode::ExtendKind, Assembly, CILNode, Const, Int, NodeIdx, Type},
+    BinOp,
+};
 
-use super::{opt_if_fuel, OptFuel};
+use super::{opt_if_fuel, OptFuel, SideEffectInfoCache};
 /// Optimizes an intiger cast.
 fn opt_int_cast(
     original: CILNode,
@@ -11,7 +14,9 @@ fn opt_int_cast(
     extend: ExtendKind,
 ) -> CILNode {
     match asm.get_node(input) {
-        CILNode::LdField { addr, field } if asm[*field].tpe() == Type::Int(target) => asm.get_node(input).clone(),
+        CILNode::LdField { addr, field } if asm[*field].tpe() == Type::Int(target) => {
+            asm.get_node(input).clone()
+        }
         CILNode::Const(cst) => match (cst.as_ref(), target) {
             (Const::U64(val), Int::USize) => opt_if_fuel(Const::USize(*val).into(), original, fuel),
             (Const::I64(val), Int::ISize) => opt_if_fuel(Const::ISize(*val).into(), original, fuel),
@@ -87,7 +92,12 @@ fn opt_int_cast(
         _ => original,
     }
 }
-pub fn opt_node(original: CILNode, asm: &mut Assembly, fuel: &mut OptFuel) -> CILNode {
+pub fn opt_node(
+    original: CILNode,
+    asm: &mut Assembly,
+    fuel: &mut OptFuel,
+    cache: &mut SideEffectInfoCache,
+) -> CILNode {
     match original {
         CILNode::SizeOf(tpe) => match asm[tpe] {
             Type::Int(
@@ -147,6 +157,23 @@ pub fn opt_node(original: CILNode, asm: &mut Assembly, fuel: &mut OptFuel) -> CI
             }
             _ => original,
         },
+        CILNode::LdFieldAdress { addr, field } => match asm.get_node(addr) {
+            CILNode::RefToPtr(inner) => CILNode::RefToPtr(asm.alloc_node(CILNode::LdFieldAdress {
+                addr: *inner,
+                field,
+            })),
+            _ => original,
+        },
+        CILNode::BinOp(lhs, rhs, op @ (BinOp::Add | BinOp::Sub)) => {
+            match (asm.get_node(lhs), asm.get_node(rhs)) {
+                (CILNode::Const(cst), rhs) if cst.as_ref().is_zero() && op != BinOp::Sub => {
+                    rhs.clone()
+                }
+                (lhs, CILNode::Const(cst)) if cst.as_ref().is_zero() => lhs.clone(),
+                _ => original,
+            }
+        }
+        //CILNode::BinOp(lhs,rhs ,BinOp::And) if lhs == rhs && cache.has_side_effects(lhs, asm)=> asm[lhs].clone(),
         CILNode::LdField { addr, field } => match asm.get_node(addr) {
             CILNode::RefToPtr(addr) => {
                 opt_if_fuel(CILNode::LdField { addr: *addr, field }, original, fuel)

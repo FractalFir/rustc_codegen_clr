@@ -58,7 +58,7 @@ pub fn eq_unchecked(
         TyKind::Bool
         | TyKind::Char
         | TyKind::Float(FloatTy::F32 | FloatTy::F64)
-        | TyKind::RawPtr(_, _) => {
+        | TyKind::RawPtr(_, _) |  TyKind::FnPtr(_,_)=> {
             eq!(operand_a, operand_b)
         }
         TyKind::Float(FloatTy::F128) => {

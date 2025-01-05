@@ -327,6 +327,16 @@ impl Int {
             Int::ISize => todo!(),
         }
     }
+
+    pub fn promoted(&self) -> Option<Self> {
+        if self.size() == Some(128) {
+            return None;
+        }
+        Some(Self::from_size_sign(
+            self.size().unwrap_or(8) * 2,
+            self.is_signed(),
+        ))
+    }
 }
 #[test]
 fn is_signed() {

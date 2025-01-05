@@ -47,6 +47,28 @@ impl Const {
             Const::Null(tpe) => Type::ClassRef(*tpe),
         }
     }
+
+    pub(crate) fn is_zero(&self) -> bool {
+        match self {
+            Const::I8(val) => *val == 0,
+            Const::I16(val) => *val == 0,
+            Const::I32(val) => *val == 0,
+            Const::I64(val) => *val == 0,
+            Const::I128(val) => *val == 0,
+            Const::ISize(val) => *val == 0,
+            Const::U8(val) => *val == 0,
+            Const::U16(val) => *val == 0,
+            Const::U32(val) => *val == 0,
+            Const::U64(val) => *val == 0,
+            Const::U128(val) => *val == 0,
+            Const::USize(val) => *val == 0,
+            Const::PlatformString(_) => false,
+            Const::Bool(_) => false,
+            Const::F32(val) => **val == 0.0,
+            Const::F64(val) => **val == 0.0,
+            Const::Null(_) => true,
+        }
+    }
 }
 
 impl From<Const> for CILNode {

@@ -452,7 +452,7 @@ impl MethodDef {
             return;
         };
         // Check if the entry block does not jump anywhere(no targets) and has no handler - if so, only keep it.
-        if blocks[0].targets(asm).count() == 0 && blocks[0].handler().is_none(){
+        if blocks[0].targets(asm).count() == 0 && blocks[0].handler().is_none() {
             let entry = blocks[0].clone();
             *self.implementation_mut().blocks_mut().unwrap() = vec![entry];
             return;
@@ -465,7 +465,21 @@ impl MethodDef {
             return;
         }
         // If handlers jump to normal blocks, do not GC.
-        if blocks.iter().flat_map(|block|block.handler()).flatten().flat_map(|block|block.roots()).any(|root|matches!(asm[*root],CILRoot::ExitSpecialRegion { target: _, source: _ })){
+        if blocks
+            .iter()
+            .flat_map(|block| block.handler())
+            .flatten()
+            .flat_map(|block| block.roots())
+            .any(|root| {
+                matches!(
+                    asm[*root],
+                    CILRoot::ExitSpecialRegion {
+                        target: _,
+                        source: _
+                    }
+                )
+            })
+        {
             return;
         }
         //let blocks_copy = blocks.clone();
@@ -473,11 +487,12 @@ impl MethodDef {
             .blocks_mut()
             .unwrap()
             .retain(|block| alive.contains(&block.block_id()));
-       
     }
-    
+
     pub(crate) fn locals(&self) -> Option<&[LocalDef]> {
-        let MethodImpl::MethodBody { blocks:_, locals } = self.implementation() else {return None;};
+        let MethodImpl::MethodBody { blocks: _, locals } = self.implementation() else {
+            return None;
+        };
         Some(locals)
     }
 }

@@ -23,6 +23,8 @@ extern crate core;
 extern "C" {
     fn atomic_xor_u32(addr: &mut u32, xorand: u32) -> u32;
     fn atomic_nand_u32(addr: &mut u32, xorand: u32) -> u32;
+    fn atomic_nand_u16(addr: &mut u16, xorand: u16) -> u16;
+    fn atomic_nand_u8(addr: &mut u8, xorand: u8) -> u8;
     //fn atomic_cmpxchng_i32(addr: *mut i32, bytes: i32) -> i32;
 }
 use core::ptr::addr_of_mut;
@@ -47,6 +49,28 @@ fn main() {
     let mut tmp = 0xFF_u32;
     unsafe { test_eq!(atomic_nand_u32(&mut tmp, 0x0A), 0xFF_u32) };
     test_eq!(tmp, !(0xFF & 0x0A));
+
+    let mut tmp = 0xFF_u8;
+    unsafe { test_eq!(atomic_nand_u8(&mut tmp, 0x0A_u8), 0xFF_u8) };
+    unsafe{printf(c"%x\n".as_ptr(),tmp as u32)};
+    test_eq!(tmp, !(0xFF_u8 & 0x0A_u8));
+
+    let mut arr = [0x12,0xFF,0x45,0x67];
+
+    unsafe { test_eq!(atomic_nand_u8(&mut arr[1], 0x0A_u8), 0xFF_u8) };
+    unsafe{printf(c"%x\n".as_ptr(),arr[1] as u32)};
+
+    test_eq!(arr[0], 0x12);
+    test_eq!(arr[1], !(0xFF_u8 & 0x0A_u8));
+    test_eq!(arr[2], 0x45);
+    test_eq!(arr[3], 0x67);
+
+    /*let mut tmp = 0xFF_u16;
+    unsafe { test_eq!(atomic_nand_u16(&mut tmp, 0x0A_u16), 0xFF_u16) };
+    unsafe{printf(c"%x\n".as_ptr(),tmp as u32)};
+    test_eq!(tmp, !(0xFF_u16 & 0x0A_u16));*/
+
+
     ptr_bitops_tagging();
     let atomic = core::sync::atomic::AtomicUsize::new(0);
     test_eq!(atomic.load(core::sync::atomic::Ordering::Relaxed), 0);

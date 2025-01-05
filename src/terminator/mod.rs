@@ -41,7 +41,7 @@ pub fn handle_call_terminator<'tycxt>(
             let fn_ty = ctx.monomorphize(fn_ty);
             let call_ops = call::call(fn_ty, ctx, args, destination, terminator.source_info.span);
             //eprintln!("\nCalling FnDef:{fn_ty:?}. call_ops:{call_ops:?}");
-            trees.push(call_ops.into());
+            trees.extend(call_ops.into_iter().map(std::convert::Into::into));
         }
         TyKind::FnPtr(sig, _) => {
             //eprintln!("Calling FnPtr:{func_ty:?}");
@@ -268,7 +268,8 @@ pub fn handle_terminator<'tcx>(
         TerminatorKind::UnwindTerminate(_) => {
             let loc = terminator.source_info.span;
             vec![
-                rustc_middle::ty::print::with_no_trimmed_paths! {CILRoot::throw(&format!("UnwindTerminate reached at {loc:?}!"),ctx).into()},
+                rustc_middle::ty::print::with_no_trimmed_paths! {CILRoot::debug(&format!("UnwindTerminate reached at {loc:?}!"),ctx).into()},
+                CILRoot::ReThrow.into(),
             ]
         }
         TerminatorKind::FalseEdge {

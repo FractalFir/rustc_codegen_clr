@@ -39,7 +39,22 @@ pub fn test_variadic_fnptr() {
     test_eq!(p, q);
     test!(!(p < q));
 }
+#[no_mangle]
+fn cmad(a:u32,b:u32,c:u32,d:u32,e:u32,f:u32){
+    let (a,b) = core::intrinsics::carrying_mul_add(a,b,c,d);
+    test_eq!(a,e);
+    test_eq!(b,f);
+}
+#[no_mangle]
+fn cmadi(a:i32,b:i32,c:i32,d:i32,e:u32,f:i32){
+    let (a,b) = core::intrinsics::carrying_mul_add(a,b,c,d);
+    test_eq!(a,e);
+    test_eq!(b,f);
+}
 fn main() {
+    cmad(1,2,3,4,2+3+4,0);
+    cmad(u32 :: MAX,u32 :: MAX,0,0,1,u32 :: MAX - 1);
+    cmadi(1,2,3,4,2+3+4,0);
     unsafe{printf(c"val:%f\n".as_ptr(),core::hint::black_box(cst_f64()))};
     isqrt_test();
     unsafe { black_box(ldexpf(black_box(434.43), 1232.3434)) };
