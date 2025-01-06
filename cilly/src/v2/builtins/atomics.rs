@@ -18,7 +18,7 @@ pub fn emulate_uint8_cmp_xchng(asm: &mut Assembly, patcher: &mut MissingMethodPa
             // 1st, mask the previous value
             let prev_mask = asm.alloc_node(Const::I32(0xFFFF_FF00_u32 as i32));
             let prev = asm.alloc_node(CILNode::BinOp(prev, prev_mask, BinOp::And));
-        
+
             asm.alloc_node(CILNode::BinOp(prev, arg, BinOp::Or))
         },
         Int::I32,
@@ -31,7 +31,7 @@ pub fn emulate_uint8_cmp_xchng(asm: &mut Assembly, patcher: &mut MissingMethodPa
             // 1st, mask the previous value
             let prev_mask = asm.alloc_node(Const::I32(0xFFFF_0000_u32 as i32));
             let prev = asm.alloc_node(CILNode::BinOp(prev, prev_mask, BinOp::And));
-          
+
             asm.alloc_node(CILNode::BinOp(prev, arg, BinOp::Or))
         },
         Int::I32,
@@ -64,10 +64,16 @@ pub fn emulate_uint8_cmp_xchng(asm: &mut Assembly, patcher: &mut MissingMethodPa
     };
     patcher.insert(name, Box::new(generator));
 }
-pub fn compare_exchange(asm:&mut Assembly,int:Int,addr:NodeIdx, value:NodeIdx, comaprand:NodeIdx)->NodeIdx{
-    match int.size().unwrap_or(8){
+pub fn compare_exchange(
+    asm: &mut Assembly,
+    int: Int,
+    addr: NodeIdx,
+    value: NodeIdx,
+    comaprand: NodeIdx,
+) -> NodeIdx {
+    match int.size().unwrap_or(8) {
         // u16 is buggy :(. TODO: fix it.
-        1 | 2=>{
+        1 | 2 => {
             let compare_exchange = asm.alloc_string("atomic_cmpxchng8_i32");
 
             let i32 = Type::Int(int);
@@ -81,16 +87,31 @@ pub fn compare_exchange(asm:&mut Assembly,int:Int,addr:NodeIdx, value:NodeIdx, c
                 MethodKind::Static,
                 vec![].into(),
             ));
-            let cast_value = asm.alloc_node(CILNode::IntCast { input: value, target: Int::I32, extend: crate::cilnode::ExtendKind::ZeroExtend });
-            let cast_comparand = asm.alloc_node(CILNode::IntCast { input: comaprand, target: Int::I32, extend: crate::cilnode::ExtendKind::ZeroExtend });
+            let cast_value = asm.alloc_node(CILNode::IntCast {
+                input: value,
+                target: Int::I32,
+                extend: crate::cilnode::ExtendKind::ZeroExtend,
+            });
+            let cast_comparand = asm.alloc_node(CILNode::IntCast {
+                input: comaprand,
+                target: Int::I32,
+                extend: crate::cilnode::ExtendKind::ZeroExtend,
+            });
             let addr = asm.alloc_node(CILNode::RefToPtr(addr));
             let i32_tidx = asm.alloc_type(Type::Int(Int::I32));
-            let addr = asm.alloc_node(CILNode::PtrCast(addr, Box::new(crate::cilnode::PtrCastRes::Ptr(i32_tidx))));
+            let addr = asm.alloc_node(CILNode::PtrCast(
+                addr,
+                Box::new(crate::cilnode::PtrCastRes::Ptr(i32_tidx)),
+            ));
             let res = asm.alloc_node(CILNode::Call(Box::new((
                 mref,
                 Box::new([addr, cast_value, cast_comparand]),
             ))));
-            asm.alloc_node(CILNode::IntCast { input: res, target: int, extend: crate::cilnode::ExtendKind::ZeroExtend })
+            asm.alloc_node(CILNode::IntCast {
+                input: res,
+                target: int,
+                extend: crate::cilnode::ExtendKind::ZeroExtend,
+            })
         }
         4..=8 => {
             let compare_exchange = asm.alloc_string("CompareExchange");
@@ -106,15 +127,14 @@ pub fn compare_exchange(asm:&mut Assembly,int:Int,addr:NodeIdx, value:NodeIdx, c
                 MethodKind::Static,
                 vec![].into(),
             ));
-            
+
             asm.alloc_node(CILNode::Call(Box::new((
                 mref,
                 Box::new([addr, value, comaprand]),
             ))))
         }
-        _=>todo!("Can't cmpxchng {int:?}")
+        _ => todo!("Can't cmpxchng {int:?}"),
     }
-   
 }
 pub fn generate_atomic(
     asm: &mut Assembly,
@@ -209,7 +229,7 @@ pub fn generate_all_atomics(asm: &mut Assembly, patcher: &mut MissingMethodPatch
     generate_atomic_for_ints(asm, patcher, "min", int_min);
     // Emulates 1 byte compare exchange
     emulate_uint8_cmp_xchng(asm, patcher);
-    for int in [Int::ISize, Int::USize] {
+    for int in [Int::ISize, Int::USize, Int::U8, Int::I8] {
         generate_atomic(
             asm,
             patcher,

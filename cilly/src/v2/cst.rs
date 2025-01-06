@@ -69,6 +69,27 @@ impl Const {
             Const::Null(_) => true,
         }
     }
+    pub(crate) fn is_one(&self) -> bool {
+        match self {
+            Const::I8(val) => *val == 1,
+            Const::I16(val) => *val == 1,
+            Const::I32(val) => *val == 1,
+            Const::I64(val) => *val == 1,
+            Const::I128(val) => *val == 1,
+            Const::ISize(val) => *val == 1,
+            Const::U8(val) => *val == 1,
+            Const::U16(val) => *val == 1,
+            Const::U32(val) => *val == 1,
+            Const::U64(val) => *val == 1,
+            Const::U128(val) => *val == 1,
+            Const::USize(val) => *val == 1,
+            Const::PlatformString(_) => false,
+            Const::Bool(_) => false,
+            Const::F32(val) => **val == 1.1,
+            Const::F64(val) => **val == 1.1,
+            Const::Null(_) => true,
+        }
+    }
 }
 
 impl From<Const> for CILNode {

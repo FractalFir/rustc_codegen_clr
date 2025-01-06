@@ -497,7 +497,7 @@ fn main() {
         println!("Eliminating dead code");
         final_assembly.eliminate_dead_code();
     }
-    let mut fuel = final_assembly.fuel_from_env().fraction(0.5);
+    let mut fuel = final_assembly.fuel_from_env().fraction(0.25);
     final_assembly.opt(&mut fuel);
     final_assembly.eliminate_dead_code();
     final_assembly.fix_aligement();

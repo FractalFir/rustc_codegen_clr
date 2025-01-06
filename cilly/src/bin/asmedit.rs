@@ -257,6 +257,21 @@ fn main() {
                 );
                 println!("strings:{:?}", encoded_stats(asm.strings()));
             }
+            "top_methods" => {
+                let mut keys: Vec<_> = asm
+                    .method_refs()
+                    .iter_keys()
+                    .filter_map(|key| asm.method_ref_to_def(key))
+                    .map(|def| (def, asm[def].implementation().root_count()))
+                    .collect();
+                let avg = keys.iter().map(|(_, len)| *len).sum::<usize>() / keys.len();
+                keys.retain(|(_, val)| *val > avg);
+                keys.sort_by(|(_, a), (_, b)| a.cmp(b));
+                for (def, len) in keys[(keys.len() - body.parse::<usize>().unwrap_or(10))..].iter()
+                {
+                    eprintln!("({},{len})", &asm[asm[*def].name()])
+                }
+            }
             "shorten_strings" => {
                 let size_cap: usize = body.parse().unwrap();
                 asm.shorten_strings(size_cap)

@@ -511,6 +511,16 @@ pub enum MethodImpl {
     Missing,
 }
 impl MethodImpl {
+    pub fn root_count(&self) -> usize {
+        match self {
+            MethodImpl::MethodBody { blocks, .. } => {
+                blocks.iter().map(|block| block.roots().len()).sum()
+            }
+            MethodImpl::Extern { .. } => 0,
+            MethodImpl::AliasFor(_) => 0,
+            MethodImpl::Missing => 3,
+        }
+    }
     pub fn blocks_mut(&mut self) -> Option<&mut Vec<BasicBlock>> {
         match self {
             Self::MethodBody { blocks, .. } => Some(blocks),

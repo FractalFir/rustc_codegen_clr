@@ -477,14 +477,28 @@ pub fn call<'tcx>(
             "Managed virtual calls may not use the `rust_call` calling convention!"
         );
         // Virtual (for interop)
-        return vec![callvirt_managed(subst_ref, &function_name, args, destination, instance, ctx)];
+        return vec![callvirt_managed(
+            subst_ref,
+            &function_name,
+            args,
+            destination,
+            instance,
+            ctx,
+        )];
     } else if function_name.contains(MANAGED_CALL_FN_NAME) {
         assert!(
             !call_info.split_last_tuple(),
             "Managed calls may not use the `rust_call` calling convention!"
         );
         // Not-Virtual (for interop)
-        return vec![call_managed(subst_ref, &function_name, args, destination, instance, ctx)];
+        return vec![call_managed(
+            subst_ref,
+            &function_name,
+            args,
+            destination,
+            instance,
+            ctx,
+        )];
     } else if function_name.contains(MANAGED_LD_LEN) {
         assert!(
             !call_info.split_last_tuple(),
@@ -530,7 +544,11 @@ pub fn call<'tcx>(
             .unwrap();
         let input = crate::operand::handle_operand(&args[0].node, ctx);
         // Not-Virtual (for interop)
-        return vec![crate::place::place_set(destination, CILNode::IsInst(Box::new((input, tpe))), ctx)];
+        return vec![crate::place::place_set(
+            destination,
+            CILNode::IsInst(Box::new((input, tpe))),
+            ctx,
+        )];
     } else if function_name.contains(MANAGED_LD_ELEM_REF) {
         assert!(
             !call_info.split_last_tuple(),
@@ -547,7 +565,13 @@ pub fn call<'tcx>(
         )];
     }
     if call_info.split_last_tuple() {
-        return vec![call_closure(args, destination, signature, &function_name, ctx)];
+        return vec![call_closure(
+            args,
+            destination,
+            signature,
+            &function_name,
+            ctx,
+        )];
     }
 
     let mut call_args = Vec::new();

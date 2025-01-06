@@ -1,6 +1,19 @@
-use crate::{assembly::MethodCompileCtx, casts, operand::handle_operand, place::{place_adress, place_set}};
+use crate::{
+    assembly::MethodCompileCtx,
+    casts,
+    operand::handle_operand,
+    place::{place_adress, place_set},
+};
 use cilly::{
-    call, cil_node::CILNode, cil_root::CILRoot, cilnode::MethodKind, conv_i16, conv_i32, conv_i64, conv_i8, conv_isize, conv_u16, conv_u32, conv_u64, conv_u8, conv_usize, tpe::int, v2::{ClassRef, Float, Int}, Const, FieldDesc, IntoAsmIndex, MethodRef, Type
+    call,
+    cil_node::CILNode,
+    cil_root::CILRoot,
+    cilnode::MethodKind,
+    conv_i16, conv_i32, conv_i64, conv_i8, conv_isize, conv_u16, conv_u32, conv_u64, conv_u8,
+    conv_usize,
+    tpe::int,
+    v2::{ClassRef, Float, Int},
+    Const, FieldDesc, IntoAsmIndex, MethodRef, Type,
 };
 use ints::{ctlz, rotate_left, rotate_right};
 use rustc_middle::{
@@ -97,7 +110,11 @@ pub fn handle_intrinsic<'tcx>(
                 "The intrinsic `{fn_name}` MUST take in exactly 1 argument!"
             );
             // assert_eq!(args.len(),1,"The intrinsic `unlikely` MUST take in exactly 1 argument!");
-            vec![place_set(destination, handle_operand(&args[0].node, ctx), ctx)]
+            vec![place_set(
+                destination,
+                handle_operand(&args[0].node, ctx),
+                ctx,
+            )]
         }
         "is_val_statically_known" => vec![is_val_statically_known(args, destination, ctx)],
         "needs_drop" => {
@@ -116,7 +133,11 @@ pub fn handle_intrinsic<'tcx>(
                 rustc_middle::ty::TypingEnv::fully_monomorphized(),
             );
             let needs_drop = i32::from(needs_drop);
-            vec![place_set(destination, CILNode::V2(ctx.alloc_node(needs_drop)), ctx)]
+            vec![place_set(
+                destination,
+                CILNode::V2(ctx.alloc_node(needs_drop)),
+                ctx,
+            )]
         }
         "fmaf32" => vec![fmaf32(args, destination, call_instance, ctx)],
         "fmaf64" => vec![fmaf64(args, destination, call_instance, ctx)],
@@ -248,7 +269,7 @@ pub fn handle_intrinsic<'tcx>(
 
             let src_type = ctx.monomorphize(args[1].node.ty(ctx.body(), ctx.tcx()));
             let src_type = ctx.type_from_cache(src_type);
-            match src_type{
+            match src_type {
                 Type::Int(int) => {
                     let add_ammount = if int.is_signed() {
                         CILNode::Neg(Box::new(sub_ammount.clone()))
@@ -270,8 +291,8 @@ pub fn handle_intrinsic<'tcx>(
                         atomic_add(dst, add_ammount.clone(), src_type, ctx),
                         ctx,
                     )]
-                },
-                Type::Ptr(_)=>{
+                }
+                Type::Ptr(_) => {
                     let add_ammount = crate::casts::int_to_int(
                         Type::Int(Int::ISize),
                         Type::Int(Int::USize),
@@ -280,11 +301,12 @@ pub fn handle_intrinsic<'tcx>(
                     );
                     vec![place_set(
                         destination,
-                        atomic_add(dst, add_ammount.clone(),Type::Int(Int::USize), ctx).cast_ptr(src_type),
+                        atomic_add(dst, add_ammount.clone(), Type::Int(Int::USize), ctx)
+                            .cast_ptr(src_type),
                         ctx,
                     )]
-                },
-                _=>panic!("{src_type:?} is not an int."),
+                }
+                _ => panic!("{src_type:?} is not an int."),
             }
         }
         "atomic_or_seqcst" | "atomic_or_release" | "atomic_or_acqrel" | "atomic_or_acquire"
@@ -297,7 +319,11 @@ pub fn handle_intrinsic<'tcx>(
             let src_type = ctx.monomorphize(args[1].node.ty(ctx.body(), ctx.tcx()));
             let src_type = ctx.type_from_cache(src_type);
 
-            vec![place_set(destination, atomic_or(dst, orand, src_type, ctx), ctx)]
+            vec![place_set(
+                destination,
+                atomic_or(dst, orand, src_type, ctx),
+                ctx,
+            )]
         }
         "atomic_xor_seqcst" | "atomic_xor_release" | "atomic_xor_acqrel" | "atomic_xor_acquire"
         | "atomic_xor_relaxed" => {
@@ -309,7 +335,11 @@ pub fn handle_intrinsic<'tcx>(
             let src_type = ctx.monomorphize(args[1].node.ty(ctx.body(), ctx.tcx()));
             let src_type = ctx.type_from_cache(src_type);
 
-            vec![place_set(destination, atomic_xor(dst, xorand, src_type, ctx), ctx)]
+            vec![place_set(
+                destination,
+                atomic_xor(dst, xorand, src_type, ctx),
+                ctx,
+            )]
         }
         "atomic_and_seqcst" | "atomic_and_release" | "atomic_and_acqrel" | "atomic_and_acquire"
         | "atomic_and_relaxed" => {
@@ -321,7 +351,11 @@ pub fn handle_intrinsic<'tcx>(
             let src_type = ctx.monomorphize(args[1].node.ty(ctx.body(), ctx.tcx()));
             let src_type = ctx.type_from_cache(src_type);
 
-            vec![place_set(destination, atomic_and(dst, andand, src_type, ctx), ctx)]
+            vec![place_set(
+                destination,
+                atomic_and(dst, andand, src_type, ctx),
+                ctx,
+            )]
         }
         "atomic_nand_seqcst"
         | "atomic_nand_release"
@@ -336,7 +370,11 @@ pub fn handle_intrinsic<'tcx>(
             let src_type = ctx.monomorphize(args[1].node.ty(ctx.body(), ctx.tcx()));
             let src_type = ctx.type_from_cache(src_type);
 
-            vec![place_set(destination, atomic_nand(dst, andand, src_type, ctx), ctx)]
+            vec![place_set(
+                destination,
+                atomic_nand(dst, andand, src_type, ctx),
+                ctx,
+            )]
         }
         "atomic_fence_acquire"
         | "atomic_fence_seqcst"
@@ -433,7 +471,12 @@ pub fn handle_intrinsic<'tcx>(
         // TODO:Those are not stricly neccessary, but SHOULD be implemented at some point.
         "assert_inhabited" | "assert_zero_valid" | "const_deallocate" => vec![CILRoot::Nop],
         "ptr_offset_from_unsigned" => {
-            vec![ptr::ptr_offset_from_unsigned(args, destination, call_instance, ctx)]
+            vec![ptr::ptr_offset_from_unsigned(
+                args,
+                destination,
+                call_instance,
+                ctx,
+            )]
         }
         "ptr_mask" => {
             debug_assert_eq!(
@@ -563,20 +606,79 @@ pub fn handle_intrinsic<'tcx>(
                 handle_operand(&args[3].node, ctx),
                 ctx,
             );
-            let sum = (mul_a * mul_b) + carry + addend;
-        
-            let scale_factor = casts::int_to_int(
-                cilly::Type::Int(Int::U64),
-                cilly::Type::Int(promoted),
-                CILNode::V2(ctx.alloc_node(1_u64 << (oint.size().unwrap_or(8)*8))),
-                ctx,
-            );
-            let ovf = casts::int_to_int(
-                cilly::Type::Int(promoted),
-                cilly::Type::Int(wint),
-                CILNode::DivUn(Box::new(sum.clone()), Box::new(scale_factor)),
-                ctx,
-            );
+            let sum = if promoted.size() == Some(16) {
+                let main_module = ctx.main_module();
+                let op_mul = MethodRef::new(
+                    *main_module,
+                    ctx.alloc_string(format!("mul_{}", promoted.name())),
+                    ctx.sig(
+                        [Type::Int(promoted), Type::Int(promoted)],
+                        Type::Int(promoted),
+                    ),
+                    MethodKind::Static,
+                    vec![].into(),
+                );
+                let op_add = MethodRef::new(
+                    *main_module,
+                    ctx.alloc_string(format!("add_{}", promoted.name())),
+                    ctx.sig(
+                        [Type::Int(promoted), Type::Int(promoted)],
+                        Type::Int(promoted),
+                    ),
+                    MethodKind::Static,
+                    vec![].into(),
+                );
+                let op_mul = ctx.alloc_methodref(op_mul);
+                let op_add = ctx.alloc_methodref(op_add);
+                call!(
+                    op_add,
+                    [
+                        call!(op_mul, [mul_a, mul_b]),
+                        call!(op_add, [carry, addend])
+                    ]
+                )
+            } else {
+                (mul_a * mul_b) + carry + addend
+            };
+            let ovf = if promoted.size() == Some(16) {
+                let main_module = ctx.main_module();
+                let op_div = MethodRef::new(
+                    *main_module,
+                    ctx.alloc_string(format!("div_{}", promoted.name())),
+                    ctx.sig(
+                        [Type::Int(promoted), Type::Int(promoted)],
+                        Type::Int(promoted),
+                    ),
+                    MethodKind::Static,
+                    vec![].into(),
+                );
+                let op_div = ctx.alloc_methodref(op_div);
+                call!(
+                    op_div,
+                    [
+                        sum.clone(),
+                        (casts::int_to_int(
+                            cilly::Type::Int(Int::U128),
+                            cilly::Type::Int(promoted),
+                            CILNode::V2(ctx.alloc_node(1_u128 << (oint.size().unwrap_or(8) * 8))),
+                            ctx,
+                        ))
+                    ]
+                )
+            } else {
+                CILNode::DivUn(
+                    Box::new(sum.clone()),
+                    Box::new(casts::int_to_int(
+                        cilly::Type::Int(Int::U64),
+                        cilly::Type::Int(promoted),
+                        CILNode::V2(ctx.alloc_node(1_u64 << (oint.size().unwrap_or(8) * 8))),
+                        ctx,
+                    )),
+                )
+            };
+
+            let ovf =
+                casts::int_to_int(cilly::Type::Int(promoted), cilly::Type::Int(wint), ovf, ctx);
             let wr =
                 casts::int_to_int(cilly::Type::Int(promoted), cilly::Type::Int(oint), sum, ctx);
             let res_tpe = ctx
@@ -587,10 +689,17 @@ pub fn handle_intrinsic<'tcx>(
             let item1 = ctx.alloc_string("Item1");
             let item2 = ctx.alloc_string("Item2");
             vec![
-                CILRoot::SetField { addr: Box::new(dst.clone()), value: Box::new(wr), desc: ctx.alloc_field(FieldDesc::new(res_tpe,item1,cilly::Type::Int(oint)))},
-                CILRoot::SetField { addr: Box::new(dst), value: Box::new(ovf), desc:  ctx.alloc_field(FieldDesc::new(res_tpe,item2,cilly::Type::Int(wint))) }
+                CILRoot::SetField {
+                    addr: Box::new(dst.clone()),
+                    value: Box::new(wr),
+                    desc: ctx.alloc_field(FieldDesc::new(res_tpe, item1, cilly::Type::Int(oint))),
+                },
+                CILRoot::SetField {
+                    addr: Box::new(dst),
+                    value: Box::new(ovf),
+                    desc: ctx.alloc_field(FieldDesc::new(res_tpe, item2, cilly::Type::Int(wint))),
+                },
             ]
-           
         }
         "powif32" => vec![powif32(args, destination, call_instance, ctx)],
         "powif64" => vec![powif64(args, destination, call_instance, ctx)],
@@ -1337,7 +1446,11 @@ pub fn handle_intrinsic<'tcx>(
             let main_module = ctx.main_module();
             let main_module = ctx[*main_module].clone();
             let most_significant_bits = main_module.static_mref(&[vec], Type::Int(int), name, ctx);
-            vec![place_set(destination, call!(most_significant_bits, [lhs]), ctx)]
+            vec![place_set(
+                destination,
+                call!(most_significant_bits, [lhs]),
+                ctx,
+            )]
         }
         "simd_neg" => {
             let vec = ctx.type_from_cache(

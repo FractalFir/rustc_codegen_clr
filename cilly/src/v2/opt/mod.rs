@@ -513,11 +513,15 @@ impl MethodDef {
         if fuel.consume(1) {
             self.implementation_mut().remove_duplicate_sfi(asm);
         }
+        if let MethodImpl::MethodBody { blocks, .. } = self.implementation_mut() {
+            linearize_blocks(blocks,&asm);
+        }
+     
         self.remove_useless_handlers(asm, fuel, cache);
     }
     fn remove_useless_handlers(
         &mut self,
-        asm: &Assembly,
+        asm: &mut Assembly,
         fuel: &mut OptFuel,
         cache: &mut SideEffectInfoCache,
     ) {
@@ -536,7 +540,7 @@ impl MethodDef {
                 {
                     let (target, _, None) = info.as_ref() else {continue;};
                     // Ret or throw
-                    if !has_targets[target] && blocks_copy[target].roots().len() < 20 {
+                    if !has_targets[target] && blocks_copy[target].roots().len() < 10 {
                         let roots = block.roots_mut();
                         roots.pop();
                         roots.extend(blocks_copy[target].roots());
@@ -567,7 +571,7 @@ impl MethodDef {
                         })
                 }) && fuel.consume(6)
                 {
-                    block.remove_handler();
+                    block.remove_handler( asm);
                 }
             }
         };
@@ -605,6 +609,12 @@ impl MethodDef {
                         *curr = nop;
                         let curr = peekable.next().unwrap();
                         *curr = asm.alloc_root(CILRoot::Ret(tree));
+                    }
+                    (CILRoot::Branch(info), CILRoot::Branch(_))
+                    if is_branch_unconditional(info) =>
+                    {
+                        let curr = peekable.next().unwrap();
+                        *curr = nop;
                     }
                     (CILRoot::Branch(info), CILRoot::Branch(info2))
                         if is_branch_unconditional(info2) =>
@@ -1003,7 +1013,7 @@ fn opt_init_obj(
 pub fn is_branch_unconditional(branch: &(u32, u32, Option<BranchCond>)) -> bool {
     branch.2.is_none()
 }
-fn blockid_from_jump(target: u32, sub_target: u32) -> u32 {
+pub fn blockid_from_jump(target: u32, sub_target: u32) -> u32 {
     if sub_target == 0 {
         target
     } else {
@@ -1151,4 +1161,50 @@ fn remove_nops() {
     assert_eq!(mimpl.blocks_mut().unwrap()[0].roots().len(), 5);
     mimpl.remove_nops(&mut asm);
     assert_eq!(mimpl.blocks_mut().unwrap()[0].roots().len(), 2);
+}
+/// Replaces a sequence of blocks with unconditional jumps with a single block.
+fn linearize_blocks(blocks: &mut Vec<BasicBlock>, asm: &Assembly) {
+    // 1. This optimization *only* works if no handlers present.
+    if blocks.iter().any(|block| block.handler().is_some()) {
+        return;
+    }
+    // 2. This optimization only works if all blocks jump unconditionaly.
+    if blocks
+        .iter()
+        .flat_map(|block| block.roots().iter())
+        .any(|root| match &asm[*root] {
+            CILRoot::Branch(info) => !is_branch_unconditional(info),
+            CILRoot::ExitSpecialRegion { .. } => true,
+            _ => false,
+        })
+    {
+        return;
+    }
+    let mut res = Vec::new();
+    let mut curr_block = &blocks[0];
+    let mut should_countinue = true;
+    // Cap the optimization to prevent infinite loops from causing issues
+    let mut ic = 0;
+    while should_countinue {
+        should_countinue = false;
+        for root in curr_block.roots() {
+            ic += 1;
+            if ic > 2000{
+                return;
+            }
+            match &asm[*root] {
+                CILRoot::Branch(info) => {
+                    let Some(block) = block_with_id(blocks, blockid_from_jump(info.0, info.1))
+                    else {
+                        return;
+                    };
+                    curr_block = block;
+                    should_countinue = true;
+                    break;
+                }
+                _ => res.push(*root),
+            }
+        }
+    }
+    *blocks = vec![BasicBlock::new(res, 0, None)];
 }

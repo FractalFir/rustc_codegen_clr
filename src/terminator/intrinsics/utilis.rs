@@ -103,7 +103,10 @@ pub fn atomic_or(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly) 
 }
 pub fn atomic_xor(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly) -> CILNode {
     match tpe {
-        Type::Bool| Type::Int( Int::U8 | Int::I8 | Int::U32 | Int::I32 | Int::U64 | Int::I64 | Int::USize | Int::ISize) => {
+        Type::Bool
+        | Type::Int(
+            Int::U8 | Int::I8 | Int::U32 | Int::I32 | Int::U64 | Int::I64 | Int::USize | Int::ISize,
+        ) => {
             let iref = asm.nref(tpe);
             let mref = MethodRef::new(
                 *asm.main_module(),
@@ -115,7 +118,7 @@ pub fn atomic_xor(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly)
             let cilnode = call!(asm.alloc_methodref(mref), [addr, addend]);
             cilnode
         }
-      
+
         Type::Ptr(inner) => {
             let int = Int::USize;
             let iref = asm.nref(Type::Int(int));
@@ -194,7 +197,10 @@ pub fn atomic_and(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly)
             );
             cilnode.cast_ptr(Type::Ptr(inner))
         }
-        Type::Bool | Type::Int( Int::U8 | Int::I8 | Int::U32 | Int::I32 | Int::U64 | Int::I64 | Int::USize | Int::ISize) => {
+        Type::Bool
+        | Type::Int(
+            Int::U8 | Int::I8 | Int::U32 | Int::I32 | Int::U64 | Int::I64 | Int::USize | Int::ISize,
+        ) => {
             let iref = asm.nref(tpe);
             let mref = MethodRef::new(
                 *asm.main_module(),
@@ -253,7 +259,10 @@ pub fn atomic_nand(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly
             )
             .cast_ptr(Type::Ptr(inner))
         }
-        Type::Bool | Type::Int( Int::U8 | Int::I8 | Int::U32 | Int::I32 | Int::U64 | Int::I64 | Int::USize | Int::ISize) => {
+        Type::Bool
+        | Type::Int(
+            Int::U8 | Int::I8 | Int::U32 | Int::I32 | Int::U64 | Int::I64 | Int::USize | Int::ISize,
+        ) => {
             let iref = asm.nref(tpe);
             let mref = MethodRef::new(
                 *asm.main_module(),
@@ -270,7 +279,10 @@ pub fn atomic_nand(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly
 }
 pub fn atomic_min(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly) -> CILNode {
     match tpe {
-        Type::Bool | Type::Int( Int::U8 | Int::I8 | Int::U32 | Int::I32 | Int::U64 | Int::I64 | Int::USize | Int::ISize) => {
+        Type::Bool
+        | Type::Int(
+            Int::U8 | Int::I8 | Int::U32 | Int::I32 | Int::U64 | Int::I64 | Int::USize | Int::ISize,
+        ) => {
             let iref = asm.nref(tpe);
             let mref = MethodRef::new(
                 *asm.main_module(),
@@ -306,7 +318,10 @@ pub fn atomic_min(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly)
 }
 pub fn atomic_max(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly) -> CILNode {
     match tpe {
-        Type::Bool | Type::Int( Int::U8 | Int::I8 | Int::U32 | Int::I32 | Int::U64 | Int::I64 | Int::USize | Int::ISize) => {
+        Type::Bool
+        | Type::Int(
+            Int::U8 | Int::I8 | Int::U32 | Int::I32 | Int::U64 | Int::I64 | Int::USize | Int::ISize,
+        ) => {
             let iref = asm.nref(tpe);
             let mref = MethodRef::new(
                 *asm.main_module(),

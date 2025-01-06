@@ -116,6 +116,9 @@ pub fn opt_node(
                 original,
                 fuel,
             ),
+            Type::Float(float) => {
+                opt_if_fuel(Const::I32(float.size() as i32).into(), original, fuel)
+            }
             _ => original,
         },
         CILNode::IntCast {
@@ -173,7 +176,54 @@ pub fn opt_node(
                 _ => original,
             }
         }
-        //CILNode::BinOp(lhs,rhs ,BinOp::And) if lhs == rhs && cache.has_side_effects(lhs, asm)=> asm[lhs].clone(),
+        CILNode::BinOp(lhs, rhs, BinOp::Rem | BinOp::RemUn) => {
+            match (asm.get_node(lhs), asm.get_node(rhs)) {
+                (CILNode::Const(a), CILNode::Const(b)) if a.get_type() == b.get_type() => {
+                    match (a.as_ref(), b.as_ref()) {
+                        (Const::U8(a), Const::U8(b)) => Const::U8(a.wrapping_rem(*b)).into(),
+                        (Const::U16(a), Const::U16(b)) => Const::U16(a.wrapping_rem(*b)).into(),
+                        (Const::U32(a), Const::U32(b)) => Const::U32(a.wrapping_rem(*b)).into(),
+                        (Const::U64(a), Const::U64(b)) => Const::U64(a.wrapping_rem(*b)).into(),
+                        (Const::U128(a), Const::U128(b)) => Const::U128(a.wrapping_rem(*b)).into(),
+                        (Const::USize(a), Const::USize(b)) => {
+                            Const::USize(a.wrapping_rem(*b)).into()
+                        }
+                        (Const::I8(a), Const::I8(b)) => Const::I8(a.wrapping_rem(*b)).into(),
+                        (Const::I16(a), Const::I16(b)) => Const::I16(a.wrapping_rem(*b)).into(),
+                        (Const::I32(a), Const::I32(b)) => Const::I32(a.wrapping_rem(*b)).into(),
+                        (Const::I64(a), Const::I64(b)) => Const::I64(a.wrapping_rem(*b)).into(),
+                        (Const::I128(a), Const::I128(b)) => Const::I128(a.wrapping_rem(*b)).into(),
+                        (Const::ISize(a), Const::ISize(b)) => {
+                            Const::ISize(a.wrapping_rem(*b)).into()
+                        }
+                        _ => original,
+                    }
+                }
+                _ => original,
+            }
+        }
+        CILNode::BinOp(lhs, rhs, BinOp::Mul) => match (asm.get_node(lhs), asm.get_node(rhs)) {
+            (CILNode::Const(a), CILNode::Const(b)) if a.get_type() == b.get_type() => {
+                match (a.as_ref(), b.as_ref()) {
+                    (Const::U8(a), Const::U8(b)) => Const::U8(a.wrapping_mul(*b)).into(),
+                    (Const::U16(a), Const::U16(b)) => Const::U16(a.wrapping_mul(*b)).into(),
+                    (Const::U32(a), Const::U32(b)) => Const::U32(a.wrapping_mul(*b)).into(),
+                    (Const::U64(a), Const::U64(b)) => Const::U64(a.wrapping_mul(*b)).into(),
+                    (Const::U128(a), Const::U128(b)) => Const::U128(a.wrapping_mul(*b)).into(),
+                    (Const::USize(a), Const::USize(b)) => Const::USize(a.wrapping_mul(*b)).into(),
+                    (Const::I8(a), Const::I8(b)) => Const::I8(a.wrapping_mul(*b)).into(),
+                    (Const::I16(a), Const::I16(b)) => Const::I16(a.wrapping_mul(*b)).into(),
+                    (Const::I32(a), Const::I32(b)) => Const::I32(a.wrapping_mul(*b)).into(),
+                    (Const::I64(a), Const::I64(b)) => Const::I64(a.wrapping_mul(*b)).into(),
+                    (Const::I128(a), Const::I128(b)) => Const::I128(a.wrapping_mul(*b)).into(),
+                    (Const::ISize(a), Const::ISize(b)) => Const::ISize(a.wrapping_mul(*b)).into(),
+                    _ => original,
+                }
+            }
+            (CILNode::Const(a), b) if a.is_one() => b.clone(),
+            (a, CILNode::Const(b)) if b.is_one() => a.clone(),
+            _ => original,
+        },
         CILNode::LdField { addr, field } => match asm.get_node(addr) {
             CILNode::RefToPtr(addr) => {
                 opt_if_fuel(CILNode::LdField { addr: *addr, field }, original, fuel)

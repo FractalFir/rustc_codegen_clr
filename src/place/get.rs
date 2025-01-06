@@ -142,8 +142,6 @@ fn place_elem_get<'a>(
                     let inner = ctx.monomorphize(*inner);
                     let inner_type = ctx.type_from_cache(inner);
                     let slice = fat_ptr_to(Ty::new_slice(ctx.tcx(), inner), ctx);
-
-                    let index_type = ctx.type_from_cache(index_type);
                     let desc = FieldDesc::new(
                         slice,
                         ctx.alloc_string(crate::DATA_PTR),
@@ -243,10 +241,7 @@ fn place_elem_get<'a>(
                             MethodKind::Instance,
                             vec![].into(),
                         );
-                        call!(
-                            ctx.alloc_methodref(mref),
-                            [addr_calc, CILNode::ZeroExtendToUSize(index.into())]
-                        )
+                        call!(ctx.alloc_methodref(mref), [addr_calc, index])
                     }
                 }
                 _ => {

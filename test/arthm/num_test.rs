@@ -46,6 +46,12 @@ fn cmad(a:u32,b:u32,c:u32,d:u32,e:u32,f:u32){
     test_eq!(b,f);
 }
 #[no_mangle]
+fn cmadw(a:u64,b:u64,c:u64,d:u64,e:u64,f:u64){
+    let (a,b) = core::intrinsics::carrying_mul_add(a,b,c,d);
+    test_eq!(a,e);
+    test_eq!(b,f);
+}
+#[no_mangle]
 fn cmadi(a:i32,b:i32,c:i32,d:i32,e:u32,f:i32){
     let (a,b) = core::intrinsics::carrying_mul_add(a,b,c,d);
     test_eq!(a,e);
@@ -55,6 +61,8 @@ fn main() {
     cmad(1,2,3,4,2+3+4,0);
     cmad(u32 :: MAX,u32 :: MAX,0,0,1,u32 :: MAX - 1);
     cmadi(1,2,3,4,2+3+4,0);
+    cmadw(1,2,3,4,2+3+4,0);
+    cmadw(u64 :: MAX,u64 :: MAX,0,0,1,u64 :: MAX - 1);
     unsafe{printf(c"val:%f\n".as_ptr(),core::hint::black_box(cst_f64()))};
     isqrt_test();
     unsafe { black_box(ldexpf(black_box(434.43), 1232.3434)) };
