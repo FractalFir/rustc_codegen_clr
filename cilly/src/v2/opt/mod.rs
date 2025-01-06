@@ -514,7 +514,7 @@ impl MethodDef {
             self.implementation_mut().remove_duplicate_sfi(asm);
         }
         if let MethodImpl::MethodBody { blocks, .. } = self.implementation_mut() {
-            linearize_blocks(blocks,&asm);
+            linearize_blocks(blocks,&asm,fuel);
         }
      
         self.remove_useless_handlers(asm, fuel, cache);
@@ -610,12 +610,12 @@ impl MethodDef {
                         let curr = peekable.next().unwrap();
                         *curr = asm.alloc_root(CILRoot::Ret(tree));
                     }
-                    (CILRoot::Branch(info), CILRoot::Branch(_))
+                    /*(CILRoot::Branch(info), CILRoot::Branch(_))
                     if is_branch_unconditional(info) =>
                     {
                         let curr = peekable.next().unwrap();
                         *curr = nop;
-                    }
+                    }*/
                     (CILRoot::Branch(info), CILRoot::Branch(info2))
                         if is_branch_unconditional(info2) =>
                     {
@@ -1163,7 +1163,7 @@ fn remove_nops() {
     assert_eq!(mimpl.blocks_mut().unwrap()[0].roots().len(), 2);
 }
 /// Replaces a sequence of blocks with unconditional jumps with a single block.
-fn linearize_blocks(blocks: &mut Vec<BasicBlock>, asm: &Assembly) {
+fn linearize_blocks(blocks: &mut Vec<BasicBlock>, asm: &Assembly,fuel: &mut OptFuel) {
     // 1. This optimization *only* works if no handlers present.
     if blocks.iter().any(|block| block.handler().is_some()) {
         return;
@@ -1206,5 +1206,8 @@ fn linearize_blocks(blocks: &mut Vec<BasicBlock>, asm: &Assembly) {
             }
         }
     }
-    *blocks = vec![BasicBlock::new(res, 0, None)];
+    if fuel.consume(1){
+        *blocks = vec![BasicBlock::new(res, 0, None)];
+    }
+  
 }

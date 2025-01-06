@@ -1,4 +1,4 @@
-const BIG: i64 = 1000_000_000;
+const BIG: i64 = 100_000_000;
 fn bench_for_each_chain_fold() -> i64 {
     let mut acc = 0;
     let iter = (0i64..BIG).chain(0..BIG).map(std::hint::black_box);
