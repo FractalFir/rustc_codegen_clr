@@ -152,6 +152,7 @@ pub enum CILRoot {
     /// Marks the inner pointer operation as volatile.
     Volatile(Box<Self>),
     InitObj(CILNode, TypeIdx),
+    V2(crate::v2::RootIdx),
 }
 pub type SFI = Box<(std::ops::Range<u64>, std::ops::Range<u64>, IString)>;
 impl CILRoot {
@@ -277,6 +278,7 @@ impl CILRoot {
     }
     pub fn allocate_tmps(&mut self, curr_loc: Option<u32>, locals: &mut Vec<LocalDef>) {
         match self {
+            Self::V2(_) => (),
             Self::Volatile(inner) => inner.allocate_tmps(curr_loc, locals),
             Self::InitObj(inner, _) => inner.allocate_tmps(curr_loc, locals),
             Self::SourceFileInfo(_) => (),

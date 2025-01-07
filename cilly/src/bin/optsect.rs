@@ -36,7 +36,7 @@ fn main() {
         .expect("ERROR: Could not load the assembly file!");
     println!("Loading an assembly");
     let asm: Assembly = postcard::from_bytes(&asm_bytes).unwrap();
-    let fail = std::env::args().nth(2).expect("no fail string path");
+    let fail = std::env::args().nth(2).expect("no fail string");
     let args = std::env::args().nth(3).expect("no dotnet args");
     let args: Vec<&str> = args.split_whitespace().collect();
     let mut fuel_start = std::env::args()

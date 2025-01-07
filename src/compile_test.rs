@@ -161,6 +161,7 @@ macro_rules! compare_tests {
                         .expect("Could not build rustc!");
                     // Compiles the test project
                     let mut cmd = super::super::compiler(stringify!($test_name), test_dir, true);
+                    let copy = format!("{cmd:?}");
                     let out = cmd.output().expect("failed to execute process");
                     // If stderr is not empty, then something went wrong, so print the stdout and stderr for debuging.
                     if !out.stderr.is_empty() {
@@ -168,7 +169,7 @@ macro_rules! compare_tests {
                             .expect("rustc error contained non-UTF8 characters.");
                         let stderr = String::from_utf8(out.stderr)
                             .expect("rustc error contained non-UTF8 characters.");
-                        eprintln!("stdout:\n{stdout}\nstderr:\n{stderr}");
+                        eprintln!("cmd:{copy}\nstdout:\n{stdout}\nstderr:\n{stderr}");
                         if stderr.contains("error") {
                             should_panic = true;
                         }
@@ -195,6 +196,7 @@ macro_rules! compare_tests {
                         "--edition",
                         "2021",
                     ]);
+                    let copy = format!("{cmd:?}");
                     let out = cmd.output().expect("failed to execute process");
                     // If stderr is not empty, then something went wrong, so print the stdout and stderr for debuging.
                     if !out.stderr.is_empty() {
@@ -206,7 +208,7 @@ macro_rules! compare_tests {
                         {
                             should_panic = true;
                         }
-                        eprintln!("stdout:\n{stdout}\nstderr:\n{stderr}");
+                        eprintln!("cmd:{copy}\nstdout:\n{stdout}\nstderr:\n{stderr}");
                     }
                     let rust_out =
                         std::process::Command::new(concat!("./", stringify!($test_name), ".a"))

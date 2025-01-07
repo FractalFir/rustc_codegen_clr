@@ -446,6 +446,7 @@ impl<'a> Iterator for CILIterMut<'a> {
                     | CILRoot::JumpingPad { .. }
                     | CILRoot::VoidRet
                     | CILRoot::Nop
+                    | CILRoot::V2(_)
                     | CILRoot::ReThrow
                     | CILRoot::Break => {
                         self.elems.pop();

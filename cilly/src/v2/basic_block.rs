@@ -190,8 +190,7 @@ impl BasicBlock {
         self.roots_mut()
             .iter_mut()
             .for_each(|root| match asm[*root] {
-                CILRoot::ExitSpecialRegion { target, source } => {
-                    let target = blockid_from_jump(target, source);
+                CILRoot::ExitSpecialRegion { target, source: _ } => {
                     *root = asm.alloc_root(CILRoot::Branch(Box::new((target, 0, None))));
                 }
                 _ => (),

@@ -262,6 +262,7 @@ impl<'a> Iterator for CILIter<'a> {
                     | CILRoot::VoidRet
                     | CILRoot::Break
                     | CILRoot::Nop
+                    | CILRoot::V2(_)
                     | CILRoot::ReThrow
                     | CILRoot::JumpingPad { .. },
                 ) => {

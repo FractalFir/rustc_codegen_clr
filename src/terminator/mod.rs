@@ -249,8 +249,10 @@ pub fn handle_terminator<'tcx>(
         }
         TerminatorKind::Unreachable => {
             let loc = terminator.source_info.span;
+            let msg = ctx.alloc_string(format!("Unreachable reached at {loc:?}!"));
+
             vec![
-                rustc_middle::ty::print::with_no_trimmed_paths! {CILRoot::throw(&format!("Unreachable reached at {loc:?}!"),ctx).into()},
+                rustc_middle::ty::print::with_no_trimmed_paths! {CILRoot::V2(ctx.alloc_root(cilly::v2::CILRoot::Unreachable(msg))).into()},
             ]
         }
         TerminatorKind::InlineAsm {
@@ -312,6 +314,7 @@ pub fn handle_terminator<'tcx>(
                 | CILRoot::VoidRet
                 | CILRoot::ReThrow
                 | CILRoot::Throw(_)
+                | CILRoot::V2(_)
         ),
         "Tree {last:?} did not terminate with an uncoditional jump!."
     );

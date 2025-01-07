@@ -475,6 +475,7 @@ impl CILRoot {
                 let addr = CILNode::from_v1(addr, asm);
                 Self::InitObj(asm.alloc_node(addr), *tpe)
             }
+            V1Root::V2(inner) => asm[*inner].clone(),
             _ => todo!("v1:{v1:?}"),
         }
     }
