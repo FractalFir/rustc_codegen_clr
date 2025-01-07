@@ -683,7 +683,11 @@ impl MethodDef {
             self.implementation_mut().remove_duplicate_sfi(asm);
         }
         if let MethodImpl::MethodBody { blocks, .. } = self.implementation_mut() {
-            linearilze_best_span(blocks, asm);
+            if let Some(block) = linearize_blocks(blocks, asm){
+                *blocks = vec![block];
+            }
+            // Better, not yet done OPT.
+            // linearilze_best_span(blocks, asm);
             // Linear, so supports some additional opts.
             if blocks.len() == 1 {}
         }
