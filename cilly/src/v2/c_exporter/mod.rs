@@ -122,7 +122,7 @@ fn c_tpe(field_tpe: Type, asm: &Assembly) -> String {
         Type::FnPtr(_) => "void*".into(),
         Type::SIMDVector(vec) => {
             format!(
-                "__simdvec{elem}{count}",
+                "__simdvec{elem}_{count}",
                 elem = std::convert::Into::<Type>::into(vec.elem()).mangle(asm),
                 count = vec.count()
             )
@@ -830,7 +830,7 @@ impl CExporter {
             CILRoot::InitObj(addr,tpe) => {
                 let addr = Self::node_to_string(asm[addr].clone(), asm, locals, inputs, sig)?;
                     format!(
-                        "memset({addr},0,sizeof(){tpe});",
+                        "memset({addr},0,sizeof({tpe}));",
                         tpe = c_tpe(asm[tpe], asm)
                     )
             }
@@ -894,7 +894,7 @@ impl CExporter {
                 format!("{fname} = {val};")
             }
             CILRoot::CpObj { src, dst, tpe } => todo!(),
-            CILRoot::Unreachable(string_idx) => todo!(),
+            CILRoot::Unreachable(string_idx) => format!("\neprintf({:?});\nabort();\n",&asm[string_idx]),
         })
     }
     fn export_method_def(
