@@ -38,17 +38,18 @@ dotnet_typedef! {
 ```
 
 With this approach, the classes and APIs exposed to .NET can be easily used from other .NET languages, like F# or C#. The safety of this glue layer can be checked by the Rust compiler, which should make interop issues much less likely.
+
 ## C support
 
-While .NET is the main foccus of my work, this project can also be used to compile Rust to C, by setting the `C_MODE` enviroment flag to `1`.
+While .NET is the main focus of my work, this project can also be used to compile Rust to C, by setting the `C_MODE` enviroment flag to `1`.
 
 This may seem like a strange and unrelated feature, but the project was written in such a way that this is not only possible, but relatively easy.
 
 My representation of .NETs IR maps nicely to C, which means that I was able to add support for compiling Rust to C in 2-3K LOC. Almost all of the codebase is reused, with the C and .NET specific code only 
 present in the very last stage of compilation.
 
-This means that, instead of having to maintain 2 separate projects, I can maintian one project. Bug fixes to the .NET side of things also fix C bugs. 
-Because of that, the support for C  in the project is almost as good as support for .NET
+This means that, instead of having to maintain 2 separate projects, I can maintain one project. Bug fixes to the .NET side of things also fix C bugs. 
+Because of that, the support for C in the project is almost as good as support for .NET
 
 ## Current state of the project
 
@@ -60,7 +61,9 @@ Currently, the GCC and clang C compilers are supported, with plans to add suppor
 for `tcc`, and maybe even `sdcc`.
 
 So, you *can* compile a lot of existing Rust code, but it may not necessarily *work*.
+
 ### core, std, and alloc uint tests.
+
 .NET
 
 | Name | Pass	| Faliure	| Crash \ Timeout| OK precentage
@@ -77,6 +80,7 @@ C
 | Name | Pass	| Faliure	| OK precentage
 |--------------------|--------|-------|------|
 | Core tests |	1419	| 294	| 82.83% |
+
 ## FAQ
 
 ### Q: What is it?
@@ -99,15 +103,15 @@ C
 
 **A**: *`rustc_codegen_clr` is only tested on Linux x86_64, with the CoreCLR runtime (more commonly known as simply the .NET runtime), on .NET 8. It should work on other platforms, but it is not guaranteed.*
 
-### Q: Whata about Mono?
-**A** *The support for the Mono runtime is not as good as it could be. Due to not supported features and differences, 128-bit integers and checked 64-bit integer arithmetic are not supported on Mono.*
+### Q: What about Mono?
+
+**A**: *The support for the Mono runtime is not as good as it could be. Due to not supported features and differences, 128-bit integers and checked 64-bit integer arithmetic are not supported on Mono.*
 *Aligned allocators(__rust_alloc) and certain intrinsics are also not supported. I plan to expand support for Mono, but my resources are limited.*
 
 ### Q: Are there any issues?
 
 **A**: *While the backend is extensively tested, it is still far from perfect, and there are still many edge cases that may break this backend.*
 **A**: *Currently, there are no .NET-specific versions of `std` or .NET specific target triples. This means that you will need separate .NET assemblies for each OS.*
-
 
 ## Licensing
 
