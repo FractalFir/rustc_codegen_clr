@@ -1,10 +1,6 @@
 use crate::{assembly::MethodCompileCtx, casts};
 use cilly::{
-    and, call,
-    cil_node::CILNode,
-    conv_i16, conv_i32, conv_i64, conv_i8, conv_u64, eq, gt, gt_un, lt, or,
-    v2::{cilnode::MethodKind, Assembly, ClassRef, Int, MethodRef},
-    Type,
+    and, call, cil_node::CILNode, conv_i16, conv_i32, conv_i64, conv_i8, conv_u32, conv_u64, conv_u8, eq, gt, gt_un, lt, or, v2::{cilnode::MethodKind, Assembly, ClassRef, Int, MethodRef}, Type
 };
 use rustc_middle::ty::{IntTy, Ty, TyKind, UintTy};
 
@@ -149,11 +145,38 @@ pub fn mul<'tcx>(
     let mul = super::mul_unchecked(ty, ctx, ops_a.clone(), ops_b.clone());
     let ovf = match ty.kind() {
         // Work without promotions
-        TyKind::Uint(UintTy::U8 | UintTy::U16) => gt_un!(mul.clone(), max(ty, ctx)),
-        TyKind::Int(IntTy::I8 | IntTy::I16) => {
+        TyKind::Uint(UintTy::U8) => {
+            let mul = CILNode::Mul(
+                conv_u8!(ops_a.clone()).into(),
+                conv_u8!(ops_b.clone()).into(),
+            );
+            gt_un!(mul.clone(), conv_u8!(max(ty, ctx)))
+        }
+        TyKind::Uint(UintTy::U16) => {
+            let mul = CILNode::Mul(
+                conv_u32!(ops_a.clone()).into(),
+                conv_u32!(ops_b.clone()).into(),
+            );
+            gt_un!(mul.clone(), conv_u32!(max(ty, ctx)))
+        }
+        TyKind::Int(IntTy::I8) => {
+            let mul = CILNode::Mul(
+                conv_i16!(ops_a.clone()).into(),
+                conv_i16!(ops_b.clone()).into(),
+            );
             or!(
-                gt!(mul.clone(), max(ty, ctx)),
-                lt!(mul.clone(), min(ty, ctx))
+                gt!(mul.clone(), conv_i16!(max(ty, ctx))),
+                lt!(mul.clone(), conv_i16!(min(ty, ctx)))
+            )
+        }
+        TyKind::Int(IntTy::I16) => {
+            let mul = CILNode::Mul(
+                conv_i32!(ops_a.clone()).into(),
+                conv_i32!(ops_b.clone()).into(),
+            );
+            or!(
+                gt!(mul.clone(), conv_i32!(max(ty, ctx))),
+                lt!(mul.clone(), conv_i32!(min(ty, ctx)))
             )
         }
         // Works with 32 -> 64 size promotions

@@ -90,8 +90,9 @@ pub fn unsize2<'tcx>(
         )
     };
     let source_size = ctx.layout_of(source).size.bytes();
+    let target_size = ctx.layout_of(source).size.bytes();
     // Assumes a 64 bit pointer!
-    let copy_val = if source_size > 8 && !source.is_any_ptr() {
+    let copy_val = if source_size > 8 && !source.is_any_ptr() && target_size != source_size {
         let addr = operand_address(operand, ctx);
 
         let addr = CILNode::Add(

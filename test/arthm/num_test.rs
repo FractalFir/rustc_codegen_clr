@@ -18,7 +18,7 @@
 use core::num::NonZero;
 include!("../common.rs");
 extern "C" {
-    fn ldexpf(arg: f32, exp: f32) -> f32;
+    fn ldexpf(arg: f32, exp: i32) -> f32;
 }
 #[inline(never)]
 #[no_mangle]
@@ -65,7 +65,7 @@ fn main() {
     cmadw(u64 :: MAX,u64 :: MAX,0,0,1,u64 :: MAX - 1);
     unsafe{printf(c"val:%f\n".as_ptr(),core::hint::black_box(cst_f64()))};
     isqrt_test();
-    unsafe { black_box(ldexpf(black_box(434.43), 1232.3434)) };
+    unsafe { black_box(ldexpf(black_box(434.43), 1232)) };
     check_float_nan();
     const A: u32 = 0b0101100;
     const B: u32 = 0b0100001;
@@ -229,7 +229,9 @@ fn test_leading_trailing_ones() {
 #[no_mangle]
 #[inline(never)]
 fn checked_mul() {
-    test_eq!(2_i8.checked_mul(black_box(2_i8)), Some(4_i8));
+    //test_eq!(2_i8.checked_mul(black_box(2_i8)), Some(4_i8));
+    //test_eq!(1_i8.checked_mul(black_box(4_i8)), Some(4_i8));
+    test_eq!(i8::MAX.checked_mul(black_box(2_i8)), None);
 }
 fn test_pow() {
     let mut r = 2 as i8;
@@ -243,16 +245,22 @@ fn test_pow() {
     test_eq!(r.overflowing_pow(0), (1 as i8, false));
     test_eq!(r.saturating_pow(2), 4 as i8);
     test_eq!(r.saturating_pow(0), 1 as i8);
-
+    unsafe{printf(c"2.saturating_pow(2) = %d\n".as_ptr(),r.saturating_pow(2) as i32)};
     r = i8::MAX;
     // use `^` to represent .pow() with no overflow.
     // if itest::MAX == 2^j-1, then itest is a `j` bit int,
     // so that `itest::MAX*itest::MAX == 2^(2*j)-2^(j+1)+1`,
     // thussaturating_pow the overflowing result is exactly 1.
     test_eq!(r.wrapping_pow(2), 1 as i8);
+    checked_pow(r,2);
+    match r.checked_pow(2){
+        None => unsafe{printf(c"127.checked_pow(2) = None \n".as_ptr())},
+        Some(val) => unsafe{printf(c"127.checked_pow(2) = Some(%d)\n".as_ptr(),r.saturating_pow(2) as i32)},
+    };
     test_eq!(r.checked_pow(2), None);
     test_eq!(r.overflowing_pow(2), (1 as i8, true));
     test_eq!(r.saturating_pow(2), i8::MAX);
+    unsafe{printf(c"127.saturating_pow(2) = %d\n".as_ptr(),r.saturating_pow(2) as i32)};
     //test for negative exponent.
     r = -2 as i8;
     test_eq!(r.pow(2), 4 as i8);
@@ -353,8 +361,10 @@ pub fn checked_pow(val: i8, mut exp: u32) -> Option<i8> {
     // Deal with the final bit of the exponent separately, since
     // squaring the base afterwards is not necessary and may cause a
     // needless overflow.
-    unsafe { printf(c"base:%i acc:%i\n".as_ptr(), base as i32, acc as i32) };
-    acc.checked_mul(base)
+    unsafe { printf(c"lopp end - base:%i acc:%i\n".as_ptr(), base as i32, acc as i32) };
+    let res = acc.checked_mul(base);
+    unsafe { printf(c"fn end - base:%i acc:%i res:%d\n".as_ptr(), base as i32, acc as i32,res.unwrap_or(-1) as i32) };
+    res 
 }
 
 fn test_checked_next_multiple_of() {

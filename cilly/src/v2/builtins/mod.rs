@@ -175,14 +175,21 @@ fn insert_rust_realloc(asm: &mut Assembly, patcher: &mut MissingMethodPatcher, u
                 Box::new(super::cilnode::PtrCastRes::Ptr(void_idx)),
             ));
             let align = asm.alloc_node(CILNode::LdArg(2));
-            let new_size = asm.alloc_node(CILNode::LdArg(3));
+          
             let align = asm.alloc_node(CILNode::IntCast {
                 input: align,
                 target: Int::USize,
                 extend: super::cilnode::ExtendKind::ZeroExtend,
             });
+            let new_size = asm.alloc_node(CILNode::LdArg(3));
             let new_size = asm.alloc_node(CILNode::IntCast {
                 input: new_size,
+                target: Int::USize,
+                extend: super::cilnode::ExtendKind::ZeroExtend,
+            });
+            let old_size = asm.alloc_node(CILNode::LdArg(1));
+            let old_size = asm.alloc_node(CILNode::IntCast {
+                input: old_size,
                 target: Int::USize,
                 extend: super::cilnode::ExtendKind::ZeroExtend,
             });
@@ -205,7 +212,7 @@ fn insert_rust_realloc(asm: &mut Assembly, patcher: &mut MissingMethodPatcher, u
             let call_mm_malloc = asm.alloc_root(CILRoot::StLoc(0, _mm_malloc));
             // 2. memcpy the buffer.
             let buff = asm.alloc_node(CILNode::LdLoc(0));
-            let copy = asm.alloc_root(CILRoot::CpBlk(Box::new((buff, ptr, new_size))));
+            let copy = asm.alloc_root(CILRoot::CpBlk(Box::new((buff, ptr, old_size))));
             // 3. free the old buffer
             let aligned_free = asm.alloc_string("_mm_free");
             let mm_free_sig = asm.sig([void_ptr], Type::Void);
@@ -545,20 +552,37 @@ pub fn transmute(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
     let name = asm.alloc_string("transmute");
     let generator = move |mref: MethodRefIdx, asm: &mut Assembly| {
         let target = *asm[asm[mref].sig()].output();
+        let source = asm[asm[mref].sig()].inputs()[0];
+        let source = asm.alloc_type(source);
         let target_idx = asm.alloc_type(target);
         let addr = asm.alloc_node(CILNode::LdArgA(0));
-        let ptr = asm.alloc_node(CILNode::RefToPtr(addr));
-        let ptr = asm.alloc_node(CILNode::PtrCast(ptr, Box::new(PtrCastRes::Ptr(target_idx))));
-        let valuetype = asm.alloc_node(CILNode::LdInd {
-            addr: ptr,
-            tpe: target_idx,
-            volatile: false,
-        });
-        let ret = asm.alloc_root(CILRoot::Ret(valuetype));
-        MethodImpl::MethodBody {
-            blocks: vec![BasicBlock::new(vec![ret], 0, None)],
-            locals: vec![],
+        if asm.alignof_type(source) >= asm.alignof_type(target_idx){
+            let ptr = asm.alloc_node(CILNode::RefToPtr(addr));
+            let ptr = asm.alloc_node(CILNode::PtrCast(ptr, Box::new(PtrCastRes::Ptr(target_idx))));
+            let valuetype = asm.alloc_node(CILNode::LdInd {
+                addr: ptr,
+                tpe: target_idx,
+                volatile: false,
+            });
+            let ret = asm.alloc_root(CILRoot::Ret(valuetype));
+            MethodImpl::MethodBody {
+                blocks: vec![BasicBlock::new(vec![ret], 0, None)],
+                locals: vec![],
+            }
+        }else{
+            let dst = asm.alloc_node(CILNode::LdLocA(0));
+            let size = asm.alloc_node(CILNode::SizeOf(source));
+            let load = asm.alloc_root(CILRoot::CpBlk(Box::new((dst,addr,size))));
+            let ret = asm.alloc_node(CILNode::LdLoc(0));
+            let ret = asm.alloc_root(CILRoot::Ret(ret));
+            MethodImpl::MethodBody {
+                blocks: vec![BasicBlock::new(vec![load,ret], 0, None)],
+                locals: vec![(None, target_idx)],
+            }
+
         }
+  
+       
     };
     patcher.insert(name, Box::new(generator));
 }

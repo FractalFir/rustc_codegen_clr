@@ -148,6 +148,9 @@ pub fn math(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
     sinh(asm, patcher);
     coshf(asm, patcher);
     cosh(asm, patcher);
+
+}
+pub fn bitreverse(asm: &mut Assembly, patcher: &mut MissingMethodPatcher){
     bitreverse_u32(asm, patcher);
     bitreverse_u64(asm, patcher);
     bitreverse_u128(asm, patcher);
@@ -216,7 +219,7 @@ fn bitreverse_u64(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
             let inv_mask = asm.alloc_node(Const::U64(!masks[i]));
             let masked = asm.alloc_node(CILNode::BinOp(curr, mask, BinOp::And));
             let inv_masked = asm.alloc_node(CILNode::BinOp(curr, inv_mask, BinOp::And));
-            let shift_ammount = asm.alloc_node(Const::I64(shift));
+            let shift_ammount = asm.alloc_node(Const::I32(shift));
             let masked_shifted =
                 asm.alloc_node(CILNode::BinOp(masked, shift_ammount, BinOp::ShrUn));
             let inv_masked_shifted =
@@ -290,29 +293,13 @@ fn bitreverse_u128(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
         ];
         while shift > 0 {
             let curr_mask = masks[i];
-            let mask = CILNode::Call(Box::new((
-                u128_ctor,
-                ([
-                    asm.alloc_node(Const::U64((curr_mask >> 64) as u64)),
-                    asm.alloc_node(Const::U64(curr_mask as u64)),
-                ])
-                .into(),
-            )));
-            let mask = asm.alloc_node(mask);
+            let mask = asm.alloc_node(Const::U128(curr_mask));
             let curr_mask = !masks[i];
-            let inv_mask = CILNode::Call(Box::new((
-                u128_ctor,
-                ([
-                    asm.alloc_node(Const::U64((curr_mask >> 64) as u64)),
-                    asm.alloc_node(Const::U64(curr_mask as u64)),
-                ])
-                .into(),
-            )));
-            let inv_mask = asm.alloc_node(inv_mask);
+            let inv_mask = asm.alloc_node(Const::U128(curr_mask));
             let masked = asm.alloc_node(CILNode::Call(Box::new((and, [curr, mask].into()))));
             let inv_masked =
                 asm.alloc_node(CILNode::Call(Box::new((and, [curr, inv_mask].into()))));
-            let shift_ammount = asm.alloc_node(Const::I64(shift));
+            let shift_ammount = asm.alloc_node(Const::I32(shift));
             let masked_shifted = asm.alloc_node(CILNode::Call(Box::new((
                 rshift,
                 [masked, shift_ammount].into(),

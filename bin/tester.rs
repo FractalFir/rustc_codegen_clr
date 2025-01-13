@@ -58,6 +58,7 @@ fn get_test_list(exec_path: &String) -> Vec<String> {
         cmd.arg("--list");
         let out = cmd.output().unwrap();
         let stdout = std::str::from_utf8(&out.stdout).unwrap();
+        assert!(stdout.contains("tests"));
         stdout
             .split('\n')
             .map(|name| {

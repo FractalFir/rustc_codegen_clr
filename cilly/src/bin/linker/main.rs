@@ -425,7 +425,7 @@ fn main() {
     cilly::v2::builtins::stack_addr(&mut final_assembly, &mut overrides);
     cilly::v2::builtins::transmute(&mut final_assembly, &mut overrides);
     cilly::v2::builtins::create_slice(&mut final_assembly, &mut overrides);
-
+    cilly::v2::builtins::math::bitreverse(&mut final_assembly, &mut overrides);
     if *C_MODE {
         cilly::v2::builtins::insert_exeception_stub(&mut final_assembly, &mut overrides);
         externs.insert("__dso_handle", LIBC.clone());
@@ -447,6 +447,7 @@ fn main() {
             "pthread_key_delete",
             "pthread_join",
             "pthread_setspecific",
+            "ldexpf"
         ] {
             externs.insert(fnc, LIBC.clone());
         }
