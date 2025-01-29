@@ -683,7 +683,7 @@ impl MethodDef {
             self.implementation_mut().remove_duplicate_sfi(asm);
         }
         if let MethodImpl::MethodBody { blocks, .. } = self.implementation_mut() {
-            if let Some(block) = linearize_blocks(blocks, asm){
+            if let Some(block) = linearize_blocks(blocks, asm) {
                 *blocks = vec![block];
             }
             // Better, not yet done OPT.
@@ -710,7 +710,7 @@ impl MethodDef {
                 .map(|block| (block.block_id(), block.clone()))
                 .collect();
             for block in blocks.iter_mut() {
-               /* if let CILRoot::Branch(info) =
+                /* if let CILRoot::Branch(info) =
                     &asm[*block.roots().last().expect("Blocks can't be empty")]
                 {
                     if block.roots().iter().all(|root| match &asm[*root] {
@@ -731,7 +731,7 @@ impl MethodDef {
                             roots.extend(blocks_copy[target].roots());
                         }
                     }
-                }*/ 
+                }*/
                 let Some(handler) = block.handler() else {
                     continue;
                 };

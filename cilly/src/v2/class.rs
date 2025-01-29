@@ -450,6 +450,7 @@ pub struct ClassDef {
     access: Access,
     explict_size: Option<NonZeroU32>,
     align: Option<NonZeroU32>,
+    has_nonveralpping_layout: bool,
 }
 impl ClassDef {
     /// Checks if this class defition has a with the name and type.
@@ -479,6 +480,7 @@ impl ClassDef {
         access: Access,
         explict_size: Option<NonZeroU32>,
         align: Option<NonZeroU32>,
+        has_nonveralpping_layout: bool,
     ) -> Self {
         //crate::utilis::assert_unique(&methods);
         Self {
@@ -492,6 +494,7 @@ impl ClassDef {
             access,
             explict_size,
             align,
+            has_nonveralpping_layout,
         }
     }
 
@@ -586,6 +589,10 @@ impl ClassDef {
     pub fn align(&self) -> Option<NonZeroU32> {
         self.align
     }
+
+    pub fn has_nonveralpping_layout(&self) -> bool {
+        self.has_nonveralpping_layout
+    }
     /*
     /// Optimizes this class definition, consuming fuel
     pub fn opt(&mut self, fuel: &mut OptFuel, asm: &mut Assembly, cache: &mut SideEffectInfoCache) {
@@ -646,6 +653,7 @@ fn has_explicit_layout() {
             Access::Extern,
             None,
             None,
+            true,
         );
         assert!(def.explict_size().is_none());
         assert!(!def.has_explicit_layout());
@@ -661,6 +669,7 @@ fn has_explicit_layout() {
             Access::Extern,
             Some(NonZeroU32::new(1000).unwrap()),
             None,
+            true,
         );
         assert_eq!(def.fields().len(), 0);
         assert!(def.has_explicit_layout());
@@ -676,6 +685,7 @@ fn has_explicit_layout() {
             Access::Extern,
             None,
             None,
+            true,
         );
         assert!(def.explict_size().is_none());
         assert_eq!(def.fields().len(), 1);
@@ -692,6 +702,7 @@ fn has_explicit_layout() {
             Access::Extern,
             None,
             None,
+            true,
         );
         assert!(def.explict_size().is_none());
         assert_eq!(def.static_fields().len(), 1);
@@ -712,6 +723,7 @@ fn has_explicit_layout() {
             Access::Extern,
             None,
             None,
+            true,
         );
         assert!(def.explict_size().is_none());
         assert_eq!(def.fields().len(), 1);
@@ -728,6 +740,7 @@ fn has_explicit_layout() {
             Access::Extern,
             Some(NonZeroU32::new(1000).unwrap()),
             None,
+            true,
         );
         assert_eq!(def.explict_size(), Some(NonZeroU32::new(1000).unwrap()));
         assert_eq!(def.fields().len(), 1);
@@ -750,6 +763,7 @@ fn generics() {
         Access::Extern,
         None,
         None,
+        true,
     );
     assert_eq!(def.generics(), 0);
     assert_eq!(def.ref_to().generics(), &[]);
@@ -763,6 +777,7 @@ fn generics() {
         Access::Extern,
         None,
         None,
+        true,
     );
     assert_eq!(def.generics(), 5);
 }
@@ -780,6 +795,7 @@ fn display_class_ref() {
         Access::Extern,
         None,
         None,
+        true,
     );
     assert_eq!(
         def.ref_to().display(&asm),
@@ -800,6 +816,7 @@ fn type_gc() {
         Access::Extern,
         None,
         None,
+        true,
     ));
     let name: StringIdx = asm.alloc_string("Gone");
     asm.class_def(ClassDef::new(
@@ -812,6 +829,7 @@ fn type_gc() {
         Access::Public,
         None,
         None,
+        true,
     ));
     assert_eq!(asm.class_defs().len(), 2);
     asm.eliminate_dead_types();
@@ -831,6 +849,7 @@ fn merge_defs() {
         Access::Extern,
         None,
         None,
+        true,
     );
 
     def.clone().merge_defs(def);
@@ -850,6 +869,7 @@ fn merge_defs_different() {
         Access::Extern,
         None,
         None,
+        true,
     );
     let name: StringIdx = asm.alloc_string("Gone");
     let gone = ClassDef::new(
@@ -862,6 +882,7 @@ fn merge_defs_different() {
         Access::Public,
         None,
         None,
+        true,
     );
 
     stay.merge_defs(gone);
@@ -881,6 +902,7 @@ fn extends() {
         Access::Extern,
         None,
         None,
+        true,
     );
     assert_eq!(def.iter_types().count(), 0);
     assert!(def.extends().is_none());
@@ -894,6 +916,7 @@ fn extends() {
         Access::Extern,
         None,
         None,
+        true,
     );
     assert_eq!(def.extends(), Some(exception));
     assert_eq!(def.iter_types().count(), 1);

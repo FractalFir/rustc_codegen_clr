@@ -1,7 +1,10 @@
 /// A representation of a primitve type or a reference.
 pub mod r#type;
 
-use std::num::{NonZero, NonZeroU32};
+use std::{
+    collections::HashSet,
+    num::{NonZero, NonZeroU32},
+};
 
 use crate::{
     fn_ctx::MethodCompileCtx,
@@ -139,6 +142,7 @@ pub fn get_type<'tcx>(ty: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_>) -> Typ
                     cilly::v2::Access::Public,
                     None,
                     None,
+                    false, // Two separate pointers.
                 ));
             }
             Type::ClassRef(cref)
@@ -350,6 +354,7 @@ fn fixed_array(
             Access::Public,
             Some(NonZeroU32::new(size).unwrap()),
             NonZeroU32::new(align.try_into().unwrap()),
+            true,
         ));
         // Common nodes
         let ldarg_2 = ld_arg!(2).into_idx(asm);
@@ -464,6 +469,7 @@ pub fn fat_ptr_to<'tcx>(mut inner: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_
             Access::Public,
             Some(NonZeroU32::new(16).unwrap()),
             Some(NonZeroU32::new(8).unwrap()),
+            true,
         );
         ctx.class_def(def);
     }
@@ -509,12 +515,15 @@ pub fn closure_typedef(
         .map(|(idx, ty)| (format!("f_{idx}"), *ty));
     let offset_iter = FieldOffsetIterator::fields((*layout.0).clone());
     let mut fields = Vec::new();
+    let mut unique_checks = HashSet::new();
     for ((name, field), offset) in (field_iter).zip(offset_iter) {
         if field == Type::Void {
             continue;
         }
         fields.push((field, ctx.alloc_string(name), Some(offset)));
+        unique_checks.insert(offset);
     }
+    let has_nonverlaping_layout = unique_checks.len() == fields.len();
     // Create a class definition representing this closure.
     ClassDef::new(
         closure_name,
@@ -545,6 +554,7 @@ pub fn closure_typedef(
             )
             .unwrap(),
         ),
+        has_nonverlaping_layout,
     )
 }
 /// Turns an adt struct defintion into a [`ClassDef`]
@@ -564,7 +574,7 @@ fn struct_<'tcx>(
     let mut fields = Vec::new();
     let explicit_offset_iter =
         crate::utilis::adt::FieldOffsetIterator::fields((*layout.layout.0).clone());
-
+    let mut unique_checks = HashSet::new();
     for (field, offset) in adt
         .variant(rustc_target::abi::VariantIdx::from_u32(0))
         .fields
@@ -573,10 +583,10 @@ fn struct_<'tcx>(
     {
         let name = escape_field_name(&field.name.to_string());
         let field_type = get_type(ctx.monomorphize(field.ty(ctx.tcx(), subst)), ctx);
-
         if field_type == Type::Void {
             continue;
         }
+        unique_checks.insert(offset);
         fields.push((field_type, ctx.alloc_string(name), Some(offset)));
     }
     let size = layout.layout.size().bytes();
@@ -588,6 +598,7 @@ fn struct_<'tcx>(
         eprintln!("WARNING: Struct {adt_ty:?} excceeds max size of 2^32. Clamping the size, this can cause UB.");
         u32::MAX
     };
+    let has_nonverlaping_layout = unique_checks.len() == fields.len();
     ClassDef::new(
         name,
         true,
@@ -609,8 +620,10 @@ fn struct_<'tcx>(
             )
             .unwrap(),
         ),
+        has_nonverlaping_layout,
     )
 }
+
 fn handle_tag<'tcx>(
     layout: &Layout,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
@@ -717,6 +730,7 @@ fn enum_<'tcx>(
             )
             .unwrap(),
         ),
+        false,
     )
 }
 /// Turns an adt union defintion into a [`ClassDef`]
@@ -767,6 +781,7 @@ fn union_<'tcx>(
             )
             .unwrap(),
         ),
+        false,
     )
 }
 #[must_use]
@@ -851,5 +866,6 @@ pub fn tuple_typedef(
             )
             .unwrap(),
         ),
+        true,
     ))
 }

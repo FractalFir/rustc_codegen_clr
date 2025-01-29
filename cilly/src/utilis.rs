@@ -4,8 +4,8 @@ use crate::method::Method;
 
 use crate::v2::cilnode::MethodKind;
 use crate::v2::{ClassRef, FnSig, Int, MethodRef, MethodRefIdx, StaticFieldDesc};
-use crate::{asm::Assembly, cil_node::CILNode, cil_root::CILRoot};
 use crate::{call, call_virt, conv_usize, IntoAsmIndex, MethodDef, Type};
+use crate::{cil_node::CILNode, cil_root::CILRoot, Assembly};
 
 pub fn argc_argv_init_method(asm: &mut Assembly) -> MethodRefIdx {
     let init_cs = MethodRef::new(

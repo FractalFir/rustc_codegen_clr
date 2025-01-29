@@ -160,7 +160,7 @@ fn main() {
                 let start = Instant::now();
                 println!("Preparing to export the assembly");
                 #[cfg(not(miri))]
-                asm.export(path, CExporter::new(false));
+                asm.export(path, CExporter::new(false, vec![], vec![]));
                 println!(
                     "Exported the assembly in {} ms",
                     start.elapsed().as_millis()
@@ -257,6 +257,15 @@ fn main() {
                 );
                 println!("strings:{:?}", encoded_stats(asm.strings()));
             }
+            "nonstaticfn" => {
+                let nonstaticfns = asm
+                    .method_defs()
+                    .iter()
+                    .filter(|(_, def)| !def.accesses_statics(&asm))
+                    .count();
+                let total_fns = asm.method_defs().len();
+                println!("{}%", (nonstaticfns as f64 / total_fns as f64) * 100.0);
+            }
             "top_methods" => {
                 let mut keys: Vec<_> = asm
                     .method_refs()
@@ -301,7 +310,13 @@ fn find_invalid_c(asm: &Assembly) {
 fn is_valid_c(asm: &Assembly, id: u32) -> bool {
     #[cfg(not(miri))]
     {
-        catch_unwind(|| asm.export(format!("/tmp/test{id}.out"), CExporter::new(false))).is_ok()
+        catch_unwind(|| {
+            asm.export(
+                format!("/tmp/test{id}.out"),
+                CExporter::new(false, vec![], vec![]),
+            )
+        })
+        .is_ok()
     }
     #[cfg(miri)]
     {

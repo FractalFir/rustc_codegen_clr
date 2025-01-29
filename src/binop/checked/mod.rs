@@ -1,6 +1,10 @@
 use crate::{assembly::MethodCompileCtx, casts};
 use cilly::{
-    and, call, cil_node::CILNode, conv_i16, conv_i32, conv_i64, conv_i8, conv_u32, conv_u64, conv_u8, eq, gt, gt_un, lt, or, v2::{cilnode::MethodKind, Assembly, ClassRef, Int, MethodRef}, Type
+    and, call,
+    cil_node::CILNode,
+    conv_i16, conv_i32, conv_i64, conv_i8, conv_u32, conv_u64, conv_u8, eq, gt, gt_un, lt, or,
+    v2::{cilnode::MethodKind, Assembly, ClassRef, Int, MethodRef},
+    Type,
 };
 use rustc_middle::ty::{IntTy, Ty, TyKind, UintTy};
 

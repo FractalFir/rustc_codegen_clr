@@ -98,9 +98,20 @@ static inline void *System_Runtime_InteropServices_NativeMemory_AlignedReallocpv
 #define System_UInt128_op_Expliciti32u128(val) (__uint128_t)(val)
 #define System_UInt128_op_Expliciti64u128(val) (__uint128_t)(val)
 #define System_Int128_op_Expliciti128u128(val) (__uint128_t)(val)
-
-#define System_UInt128_op_Explicitf32u128(val) (__uint128_t)(val)
-#define System_UInt128_op_Explicitf64u128(val) (__uint128_t)(val)
+static inline __uint128_t System_UInt128_op_Explicitf32u128(float val) {
+    if(val < 0.0){
+        return 0;
+    }else{
+        return (__uint128_t)val;
+    }
+}
+static inline __uint128_t System_UInt128_op_Explicitf64u128(double val) {
+    if(val < 0.0){
+        return 0;
+    }else{
+        return (__uint128_t)val;
+    }
+}
 
 #define System_Int128_op_Explicitf64i128(val) (__int128_t)(val)
 #define System_Int128_op_Explicitf32i128(val) (__int128_t)(val)
@@ -628,3 +639,6 @@ int pthread_attr_getstack(void *attr,
                           void *stackaddr, size_t *stacksize);
 int sched_getaffinity(int32_t pid, size_t cpusetsize,
                       void *mask);
+int sigemptyset(void *set);
+int sigaction(int sig, void* act,
+       void* oact); 

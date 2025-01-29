@@ -12,6 +12,7 @@ use crate::{
 config!(NO_SFI, bool, false);
 config!(ANSI_C, bool, false);
 config!(NO_OPT, bool, false);
+config!(NO_DEBUG, bool, false);
 
 config!(UB_CHECKS, bool, true);
 config!(SHORT_TYPENAMES, bool, false);
@@ -39,7 +40,7 @@ fn local_name(locals: &[LocalDef], asm: &Assembly, loc: u32) -> String {
     }
     match locals[loc as usize].0 {
         Some(local_name) => {
-            let ident = escape_ident(&asm[local_name]);
+            let ident = escape_nonfn_name(&asm[local_name]);
             match ident.as_str() {
                 "socket" => {
                     format!("i{}", encode(hash64(&ident)))
@@ -70,7 +71,7 @@ fn escape_ident(ident: &str) -> String {
     match escaped.as_str() {
         "int" | "default" | "float" | "double" | "long" | "short" | "register" | "stderr"
         | "environ" | "struct" | "union" | "linux" | "inline" | "asm" | "signed" | "unsigned"
-        | "bool" | "char" | "case" | "switch" | "volatile" | "auto" | "void" | "unix" => {
+        | "bool" | "char" | "case" | "switch" | "volatile" | "auto" | "void" | "unix"  => {
             format!("i{}", encode(hash64(&escaped)))
         }
         _ => escaped,
@@ -100,7 +101,13 @@ fn c_tpe(field_tpe: Type, asm: &Assembly) -> String {
             Int::ISize => "intptr_t".into(),
         },
         Type::ClassRef(class_ref_idx) => {
-            format!("union {}", escape_ident(&asm[asm[class_ref_idx].name()]))
+            if asm.class_ref_to_def(class_ref_idx).is_some_and(|def| {
+                asm[def].has_nonveralpping_layout() && asm[def].explict_size().is_some()
+            }) {
+                format!("struct {}", escape_ident(&asm[asm[class_ref_idx].name()]))
+            } else {
+                format!("union {}", escape_ident(&asm[asm[class_ref_idx].name()]))
+            }
         }
         Type::Float(float) => match float {
             super::Float::F16 => "_Float16".into(),
@@ -131,7 +138,7 @@ fn c_tpe(field_tpe: Type, asm: &Assembly) -> String {
 }
 fn mref_to_name(mref: &MethodRef, asm: &Assembly) -> String {
     let class = &asm[mref.class()];
-    let class_name = escape_ident(&asm[class.name()]);
+    let class_name = escape_nonfn_name(&asm[class.name()]);
     let mname = escape_ident(&asm[mref.name()]);
     if class.asm().is_some()
         || matches!(mref.output(asm), Type::SIMDVector(_))
@@ -165,11 +172,36 @@ fn class_member_name(class_name: &str, method_name: &str) -> String {
 }
 pub struct CExporter {
     is_lib: bool,
+    libs: Vec<String>,
+    dirs: Vec<String>,
+    metadata: Vec<u8>,
 }
 impl CExporter {
+    pub fn set_metadata(&mut self, metadata: impl Into<Vec<u8>>) {
+        self.metadata = metadata.into();
+    }
+    /// Retrives correctly formatted .rustc section
+    pub fn get_dot_rustc(&self) -> Vec<u8> {
+        // Insert magic
+        let mut section = b"rust".to_vec();
+        // Insert version
+        section.extend(9_u32.to_be_bytes());
+        // Insert section length
+        section.extend((self.metadata.len() as u64).to_le_bytes());
+        // Insert metadata
+        section.extend(&self.metadata);
+        section
+    }
     #[must_use]
-    pub fn new(is_lib: bool) -> Self {
-        Self { is_lib }
+    pub fn new(is_lib: bool, mut libs: Vec<String>, dirs: Vec<String>) -> Self {
+        // TODO: fix LLVM not found bug.
+        libs.retain(|l| !l.contains("LLVM"));
+        Self {
+            is_lib,
+            libs,
+            dirs,
+            metadata: vec![],
+        }
     }
     fn export_method_decl(
         asm: &Assembly,
@@ -507,11 +539,11 @@ impl CExporter {
             },
             CILNode::LdLoc(loc) => local_name(locals, asm, loc),
             CILNode::LdArg(arg) => match inputs[arg as usize].1 {
-                Some(arg_name) => escape_ident(&asm[arg_name]),
+                Some(arg_name) => escape_nonfn_name(&asm[arg_name]),
                 None => format!("A{arg}",),
             },
             CILNode::LdArgA(arg) => match inputs[arg as usize].1 {
-                Some(arg_name) => format!("&{}", escape_ident(&asm[arg_name])),
+                Some(arg_name) => format!("&{}", escape_nonfn_name(&asm[arg_name])),
                 None => format!("&A{arg}",),
             },
             CILNode::LdLocA(loc) => format!("&{}", local_name(locals, asm, loc),),
@@ -603,18 +635,43 @@ impl CExporter {
                 let addr = asm[addr].clone();
                 let addr = Self::node_to_string(addr, asm, locals, inputs, sig)?;
                 let field = asm[field];
-                let name = escape_ident(&asm[field.name()]);
-                format!("&({addr})->{name}.f")
+                let name = escape_nonfn_name(&asm[field.name()]);
+                if asm
+                    .class_ref_to_def(field.owner())
+                    .is_some_and(|tpe| asm[tpe].has_nonveralpping_layout())
+                {
+                    format!("&({addr})->{name}")
+                } else {
+                    format!("&({addr})->{name}.f")
+                }
             }
             CILNode::LdField { addr, field } => {
                 let addr = asm[addr].clone();
                 let addr_tpe = addr.typecheck(sig, locals, asm)?;
                 let addr = Self::node_to_string(addr, asm, locals, inputs, sig)?;
                 let field = asm[field];
-                let name = escape_ident(&asm[field.name()]);
+                let name = escape_nonfn_name(&asm[field.name()]);
                 match addr_tpe {
-                    Type::Ref(_) | Type::Ptr(_) => format!("({addr})->{name}.f"),
-                    Type::ClassRef(_) => format!("({addr}).{name}.f"),
+                    Type::Ref(_) | Type::Ptr(_) => {
+                        if asm
+                            .class_ref_to_def(field.owner())
+                            .is_some_and(|tpe| asm[tpe].has_nonveralpping_layout())
+                        {
+                            format!("({addr})->{name}")
+                        } else {
+                            format!("({addr})->{name}.f")
+                        }
+                    }
+                    Type::ClassRef(_) => {
+                        if asm
+                            .class_ref_to_def(field.owner())
+                            .is_some_and(|tpe| asm[tpe].has_nonveralpping_layout())
+                        {
+                            format!("({addr}).{name}")
+                        } else {
+                            format!("({addr}).{name}.f")
+                        }
+                    }
                     _ => panic!(),
                 }
             }
@@ -723,7 +780,7 @@ impl CExporter {
                 Some(name) => format!(
                     "{name} = {node};",
                     node = Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig)?,
-                    name = escape_ident(&asm[name]),
+                    name = escape_nonfn_name(&asm[name]),
                 ),
                 None => format!(
                     "A{arg} = {node};",
@@ -808,8 +865,13 @@ impl CExporter {
                 let addr = Self::node_to_string(asm[*addr].clone(), asm, locals, inputs, sig)?;
                 let value = Self::node_to_string(asm[*value].clone(), asm, locals, inputs, sig)?;
                 let field = asm[*field];
-                let name = escape_ident(&asm[field.name()]);
-                format!("({addr})->{name}.f = ({value});")
+                let name = escape_nonfn_name(&asm[field.name()]);
+                if asm.class_ref_to_def(field.owner()).is_some_and(|tpe|asm[tpe].has_nonveralpping_layout()){
+                    format!("({addr})->{name} = ({value});")
+                }
+                else{
+                    format!("({addr})->{name}.f = ({value});")
+                }
             }
             CILRoot::Call(info) => {
                 let (method, args) = info.as_ref();
@@ -821,7 +883,7 @@ impl CExporter {
                             "({})",
                             Self::node_to_string(asm[*arg].clone(), asm, locals, inputs, sig).unwrap()
                         )
-                    })
+})
                     .intersperse(",".into())
                     .collect::<String>();
                 let method_name = mref_to_name(&method, asm);
@@ -904,7 +966,7 @@ impl CExporter {
         method_decls: &mut impl Write,
     ) -> std::io::Result<()> {
         let class = &asm[def.class()];
-        let class_name = escape_ident(&asm[class.name()]);
+        let class_name = escape_nonfn_name(&asm[class.name()]);
         let mname = escape_ident(&asm[def.name()]);
         // Workaround for `get_environ` - a .NET specific function, irrelevant to our use case.
         if mname == "get_environ" || mname == "malloc" || mname == "realloc" || mname == "free" {
@@ -938,6 +1000,8 @@ impl CExporter {
                 | "pthread_attr_init"
                 | "pthread_attr_getstack"
                 | "sched_getaffinity"
+                | "sigemptyset"
+                | "sigaction"
                 | "poll" => return Ok(()),
                 _ => {
                     let inputs = def
@@ -976,7 +1040,7 @@ impl CExporter {
                 Some(name) => format!(
                     "{} {name}",
                     nonvoid_c_type(*tpe, asm),
-                    name = escape_ident(&asm[*name]),
+                    name = escape_nonfn_name(&asm[*name]),
                 ),
                 None => format!("{} A{idx} ", nonvoid_c_type(*tpe, asm)),
             })
@@ -1052,30 +1116,67 @@ impl CExporter {
             delayed_defs.insert(defid);
             return Ok(());
         }
-        let class_name = escape_ident(&asm[class.name()]);
-        writeln!(type_defs, "typedef union {class_name}{{")?;
-        for (field_tpe, fname, offset) in class.fields() {
-            let fname = escape_ident(&asm[*fname]);
-            let Some(offset) = offset else {
-                eprintln!(
-                    "ERR: Can't export field {fname} of {class_name}, becuase it has no offset."
-                );
-                continue;
-            };
-            let field_tpe = c_tpe(*field_tpe, asm);
-            let pad = if *offset != 0 {
-                format!("char pad[{offset}];")
-            } else {
-                "".into()
-            };
-            writeln!(type_defs, "struct {{{pad} {field_tpe} f;}}{fname};")?;
+        let class_name = escape_nonfn_name(&asm[class.name()]);
+        if class.has_nonveralpping_layout() && class.explict_size().is_some() {
+            writeln!(type_defs, "typedef struct {class_name}{{")?;
+            let mut fields = class.fields().to_vec();
+            fields.sort_by(|(_, _, a_offset), (_, _, b_offset)| {
+                a_offset.unwrap().cmp(&b_offset.unwrap())
+            });
+            let mut last_offset = 0;
+            let mut pad_count = 0;
+            for (field_tpe, fname, offset) in &fields {
+                let fname = escape_nonfn_name(&asm[*fname]);
+                let offset = offset.unwrap();
+                if offset != last_offset {
+                    assert!(offset >= last_offset,"Type {class_name} has overlapping fields. offset:{offset},last_offset:{last_offset}\nfields:{fields:?}",fields = fields.iter().map(|(tpe,name,offset)| format!("{offset:?} {} {}\n",&asm[*name], tpe.mangle(asm))).collect::<String>());
+                    writeln!(
+                        type_defs,
+                        "uint8_t pad_{pad_count}[{}];\n",
+                        offset - last_offset
+                    )?;
+                    pad_count += 1;
+                }
+                last_offset = offset + asm.sizeof_type(*field_tpe);
+                let field_tpe = c_tpe(*field_tpe, asm);
+                writeln!(type_defs, "{field_tpe} {fname};")?;
+            }
+            if last_offset != class.explict_size().unwrap().get() {
+                writeln!(
+                    type_defs,
+                    "uint8_t pad_{pad_count}[{}];\n",
+                    class.explict_size().unwrap().get() - last_offset
+                )?;
+            }
+            writeln!(type_defs, "}} {class_name};")?;
+        } else {
+            writeln!(type_defs, "typedef union {class_name}{{")?;
+            for (field_tpe, fname, offset) in class.fields() {
+                let fname = escape_nonfn_name(&asm[*fname]);
+                let Some(offset) = offset else {
+                    eprintln!(
+                        "ERR: Can't export field {fname} of {class_name}, becuase it has no offset."
+                    );
+                    continue;
+                };
+                let field_tpe = c_tpe(*field_tpe, asm);
+                let pad = if *offset != 0 {
+                    format!("char pad[{offset}];")
+                } else {
+                    "".into()
+                };
+                writeln!(type_defs, "struct {{{pad} {field_tpe} f;}}{fname};")?;
+            }
+            if let Some(size) = class.explict_size() {
+                writeln!(type_defs, "char force_size[{size}];", size = size.get())?;
+            }
+            writeln!(type_defs, "}} {class_name};")?;
         }
-        if let Some(size) = class.explict_size() {
-            writeln!(type_defs, "char force_size[{size}];", size = size.get())?;
+        if !class.static_fields().is_empty() {
+            writeln!(type_defs, "\n/*START OF STATCIDEFS*/\n")?;
         }
-        writeln!(type_defs, "}} {class_name};")?;
         for (sfield_tpe, sfname, is_thread_local) in class.static_fields() {
-            let fname = escape_ident(&asm[*sfname]);
+            let fname = escape_nonfn_name(&asm[*sfname]);
             let field_tpe = c_tpe(*sfield_tpe, asm);
             let fname = class_member_name(&class_name, &fname);
             let extrn = if extrn { "extern" } else { "" };
@@ -1085,6 +1186,10 @@ impl CExporter {
                 writeln!(type_defs, "{extrn} {field_tpe} {fname};")?;
             }
         }
+        if !class.static_fields().is_empty() {
+            writeln!(type_defs, "\n/*END OF STATCIDEFS*/\n")?;
+        }
+
         for method in class.methods() {
             let mref = &asm[method.0].clone();
             let def = asm[*method].clone();
@@ -1172,8 +1277,13 @@ impl CExporter {
         drop(c_out);
 
         let mut cmd = std::process::Command::new(std::env::var("CC").unwrap_or("cc".to_owned()));
-        cmd.arg(c_path).arg("-o").arg(target).arg("-g");
-
+        cmd.args(&self.dirs);
+        cmd.args(&self.libs);
+        cmd.arg("-fPIC");
+        cmd.arg(c_path).arg("-o").arg(target);
+        if !*NO_DEBUG {
+            cmd.arg("-g");
+        }
         if *UB_CHECKS && *PARTS == 1 {
             cmd.args([
                 "-fsanitize=undefined,alignment",
@@ -1194,7 +1304,7 @@ impl CExporter {
         if *ANSI_C {
             cmd.arg("-std=c89");
         }
-        println!("Compiling {c_path:?}");
+        println!("Compiling {c_path:?} with {cmd:?}");
         let out = cmd.output().unwrap();
         println!("Compiled {c_path:?}");
         let stdout = String::from_utf8_lossy(&out.stdout);
@@ -1233,7 +1343,9 @@ impl Exporter for CExporter {
 
             let mut cmd =
                 std::process::Command::new(std::env::var("CC").unwrap_or("cc".to_owned()));
+            cmd.args(&self.dirs);
 
+            cmd.args(&self.libs);
             cmd.args(parts);
             cmd.arg("-o").arg(target).arg("-g").arg("-lm");
 
@@ -1247,6 +1359,11 @@ impl Exporter for CExporter {
             if !self.is_lib {
                 let mut c_file = option.open(&c_path).unwrap();
                 call_entry(&mut c_file, asm).unwrap();
+            } else if target
+                .extension()
+                .is_some_and(|s| s.as_encoded_bytes() == b"so")
+            {
+                cmd.arg("-shared");
             } else {
                 cmd.arg("-c");
             }
@@ -1265,7 +1382,25 @@ impl Exporter for CExporter {
                     String::from_utf8_lossy(&out.stderr)
                 );
             }
-
+            if let Some(rustc) = asm.get_section(".rustc") {
+                // .rustc section data
+                let meta_path = target.with_extension("meta");
+                // Write section data.
+                std::fs::File::create(&meta_path)
+                    .unwrap()
+                    .write_all(&rustc)
+                    .unwrap();
+                let copy = std::process::Command::new("objcopy")
+                    .arg(target)
+                    .arg("--add-section")
+                    .arg(format!(
+                        ".rustc={meta_path}",
+                        meta_path = meta_path.to_str().unwrap()
+                    ))
+                    .output()
+                    .unwrap();
+                assert!(copy.status.success());
+            }
             Ok(())
         }
     }
@@ -1290,4 +1425,11 @@ pub fn name_sig_class_to_mangled(
         Some(_) => todo!(),
         None => todo!(),
     };
+}
+fn escape_nonfn_name(name:&str)->String{
+    let res = escape_ident(name);
+    match res.as_ref(){
+        "sigaction"=>"sigactn".to_owned(),
+        _=>res,
+    }
 }

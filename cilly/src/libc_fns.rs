@@ -43,6 +43,8 @@ pub const LIBC_FNS: &[&str] = &[
     "clock_gettime",
     "close",
     "closedir",
+    "sigemptyset",
+    "sigaction",
     "closelog",
     "confstr",
     "connect",

@@ -1,11 +1,10 @@
 use crate::{assembly::MethodCompileCtx, r#type::fat_ptr_to};
 use cilly::{
-    asm::Assembly,
     call,
     cil_node::CILNode,
     conv_usize, ld_field,
     v2::{cilnode::MethodKind, FieldDesc, Int, MethodRef},
-    Const, IntoAsmIndex, NodeIdx, Type,
+    Assembly, Const, IntoAsmIndex, NodeIdx, Type,
 };
 use rustc_middle::{
     mir::{Place, PlaceElem},

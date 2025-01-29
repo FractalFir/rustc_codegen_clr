@@ -4,7 +4,7 @@
 pub extern fn assign_i8(place: &mut i8, value: &i8) {
     *place = *value;
 }
-
+/* 
 #[no_mangle]
 pub extern fn assign_i16(place: &mut i16, value: &i16) {
     *place = *value;
@@ -108,3 +108,4 @@ pub extern fn assign_slice_elem(place: &mut [u8], value: &[u8]) {
 pub extern fn assign_tuple(place: &mut (u8, u8), value: &(u8, u8)) {
     *place = *value;
 }
+*/

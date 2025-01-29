@@ -12,7 +12,7 @@ use cilly::{
     },
     Const, NodeIdx, Type,
 };
-
+use rustc_middle::ty::AdtKind;
 use rustc_middle::{
     mir::{
         interpret::{AllocId, GlobalAlloc, Scalar},
@@ -35,6 +35,7 @@ pub fn handle_constant<'tcx>(
         .expect("Could not evaluate constant!");
     load_const_value(evaluated, constant.ty(), ctx)
 }
+
 /// Returns the ops neceasry to create constant value of type `ty` with byte values matching the ones in the allocation
 fn create_const_from_data<'tcx>(
     ty: Ty<'tcx>,
@@ -43,10 +44,28 @@ fn create_const_from_data<'tcx>(
     ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> CILNode {
     let _ = offset_bytes;
+    // Optimization - check if this can be replaced by a scalar.
+    if let GlobalAlloc::Memory(alloc) = ctx.tcx().global_alloc(alloc_id) {
+        let const_allocation = alloc.inner();
+        let align = const_allocation.align.bytes().max(1);
+        let mut bytes: Vec<u8> = const_allocation
+            .inspect_with_uninit_and_ptr_outside_interpreter(0..const_allocation.len())
+            .into();
+        // Right aligment, fits, and has no pointers - can be a scalar.
+        if (align <= 8 && bytes.len() <= 16 && const_allocation.provenance().ptrs().is_empty()) {
+            while bytes.len() < 16 {
+                bytes.push(0);
+            }
+            let scalar =
+                Scalar::from_u128(u128::from_ne_bytes(bytes.as_slice().try_into().unwrap()));
+            return load_const_scalar(scalar, ty, ctx);
+        }
+    }
     let ptr = CILNode::LoadGlobalAllocPtr {
         alloc_id: alloc_id.0.into(),
     };
     let ty = ctx.monomorphize(ty);
+
     let tpe = ctx.type_from_cache(ty);
     let tpe_ptr = ctx.nptr(tpe);
     crate::place::deref_op(ty.into(), ctx, ptr.cast_ptr(tpe_ptr))
@@ -234,8 +253,10 @@ fn load_const_scalar<'tcx>(
                 )
             }
         }
-        TyKind::Adt(_, _) | TyKind::Closure(_, _) => CILNode::V2(ctx.alloc_node(scalar_u128))
-            .transmute_on_stack(Type::Int(Int::U128), scalar_type, ctx),
+        TyKind::Adt(_, _) | TyKind::Closure(_, _) | TyKind::Array(_, _) => CILNode::V2(
+            ctx.alloc_node(scalar_u128),
+        )
+        .transmute_on_stack(Type::Int(Int::U128), scalar_type, ctx),
         TyKind::Char => CILNode::V2(ctx.alloc_node(u32::try_from(scalar_u128).unwrap())),
         _ => todo!("Can't load scalar constants of type {scalar_ty:?}!"),
     }

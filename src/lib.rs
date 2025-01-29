@@ -161,8 +161,8 @@ mod unsize;
 // rustc functions used here.
 use crate::rustc_middle::dep_graph::DepContext;
 use cilly::{
-    asm::Assembly,
     v2::{cilnode::MethodKind, MethodRef},
+    Assembly,
 };
 use fn_ctx::MethodCompileCtx;
 use rustc_codegen_ssa::{
@@ -201,12 +201,21 @@ impl CodegenBackend for MyBackend {
         &self,
         tcx: TyCtxt<'_>,
         metadata: EncodedMetadata,
-        _need_metadata_module: bool,
+        need_metadata_module: bool,
     ) -> Box<dyn Any> {
         {
             let (_defid_set, cgus) = tcx.collect_and_partition_mono_items(());
 
             let mut asm = Assembly::default();
+            if need_metadata_module {
+                use std::io::Write;
+                let mut packed_metadata = rustc_metadata::METADATA_HEADER.to_vec();
+                packed_metadata
+                    .write_all(&(metadata.raw_data().len() as u64).to_le_bytes())
+                    .unwrap();
+                packed_metadata.extend(metadata.raw_data());
+                asm.add_section(".rustc", packed_metadata);
+            }
             let _ = cilly::utilis::get_environ(&mut asm);
 
             for cgu in cgus {

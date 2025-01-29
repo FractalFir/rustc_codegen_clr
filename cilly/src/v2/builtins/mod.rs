@@ -175,7 +175,7 @@ fn insert_rust_realloc(asm: &mut Assembly, patcher: &mut MissingMethodPatcher, u
                 Box::new(super::cilnode::PtrCastRes::Ptr(void_idx)),
             ));
             let align = asm.alloc_node(CILNode::LdArg(2));
-          
+
             let align = asm.alloc_node(CILNode::IntCast {
                 input: align,
                 target: Int::USize,
@@ -345,6 +345,7 @@ pub fn insert_exeception_stub(asm: &mut Assembly, patcher: &mut MissingMethodPat
         Access::Public,
         Some(NonZeroU32::new(8).unwrap()),
         None,
+        true,
     ));
     insert_catch_unwind_stub(asm, patcher);
 }
@@ -363,6 +364,7 @@ pub fn insert_exception(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) 
         Access::Public,
         None,
         None,
+        true,
     ));
     let ctor = asm.alloc_string(".ctor");
     let sig = asm.sig(
@@ -556,7 +558,7 @@ pub fn transmute(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
         let source = asm.alloc_type(source);
         let target_idx = asm.alloc_type(target);
         let addr = asm.alloc_node(CILNode::LdArgA(0));
-        if asm.alignof_type(source) >= asm.alignof_type(target_idx){
+        if asm.alignof_type(source) >= asm.alignof_type(target_idx) {
             let ptr = asm.alloc_node(CILNode::RefToPtr(addr));
             let ptr = asm.alloc_node(CILNode::PtrCast(ptr, Box::new(PtrCastRes::Ptr(target_idx))));
             let valuetype = asm.alloc_node(CILNode::LdInd {
@@ -569,20 +571,17 @@ pub fn transmute(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
                 blocks: vec![BasicBlock::new(vec![ret], 0, None)],
                 locals: vec![],
             }
-        }else{
+        } else {
             let dst = asm.alloc_node(CILNode::LdLocA(0));
             let size = asm.alloc_node(CILNode::SizeOf(source));
-            let load = asm.alloc_root(CILRoot::CpBlk(Box::new((dst,addr,size))));
+            let load = asm.alloc_root(CILRoot::CpBlk(Box::new((dst, addr, size))));
             let ret = asm.alloc_node(CILNode::LdLoc(0));
             let ret = asm.alloc_root(CILRoot::Ret(ret));
             MethodImpl::MethodBody {
-                blocks: vec![BasicBlock::new(vec![load,ret], 0, None)],
+                blocks: vec![BasicBlock::new(vec![load, ret], 0, None)],
                 locals: vec![(None, target_idx)],
             }
-
         }
-  
-       
     };
     patcher.insert(name, Box::new(generator));
 }

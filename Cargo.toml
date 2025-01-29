@@ -27,7 +27,7 @@ crate-type = ["dylib"]
 members = [ "cilly", "dotnet_aot",
     "mycorrhiza", 
 ]
-exclude = ["rust/src/bootstrap"]
+exclude = ["rust/src/bootstrap","backup_rust/src/bootstrap"]
 [profile.release]
 debug = true
 

@@ -434,6 +434,7 @@ pub fn instert_threading(asm: &mut Assembly, patcher: &mut MissingMethodPatcher)
         Access::Extern,
         None,
         None,
+        true,
     ));
 
     let ctor = asm.alloc_string(".ctor");

@@ -1192,7 +1192,6 @@ _37 = (_26.0, _26.1, _26.2);
 _25 = -_29;
 _41.0 = _25 & _29;
 _36 = !_19;
-_15 = '\u{fb800}';
 _26.1 = !_37.1;
 _26.0 = _37.0;
 Goto(bb11)
@@ -1221,6 +1220,7 @@ _40 = -_5;
 _37.2 = _26.2;
 _33 = [RET,RET,RET,RET,RET,RET,RET,RET];
 _5 = _4;
+_15 = '\u{fb800}';
 _42 = _15;
 match RET {
 0 => bb6,
@@ -1264,7 +1264,8 @@ _23 = _20 as f32;
 _35 = [_46,_46,_47,_46];
 _44 = _23 * _23;
 _9 = 64314_u16 as i16;
-_37.1 = _5 as i128;
+_37.1 = _4 as i128;
+_15 = '\u{fb800}';
 _53 = _15;
 _51 = _42;
 _36 = _6 > _1;
@@ -1288,7 +1289,7 @@ bb18 = {
 Call(_55 = dump_var(2_usize, 36_usize, Move(_36), 29_usize, Move(_29), 3_usize, Move(_3), 45_usize, Move(_45)), ReturnTo(bb19), UnwindUnreachable())
 }
 bb19 = {
-Call(_55 = dump_var(2_usize, 32_usize, Move(_32), 56_usize, _56, 56_usize, _56, 56_usize, _56), ReturnTo(bb20), UnwindUnreachable())
+Call(_55 = dump_var(2_usize, 32_usize, Move(_32), 15_usize, _15, 4_usize, _4, 56_usize, _56), ReturnTo(bb20), UnwindUnreachable())
 }
 bb20 = {
 Return()

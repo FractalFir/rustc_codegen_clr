@@ -611,6 +611,7 @@ impl Assembly {
             *def.access(),
             def.explict_size(),
             def.align(),
+            def.has_nonveralpping_layout(),
         );
         let class_ref = self.alloc_class_ref(translated.ref_to());
         let (defs_mut, _) = self.class_defs_mut_strings();

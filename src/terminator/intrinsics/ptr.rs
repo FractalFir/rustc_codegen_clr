@@ -37,12 +37,12 @@ pub fn ptr_offset_from_unsigned<'tcx>(
     debug_assert_eq!(
         args.len(),
         2,
-        "The intrinsic `ptr_offset_from_unsigned` MUST take in exactly 1 argument!"
+        "The intrinsic `ptr_offset_from_unsigned` MUST take in exactly 2 arguments!"
     );
     let ty = ctx.monomorphize(
         call_instance.args[0]
             .as_type()
-            .expect("needs_drop works only on types!"),
+            .expect("ptr_offset_from_unsigned works only on types!"),
     );
     let tpe = ctx.type_from_cache(ty);
     // This is UB, so we can do whatever.

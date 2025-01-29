@@ -7,8 +7,8 @@ use super::{
     MethodRefIdx, NodeIdx, RootIdx, SigIdx, StaticFieldDesc, StaticFieldIdx, StringIdx, Type,
     TypeIdx,
 };
-use crate::{asm::Assembly as V1Asm, utilis::encode, v2::MethodImpl};
 use crate::{config, IString};
+use crate::{utilis::encode, v2::MethodImpl};
 use fxhash::{hash64, FxHashMap, FxHashSet};
 
 use serde::{Deserialize, Serialize};
@@ -33,6 +33,7 @@ pub struct Assembly {
     fields: BiMap<FieldIdx, FieldDesc>,
     statics: BiMap<StaticFieldIdx, StaticFieldDesc>,
     method_defs: FxHashMap<MethodDefIdx, MethodDef>,
+    sections: FxHashMap<String, Vec<u8>>,
     // Cache containing information about the stack usage of a CIL node.
     //#[serde(skip)]
     //cache: CachedAssemblyInfo<NodeIdx, NonMaxU32, StackUsage>,
@@ -416,6 +417,7 @@ impl Assembly {
             Access::Public,
             None,
             None,
+            true,
         );
         let cref = class_def.ref_to();
         let cref = self.class_refs.alloc(cref);
@@ -540,6 +542,7 @@ impl Assembly {
             Access::Public,
             None,
             None,
+            true,
         );
 
         let Some(cref) = self.get_prealllocated_class_ref(class_def.ref_to()) else {
@@ -685,7 +688,7 @@ impl Assembly {
     }
     /// Converts the old assembly repr to the new one.
     #[must_use]
-    pub fn from_v1(v1: &V1Asm) -> Self {
+    pub fn from_v1(v1: &Assembly) -> Self {
         let mut empty: Assembly = v1.clone();
         let rust_void = empty.alloc_string("RustVoid");
         empty.class_def(ClassDef::new(
@@ -698,6 +701,7 @@ impl Assembly {
             Access::Public,
             None,
             None,
+            true,
         ));
 
         #[cfg(debug_assertions)]
@@ -1023,10 +1027,11 @@ impl Assembly {
             }
         }
         assert_eq!(self.alloc_string(MAIN_MODULE), original_str);
+        self.sections.extend(other.sections);
         self
     }
 
-    pub(crate) fn method_defs(&self) -> &FxHashMap<MethodDefIdx, MethodDef> {
+    pub fn method_defs(&self) -> &FxHashMap<MethodDefIdx, MethodDef> {
         &self.method_defs
     }
 
@@ -1172,26 +1177,29 @@ impl Assembly {
     pub fn split_to_parts(&self, parts: u32) -> impl Iterator<Item = Self> + use<'_> {
         let lib_name = StringIdx::from_index(std::num::NonZeroU32::new(1).unwrap());
         let div = (self.method_refs.len().div_ceil(parts as usize)) as u32;
+        // Into 1st. Only split out the methods where it is known, for sure, that they don't access any statics.
         (0..parts).map(move |rem| {
             let mut part = self.clone();
             part.method_defs.iter_mut().for_each(|(idx, def)| {
-                if idx.as_bimap_index().get() / div != rem {
-                    /*if let MethodImpl::MethodBody {
-                        blocks: _,
-                        locals: _,
-                    } = def.resolved_implementation(self).clone()
-                    {
+                if def.accesses_statics(self) {
+                    if 0 != rem {
                         *def.implementation_mut() = MethodImpl::Extern {
                             lib: lib_name,
                             preserve_errno: false,
                         }
-                    }*/
+                    }
+                } else if idx.as_bimap_index().get() / div != rem {
                     *def.implementation_mut() = MethodImpl::Extern {
                         lib: lib_name,
                         preserve_errno: false,
                     }
                 }
             });
+            if 0 != rem {
+                part.class_defs
+                    .iter_mut()
+                    .for_each(|(_, def)| *def.static_fields_mut() = vec![]);
+            }
             part.eliminate_dead_types();
             //part.eliminate_dead_fns(true);
             part = part.link_gc();
@@ -1266,6 +1274,40 @@ impl Assembly {
         let mut clone = self.clone();
         clone = clone.link(self);
         clone
+    }
+    pub(crate) fn ptr_size(&self) -> u32 {
+        8
+    }
+    pub(crate) fn sizeof_type(&self, field_tpe: Type) -> u32 {
+        match field_tpe {
+            Type::Ref(_) | Type::Ptr(_) => self.ptr_size(),
+            Type::Int(int) => int
+                .size()
+                .unwrap_or(self.ptr_size().try_into().unwrap())
+                .into(),
+            Type::ClassRef(class_ref_idx) => self[self.class_ref_to_def(class_ref_idx).unwrap()]
+                .explict_size()
+                .unwrap()
+                .into(),
+            Type::Float(float) => float.size().into(),
+            Type::PlatformString => self.ptr_size(),
+            Type::PlatformChar => 1,
+            Type::PlatformGeneric(_, generic_kind) => todo!(),
+            Type::PlatformObject => self.ptr_size(),
+            Type::Bool => 1,
+            Type::Void => 0,
+            Type::PlatformArray { elem, dims } => todo!(),
+            Type::FnPtr(sig_idx) => self.ptr_size(),
+            Type::SIMDVector(simdvector) => (simdvector.bits() / 8).into(),
+        }
+    }
+
+    pub fn add_section(&mut self, arg: &str, packed_metadata: impl Into<Vec<u8>>) {
+        self.sections.insert(arg.into(), packed_metadata.into());
+    }
+
+    pub(crate) fn get_section(&self, arg: &str) -> Option<&Vec<u8>> {
+        self.sections.get(arg)
     }
 }
 /// An initializer, which runs before everything else. By convention, it is used to initialize static / const data. Should not execute any user code

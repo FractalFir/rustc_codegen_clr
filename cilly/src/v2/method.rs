@@ -495,6 +495,19 @@ impl MethodDef {
         };
         Some(locals)
     }
+
+    pub fn accesses_statics(&self, asm: &Assembly) -> bool {
+        let Some(mut cil) = self.iter_cil(asm) else {
+            return false;
+        };
+        cil.any(|node| {
+            matches!(
+                node,
+                CILIterElem::Node(CILNode::LdStaticField(_) | CILNode::LdStaticFieldAdress(_))
+                    | CILIterElem::Root(CILRoot::SetStaticField { .. })
+            )
+        })
+    }
 }
 pub type LocalDef = (Option<StringIdx>, TypeIdx);
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]

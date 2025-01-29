@@ -23,6 +23,9 @@ pub struct Adt47 {
     fld3: i8,
     ptr: (*mut i8,),
     fld5: ((isize,), [bool; 5]),
+}#[no_mangle]
+fn problem_cast()->u128{
+    core::hint::black_box(-7.000000) as u128
 }
 #[inline(never)]
 pub unsafe fn fn7(_2: i128, out: *mut i8) -> usize {
@@ -42,9 +45,11 @@ pub unsafe fn fn7(_2: i128, out: *mut i8) -> usize {
     adt.fld1 = 0x0123456789ABCDEF_i128;
     black_box(adt);
     test_eq!(adt.ptr.0, out);
+   
     return 0;
 }
 fn main() {
+    test_eq!( core::hint::black_box(-7.000000) as u128, 0_u128);
     let mut var = 0;
     let res = unsafe { fn7(1, core::ptr::addr_of_mut!(var)) };
 }

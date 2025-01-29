@@ -148,9 +148,8 @@ pub fn math(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
     sinh(asm, patcher);
     coshf(asm, patcher);
     cosh(asm, patcher);
-
 }
-pub fn bitreverse(asm: &mut Assembly, patcher: &mut MissingMethodPatcher){
+pub fn bitreverse(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
     bitreverse_u32(asm, patcher);
     bitreverse_u64(asm, patcher);
     bitreverse_u128(asm, patcher);

@@ -22,7 +22,7 @@ use fxhash::FxHashMap;
 use patch::call_alias;
 use std::{
     env,
-    io::Write,
+    io::{Read, Write},
     num::NonZeroU32,
     path::{Path, PathBuf},
 };
@@ -43,7 +43,8 @@ fn add_mandatory_statics(asm: &mut cilly::v2::Assembly) {
         main_module,
     );
 }
-
+static FORCE_FAIL: std::sync::LazyLock<bool> =
+    std::sync::LazyLock::new(|| std::env::var("FORCE_FAIL").is_ok());
 static LIBC: std::sync::LazyLock<String> = std::sync::LazyLock::new(get_libc_);
 static LIBM: std::sync::LazyLock<String> = std::sync::LazyLock::new(get_libm_);
 static BACKUP_STD: std::sync::LazyLock<Option<PathBuf>> = std::sync::LazyLock::new(|| {
@@ -172,6 +173,19 @@ fn link_backup_std(to_link: &[&String], ar_to_link: &mut Vec<String>, backup: &P
         link_dir(backup, ar_to_link);
     }
 }
+fn extract_libs(args: &[String]) -> Vec<String> {
+    args.iter()
+        .filter(|arg| arg[..2] == *"-l")
+        .map(|arg| arg.to_string())
+        .collect()
+}
+fn extract_dirs(args: &[String]) -> Vec<String> {
+    args.iter()
+        .filter(|arg| arg[..2] == *"-B")
+        .map(|arg| arg.to_string())
+        .collect()
+}
+
 fn main() {
     // Parse command line arguments
 
@@ -258,6 +272,7 @@ fn main() {
             }
         }),
     );
+
     // Override allocator
     if !*C_MODE {
         // Get the marshal class
@@ -426,6 +441,7 @@ fn main() {
     cilly::v2::builtins::transmute(&mut final_assembly, &mut overrides);
     cilly::v2::builtins::create_slice(&mut final_assembly, &mut overrides);
     cilly::v2::builtins::math::bitreverse(&mut final_assembly, &mut overrides);
+
     if *C_MODE {
         cilly::v2::builtins::insert_exeception_stub(&mut final_assembly, &mut overrides);
         externs.insert("__dso_handle", LIBC.clone());
@@ -447,7 +463,7 @@ fn main() {
             "pthread_key_delete",
             "pthread_join",
             "pthread_setspecific",
-            "ldexpf"
+            "ldexpf",
         ] {
             externs.insert(fnc, LIBC.clone());
         }
@@ -487,6 +503,7 @@ fn main() {
         cilly::v2::Access::Public,
         NonZeroU32::new(16),
         NonZeroU32::new(16),
+        true,
     ));
 
     final_assembly.patch_missing_methods(&externs, &modifies_errno, &overrides);
@@ -505,8 +522,15 @@ fn main() {
     final_assembly
         .save_tmp(&mut std::fs::File::create(path.with_extension("cilly2")).unwrap())
         .unwrap();
+    let libs = extract_libs(args);
+    let dirs = extract_dirs(args);
+    if *FORCE_FAIL {
+        panic!("FORCE_FAIL");
+    }
     if *C_MODE {
-        final_assembly.export(&path, cilly::v2::c_exporter::CExporter::new(is_lib));
+        let cexport = cilly::v2::c_exporter::CExporter::new(is_lib, libs, dirs);
+
+        final_assembly.export(&path, cexport);
     } else if *JAVA_MODE {
         final_assembly.export(&path, cilly::v2::java_exporter::JavaExporter::new(is_lib));
         if cargo_support {
