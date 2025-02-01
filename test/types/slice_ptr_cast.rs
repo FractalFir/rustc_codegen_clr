@@ -3,11 +3,9 @@
     adt_const_params,
     associated_type_defaults,
     core_intrinsics,
-    start,
     unsized_const_params
 )]
 #![allow(internal_features, incomplete_features, unused_variables, dead_code)]
-#![no_std]
 include!("../common.rs");
 fn test_ref_deref() {
     let mut eight_u8s: u64 = black_box(0);

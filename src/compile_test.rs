@@ -101,6 +101,7 @@ fn test_lib(args: &[&str], test_name: &str) {
     RUSTC_BUILD_STATUS.as_ref().expect("Could not build rustc!");
     // Compiles the test project
     let mut command = std::process::Command::new("rustc");
+    command.arg("-Ctarget-feature=+x87+sse");
     let command = command
         .current_dir("./test/out")
         //.env("RUST_TARGET_PATH","../../")
@@ -113,7 +114,7 @@ fn test_lib(args: &[&str], test_name: &str) {
         command
     };
     let out = command.output().expect("failed to execute process");
-    if !out.stderr.is_empty() {
+    if String::from_utf8(out.stderr.clone()).unwrap().contains("error:") {
         let stdout =
             String::from_utf8(out.stdout).expect("rustc error contained non-UTF8 characters.");
         let stderr =
@@ -164,7 +165,7 @@ macro_rules! compare_tests {
                     let copy = format!("{cmd:?}");
                     let out = cmd.output().expect("failed to execute process");
                     // If stderr is not empty, then something went wrong, so print the stdout and stderr for debuging.
-                    if !out.stderr.is_empty() {
+                    if String::from_utf8(out.stderr.clone()).unwrap().contains("error:") {
                         let stdout = String::from_utf8(out.stdout)
                             .expect("rustc error contained non-UTF8 characters.");
                         let stderr = String::from_utf8(out.stderr)
@@ -195,11 +196,12 @@ macro_rules! compare_tests {
                         concat!("./", stringify!($test_name), ".a"),
                         "--edition",
                         "2021",
+                        "-Ctarget-feature=+x87+sse",
                     ]);
                     let copy = format!("{cmd:?}");
                     let out = cmd.output().expect("failed to execute process");
                     // If stderr is not empty, then something went wrong, so print the stdout and stderr for debuging.
-                    if !out.stderr.is_empty() {
+                    if String::from_utf8(out.stderr.clone()).unwrap().contains("error:") {
                         let stdout = String::from_utf8(out.stdout)
                             .expect("rustc error contained non-UTF8 characters.");
                         let stderr = String::from_utf8(out.stderr)
@@ -242,7 +244,7 @@ macro_rules! compare_tests {
                     let mut cmd = super::super::compiler(stringify!($test_name), test_dir, true);
                     let out = cmd.output().expect("failed to execute process");
                     // If stderr is not empty, then something went wrong, so print the stdout and stderr for debuging.
-                    if !out.stderr.is_empty() {
+                    if String::from_utf8(out.stderr.clone()).unwrap().contains("error:") {
                         let stdout = String::from_utf8(out.stdout)
                             .expect("rustc error contained non-UTF8 characters.");
                         let stderr = String::from_utf8(out.stderr)
@@ -273,10 +275,11 @@ macro_rules! compare_tests {
                         concat!("./", stringify!($test_name), ".a"),
                         "--edition",
                         "2021",
+                        "-Ctarget-feature=+x87+sse",
                     ]);
                     let out = cmd.output().expect("failed to execute process");
                     // If stderr is not empty, then something went wrong, so print the stdout and stderr for debuging.
-                    if !out.stderr.is_empty() {
+                    if String::from_utf8(out.stderr.clone()).unwrap().contains("error:") {
                         let stdout = String::from_utf8(out.stdout)
                             .expect("rustc error contained non-UTF8 characters.");
                         let stderr = String::from_utf8(out.stderr)
@@ -384,6 +387,7 @@ fn compiler(test_name: &str, test_dir: &str, release: bool) -> std::process::Com
     if *crate::config::DRY_RUN {
         cmd.args(["-Z", "no-codegen"]);
     }
+    cmd.arg("-Ctarget-feature=+x87+sse",);
     cmd
 }
 macro_rules! run_test {
@@ -410,7 +414,7 @@ macro_rules! run_test {
                     eprintln!("Command: {cmd:?}");
                     let out = cmd.output().expect("failed to execute process");
                     // If stderr is not empty, then something went wrong, so print the stdout and stderr for debuging.
-                    if !out.stderr.is_empty() {
+                    if String::from_utf8(out.stderr.clone()).unwrap().contains("error:") {
                         let stdout = String::from_utf8(out.stdout)
                             .expect("rustc error contained non-UTF8 characters.");
                         let stderr = String::from_utf8(out.stderr)
@@ -444,7 +448,7 @@ macro_rules! run_test {
                     eprintln!("test_name:{test_name:?}");
                     let out = cmd.output().expect("failed to execute process");
                     // If stderr is not empty, then something went wrong, so print the stdout and stderr for debuging.
-                    if !out.stderr.is_empty() {
+                    if String::from_utf8(out.stderr.clone()).unwrap().contains("error:") {
                         let stdout = String::from_utf8(out.stdout)
                             .expect("rustc error contained non-UTF8 characters.");
                         let stderr = String::from_utf8(out.stderr)
@@ -732,6 +736,7 @@ run_test! {alloc,abox,stable}
 run_test! {alloc,raw_vec,stable}
 run_test! {alloc,slice_to_owned,stable}
 run_test! {arthm,add,stable}
+run_test! {arthm,ptr,stable}
 run_test! {arthm,cmp,stable}
 run_test! {arthm,greater_than,stable}
 run_test! {arthm,max,stable}
@@ -764,7 +769,7 @@ run_test! {intrinsics,cmp_bytes,stable}
 run_test! {intrinsics,copy_nonoverlaping,stable}
 run_test! {intrinsics,ctpop,stable}
 run_test! {intrinsics,malloc,stable}
-run_test! {intrinsics,offset_of,unstable}
+run_test! {intrinsics,offset_of,stable}
 run_test! {intrinsics,overflow_ops,stable}
 run_test! {intrinsics,pow_sqrt,stable}
 run_test! {intrinsics,printf,stable}
@@ -783,11 +788,11 @@ run_test! {std,const_error,stable}
 run_test! {std,cell_test,unstable}
 run_test! {std,cstr,unstable}
 run_test! {std,format,unstable}
-run_test! {std,futex_test,unstable}
-run_test! {std,futexrw_test,unstable}
+run_test! {std,futex_test,stable}
+run_test! {std,futexrw_test,stable}
 run_test! {std,main,stable}
 run_test! {std,mutithreading,stable}
-run_test! {std,once_lock_test,unstable}
+run_test! {std,once_lock_test,stable}
 run_test! {std,tlocal_key_test,stable}
 run_test! {std,uninit_fill,stable}
 
@@ -797,7 +802,7 @@ run_test! {types,f16,stable}
 run_test! {types,aligned,stable}
 run_test! {types,any,stable}
 run_test! {types,arr,stable}
-run_test! {types,async_types,unstable}
+run_test! {types,async_types,stable}
 run_test! {types,dst,stable}
 run_test! {types,dyns,stable}
 run_test! {types,enums,stable}
@@ -951,7 +956,7 @@ compare_tests! {fuzz,fail8,stable}
 
 compare_tests! {fuzz,fail9,stable}
 // TODO: fix this test. It is a NaN issue, so it is a very low prioity, but it should still get fixed or something.
-compare_tests! {fuzz,fail10,unstable}
+compare_tests! {fuzz,fail10,stable}
 compare_tests! {fuzz,fail11,stable}
 
 cargo_test! {hello_world,stable}

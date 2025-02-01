@@ -3,7 +3,6 @@
     adt_const_params,
     associated_type_defaults,
     core_intrinsics,
-    start,
     unsized_const_params
 )]
 #![allow(
@@ -13,9 +12,7 @@
     dead_code,
     unused_unsafe
 )]
-#![no_std]
 include!("../common.rs");
-
 #[derive(Default)]
 struct Quad<T: Default> {
     a: T,

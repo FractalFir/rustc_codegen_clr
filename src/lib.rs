@@ -204,7 +204,7 @@ impl CodegenBackend for MyBackend {
         need_metadata_module: bool,
     ) -> Box<dyn Any> {
         {
-            let (_defid_set, cgus) = tcx.collect_and_partition_mono_items(());
+            let cgus = tcx.collect_and_partition_mono_items(());
 
             let mut asm = Assembly::default();
             if need_metadata_module {
@@ -218,7 +218,7 @@ impl CodegenBackend for MyBackend {
             }
             let _ = cilly::utilis::get_environ(&mut asm);
 
-            for cgu in cgus {
+            for cgu in cgus.codegen_units {
                 //println!("codegen {} has {} items.", cgu.name(), cgu.items().len());
                 for (item, _data) in cgu.items() {
                     assembly::add_item(&mut asm, *item, tcx).expect("Could not add function");
@@ -256,7 +256,14 @@ impl CodegenBackend for MyBackend {
                 .generic_activity("insert .NET FFI functions/types");
             //builtin::insert_ffi_functions(&mut asm, tcx);
             drop(ffi_compile_timer);
-            let name: IString = cgus.iter().next().unwrap().name().to_string().into();
+            let name: IString = cgus
+                .codegen_units
+                .iter()
+                .next()
+                .unwrap()
+                .name()
+                .to_string()
+                .into();
 
             Box::new((name, asm, metadata, CrateInfo::new(tcx, "clr".to_string())))
         }

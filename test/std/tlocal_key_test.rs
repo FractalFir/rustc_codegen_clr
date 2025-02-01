@@ -3,7 +3,6 @@
     adt_const_params,
     associated_type_defaults,
     core_intrinsics,
-    start,
     let_chains,
     never_type,
     unsized_const_params
@@ -19,7 +18,6 @@
     non_upper_case_globals,
     unused_unsafe
 )]
-#![no_std]
 #[allow(dead_code)]
 mod tlocal_key;
 use core::cell::Cell;

@@ -55,9 +55,36 @@ pub fn handle_rvalue<'tcx>(
     ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> (Vec<CILRoot>, CILNode) {
     match rvalue {
+         Rvalue::Len(operand) => {
+            let ty = ctx.monomorphize(operand.ty(ctx.body(), ctx.tcx()));
+            match ty.ty.kind() {
+                TyKind::Slice(inner) => {
+                    let slice_tpe = fat_ptr_to(*inner, ctx);
+                    let descriptor = FieldDesc::new(
+                        slice_tpe,
+                        ctx.alloc_string(crate::METADATA),
+                        cilly::v2::Type::Int(Int::USize),
+                    );
+                    let addr = crate::place::place_address_raw(operand, ctx);
+                    assert!(
+                        !matches!(addr, CILNode::LDLoc(_)),
+                        "improper addr {addr:?}. operand:{operand:?}"
+                    );
+                    (vec![], ld_field!(addr, ctx.alloc_field(descriptor)))
+                }
+                TyKind::Array(_ty, length) => {
+                    let len =
+                        crate::utilis::try_resolve_const_size(ctx.monomorphize(*length)).unwrap();
+                    (
+                        vec![],
+                        CILNode::V2(ctx.alloc_node(Const::USize(len as u64))),
+                    )
+                }
+                _ => todo!("Get length of type {ty:?}"),
+            }
+        }
         Rvalue::Use(operand) => (vec![], handle_operand(operand, ctx)),
         Rvalue::CopyForDeref(place) => (vec![], crate::place::place_get(place, ctx)),
-
         Rvalue::Ref(_region, _borrow_kind, place) => {
             (vec![], crate::place::place_adress(place, ctx))
         }

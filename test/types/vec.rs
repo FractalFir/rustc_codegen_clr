@@ -3,7 +3,6 @@
     adt_const_params,
     associated_type_defaults,
     core_intrinsics,
-    start,
     unsized_const_params
 )]
 #![allow(
@@ -13,8 +12,6 @@
     dead_code,
     improper_ctypes_definitions
 )]
-#![no_std]
-
 include!("../common.rs");
 struct Vec<T> {
     ptr: *mut T,

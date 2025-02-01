@@ -3,11 +3,9 @@
     adt_const_params,
     associated_type_defaults,
     core_intrinsics,
-    start,
     unsized_const_params
 )]
 #![allow(internal_features, incomplete_features, unused_variables, dead_code)]
-#![no_std]
 include!("../common.rs");
 fn main() {
     use core::any::Any;
@@ -21,5 +19,5 @@ fn main() {
     modify_if_u32(&mut x);
     modify_if_u32(&mut s);
     test_eq!(x, 42);
-    test_eq!(s, "starlord");
+    test_eq!(s.as_bytes(), b"starlord");
 }

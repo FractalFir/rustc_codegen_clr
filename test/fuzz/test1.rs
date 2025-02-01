@@ -3,7 +3,6 @@
     adt_const_params,
     associated_type_defaults,
     core_intrinsics,
-    start,
     unsized_const_params
 )]
 #![allow(
@@ -14,7 +13,6 @@
     unused_assignments,
     unused_imports
 )]
-#![no_std]
 include!("../common.rs");
 use core::intrinsics::{ceilf32, ctlz, cttz, floorf32, maxnumf32, minnumf32};
 

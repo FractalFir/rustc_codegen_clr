@@ -3,6 +3,7 @@ use cilly::{
     utilis::escape_class_name,
     v2::{FieldDesc, FieldIdx},
 };
+use rustc_hir::def_id::DefId;
 use rustc_middle::{
     mir::interpret::AllocId,
     ty::{
@@ -10,6 +11,7 @@ use rustc_middle::{
         PseudoCanonicalInput, SymbolName, Ty, TyCtxt, TyKind, TypeFoldable,
     },
 };
+
 pub mod adt;
 pub const CTOR_FN_NAME: &str = "rustc_clr_interop_managed_ctor";
 pub const MANAGED_CALL_FN_NAME: &str = "rustc_clr_interop_managed_call";
@@ -28,29 +30,27 @@ pub fn as_adt(ty: Ty) -> Option<(AdtDef, &List<GenericArg>)> {
         _ => None,
     }
 }
+// WARNING: this is *wrong*: For some reason, `Instance::try_resolve` should not operate on structs(why?), and this just silences the newly introduced warning.
+pub fn instance_try_resolve<'tcx>(
+    adt: DefId,
+    tcx: TyCtxt<'tcx>,
+    gargs: &'tcx List<GenericArg<'tcx>>,
+) -> Instance<'tcx> {
+    tcx.resolve_instance_raw(PseudoCanonicalInput {
+        typing_env: rustc_middle::ty::TypingEnv::fully_monomorphized(),
+        value: (adt, gargs),
+    })
+    .unwrap()
+    .unwrap()
+}
 pub fn adt_name<'tcx>(
     adt: AdtDef<'tcx>,
     tcx: TyCtxt<'tcx>,
     gargs: &'tcx List<GenericArg<'tcx>>,
 ) -> crate::IString {
-    //TODO: find a better way to get adt name!
-    let _gdef_str = if gargs
-        .iter()
-        .any(|garg| garg.as_type().is_some() || garg.as_const().is_some())
-    {
-        rustc_middle::ty::print::with_no_trimmed_paths! {tcx.def_path_str_with_args(adt.did(),gargs)}
-    } else {
-        rustc_middle::ty::print::with_no_trimmed_paths! {tcx.def_path_str(adt.did())}
-    };
+    //TODO: find a better way to get adt instances!
     let krate = adt.did().krate;
-    let adt_instance = Instance::try_resolve(
-        tcx,
-        rustc_middle::ty::TypingEnv::fully_monomorphized(),
-        adt.did(),
-        gargs,
-    )
-    .unwrap()
-    .unwrap();
+    let adt_instance = instance_try_resolve(adt.did(), tcx, gargs);
     // Get the mangled path: it is absolute, and not poluted by types being rexported
     let auto_mangled =
         rustc_symbol_mangling::symbol_name_for_instance_in_crate(tcx, adt_instance, krate);

@@ -3,7 +3,6 @@
     adt_const_params,
     associated_type_defaults,
     core_intrinsics,
-    start,
     let_chains,
     decl_macro,
     raw_os_error_ty

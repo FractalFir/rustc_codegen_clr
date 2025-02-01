@@ -37,7 +37,7 @@ pub fn unsize2<'tcx>(
         ctx.layout_of(operand.ty(ctx.body(), ctx.tcx())),
         ctx.layout_of(target),
     );
-    let fat_ptr_type = fat_ptr_to(Ty::new(ctx.tcx(), TyKind::Uint(UintTy::U8)), ctx);
+    let fat_ptr_type = fat_ptr_to(Ty::new_uint(ctx.tcx(), (UintTy::U8)), ctx);
 
     let metadata_field = FieldDesc::new(
         fat_ptr_type,

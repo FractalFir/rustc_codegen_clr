@@ -3,7 +3,6 @@
     adt_const_params,
     associated_type_defaults,
     core_intrinsics,
-    start,
     unsized_const_params
 )]
 #![allow(
@@ -13,7 +12,6 @@
     dead_code,
     unused_imports
 )]
-#![no_std]
 include!("../common.rs");
 struct DecrementOnDrop<'a>(&'a mut u32);
 impl Drop for DecrementOnDrop<'_> {

@@ -1,21 +1,13 @@
 #![feature(lang_items)]
 #![allow(internal_features)]
-#![no_std]
-#![feature(start)]
 #![feature(core_intrinsics)]
-use core::panic::PanicInfo;
-#[lang = "eh_personality"]
-fn rust_eh_personality() {}
 extern "C" {
     fn puts(string:*const u8);
     fn malloc(size:usize)->*mut ();
     fn free(ptr:*const ());
     fn realloc(ptr:*const (),size:usize)->*const ();
 }
-#[panic_handler]
-fn panic(_panic: &PanicInfo<'_>) -> ! {
-    loop {}
-}
+
 struct ASCIStr{
     ptr:*mut u8,
     len:isize,
@@ -50,17 +42,17 @@ impl ASCIStr{
         }
     }
 }
-/* 
+
 impl Drop for ASCIStr{
     fn drop(&mut self){
         unsafe{free(self.ptr().cast())};
     }
-}*/
+}
 struct Generic<T>{
     arg:T,
 }
-#[start]
-fn main(argc:isize,argv: *const *const u8) -> isize{
+
+fn main() {
     unsafe{
         let mut asci_str = ASCIStr::new();
         asci_str.push_char('R');

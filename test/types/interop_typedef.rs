@@ -3,7 +3,6 @@
     adt_const_params,
     associated_type_defaults,
     core_intrinsics,
-    start,
     unsized_const_params
 )]
 #![allow(
@@ -14,7 +13,6 @@
     improper_ctypes_definitions,
     improper_ctypes
 )]
-
 use core::hint::black_box;
 pub struct ClassDef {
     prevent_construction: usize,

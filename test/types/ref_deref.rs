@@ -3,11 +3,9 @@
     adt_const_params,
     associated_type_defaults,
     core_intrinsics,
-    start,
     unsized_const_params
 )]
 #![allow(internal_features, incomplete_features, unused_variables, dead_code)]
-#![no_std]
 include!("../common.rs");
 extern "C" {
     static __rust_no_alloc_shim_is_unstable: u8;

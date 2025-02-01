@@ -3,7 +3,6 @@
     adt_const_params,
     associated_type_defaults,
     core_intrinsics,
-    start,
     unsized_const_params
 )]
 #![allow(
@@ -13,7 +12,6 @@
     dead_code,
     unused_imports
 )]
-#![no_std]
 include!("../common.rs");
 fn main() {
     let n = 0b01001100u32;

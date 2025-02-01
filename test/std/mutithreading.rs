@@ -3,7 +3,6 @@
     adt_const_params,
     associated_type_defaults,
     core_intrinsics,
-    start,
     let_chains,
     never_type,
     unsized_const_params
@@ -18,9 +17,7 @@
     private_interfaces,
     non_upper_case_globals,
     unused_unsafe,
-    improper_ctypes
-)]
-#![allow(
+    improper_ctypes,
     dead_code,
     mutable_transmutes,
     non_camel_case_types,
@@ -29,8 +26,6 @@
     unused_assignments,
     unused_mut
 )]
-#![no_std]
-
 include!("../common.rs");
 fn thread_start(data: *mut ()) {
     unsafe { printf(c"Hello from a launched thread!\n".as_ptr()) };

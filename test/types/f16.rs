@@ -2,16 +2,11 @@
     lang_items,
     associated_type_defaults,
     core_intrinsics,
-    start,
     unsized_const_params,
     f16
 )]
 #![allow(internal_features, incomplete_features, unused_variables, dead_code)]
-#![no_std]
 include!("../common.rs");
-#[inline(never)]
-#[no_mangle]
-
 fn main() {
     // 1st. Check that a const f16 can be created.
     let zero = black_box(0_f16);

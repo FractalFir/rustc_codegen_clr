@@ -1,5 +1,5 @@
 #![allow(internal_features,unused_imports,incomplete_features,unused_variables,dead_code,improper_ctypes_definitions)]
-#![feature(lang_items,adt_const_params,associated_type_defaults,core_intrinsics,start)]
+#![feature(lang_items,adt_const_params,associated_type_defaults,core_intrinsics)]
 use mycorrhiza::{start,panic_handler};
 fn main() {
     let sb = mycorrhiza::system::text::StringBuilder::empty();

@@ -3,11 +3,9 @@
     adt_const_params,
     associated_type_defaults,
     core_intrinsics,
-    start,
     unsized_const_params
 )]
 #![allow(internal_features, incomplete_features, unused_variables, dead_code)]
-#![no_std]
 include!("../common.rs");
 use core::mem::offset_of;
 type Tuple = (u64, [i128; 4], u32, f64);

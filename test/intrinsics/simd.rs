@@ -3,13 +3,11 @@
     adt_const_params,
     associated_type_defaults,
     core_intrinsics,
-    start,
     ptr_metadata,
     unsized_const_params,
     portable_simd
 )]
 #![allow(internal_features, incomplete_features, unused_variables, dead_code)]
-#![no_std]
 include!("../common.rs");
 use core::simd::Simd;
 fn main() {

@@ -3,7 +3,6 @@
     adt_const_params,
     associated_type_defaults,
     core_intrinsics,
-    start,
     unsized_const_params
 )]
 #![allow(
@@ -12,10 +11,9 @@
     unused_variables,
     dead_code,
     improper_ctypes_definitions,
-    improper_ctypes
+    improper_ctypes,
+    unboxed_closures
 )]
-#![no_std]
-#![feature(unboxed_closures)]
 include!("../common.rs");
 type Object = RustcCLRInteropManagedClass<"System.Runtime", "System.Object">;
 type MString = RustcCLRInteropManagedClass<"System.Runtime", "System.String">;

@@ -3,7 +3,6 @@
     adt_const_params,
     associated_type_defaults,
     core_intrinsics,
-    start,
     let_chains,
     never_type,
     unsized_const_params
@@ -18,7 +17,6 @@
     private_interfaces,
     non_upper_case_globals
 )]
-#![no_std]
 #[allow(dead_code)]
 use core::cell::Cell;
 include!("../common.rs");

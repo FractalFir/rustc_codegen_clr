@@ -11,7 +11,6 @@
     adt_const_params,
     associated_type_defaults,
     core_intrinsics,
-    start
 )]
 
 use mycorrhiza::{panic_handler, start};

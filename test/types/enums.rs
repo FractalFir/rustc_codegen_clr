@@ -3,13 +3,10 @@
     adt_const_params,
     associated_type_defaults,
     core_intrinsics,
-    start,
     unsized_const_params
 )]
 #![allow(internal_features, incomplete_features, unused_variables, dead_code)]
-#![no_std]
 include!("../common.rs");
-
 #[derive(Clone, Copy)]
 enum Animal {
     Cow(u8),

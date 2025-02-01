@@ -3,7 +3,6 @@
     adt_const_params,
     associated_type_defaults,
     core_intrinsics,
-    start,
     unsized_const_params,
     int_roundings
 )]
@@ -14,7 +13,6 @@
     dead_code,
     unused_imports
 )]
-#![no_std]
 use core::num::NonZero;
 include!("../common.rs");
 extern "C" {

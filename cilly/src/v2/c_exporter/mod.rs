@@ -71,7 +71,7 @@ fn escape_ident(ident: &str) -> String {
     match escaped.as_str() {
         "int" | "default" | "float" | "double" | "long" | "short" | "register" | "stderr"
         | "environ" | "struct" | "union" | "linux" | "inline" | "asm" | "signed" | "unsigned"
-        | "bool" | "char" | "case" | "switch" | "volatile" | "auto" | "void" | "unix"  => {
+        | "bool" | "char" | "case" | "switch" | "volatile" | "auto" | "void" | "unix" => {
             format!("i{}", encode(hash64(&escaped)))
         }
         _ => escaped,
@@ -1426,10 +1426,10 @@ pub fn name_sig_class_to_mangled(
         None => todo!(),
     };
 }
-fn escape_nonfn_name(name:&str)->String{
+fn escape_nonfn_name(name: &str) -> String {
     let res = escape_ident(name);
-    match res.as_ref(){
-        "sigaction"=>"sigactn".to_owned(),
-        _=>res,
+    match res.as_ref() {
+        "sigaction" => "sigactn".to_owned(),
+        _ => res,
     }
 }

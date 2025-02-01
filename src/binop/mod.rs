@@ -141,14 +141,7 @@ pub(crate) fn binop<'tcx>(
                 .get_lang_items(())
                 .get(LangItem::OrderingEnum)
                 .unwrap();
-            let ordering = Instance::try_resolve(
-                ctx.tcx(),
-                rustc_middle::ty::TypingEnv::fully_monomorphized(),
-                ordering,
-                List::empty(),
-            )
-            .unwrap()
-            .unwrap();
+            let ordering = crate::utilis::instance_try_resolve(ordering, ctx.tcx(), List::empty());
             let ordering_ty = ordering.ty(
                 ctx.tcx(),
                 rustc_middle::ty::TypingEnv::fully_monomorphized(),

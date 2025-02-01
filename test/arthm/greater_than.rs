@@ -3,12 +3,9 @@
     adt_const_params,
     associated_type_defaults,
     core_intrinsics,
-    start,
     unsized_const_params
 )]
 #![allow(internal_features, incomplete_features, unused_variables, dead_code)]
-#![no_std]
-
 include!("../common.rs");
 fn main() {
     let a = 27340181294056582_usize;

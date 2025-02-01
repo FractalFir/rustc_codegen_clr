@@ -3,7 +3,6 @@
     adt_const_params,
     associated_type_defaults,
     core_intrinsics,
-    start,
     fundamental,
     ptr_internals,
     sized_type_properties,
@@ -19,7 +18,6 @@
     private_interfaces,
     unused_mut
 )]
-#![no_std]
 include!("../common.rs");
 use core::mem;
 use core::mem::SizedTypeProperties;
@@ -207,18 +205,24 @@ pub struct ScalarSizeMismatch {
 }
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub struct AllocError;
-#[lang = "owned_box"]
-#[fundamental]
+
+
 pub struct Box<T>(Unique<T>, Alloc);
 impl<T> Box<T> {
+    fn as_ptr(&self)->*const T{
+        self.0.as_ptr()
+    }
+    fn as_mut_ptr(&mut self)->*mut T{
+        unsafe{self.0.as_mut()}
+    }
     #[must_use]
     #[inline]
     pub fn new_in(x: T, alloc: Alloc) -> Self {
         let mut boxed = Self::new_uninit_in(alloc);
-        test_ne!(boxed.as_ptr(), 0_usize as *const T);
+        test_ne!(boxed.as_ptr(), 0_usize as *const _);
 
         unsafe {
-            boxed.as_mut_ptr().write(x);
+            (*boxed.as_mut_ptr()).write(x);
         }
         unsafe { core::mem::transmute(boxed) }
     }

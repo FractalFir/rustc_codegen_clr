@@ -3,16 +3,12 @@
     adt_const_params,
     associated_type_defaults,
     core_intrinsics,
-    start,
     ptr_metadata,
     unsized_const_params
 )]
 #![allow(internal_features, incomplete_features, unused_variables, dead_code)]
-#![no_std]
 include!("../common.rs");
-
 use core::mem::ManuallyDrop;
-
 fn main() {
     let res = unsafe { r#try(|| black_box(2) + 2) };
     match res {

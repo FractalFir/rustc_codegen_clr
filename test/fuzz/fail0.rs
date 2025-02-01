@@ -3,7 +3,6 @@
     adt_const_params,
     associated_type_defaults,
     core_intrinsics,
-    start,
     unsized_const_params
 )]
 #![allow(
@@ -13,7 +12,6 @@
     dead_code,
     invalid_value
 )]
-#![no_std]
 include!("../common.rs");
 use core::mem::MaybeUninit;
 #[derive(Copy, Clone)]

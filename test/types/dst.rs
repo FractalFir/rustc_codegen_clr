@@ -1,10 +1,8 @@
-#![no_std]
 #![feature(
     lang_items,
     adt_const_params,
     associated_type_defaults,
     core_intrinsics,
-    start,
     error_generic_member_access,
     unsized_const_params
 )]

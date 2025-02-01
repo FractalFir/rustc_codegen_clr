@@ -3,13 +3,11 @@
     adt_const_params,
     associated_type_defaults,
     core_intrinsics,
-    start,
     ascii_char,
     slice_internals,
     unsized_const_params
 )]
 #![allow(internal_features, incomplete_features, unused_variables, dead_code)]
-#![no_std]
 include!("../common.rs");
 // 7 bytes
 #[derive(Default, Clone, Copy)]

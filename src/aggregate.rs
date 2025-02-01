@@ -3,7 +3,7 @@ use crate::{
     operand::handle_operand,
     place::{place_get, place_set},
     r#type::{get_type, pointer_to_is_fat},
-    utilis::{adt::set_discr, field_name},
+    utilis::{adt::set_discr, field_name, instance_try_resolve},
 };
 use cilly::{
     cil_node::CILNode,
@@ -40,11 +40,8 @@ pub fn handle_aggregate<'tcx>(
             let penv = rustc_middle::ty::TypingEnv::fully_monomorphized();
             let subst = ctx.monomorphize(*subst);
             //eprintln!("Preparing to resolve {adt_def:?} {subst:?}");
-            let adt_type = Instance::try_resolve(ctx.tcx(), penv, *adt_def, subst);
-
+            let adt_type = instance_try_resolve(*adt_def,ctx.tcx(),  subst);
             let adt_type = adt_type
-                .expect("Could not resolve instance")
-                .expect("Could not resolve instance")
                 .ty(ctx.tcx(), penv);
             let adt_type = ctx.monomorphize(adt_type);
             let TyKind::Adt(adt_def, subst) = adt_type.kind() else {

@@ -3,12 +3,9 @@
     adt_const_params,
     associated_type_defaults,
     core_intrinsics,
-    start,
     unsized_const_params
 )]
 #![allow(internal_features, incomplete_features, unused_variables, dead_code)]
-#![no_std]
-
 include!("../common.rs");
 fn main() {
     let tst = black_box(Some((0_usize, 85_u32)));

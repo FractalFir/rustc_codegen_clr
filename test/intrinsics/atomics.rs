@@ -3,7 +3,6 @@
     adt_const_params,
     associated_type_defaults,
     core_intrinsics,
-    start,
     unsized_const_params,
     strict_provenance_atomic_ptr
 )]
@@ -14,10 +13,8 @@
     dead_code,
     unused_unsafe
 )]
-#![no_std]
 use core::sync::atomic::AtomicPtr;
 use core::sync::atomic::Ordering::SeqCst;
-
 include!("../common.rs");
 extern crate core;
 extern "C" {

@@ -172,7 +172,7 @@ pub fn get_type<'tcx>(ty: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_>) -> Typ
             if pointer_to_is_fat(*inner, ctx.tcx(), ctx.instance()) {
                 let inner = match inner.kind() {
                     TyKind::Slice(inner) => ctx.monomorphize(*inner),
-                    TyKind::Str => Ty::new(ctx.tcx(), TyKind::Uint(UintTy::U8)),
+                    TyKind::Str => Ty::new_uint(ctx.tcx(), UintTy::U8),
                     _ => ctx.monomorphize(*inner),
                 };
                 Type::ClassRef(fat_ptr_to(inner, ctx))

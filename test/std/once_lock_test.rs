@@ -3,13 +3,11 @@
     adt_const_params,
     associated_type_defaults,
     core_intrinsics,
-    start,
     let_chains,
     never_type,
     unsized_const_params
 )]
 #![allow(internal_features, incomplete_features, unused_variables, dead_code)]
-#![no_std]
 #[allow(dead_code)]
 mod futex;
 mod once_lock;

@@ -1,4 +1,4 @@
-#![feature(start, core_intrinsics, lang_items)]
+#![feature( core_intrinsics, lang_items)]
 use fastrand::*;
 use mycorrhiza::{panic_handler, start};
 use std::hint::black_box;

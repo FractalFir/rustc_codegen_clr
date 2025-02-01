@@ -2,8 +2,7 @@
     maybe_uninit_fill,
     unsized_const_params,
     core_intrinsics,
-    lang_items,
-    start
+    lang_items
 )]
 #![allow(
     unused_variables,
@@ -12,7 +11,6 @@
     dead_code,
     internal_features
 )]
-#![no_std]
 include!("../common.rs");
 extern "C" {
     fn memcmp(s1: *const u8, s2: *const u8, n: usize) -> i32;

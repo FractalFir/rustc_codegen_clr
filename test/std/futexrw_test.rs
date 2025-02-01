@@ -3,7 +3,6 @@
     adt_const_params,
     associated_type_defaults,
     core_intrinsics,
-    start,
     let_chains,
     never_type,
     negative_impls,
@@ -19,7 +18,6 @@
     private_interfaces,
     non_upper_case_globals
 )]
-//#![no_std]
 #[allow(dead_code)]
 mod futexrw;
 extern crate core;
