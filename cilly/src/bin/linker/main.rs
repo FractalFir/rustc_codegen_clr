@@ -22,7 +22,7 @@ use fxhash::FxHashMap;
 use patch::call_alias;
 use std::{
     env,
-    io::{Read, Write},
+    io::Write,
     num::NonZeroU32,
     path::{Path, PathBuf},
 };

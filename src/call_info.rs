@@ -64,14 +64,14 @@ impl CallInfo {
             ))?,*/
             _ => todo!("Unsuported ABI:{internal_abi:?}"),
         };
-        let mut sig = FnSig::new(args.into(), ret);
+        let mut sig = FnSig::new(args, ret);
         if fn_abi.c_variadic {
             let remaining = fn_abi.args[(fn_abi.fixed_count as usize)..]
                 .iter()
                 .map(|ty| get_type(ctx.monomorphize(ty.layout.ty), ctx));
             let mut inputs = sig.inputs().to_vec();
             inputs.extend(remaining);
-            sig.set_inputs(inputs.into());
+            sig.set_inputs(inputs);
         }
         Self {
             sig,

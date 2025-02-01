@@ -61,7 +61,7 @@ impl Assembly {
             sig.inputs()
                 .iter()
                 .map(|tpe| self.translate_type(source, *tpe))
-                .collect(),
+                .collect::<Box<_>>(),
             self.translate_type(source, *sig.output()),
         )
     }

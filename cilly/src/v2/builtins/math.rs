@@ -245,8 +245,6 @@ fn bitreverse_u128(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
     let generator = move |_, asm: &mut Assembly| {
         let u128_class = ClassRef::uint_128(asm);
         let u128_class = asm[u128_class].clone();
-        let u128_ctor = u128_class.ctor(&[Type::Int(Int::U64), Type::Int(Int::U64)], asm);
-
         let mut shift = 64;
         //let op_add = asm.alloc_string("op_Addition");
         let op_and = asm.alloc_string("op_BitwiseAnd");

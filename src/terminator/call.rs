@@ -585,7 +585,7 @@ pub fn call<'tcx>(
                 .map(|operand| {
                     ctx.type_from_cache(ctx.monomorphize(operand.node.ty(ctx.body(), ctx.tcx())))
                 })
-                .collect(),
+                .collect::<Box<_>>(),
         );
     }
     if args.len() < signature.inputs().len() {

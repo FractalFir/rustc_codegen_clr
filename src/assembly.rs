@@ -273,7 +273,7 @@ fn allocation_initializer_method(
     Method::new(
         AccessModifer::Private,
         MethodType::Static,
-        FnSig::new(Box::new([]), uint8_ptr),
+        FnSig::new([], uint8_ptr),
         &format!("init_{name}"),
         vec![(Some("alloc_ptr".into_idx(asm)), uint8_ptr_idx)],
         vec![BasicBlock::new(trees, 0, None)],

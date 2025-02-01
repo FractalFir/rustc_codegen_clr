@@ -71,7 +71,7 @@ pub fn sig_from_instance_<'tcx>(
         ))?,*/
         _ => todo!("Unsuported ABI:{internal_abi:?}"),
     }
-    Ok(FnSig::new(args.into(), ret))
+    Ok(FnSig::new(args, ret))
 }
 
 /// Checks if this function is variadic.

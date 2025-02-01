@@ -204,7 +204,7 @@ pub fn handle_terminator<'tcx>(
                             }
                             .into(),
                             CILRoot::CallI {
-                                sig: Box::new(FnSig::new(Box::new([void_ptr]), Type::Void)),
+                                sig: Box::new(FnSig::new([void_ptr], Type::Void)),
                                 fn_ptr: Box::new(drop_fn_ptr),
                                 args: [obj_ptr].into(),
                             }

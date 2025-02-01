@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use super::{
-    opt::{self, blockid_from_jump},
+    opt,
     Assembly, CILNode, CILRoot, RootIdx,
 };
 use crate::basic_block::BasicBlock as V1Block;
@@ -179,21 +179,19 @@ impl BasicBlock {
     /// Removes this blocks handler.
     /// ```
     /// # use cilly::v2::BasicBlock;
+    /// # let mut asm = cilly::v2::Assembly::default();
     /// let mut block = BasicBlock::new(vec![],0,Some(vec![BasicBlock::new(vec![],1,None)]));
     /// assert!(block.handler().is_some());
     /// // Add another block to this handler
-    /// block.remove_handler();
+    /// block.remove_handler(&mut asm);
     /// assert!(block.handler().is_none());
     /// ```
     pub fn remove_handler(&mut self, asm: &mut Assembly) {
         self.handler = None;
         self.roots_mut()
             .iter_mut()
-            .for_each(|root| match asm[*root] {
-                CILRoot::ExitSpecialRegion { target, source: _ } => {
-                    *root = asm.alloc_root(CILRoot::Branch(Box::new((target, 0, None))));
-                }
-                _ => (),
+            .for_each(|root| if let CILRoot::ExitSpecialRegion { target, source: _ } = asm[*root] {
+                *root = asm.alloc_root(CILRoot::Branch(Box::new((target, 0, None))));
             });
     }
 }

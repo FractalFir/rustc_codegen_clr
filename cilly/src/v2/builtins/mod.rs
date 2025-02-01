@@ -634,7 +634,7 @@ pub fn argc_argv_init(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
         let mut init_method = Method::new(
             crate::access_modifier::AccessModifer::Extern,
             crate::method::MethodType::Static,
-            FnSig::new(Box::new([]), Type::Void),
+            FnSig::new([], Type::Void),
             "argc_argv_init",
             vec![],
             vec![],

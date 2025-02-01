@@ -2,7 +2,6 @@ use fxhash::{FxHashMap, FxHashSet};
 use serde::{Deserialize, Serialize};
 
 use super::{
-    basic_block::BlockId,
     bimap::{BiMapIndex, IntoBiMapIndex},
     cilnode::MethodKind,
     Access, Assembly, BasicBlock, CILIterElem, CILNode, ClassDefIdx, ClassRef, ClassRefIdx, Int,
@@ -421,13 +420,13 @@ impl MethodDef {
                     let local_addr = asm.alloc_node(CILNode::LdLoc(local_id as u32));
                     let root = root.map(
                         asm,
-                        &mut |root, asm| match root {
+                        &mut |root, _| match root {
                             CILRoot::StLoc(loc, val) if loc == local_id as u32 => {
                                 CILRoot::StInd(Box::new((local_addr, val, tpe, false)))
                             }
                             _ => root,
                         },
-                        &mut |node, asm| match node {
+                        &mut |node, _| match node {
                             CILNode::LdLocA(loc) if loc == local_id as u32 => {
                                 CILNode::LdLoc(local_id as u32)
                             }

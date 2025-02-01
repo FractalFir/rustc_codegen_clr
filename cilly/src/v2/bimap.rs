@@ -67,7 +67,7 @@ impl<Key: IntoBiMapIndex + Eq + Hash + Clone + Debug, Value: Eq + Hash + Clone +
     }
 
     pub fn map_values(&mut self, map: impl Fn(&mut Value)) {
-        self.0.iter_mut().map(&map);
+        self.0.iter_mut().for_each(&map);
         self.1 = self
             .1
             .iter()

@@ -1,4 +1,4 @@
-use super::{OptFuel, SideEffectInfoCache};
+use super::OptFuel;
 use crate::v2::{
     cilnode::MethodKind, Assembly, CILIter, CILIterElem, CILNode, CILRoot, MethodDef, MethodImpl,
     MethodRefIdx, NodeIdx, RootIdx,
@@ -48,9 +48,6 @@ fn trivial_inline_node(
         return None;
     };
     let tree_node = asm.get_node(*tree).clone();
-
-    // Can only trivialy inline methods if the address of the arguments is never taken  - this is the only way to prove they are not overwritten.
-    let mut sec = SideEffectInfoCache::default();
     // TODO: consider allocating new locals, and taking their address instead. That ought to gurantee the original data is not clobbered.
     if CILIter::new(tree_node.clone(), asm)
         .any(|node| matches!(node, CILIterElem::Node(CILNode::LdArgA(_))))

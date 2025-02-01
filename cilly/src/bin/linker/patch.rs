@@ -74,8 +74,8 @@ pub fn call_alias(
                                 asm.alloc_node(CILNode::PtrCast(arg, Box::new(PtrCastRes::FnPtr(*dst))))
                             }
                             (
-                                Type::Ptr(_) | Type::Int(Int::ISize | Int::USize) | Type::FnPtr(_),
-                                Type::Ptr(_) | Type::Int(Int::ISize | Int::USize) | Type::FnPtr(_),
+                                Type::Int(Int::ISize | Int::USize),
+                                Type::Ptr(_) | Type::FnPtr(_),
                             )  => {
                                 asm.alloc_node(CILNode::LdArg(arg as u32))
                             },

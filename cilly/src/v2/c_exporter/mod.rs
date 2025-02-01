@@ -1388,7 +1388,7 @@ impl Exporter for CExporter {
                 // Write section data.
                 std::fs::File::create(&meta_path)
                     .unwrap()
-                    .write_all(&rustc)
+                    .write_all(rustc)
                     .unwrap();
                 let copy = std::process::Command::new("objcopy")
                     .arg(target)

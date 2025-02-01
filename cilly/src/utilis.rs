@@ -48,7 +48,7 @@ pub fn get_environ(asm: &mut Assembly) -> MethodRefIdx {
     let mut get_environ = Method::new(
         crate::access_modifier::AccessModifer::Extern,
         crate::method::MethodType::Static,
-        FnSig::new(Box::new([]), uint8_ptr_ptr),
+        FnSig::new([], uint8_ptr_ptr),
         "get_environ",
         vec![],
         vec![],

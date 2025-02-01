@@ -22,9 +22,9 @@ pub struct FnSig {
 
 impl FnSig {
     #[must_use]
-    pub fn new(input: Box<[Type]>, output: Type) -> Self {
+    pub fn new(input: impl Into<Box<[Type]>>, output: Type) -> Self {
         Self {
-            inputs: input,
+            inputs: input.into(),
             output,
         }
     }
@@ -38,7 +38,12 @@ impl FnSig {
     pub fn output(&self) -> &Type {
         &self.output
     }
-
+    /// Itereates trough all the inputs of this sig.
+    /// ```
+    /// # use cilly::v2::{Type,FnSig};
+    /// let sig = FnSig::new([Type::PlatformString],Type::Void);
+    /// assert_eq!(sig.iter_types().next(),Some(Type::PlatformString));
+    /// ```
     pub fn iter_types(&self) -> impl Iterator<Item = Type> + '_ {
         self.inputs()
             .iter()
@@ -49,8 +54,15 @@ impl FnSig {
     pub fn inputs_mut(&mut self) -> &mut Box<[Type]> {
         &mut self.inputs
     }
-
-    pub fn set_inputs(&mut self, inputs: Box<[Type]>) {
-        self.inputs = inputs;
+    /// Changes the inputs of this function to *inputs*.
+    /// ```
+    /// # use cilly::v2::{Type,FnSig};
+    /// # let mut sig = FnSig::new([Type::PlatformString],Type::Void);
+    /// assert_eq!(sig.inputs().len(),1);
+    /// sig.set_inputs([Type::PlatformString,Type::PlatformChar]);
+    /// assert_eq!(sig.inputs().len(),2);
+    /// ```
+    pub fn set_inputs(&mut self, inputs: impl Into<Box<[Type]>>) {
+        self.inputs = inputs.into();
     }
 }

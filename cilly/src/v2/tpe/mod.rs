@@ -85,7 +85,7 @@ impl Type {
     /// # use cilly::v2::Int;
     /// # let asm = cilly::v2::Assembly::default();
     /// assert_eq!(Type::PlatformString.mangle(&asm),"st");
-    /// assert_eq!(Type::Int(Int::I128).mangle(&asm),"i16");
+    /// assert_eq!(Type::Int(Int::I128).mangle(&asm),"i128");
     /// ```
     #[must_use]
     pub fn mangle(&self, asm: &Assembly) -> String {

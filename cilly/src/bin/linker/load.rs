@@ -30,7 +30,7 @@ fn load_ar(
     while let Some(entry_result) = archive.next_entry() {
         let mut entry = entry_result?;
         let name: String = String::from_utf8_lossy(entry.header().identifier()).into();
-        let ext = if let Some(ext) = name.split('.').last() {
+        let ext = if let Some(ext) = name.split('.').next_back() {
             ext
         } else {
             continue;

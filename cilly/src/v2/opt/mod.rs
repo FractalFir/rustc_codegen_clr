@@ -1,13 +1,11 @@
-use fxhash::{FxHashMap, FxHashSet};
-use inline::inline_trivial_call_root;
 use root::root_opt;
 
 #[cfg(test)]
 use super::Float;
 
 use super::{
-    cilroot::BranchCond, method::LocalDef, typecheck::display_typecheck_err, BasicBlock, BinOp,
-    CILIter, CILIterElem, CILNode, CILRoot, Const, Int, MethodImpl, NodeIdx, RootIdx, SigIdx, Type,
+    cilroot::BranchCond, method::LocalDef, typecheck::display_typecheck_err, BasicBlock,
+    CILIter, CILIterElem, CILNode, CILRoot, Int, MethodImpl, NodeIdx, RootIdx, SigIdx, Type,
 };
 use crate::v2::{Assembly, MethodDef};
 pub use opt_fuel::OptFuel;
@@ -36,7 +34,7 @@ impl CILNode {
     // The complexity of this function is unavoidable.
     #[allow(clippy::too_many_lines)]
     #[must_use]
-    pub fn propagate_locals(
+    fn propagate_locals(
         &self,
         asm: &mut Assembly,
         idx: LocalPropagate,
@@ -701,14 +699,14 @@ impl MethodDef {
         cache: &mut SideEffectInfoCache,
     ) {
         if let MethodImpl::MethodBody { blocks, .. } = self.implementation_mut() {
-            let has_targets: FxHashMap<_, bool> = blocks
+            /*let has_targets: FxHashMap<_, bool> = blocks
                 .iter()
                 .map(|block| (block.block_id(), block.targets(asm).next().is_some()))
                 .collect();
             let blocks_copy: FxHashMap<_, _> = blocks
                 .iter()
                 .map(|block| (block.block_id(), block.clone()))
-                .collect();
+                .collect();*/
             for block in blocks.iter_mut() {
                 /* if let CILRoot::Branch(info) =
                     &asm[*block.roots().last().expect("Blocks can't be empty")]
@@ -959,6 +957,7 @@ fn is_branch_unconditional_test() {
 }
 #[test]
 fn local_prop() {
+    use crate::v2::BinOp;
     let mut asm = Assembly::default();
     let arg0 = asm.alloc_node(CILNode::LdArg(0));
     let stloc_0 = asm.alloc_root(CILRoot::StLoc(0, arg0));
@@ -982,6 +981,7 @@ fn local_prop() {
 }
 #[test]
 fn remove_nops() {
+    use crate::v2::BinOp;
     let mut asm = Assembly::default();
     let arg0 = asm.alloc_node(CILNode::LdArg(0));
     let stloc_0 = asm.alloc_root(CILRoot::StLoc(0, arg0));
@@ -1049,6 +1049,7 @@ fn linearize_blocks(blocks: &[BasicBlock], asm: &Assembly) -> Option<BasicBlock>
     }
     Some(BasicBlock::new(res, blocks[0].block_id(), None))
 }
+#[allow(dead_code)]
 fn linearilze_best_span(blocks: &mut [BasicBlock], asm: &Assembly) {
     let mut best_score = 1;
     let mut best_span_start = 0;

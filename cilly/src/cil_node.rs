@@ -224,7 +224,7 @@ pub enum CILNode {
 }
 
 impl CILNode {
-    pub fn stack_addr(val: Self, tpe_idx: TypeIdx, asm: &mut Assembly) -> Self {
+    pub fn stack_addr(val: Self, tpe_idx: TypeIdx, _asm: &mut Assembly) -> Self {
         /*let main_module = *asm.main_module();
         let tpe = asm[tpe_idx];
         let sig = asm.sig([tpe], Type::Ptr(tpe_idx));
@@ -615,10 +615,6 @@ impl CILNode {
                 idx.allocate_tmps(curr_loc, locals);
             }
         };
-    }
-
-    pub(crate) fn try_const_eval(&self) -> Option<Self> {
-        None
     }
 }
 

@@ -59,7 +59,12 @@
     }
     impl PrintFDebug for f32{
         unsafe fn printf_debug(&self){
-            printf(c"%f".as_ptr(),*self as core::ffi::c_double);
+			if *self != *self{
+				printf(c"nan".as_ptr());
+			}
+            else{
+				printf(c"%f".as_ptr(),*self as core::ffi::c_double);
+			}
         }
     }
     impl PrintFDebug for f64{
@@ -1187,9 +1192,9 @@ let _18: isize;
 let _19: isize;
 let _20: ();
 let _21: ();
+let invalid:*const i128;
 {
 RET = '\u{591ea}' as u16;
-_4.1 = _2 < _2;
 _4.1 = false;
 _5 = -_6;
 RET = 39382_u16;
@@ -1229,10 +1234,9 @@ _3 = _7;
 _6 = -_1;
 _9 = [1610951545_u32,3860918915_u32,3849074464_u32,743040670_u32,3561077515_u32,773281783_u32,3874470772_u32];
 _4.0 = RET as usize;
-Call(_4.2 = fn4(_4.1, _1, _8, _4.1, _6, _4.1, _7, _8, _3), ReturnTo(bb4), UnwindUnreachable())
+Call(invalid = fn4(_4.1, _1, _8, _4.1, _6, _4.1, _7, _8, _3), ReturnTo(bb4), UnwindUnreachable())
 }
 bb4 = {
-
 RET = 44022_u16 * 12072_u16;
 Call(_20 = dump_var(3_usize, 4_usize, Move(_4), 1_usize, Move(_1), 8_usize, Move(_8), 6_usize, Move(_6)), ReturnTo(bb17), UnwindUnreachable())
 }
@@ -1332,8 +1336,6 @@ _20.0 = _3;
 _16 = 2965_u16 as f32;
 _16 = 1780939326_i32 as f32;
 _15.0 = 11553623301210238130_u64 as i16;
-
-
 _16 = _2;
 _10 = !_11;
 _24 = _1 & _1;
@@ -1353,7 +1355,7 @@ RET = core::ptr::addr_of!(_41);
 _8 = !_28;
 (*RET) = 14675936918923860084_u64 as i128;
 _17 = ['\u{e6b78}','\u{e6b78}','\u{e6b78}','\u{e6b78}','\u{e6b78}','\u{e6b78}'];
-Call(_44 = dump_var(4_usize, 2_usize, Move(_2), 2_usize, Move(_2), 13_usize, Move(_13), 4_usize, Move(_4)), ReturnTo(bb19), UnwindUnreachable())
+Call(_44 = dump_var(4_usize, 2_usize, Move(_2), 5_usize, Move(_5), 13_usize, Move(_13), 4_usize, Move(_4)), ReturnTo(bb19), UnwindUnreachable())
 }
 bb19 = {
 Call(_44 = dump_var(4_usize, 33_usize, Move(_33), 24_usize, Move(_24), 10_usize, Move(_10), 17_usize, Move(_17)), ReturnTo(bb20), UnwindUnreachable())

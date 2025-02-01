@@ -768,7 +768,7 @@ impl Assembly {
                 self.method_defs
                     .iter()
                     .filter(|(_, def)| !matches!(def.implementation(), MethodImpl::Extern { .. }))
-                    .map(|(id, def)| *id),
+                    .map(|(id, _)| *id),
             );
         }
         while !previosly_ressurected.is_empty() {
@@ -1086,7 +1086,8 @@ impl Assembly {
     /// Preforms a "shallow" GC pass on all method defs, removing them if and only if:
     /// 1. They are not referenced by anything inside this assembly
     /// 2. They are not accessible from outside of it.
-    /// WARNING: This gc is highly conservative, and will often not collect some things.
+    /// 
+    /// **WARNING**: This gc is highly conservative, and will often not collect some things.
     /// To improve its accuracy, first do `link_gc`.
     pub fn shallow_methodef_gc(&mut self) {
         let live: FxHashSet<MethodRefIdx> = self
@@ -1292,12 +1293,12 @@ impl Assembly {
             Type::Float(float) => float.size().into(),
             Type::PlatformString => self.ptr_size(),
             Type::PlatformChar => 1,
-            Type::PlatformGeneric(_, generic_kind) => todo!(),
+            Type::PlatformGeneric(_, _) => todo!(),
             Type::PlatformObject => self.ptr_size(),
             Type::Bool => 1,
             Type::Void => 0,
-            Type::PlatformArray { elem, dims } => todo!(),
-            Type::FnPtr(sig_idx) => self.ptr_size(),
+            Type::PlatformArray {.. } => todo!(),
+            Type::FnPtr(_) => self.ptr_size(),
             Type::SIMDVector(simdvector) => (simdvector.bits() / 8).into(),
         }
     }
@@ -1362,7 +1363,7 @@ pub enum IlasmFlavour {
 pub fn ilasm_path() -> &'static str {
     ILASM_PATH.as_str()
 }
-
+#[allow(dead_code)]
 fn chunked_range(top: u32, parts: u32) -> impl Iterator<Item = std::ops::Range<u32>> {
     let chunk_size = top.div_ceil(parts); // Ceiling of n / m
 

@@ -1,15 +1,13 @@
 use super::inline::inline_trivial_call_root;
-use fxhash::{FxHashMap, FxHashSet};
 
 use super::super::{
-    cilroot::BranchCond, method::LocalDef, typecheck::display_typecheck_err, BasicBlock, BinOp,
-    CILIter, CILIterElem, CILNode, CILRoot, Const, Int, MethodImpl, NodeIdx, RootIdx, SigIdx, Type,
+    cilroot::BranchCond, method::LocalDef, BinOp, CILNode, CILRoot, Const, NodeIdx, Type,
 };
 pub use super::opt_fuel::OptFuel;
 use super::opt_if_fuel;
 pub use super::side_effect::*;
 use crate::cilroot::CmpKind;
-use crate::v2::{Assembly, MethodDef};
+use crate::v2::Assembly;
 use crate::TypeIdx;
 pub fn root_opt(
     root: CILRoot,

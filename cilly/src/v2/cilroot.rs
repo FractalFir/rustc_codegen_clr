@@ -690,7 +690,7 @@ impl CILRoot {
     pub fn display(
         &self,
         asm: &mut Assembly,
-        sig: SigIdx,
+        _sig: SigIdx,
         locals: &[(Option<StringIdx>, TypeIdx)],
     ) -> String {
         match self {

@@ -358,39 +358,3 @@ pub enum MethodType {
     /// A "normal" method.
     Static,
 }
-
-pub(crate) fn all_evals_identical<'a>(
-    mut nodes: impl Iterator<Item = &'a CILNode>,
-) -> Option<CILNode> {
-    let first = nodes.next()?;
-    let first_val = first.try_const_eval()?;
-    if nodes.all(|node| {
-        let Some(val) = node.try_const_eval() else {
-            return false;
-        };
-        val == first_val
-    }) {
-        Some(first_val)
-    } else {
-        None
-    }
-}
-struct LocalUsageInfo {
-    is_address_taken: Box<[bool]>,
-}
-
-impl LocalUsageInfo {
-    fn from_method(method: &Method) -> Self {
-        let mut is_address_taken: Box<[_]> = vec![false; method.locals().len()].into();
-        for node in method.iter_cil().nodes() {
-            if let CILNode::LDLocA(loc) = node {
-                is_address_taken[*loc as usize] = true
-            }
-        }
-        Self { is_address_taken }
-    }
-
-    fn is_address_taken(&self, idx: usize) -> bool {
-        self.is_address_taken[idx]
-    }
-}
