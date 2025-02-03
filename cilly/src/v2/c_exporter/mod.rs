@@ -18,15 +18,7 @@ config!(UB_CHECKS, bool, true);
 config!(SHORT_TYPENAMES, bool, false);
 config!(PARTS, u32, 1);
 use super::{
-    asm::MAIN_MODULE,
-    bimap::IntoBiMapIndex,
-    cilnode::{ExtendKind, PtrCastRes},
-    cilroot::BranchCond,
-    method::LocalDef,
-    tpe::simd::SIMDVector,
-    typecheck::TypeCheckError,
-    Assembly, BinOp, CILIter, CILIterElem, CILNode, CILRoot, ClassDefIdx, ClassRef, ClassRefIdx,
-    Const, Exporter, Int, MethodDef, MethodRef, NodeIdx, RootIdx, SigIdx, Type,
+    asm::MAIN_MODULE, basic_block::BlockId, bimap::IntoBiMapIndex, cilnode::{ExtendKind, PtrCastRes}, cilroot::BranchCond, method::LocalDef, tpe::simd::SIMDVector, typecheck::TypeCheckError, Assembly, BinOp, CILIter, CILIterElem, CILNode, CILRoot, ClassDefIdx, ClassRef, ClassRefIdx, Const, Exporter, Int, MethodDef, MethodRef, NodeIdx, RootIdx, SigIdx, Type
 };
 fn local_name(locals: &[LocalDef], asm: &Assembly, loc: u32) -> String {
     // If the name of this local repeats, use the L form.
@@ -51,6 +43,7 @@ fn local_name(locals: &[LocalDef], asm: &Assembly, loc: u32) -> String {
         None => format!("L{loc}"),
     }
 }
+config!(ASCII_IDENTS,bool,false);
 fn escape_ident(ident: &str) -> String {
     let mut escaped = ident
         .replace(['.', ' '], "_")
@@ -64,6 +57,9 @@ fn escape_ident(ident: &str) -> String {
         .replace(")", "_lpar_")
         .replace("{", "_rbra_")
         .replace("}", "_lbra_");
+    if *ASCII_IDENTS{
+        escaped = escaped.replace("$","_dsig_");
+    }
     if escaped.chars().next().unwrap().is_numeric() {
         escaped = format!("p{escaped}");
     }
@@ -177,6 +173,12 @@ pub struct CExporter {
     metadata: Vec<u8>,
 }
 impl CExporter {
+    pub fn c_compiler() -> String {
+        std::env::var("CC").unwrap_or("cc".to_owned())
+    }
+    pub fn is_tcc() -> bool {
+        Self::c_compiler().contains("tcc")
+    }
     pub fn set_metadata(&mut self, metadata: impl Into<Vec<u8>>) {
         self.metadata = metadata.into();
     }
@@ -193,9 +195,12 @@ impl CExporter {
         section
     }
     #[must_use]
-    pub fn new(is_lib: bool, mut libs: Vec<String>, dirs: Vec<String>) -> Self {
+    pub fn new(is_lib: bool, mut libs: Vec<String>, mut dirs: Vec<String>) -> Self {
         // TODO: fix LLVM not found bug.
-        libs.retain(|l| !l.contains("LLVM"));
+        libs.retain(|l| !(l.contains("LLVM") || l.contains("gcc_s")));
+        if Self::is_tcc() {
+            dirs = vec![];
+        }
         Self {
             is_lib,
             libs,
@@ -238,7 +243,7 @@ impl CExporter {
         Ok(match op {
             BinOp::Add => match tpe {
                 Type::Ptr(type_idx) | Type::Ref(type_idx) => format!(
-                    "({tpe}*)((void*)({lhs}) + (uintptr_t)({rhs}))",
+                    "({tpe}*)((uint8_t*)({lhs}) + (uintptr_t)({rhs}))",
                     tpe = c_tpe(asm[type_idx], asm)
                 ),
                 Type::FnPtr(_) => format!("({lhs}) + ({rhs})"),
@@ -267,7 +272,7 @@ impl CExporter {
             },
             BinOp::Sub => match tpe {
                 Type::Ptr(type_idx) | Type::Ref(type_idx) => format!(
-                    "({tpe}*)((void*)({lhs}) - (uintptr_t)({rhs}))",
+                    "({tpe}*)((uint8_t*)({lhs}) - (uintptr_t)({rhs}))",
                     tpe = c_tpe(asm[type_idx], asm)
                 ),
                 Type::FnPtr(_) => format!("({lhs}) - ({rhs})"),
@@ -294,7 +299,7 @@ impl CExporter {
             },
             BinOp::Mul => match tpe {
                 Type::Ptr(type_idx) | Type::Ref(type_idx) => format!(
-                    "({tpe}*)((void*)({lhs}) * (uintptr_t)({rhs}))",
+                    "({tpe}*)((uint8_t*)({lhs}) * (uintptr_t)({rhs}))",
                     tpe = c_tpe(asm[type_idx], asm)
                 ),
                 Type::FnPtr(_) => format!("({lhs}) * ({rhs})"),
@@ -770,6 +775,7 @@ impl CExporter {
         locals: &[LocalDef],
         inputs: &[(Type, Option<StringIdx>)],
         sig: SigIdx,
+        next:Option<BlockId>,
     ) -> Result<String, TypeCheckError> {
         Ok(match root {
             CILRoot::StLoc(id, node_idx) => {
@@ -808,7 +814,13 @@ impl CExporter {
                     sub_target
                 }else {target};
                 let Some(cond) = cond else {
-                    return Ok(format!("goto bb{target};"));
+                    if next == Some(*target) && *sub_target == 0{
+                        return Ok("".into());
+                    }
+                    else{
+                        return Ok(format!("goto bb{target};"));
+                    }
+                    
                 };
                 match cond {
                     BranchCond::True(node_idx) => format!(
@@ -1002,6 +1014,7 @@ impl CExporter {
                 | "sched_getaffinity"
                 | "sigemptyset"
                 | "sigaction"
+                | "sigaltstack"
                 | "poll" => return Ok(()),
                 _ => {
                     let inputs = def
@@ -1020,7 +1033,8 @@ impl CExporter {
                     .ref_to()
                     .stack_inputs(asm)
                     .iter()
-                    .map(|i| nonvoid_c_type(*i, asm))
+                    .enumerate()
+                    .map(|(idx, i)| format!("{} A{}", nonvoid_c_type(*i, asm), idx))
                     .intersperse(",".into())
                     .collect::<String>();
                 writeln!(
@@ -1059,9 +1073,11 @@ impl CExporter {
             )?;
         }
         let blocks = def.blocks(asm).unwrap().to_vec();
-        for block in blocks {
+        let mut block_iter = blocks.iter().peekable();
+        while let Some(block) = block_iter.next(){
             writeln!(method_defs, "bb{}:", block.block_id())?;
-            for root_idx in block.roots() {
+            let mut root_iter = block.roots().iter().peekable();
+            while let Some(root_idx) = root_iter.next(){
                 if let Err(err) = asm[*root_idx].clone().typecheck(sig, &locals, asm) {
                     eprintln!("Typecheck error:{err:?}");
                     writeln!(method_defs, "fprintf(stderr,\"Attempted to execute a statement which failed to compile.\" {err:?}); abort();",err = format!("{err:?}"))?;
@@ -1074,6 +1090,8 @@ impl CExporter {
                     &locals[..],
                     &stack_inputs[..],
                     sig,
+                    // If this is not the last block, but it is the last root of this block, check if the following block is our target. If so, use more optimized branching.
+                    block_iter.peek().map(|block|block.block_id()).filter(|_|root_iter.peek().is_none()),
                 );
 
                 match root {
@@ -1170,6 +1188,9 @@ impl CExporter {
             if let Some(size) = class.explict_size() {
                 writeln!(type_defs, "char force_size[{size}];", size = size.get())?;
             }
+            if class.fields().is_empty() {
+                writeln!(type_defs, "FORCE_NOT_ZST")?; 
+            }
             writeln!(type_defs, "}} {class_name};")?;
         }
         if !class.static_fields().is_empty() {
@@ -1255,7 +1276,7 @@ impl CExporter {
 fn call_entry(out: &mut impl Write, asm: &Assembly) -> Result<(), std::io::Error> {
     let cctor_call = if asm.has_cctor() { "_cctor();" } else { "" };
 
-    writeln!(out,"int main(int argc_input, char** argv_input){{argc = argc_input; argv = argv_input; {cctor_call}entrypoint((void *)0); return 0;}}")?;
+    writeln!(out,"int main(int argc_input, char** argv_input){{\n#ifndef __SDCC\nargc = argc_input;if(argc < 1)abort();\nargv = argv_input;if(argv == (char**)0)abort();\n#endif\n{cctor_call}entrypoint();\nreturn 0;}}")?;
     Ok(())
 }
 impl CExporter {
@@ -1276,9 +1297,8 @@ impl CExporter {
         c_out.flush().unwrap();
         drop(c_out);
 
-        let mut cmd = std::process::Command::new(std::env::var("CC").unwrap_or("cc".to_owned()));
-        cmd.args(&self.dirs);
-        cmd.args(&self.libs);
+        let mut cmd = std::process::Command::new(Self::c_compiler());
+
         cmd.arg("-fPIC");
         cmd.arg(c_path).arg("-o").arg(target);
         if !*NO_DEBUG {
@@ -1300,6 +1320,8 @@ impl CExporter {
             cmd.arg("-c");
         } else {
             cmd.arg("-lm");
+            cmd.args(&self.dirs);
+            cmd.args(&self.libs);
         }
         if *ANSI_C {
             cmd.arg("-std=c89");
@@ -1341,8 +1363,7 @@ impl Exporter for CExporter {
                 parts.push(target);
             }
 
-            let mut cmd =
-                std::process::Command::new(std::env::var("CC").unwrap_or("cc".to_owned()));
+            let mut cmd = std::process::Command::new(Self::c_compiler());
             cmd.args(&self.dirs);
 
             cmd.args(&self.libs);
@@ -1430,6 +1451,7 @@ fn escape_nonfn_name(name: &str) -> String {
     let res = escape_ident(name);
     match res.as_ref() {
         "sigaction" => "sigactn".to_owned(),
+        "sigaltstack" => "sigaltstck".to_owned(),
         _ => res,
     }
 }

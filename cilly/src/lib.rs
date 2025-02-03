@@ -17,7 +17,6 @@ pub fn calculate_hash<T: std::hash::Hash>(t: &T) -> u64 {
 }
 
 pub mod access_modifier;
-pub mod asm;
 
 pub mod basic_block;
 

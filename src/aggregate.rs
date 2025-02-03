@@ -40,9 +40,8 @@ pub fn handle_aggregate<'tcx>(
             let penv = rustc_middle::ty::TypingEnv::fully_monomorphized();
             let subst = ctx.monomorphize(*subst);
             //eprintln!("Preparing to resolve {adt_def:?} {subst:?}");
-            let adt_type = instance_try_resolve(*adt_def,ctx.tcx(),  subst);
-            let adt_type = adt_type
-                .ty(ctx.tcx(), penv);
+            let adt_type = instance_try_resolve(*adt_def, ctx.tcx(), subst);
+            let adt_type = adt_type.ty(ctx.tcx(), penv);
             let adt_type = ctx.monomorphize(adt_type);
             let TyKind::Adt(adt_def, subst) = adt_type.kind() else {
                 panic!("Type {adt_type:?} is not a Algebraic Data Type!");

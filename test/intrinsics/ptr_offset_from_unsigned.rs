@@ -35,7 +35,7 @@ fn test_ptr_offset_from_unsigned() {
     }
 
     // Additional test case: Pointers are equal
-    let ptr5: *const u8 = core::intrinsics::black_box(0x3000 as *const u8);
+    let ptr5: *const String = core::intrinsics::black_box(0x3000 as *const String);
 
     let offset3 = unsafe {
         core::intrinsics::ptr_offset_from_unsigned(ptr5, core::intrinsics::black_box(ptr5))

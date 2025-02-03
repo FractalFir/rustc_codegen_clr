@@ -114,7 +114,10 @@ fn test_lib(args: &[&str], test_name: &str) {
         command
     };
     let out = command.output().expect("failed to execute process");
-    if String::from_utf8(out.stderr.clone()).unwrap().contains("error:") {
+    if String::from_utf8(out.stderr.clone())
+        .unwrap()
+        .contains("error:")
+    {
         let stdout =
             String::from_utf8(out.stdout).expect("rustc error contained non-UTF8 characters.");
         let stderr =
@@ -165,7 +168,10 @@ macro_rules! compare_tests {
                     let copy = format!("{cmd:?}");
                     let out = cmd.output().expect("failed to execute process");
                     // If stderr is not empty, then something went wrong, so print the stdout and stderr for debuging.
-                    if String::from_utf8(out.stderr.clone()).unwrap().contains("error:") {
+                    if String::from_utf8(out.stderr.clone())
+                        .unwrap()
+                        .contains("error:")
+                    {
                         let stdout = String::from_utf8(out.stdout)
                             .expect("rustc error contained non-UTF8 characters.");
                         let stderr = String::from_utf8(out.stderr)
@@ -201,7 +207,10 @@ macro_rules! compare_tests {
                     let copy = format!("{cmd:?}");
                     let out = cmd.output().expect("failed to execute process");
                     // If stderr is not empty, then something went wrong, so print the stdout and stderr for debuging.
-                    if String::from_utf8(out.stderr.clone()).unwrap().contains("error:") {
+                    if String::from_utf8(out.stderr.clone())
+                        .unwrap()
+                        .contains("error:")
+                    {
                         let stdout = String::from_utf8(out.stdout)
                             .expect("rustc error contained non-UTF8 characters.");
                         let stderr = String::from_utf8(out.stderr)
@@ -244,7 +253,10 @@ macro_rules! compare_tests {
                     let mut cmd = super::super::compiler(stringify!($test_name), test_dir, true);
                     let out = cmd.output().expect("failed to execute process");
                     // If stderr is not empty, then something went wrong, so print the stdout and stderr for debuging.
-                    if String::from_utf8(out.stderr.clone()).unwrap().contains("error:") {
+                    if String::from_utf8(out.stderr.clone())
+                        .unwrap()
+                        .contains("error:")
+                    {
                         let stdout = String::from_utf8(out.stdout)
                             .expect("rustc error contained non-UTF8 characters.");
                         let stderr = String::from_utf8(out.stderr)
@@ -279,7 +291,10 @@ macro_rules! compare_tests {
                     ]);
                     let out = cmd.output().expect("failed to execute process");
                     // If stderr is not empty, then something went wrong, so print the stdout and stderr for debuging.
-                    if String::from_utf8(out.stderr.clone()).unwrap().contains("error:") {
+                    if String::from_utf8(out.stderr.clone())
+                        .unwrap()
+                        .contains("error:")
+                    {
                         let stdout = String::from_utf8(out.stdout)
                             .expect("rustc error contained non-UTF8 characters.");
                         let stderr = String::from_utf8(out.stderr)
@@ -387,7 +402,7 @@ fn compiler(test_name: &str, test_dir: &str, release: bool) -> std::process::Com
     if *crate::config::DRY_RUN {
         cmd.args(["-Z", "no-codegen"]);
     }
-    cmd.arg("-Ctarget-feature=+x87+sse",);
+    cmd.arg("-Ctarget-feature=+x87+sse");
     cmd
 }
 macro_rules! run_test {
@@ -414,7 +429,10 @@ macro_rules! run_test {
                     eprintln!("Command: {cmd:?}");
                     let out = cmd.output().expect("failed to execute process");
                     // If stderr is not empty, then something went wrong, so print the stdout and stderr for debuging.
-                    if String::from_utf8(out.stderr.clone()).unwrap().contains("error:") {
+                    if String::from_utf8(out.stderr.clone())
+                        .unwrap()
+                        .contains("error:")
+                    {
                         let stdout = String::from_utf8(out.stdout)
                             .expect("rustc error contained non-UTF8 characters.");
                         let stderr = String::from_utf8(out.stderr)
@@ -448,7 +466,10 @@ macro_rules! run_test {
                     eprintln!("test_name:{test_name:?}");
                     let out = cmd.output().expect("failed to execute process");
                     // If stderr is not empty, then something went wrong, so print the stdout and stderr for debuging.
-                    if String::from_utf8(out.stderr.clone()).unwrap().contains("error:") {
+                    if String::from_utf8(out.stderr.clone())
+                        .unwrap()
+                        .contains("error:")
+                    {
                         let stdout = String::from_utf8(out.stdout)
                             .expect("rustc error contained non-UTF8 characters.");
                         let stderr = String::from_utf8(out.stderr)

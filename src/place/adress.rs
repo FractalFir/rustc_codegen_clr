@@ -132,8 +132,9 @@ fn field_address<'a>(
                     let addr_descr = ctx.alloc_field(FieldDesc::new(curr_type_fat_ptr.as_class_ref().unwrap(),data_ptr_name,void_ptr));
                     // Get the address of the unsized object.
                     let obj_addr = ld_field!(addr_calc,addr_descr);
+                    let obj = ctx.type_from_cache(field_type);
                     // Add the offset to the object.
-                    obj_addr + CILNode::V2(ctx.alloc_node(Const::USize(u64::from(offset))))
+                    (obj_addr + CILNode::V2(ctx.alloc_node(Const::USize(u64::from(offset))))).cast_ptr(ctx.nptr(obj))
                 },
                 (true,true)=>{
                     let mut explicit_offset_iter = crate::utilis::adt::FieldOffsetIterator::fields(
@@ -156,8 +157,8 @@ fn field_address<'a>(
                         let obj_addr = ld_field!(addr_calc.clone(),addr_descr);
                         let metadata_descr = ctx.alloc_field(FieldDesc::new(curr_type_fat_ptr.as_class_ref().unwrap(),metadata_name,Type::Int(Int::USize)));
                         let metadata = ld_field!(addr_calc,metadata_descr);
-                        let ptr =obj_addr
-                        + CILNode::V2(ctx.alloc_node(Const::USize(u64::from(offset))));
+                        let ptr = (obj_addr
+                        + CILNode::V2(ctx.alloc_node(Const::USize(u64::from(offset)))));
                         let field_fat_ptr = ctx.type_from_cache(Ty::new_ptr(
                             ctx.tcx(),
                             field_ty,

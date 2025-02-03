@@ -34,6 +34,12 @@ pub fn max_value(tpe: &Type, asm: &mut Assembly) -> CILNode {
         }
         Type::Int(Int::U64) => CILNode::V2(asm.alloc_node(u64::MAX)),
         Type::Int(Int::U32) => CILNode::V2(asm.alloc_node(u32::MAX)),
+        Type::Int(Int::U16) => CILNode::V2(asm.alloc_node(u16::MAX)),
+        Type::Int(Int::U8) => CILNode::V2(asm.alloc_node(u8::MAX)),
+        Type::Int(Int::I64) => CILNode::V2(asm.alloc_node(i64::MAX)),
+        Type::Int(Int::I32) => CILNode::V2(asm.alloc_node(i32::MAX)),
+        Type::Int(Int::I16) => CILNode::V2(asm.alloc_node(i16::MAX)),
+        Type::Int(Int::I8) => CILNode::V2(asm.alloc_node(i8::MAX)),
         _ => todo!("Can't get the max value of {tpe:?}"),
     }
 }

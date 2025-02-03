@@ -55,7 +55,7 @@ pub fn handle_rvalue<'tcx>(
     ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> (Vec<CILRoot>, CILNode) {
     match rvalue {
-         Rvalue::Len(operand) => {
+        Rvalue::Len(operand) => {
             let ty = ctx.monomorphize(operand.ty(ctx.body(), ctx.tcx()));
             match ty.ty.kind() {
                 TyKind::Slice(inner) => {

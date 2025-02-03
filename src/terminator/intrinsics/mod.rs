@@ -1589,8 +1589,9 @@ fn intrinsic_slow<'tcx>(
     if demangled == fn_name {
         todo!("Unhandled intrinsic {fn_name}. demangled:{demangled}")
     } else {
+        eprintln!("Calling demangled intrinsics {demangled}");
         assert!(demangled.contains("::"));
-        let striped = demangled.split("::").last().unwrap();
+        let striped = demangled_to_stem(&demangled);
         handle_intrinsic(striped, args, destination, call_instance, span, ctx)
     }
 }
@@ -1623,4 +1624,20 @@ fn caller_location<'tcx>(
         crate::constant::load_const_value(caller_loc, caller_loc_ty, ctx),
         ctx,
     )
+}
+fn demangled_to_stem(s: &str) -> &str {
+    let mut res = None;
+    //.filter(|part|!(part.contains('<') | part.contains('>'))).last().unwrap()
+    for element in s.split("::") {
+        if element.contains('<') {
+            break;
+        }
+        res = Some(element);
+    }
+    res.unwrap()
+}
+#[test]
+fn test_intrinsic_slow_escape() {
+    const BAD:&str = "core::intrinsics::ptr_offset_from_unsigned::<(rustc_hir::def::LifetimeRes, rustc_resolve::late::diagnostics::LifetimeElisionCandidate)";
+    assert_eq!(demangled_to_stem(BAD), "ptr_offset_from_unsigned");
 }

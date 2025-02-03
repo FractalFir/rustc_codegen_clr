@@ -43,6 +43,7 @@ pub enum TypeCheckError {
         got: Type,
         target: Int,
     },
+    /// Attempted to access the field of a type without fields.
     FieldAccessInvalidType {
         tpe: Type,
         field: crate::v2::FieldDesc,
@@ -126,6 +127,7 @@ pub enum TypeCheckError {
         name: super::StringIdx,
         owner: super::ClassRefIdx,
     },
+    VoidPointerOp { op: BinOp },
 }
 pub fn typecheck_err_to_string(
     root_idx: super::RootIdx,
@@ -210,7 +212,12 @@ impl BinOp {
                 (Type::Float(lhs), Type::Float(rhs)) if rhs == lhs => Ok(Type::Float(lhs)),
                 (Type::Ptr(lhs), Type::Ptr(rhs)) if rhs == lhs => Ok(Type::Ptr(lhs)),
                 (Type::FnPtr(lhs), Type::FnPtr(rhs)) if rhs == lhs => Ok(Type::FnPtr(lhs)),
-                (Type::Ptr(_) | Type::FnPtr(_), Type::Int(Int::ISize | Int::USize)) => Ok(lhs),
+                (Type::Ptr(inner), Type::Int(Int::ISize | Int::USize)) => if asm[inner] != Type::Void{
+                    Ok(lhs)
+                }else{
+                    Err(TypeCheckError::VoidPointerOp{op:self.clone()})
+                }
+                (Type::FnPtr(_), Type::Int(Int::ISize | Int::USize)) => Ok(lhs),
                 (Type::Int(Int::ISize | Int::USize), Type::Ptr(_) | Type::FnPtr(_)) => Ok(rhs),
                 // TODO: investigate the cause of this issue. Changing a reference is not valid.
                 (Type::Ref(_), Type::Int(Int::ISize | Int::USize)) => Ok(lhs),

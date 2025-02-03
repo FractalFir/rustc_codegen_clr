@@ -4,8 +4,8 @@ use root::root_opt;
 use super::Float;
 
 use super::{
-    cilroot::BranchCond, method::LocalDef, typecheck::display_typecheck_err, BasicBlock,
-    CILIter, CILIterElem, CILNode, CILRoot, Int, MethodImpl, NodeIdx, RootIdx, SigIdx, Type,
+    cilroot::BranchCond, method::LocalDef, typecheck::display_typecheck_err, BasicBlock, CILIter,
+    CILIterElem, CILNode, CILRoot, Int, MethodImpl, NodeIdx, RootIdx, SigIdx, Type,
 };
 use crate::v2::{Assembly, MethodDef};
 pub use opt_fuel::OptFuel;

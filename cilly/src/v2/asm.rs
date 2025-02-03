@@ -1086,7 +1086,7 @@ impl Assembly {
     /// Preforms a "shallow" GC pass on all method defs, removing them if and only if:
     /// 1. They are not referenced by anything inside this assembly
     /// 2. They are not accessible from outside of it.
-    /// 
+    ///
     /// **WARNING**: This gc is highly conservative, and will often not collect some things.
     /// To improve its accuracy, first do `link_gc`.
     pub fn shallow_methodef_gc(&mut self) {
@@ -1177,7 +1177,8 @@ impl Assembly {
     }
     pub fn split_to_parts(&self, parts: u32) -> impl Iterator<Item = Self> + use<'_> {
         let lib_name = StringIdx::from_index(std::num::NonZeroU32::new(1).unwrap());
-        let div = (self.method_refs.len().div_ceil(parts as usize)) as u32;
+        // Since 1st part is dedicated to methods which access statics, split the rest into n-1 parts.
+        let div = (self.method_refs.len().div_ceil(parts as usize - 1)) as u32;
         // Into 1st. Only split out the methods where it is known, for sure, that they don't access any statics.
         (0..parts).map(move |rem| {
             let mut part = self.clone();
@@ -1189,7 +1190,7 @@ impl Assembly {
                             preserve_errno: false,
                         }
                     }
-                } else if idx.as_bimap_index().get() / div != rem {
+                } else if idx.as_bimap_index().get() / div + 1 != rem {
                     *def.implementation_mut() = MethodImpl::Extern {
                         lib: lib_name,
                         preserve_errno: false,
@@ -1297,7 +1298,7 @@ impl Assembly {
             Type::PlatformObject => self.ptr_size(),
             Type::Bool => 1,
             Type::Void => 0,
-            Type::PlatformArray {.. } => todo!(),
+            Type::PlatformArray { .. } => todo!(),
             Type::FnPtr(_) => self.ptr_size(),
             Type::SIMDVector(simdvector) => (simdvector.bits() / 8).into(),
         }

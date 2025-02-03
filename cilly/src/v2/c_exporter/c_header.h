@@ -1,23 +1,128 @@
 #include <stdio.h>
 #include <stdint.h>
+
+#ifndef __TINYC__
 #include <stdbool.h>
+#else
+#define bool _Bool
+#define false 0
+#define true 1
+#endif
 
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#if !(defined(__TINYC__) || defined(__SDCC))
 #include <mm_malloc.h>
+#else
+inline void* _mm_malloc(size_t size, size_t align){
+    return aligned_alloc(align,size);
+}
+inline void _mm_free (void *p){
+    free(p);
+}
+inline uint16_t __builtin_bswap16(uint16_t val){
+    uint16_t res;
+    uint8_t* ptr = &val;
+    uint8_t* rptr = &res;
+    rptr[0] = ptr[1];
+    rptr[1] = ptr[0];
+    return res;
+}
+inline uint32_t __builtin_bswap32(uint32_t val){
+    uint32_t res;
+    uint8_t* ptr = &val;
+    uint8_t* rptr = &res;
+    rptr[0] = ptr[3];
+    rptr[1] = ptr[2];
+    rptr[2] = ptr[1];
+    rptr[3] = ptr[0];
+    return res;
+}
+inline uint64_t __builtin_bswap64(uint64_t val){
+    uint64_t res;
+    uint8_t* ptr = &val;
+    uint8_t* rptr = &res;
+    rptr[0] = ptr[7];
+    rptr[1] = ptr[6];
+    rptr[2] = ptr[5];
+    rptr[3] = ptr[4];
+    rptr[4] = ptr[3];
+    rptr[5] = ptr[2];
+    rptr[6] = ptr[1];
+    rptr[7] = ptr[0];
+    return res;
+}
+#endif
+#ifdef __TINYC__
+#define _Thread_local __attribute__((section(".tbss")))
+#elif defined(__SDCC)
+// Assumes single-threaded env!
+#define _Thread_local 
+#endif
 
+#ifndef __SDCC
+#define FORCE_NOT_ZST 
+#else
+#define FORCE_NOT_ZST char force_not_zst;
+#endif
+
+#ifndef __SDCC
 #include <alloca.h>
+#else
+#define alloca(arg) ((void*)0)
+#endif
 /* Backup for targets that don't support i128 - TODO: replace this with software emulation!*/
 #ifndef __SIZEOF_INT128__
-#define __int128 long long
+#define __int128_t long long
+#define __int128 __int128_t
+#define __uint128_t unsigned long long
 #endif
+#ifdef __clang__
+#define __atomic_compare_exchange_4 __atomic_compare_exchange_n
+#define __atomic_compare_exchange_8 __atomic_compare_exchange_n
+#define _Float128 long double
+#elif defined(__SDCC)
+// WARNING! Assumes a single-threaded, no-interrupt eviroment!
+bool __atomic_compare_exchange_4(uint32_t *ptr, uint32_t *expected, uint32_t desired, bool weak, int success_memorder, int failure_memorder){
+    if(*ptr == expected){
+        *ptr = desired;
+        return true;
+    }
+    return false;
+}
+bool __atomic_compare_exchange_8(uint64_t *ptr, uint64_t *expected, uint64_t desired, bool weak, int success_memorder, int failure_memorder){
+    if(*ptr == expected){
+        *ptr = desired;
+        return true;
+    }
+    return false;
+}
+bool __atomic_compare_exchange_n(uintptr_t *ptr, uintptr_t *expected, uintptr_t desired, bool weak, int success_memorder, int failure_memorder){
+    if(*ptr == expected){
+        *ptr = desired;
+        return true;
+    }
+    return false;
+}
+#endif
+
+#if !(defined(__TINYC__) || defined(__SDCC))
+static inline _Float16 System_Half_op_Explicitf32f16(float val){
+    return (_Float16)val;
+}
+#endif
+
 /* Allocator APIs*/
 #define System_Runtime_InteropServices_Marshal_AllocHGlobali32isize(size) malloc(size)
 #define System_Runtime_InteropServices_Marshal_AllocHGlobalisizeisize(size) malloc(size)
 #define System_Runtime_InteropServices_Marshal_ReAllocHGlobalisizeisizeisize(ptr, new_size) realloc(ptr, new_size)
 #define System_Runtime_InteropServices_Marshal_FreeHGlobalisizev(ptr) free(ptr)
-#define System_Runtime_InteropServices_NativeMemory_AlignedAllocusizeusizepv(size, align) aligned_alloc(align, size)
+static void pal_internal_error(){}
+static inline void* System_Runtime_InteropServices_NativeMemory_AlignedAllocusizeusizepv(size_t size,size_t align) {
+    if (align > (0x10000))pal_internal_error();
+    return aligned_alloc(align, size);
+}
 #define System_Runtime_InteropServices_NativeMemory_AlignedFreepvv free
 static inline void *System_Runtime_InteropServices_NativeMemory_AlignedReallocpvusizeuspv(void *ptr, uintptr_t size, uintptr_t align)
 {
@@ -27,8 +132,22 @@ static inline void *System_Runtime_InteropServices_NativeMemory_AlignedReallocpv
     return new_buff;
 }
 /*Utility macros*/
+#ifndef __SDCC
 #define eprintf(...) fprintf(stderr, __VA_ARGS__)
 #define BUILTIN_UNSUPORTED(NAME,OUTPUT, ARGLIST) static inline OUTPUT NAME ARGLIST { eprintf("Function " #NAME "is not yet supported!"); abort();}
+#else
+#define eprintf(...) printf(__VA_ARGS__)
+#define BUILTIN_UNSUPORTED(NAME,OUTPUT, ARGLIST) static inline OUTPUT NAME ARGLIST { eprintf("Function " #NAME "is not yet supported!"); abort();}
+#endif
+#ifdef __SDCC
+#define NAN (0.0 / 0.0)
+#endif
+#ifdef __SDCC
+void abort(){
+    printf("Called abort");
+    while(1);
+}
+#endif
 /*Wrappers for certain 128 bit ops: TODO: remove this once all ops are ported to new cilly builtins*/
 #define System_UInt128_op_Additionu128u128u128(lhs, rhs) (lhs + rhs)
 #define System_Int128_op_Additioni128i128i128(lhs, rhs) (__int128)((unsigned __int128)lhs + (unsigned __int128)rhs)
@@ -98,6 +217,7 @@ static inline void *System_Runtime_InteropServices_NativeMemory_AlignedReallocpv
 #define System_UInt128_op_Expliciti32u128(val) (__uint128_t)(val)
 #define System_UInt128_op_Expliciti64u128(val) (__uint128_t)(val)
 #define System_Int128_op_Expliciti128u128(val) (__uint128_t)(val)
+#ifndef NO_FLOAT
 static inline __uint128_t System_UInt128_op_Explicitf32u128(float val) {
     if(val < 0.0){
         return 0;
@@ -112,6 +232,7 @@ static inline __uint128_t System_UInt128_op_Explicitf64u128(double val) {
         return (__uint128_t)val;
     }
 }
+#endif
 
 #define System_Int128_op_Explicitf64i128(val) (__int128_t)(val)
 #define System_Int128_op_Explicitf32i128(val) (__int128_t)(val)
@@ -149,7 +270,7 @@ static inline __uint128_t System_UInt128_op_Explicitf64u128(double val) {
 /*Assumes a 64 bit OS.*/
 #define System_Buffers_Binary_BinaryPrimitives_ReverseEndiannessisizeisize(val) (intptr_t) __builtin_bswap64((uint64_t)val)
 #define System_Buffers_Binary_BinaryPrimitives_ReverseEndiannessusizeusize __builtin_bswap64
-
+#ifndef __SDCC
 static inline int32_t System_Numerics_BitOperations_TrailingZeroCountusizei32(uintptr_t val) {if (val == 0) return sizeof(uintptr_t) * 8; return (int32_t) __builtin_ctzl((uint64_t)val);}
 static inline int32_t System_Numerics_BitOperations_TrailingZeroCountu32i32(uint32_t val) {if (val == 0) return sizeof(uint32_t) * 8; return (int32_t) __builtin_ctzl((uint32_t)val);}
 static inline int32_t System_Numerics_BitOperations_TrailingZeroCounti32i32(int32_t val) {if (val == 0) return sizeof(int32_t) * 8; return (int32_t) __builtin_ctzl((uint32_t)val);}
@@ -157,6 +278,7 @@ static inline int32_t System_Numerics_BitOperations_TrailingZeroCountu64i32(uint
 static inline int32_t System_UInt128_TrailingZeroCountu128u128(__uint128_t val) {if (val == 0) return sizeof(__uint128_t) * 8; return (int32_t) __builtin_ctzl((__uint128_t)val);}
 static inline int32_t System_Numerics_BitOperations_LeadingZeroCountu64i32(uint64_t val) { if (val == 0) return 64; return __builtin_clzl(val); }
 static inline int32_t System_Numerics_BitOperations_LeadingZeroCountusizei32(uintptr_t val) { if (val == 0) return sizeof(uintptr_t) * 8; return __builtin_clzl((uint64_t)val); }
+#endif
 __uint128_t __builtin_bswap128(__uint128_t val);
 
 #define System_Numerics_BitOperations_PopCountusizei32(val) __builtin_popcountl((uint64_t)val)
@@ -196,6 +318,7 @@ int execvp(void *file, void *argv);
 #define System_Exception__ctor14System_Runtime16System_Exceptionsv
 #define System_Exception__ctorp14System_Runtime16System_Exceptionsv
 #define System_Exception__ctorp14System_Runtime16System_Exceptionstv
+#ifndef NO_FLOAT
 static inline float System_Single_Clampf32f32f32f32(float d, float min, float max)
 {
     const float t = d < min ? min : d;
@@ -210,12 +333,14 @@ static inline double System_Double_FusedMultiplyAddf64f64f64f64(double left, dou
 {
     return left * right + addend;
 }
+#endif 
 #define System_Type_GetTypeFromHandle14System_Runtime24System_RuntimeTypeHandle14System_Runtime11System_Type
 #define System_Type_GetTypeFromHandlep14System_Runtime24System_RuntimeTypeHandle14System_Runtime11System_Type
 #define System_Object_GetHashCode14System_Runtime11System_Typei32
 #define System_Object_GetHashCodep14System_Runtime11System_Typei32
 
 #define System_Int128_get_MinValuei128() ((__uint128_t)((__int128_t)(-1)) >> 1)
+#ifndef NO_FLOAT
 static inline float System_Single_MaxNumberf32f32f32(float a, float b)
 {
     if (a != a) return b;
@@ -290,8 +415,13 @@ static inline double System_Double_CopySignf64f64f64(double mag, double sign)
             return mag;
     }
 }
+#endif
 BUILTIN_UNSUPORTED(System_MathF_Truncatef32f32,float,(float val))
-
+#ifdef __TINYC__
+BUILTIN_UNSUPORTED(__atomic_compare_exchange_4,uint32_t,(uint32_t *ptr, uint32_t *expected, uint32_t desired, bool weak, int success_memorder, int failure_memorder))
+BUILTIN_UNSUPORTED(__atomic_compare_exchange_8,uint64_t,(uint64_t *ptr, uint64_t *expected, uint64_t desired, bool weak, int success_memorder, int failure_memorder))
+BUILTIN_UNSUPORTED(__atomic_compare_exchange_n,uintptr_t,(uintptr_t *ptr, uintptr_t *expected, uintptr_t desired, bool weak, int success_memorder, int failure_memorder))
+#endif
 double fabsf64(double val);
 #define System_Single_Cosf32f32(x) ((float)cos(x))
 #define System_Double_Cosf64f64 cos
@@ -325,6 +455,7 @@ static inline void *thread_start_wrapper(TSWData *data)
     free(data);
     return start_routine(arg);
 }
+#ifndef __SDCC
 int32_t pthread_create(void *thread,
                        void *attr,
                        void *(*start_routine)(void *),
@@ -341,6 +472,8 @@ static inline int32_t pthread_create_wrapper(void *thread,
     return pthread_create(thread, attr, (void *)thread_start_wrapper, data);
 }
 #define pthread_create pthread_create_alias
+#endif
+#ifndef NO_FLOAT
 double exp(double);
 double exp2(double);
 static inline float System_Single_Exp2f32f32(float input){
@@ -355,12 +488,13 @@ static inline float System_Single_Expf32f32(float input){
 static inline double System_Double_Expf64f64(double input){
     return exp(input);
 }
-BUILTIN_UNSUPORTED(System_Double_Log10f64f64,double,(double input));
-BUILTIN_UNSUPORTED(System_Single_Logf32f32,float,(float input));
-BUILTIN_UNSUPORTED(System_Single_Log2f32f32,float,(float input));
-BUILTIN_UNSUPORTED(System_Single_Log10f32f32,float,(float input));
-BUILTIN_UNSUPORTED(System_Double_Logf64f64,double,(double input));
-BUILTIN_UNSUPORTED(System_Double_Log2f64f64,double,(double input));
+#endif 
+BUILTIN_UNSUPORTED(System_Double_Log10f64f64,double,(double input))
+BUILTIN_UNSUPORTED(System_Single_Logf32f32,float,(float input))
+BUILTIN_UNSUPORTED(System_Single_Log2f32f32,float,(float input))
+BUILTIN_UNSUPORTED(System_Single_Log10f32f32,float,(float input))
+BUILTIN_UNSUPORTED(System_Double_Logf64f64,double,(double input))
+BUILTIN_UNSUPORTED(System_Double_Log2f64f64,double,(double input))
 #define System_Math_Roundf64f64(input) round(input)
 #define System_Math_Floorf64f64(input) floor(input)
 #define System_Math_Sqrtf64f64(input) sqrt(input)
@@ -373,7 +507,7 @@ BUILTIN_UNSUPORTED(System_Double_Log2f64f64,double,(double input));
 static inline uint32_t System_Threading_Interlocked_CompareExchangeru32u32u32u32(uint32_t *addr, uint32_t value, uint32_t comparand)
 {
     uint32_t res = 0;
-    if (__atomic_compare_exchange_n(addr, &comparand, value, true, 5, 5))
+    if (__atomic_compare_exchange_4(addr, &comparand, value, true, 5, 5))
     {
         return comparand;
     }
@@ -386,7 +520,7 @@ static inline uint32_t System_Threading_Interlocked_CompareExchangeru32u32u32u32
 static inline uint64_t System_Threading_Interlocked_CompareExchangeru64u64u64u64(uint64_t *addr, uint64_t value, uint64_t comparand)
 {
     uint64_t res = 0;
-    if (__atomic_compare_exchange_n(addr, &comparand, value, true, 5, 5))
+    if (__atomic_compare_exchange_8(addr, &comparand, value, true, 5, 5))
     {
         return comparand;
     }
@@ -422,7 +556,7 @@ static inline intptr_t System_Threading_Interlocked_CompareExchangerisizeisizeis
         return comparand;
     }
 }
-
+#ifndef __SDCC
 static inline uint32_t System_Threading_Interlocked_Exchangeru32u32u32(uint32_t *addr, uint32_t val)
 {
     uint32_t ret;
@@ -435,9 +569,10 @@ static inline uintptr_t System_Threading_Interlocked_Exchangerusizeusizeusize(ui
     __atomic_exchange(addr, &val, &ret, 5);
     return ret;
 }
+#endif
 static inline uint32_t System_Threading_Interlocked_Addru32u32u32(uint32_t *addr, uint32_t addend)
 {
-    fprintf(stderr, "Can't System_Threading_Interlocked_Addru32u32u32 yet.\n");
+    eprintf("Can't System_Threading_Interlocked_Addru32u32u32 yet.\n");
     abort();
 }
 static inline uint32_t System_UInt32_RotateLeftu32i32u32(uint32_t val, int32_t amount)
@@ -513,7 +648,9 @@ static inline uint8_t System_Byte_RotateLeftu8i32u8(uint8_t val, int32_t amount)
       if(amount == 0) return val;
     return ((val << amount) | (val >> ( (sizeof(uint8_t)*8) - amount)));
 }
+#ifndef __SDCC
 static inline unsigned __int128 System_UInt128_LeadingZeroCountu128u128(unsigned __int128 val){ if (val == 0) return 128; return __builtin_clzl(val); }
+#endif
 static inline uint32_t System_Math_Minu32u32u32(uint32_t lhs, uint32_t rhs)
 {
     if (lhs > rhs)
@@ -617,19 +754,24 @@ static const float inff = 1.0 / 0.0;
 static const double inf = 1.0 / 0.0;
 int fcntl(int fd, int op, ...);
 long syscall(long number, ...);
+#ifndef __SDCC
 static inline uint8_t **get_environ()
 {
     extern char **environ;
     return (uint8_t **)environ;
 }
+#endif
 union System_MidpointRounding{int32_t inner;};
+#ifndef NO_FLOAT
+double round(double);
 static inline double System_Math_Roundf6414System_Runtime23System_MidpointRoundingf64(double val,union System_MidpointRounding rounding){
 	return round(val);
 }
+float roundf(float);
 static inline float System_MathF_Roundf3214System_Runtime23System_MidpointRoundingf32(float val,union System_MidpointRounding rounding){
 	return roundf(val);
 }
-
+#endif
 int ioctl(int fd, unsigned long op, ...);
 int pthread_attr_init(void* attr);
 int pthread_attr_destroy(void* attr);
@@ -642,3 +784,4 @@ int sched_getaffinity(int32_t pid, size_t cpusetsize,
 int sigemptyset(void *set);
 int sigaction(int sig, void* act,
        void* oact); 
+int sigaltstack(void *new_ss, void* old_ss);

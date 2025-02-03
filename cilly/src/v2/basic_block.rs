@@ -1,9 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use super::{
-    opt,
-    Assembly, CILNode, CILRoot, RootIdx,
-};
+use super::{opt, Assembly, CILNode, CILRoot, RootIdx};
 use crate::basic_block::BasicBlock as V1Block;
 pub type BlockId = u32;
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
@@ -188,11 +185,11 @@ impl BasicBlock {
     /// ```
     pub fn remove_handler(&mut self, asm: &mut Assembly) {
         self.handler = None;
-        self.roots_mut()
-            .iter_mut()
-            .for_each(|root| if let CILRoot::ExitSpecialRegion { target, source: _ } = asm[*root] {
+        self.roots_mut().iter_mut().for_each(|root| {
+            if let CILRoot::ExitSpecialRegion { target, source: _ } = asm[*root] {
                 *root = asm.alloc_root(CILRoot::Branch(Box::new((target, 0, None))));
-            });
+            }
+        });
     }
 }
 impl BasicBlock {

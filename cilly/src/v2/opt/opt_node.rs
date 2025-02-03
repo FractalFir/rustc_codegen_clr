@@ -14,7 +14,7 @@ fn opt_int_cast(
     extend: ExtendKind,
 ) -> CILNode {
     match asm.get_node(input) {
-        CILNode::LdField { addr:_, field } if asm[*field].tpe() == Type::Int(target) => {
+        CILNode::LdField { addr: _, field } if asm[*field].tpe() == Type::Int(target) => {
             asm.get_node(input).clone()
         }
         CILNode::Const(cst) => match (cst.as_ref(), target) {
