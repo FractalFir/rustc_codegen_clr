@@ -123,10 +123,11 @@ pub fn garag_to_usize<'tcx>(garg: GenericArg<'tcx>, _ctx: TyCtxt<'tcx>) -> u64 {
         .expect("Generic argument was not an constant!");
     let kind = usize_const.kind();
     match kind {
-        ConstKind::Value(ty, value) => {
-            let scalar = value
+        ConstKind::Value(val) => {
+            let scalar = val.valtree
                 .try_to_scalar_int()
                 .expect("String const did not contain valid scalar!");
+            let ty = val.ty;
             assert!(
                 ty.is_integral(),
                 "Generic argument was not a unit type! ty:{ty:?}",

@@ -226,11 +226,11 @@ pub fn field_descrptor<'tcx>(
 
 /// Tires to get the value of Const `size` as usize.
 pub fn try_resolve_const_size(size: Const) -> Result<usize, &'static str> {
-    let (scalar, ty) = match size.try_to_scalar() {
+    let value = match size.try_to_value() {
         Some(value) => Ok(value),
         None => Err("Can't resolve scalar array size!"),
     }?;
-    let value = scalar.to_u64().expect("Could not convert scalar to u64!");
+    let value = value.valtree.try_to_scalar().unwrap().to_u64().expect("Could not convert scalar to u64!");
     Ok(usize::try_from(value).expect("Const size value too big."))
 }
 
@@ -241,11 +241,11 @@ pub fn garg_to_string<'tcx>(garg: GenericArg<'tcx>, ctx: TyCtxt<'tcx>) -> IStrin
         .expect("Generic argument was not an constant!");
     let kind = str_const.kind();
     match kind {
-        ConstKind::Value(ty, val_tree) => {
-            let raw_bytes = val_tree
-                .try_to_raw_bytes(ctx, ty)
+        ConstKind::Value(val) => {
+            let raw_bytes = val.valtree
+                .try_to_raw_bytes(ctx, val.ty)
                 .expect("String const did not contain valid string!");
-            let tpe = ty
+            let tpe = val.ty
                 .builtin_deref(true)
                 .expect("Type of generic argument was not a reference, can't resolve as string!");
             assert!(
@@ -267,14 +267,14 @@ pub fn garag_to_bool<'tcx>(garg: GenericArg<'tcx>, _ctx: TyCtxt<'tcx>) -> bool {
 
     let kind = usize_const.kind();
     match kind {
-        ConstKind::Value(ty, val_tree) => {
-            let scalar = val_tree
+        ConstKind::Value(val) => {
+            let scalar = val.valtree
                 .try_to_scalar_int()
                 .expect("String const did not contain valid scalar!");
-            let tpe = ty;
+            let ty = val.ty;
             assert!(
-                tpe.is_bool(),
-                "Generic argument was not a bool type! ty:{tpe:?}"
+                ty.is_bool(),
+                "Generic argument was not a bool type! ty:{ty:?}"
             );
             scalar.to_uint(scalar.size()) != 0
         }

@@ -190,7 +190,9 @@ pub(crate) fn get_vtable<'tcx>(
     trait_ref: Option<PolyExistentialTraitRef<'tcx>>,
 ) -> CILNode {
     let ty = fx.monomorphize(ty);
-    let alloc_id = fx.tcx().vtable_allocation((ty, trait_ref));
+    // TODO: `PolyExistentialTraitRef` *used to* not have any binders: now it has one. I *assume* things will work out just fine if I discharge that binder(since things worked fine before)
+    // but I don't know for sure.
+    let alloc_id = fx.tcx().vtable_allocation((ty, trait_ref.map(|binder|binder.no_bound_vars().expect("get_vtable called with a trait_ref with a non-dischargeable binder."))));
     CILNode::LoadGlobalAllocPtr {
         alloc_id: alloc_id.0.get(),
     }
