@@ -10,7 +10,7 @@ use cilly::{conv_u32, conv_usize, IntoAsmIndex};
 use cilly::{Const, Type};
 use rustc_middle::{
     mir::{Operand, Place},
-    ty::{layout::TyAndLayout, ParamEnv, PolyExistentialTraitRef, Ty, TyKind, UintTy},
+    ty::{layout::TyAndLayout, ExistentialTraitRef, Ty, TyKind, UintTy},
 };
 use rustc_target::abi::FIRST_VARIANT;
 
@@ -37,7 +37,7 @@ pub fn unsize2<'tcx>(
         ctx.layout_of(operand.ty(ctx.body(), ctx.tcx())),
         ctx.layout_of(target),
     );
-    let fat_ptr_type = fat_ptr_to(Ty::new_uint(ctx.tcx(), (UintTy::U8)), ctx);
+    let fat_ptr_type = fat_ptr_to(Ty::new_uint(ctx.tcx(), UintTy::U8), ctx);
 
     let metadata_field = FieldDesc::new(
         fat_ptr_type,
@@ -165,7 +165,12 @@ fn unsized_info<'tcx>(
                 old_info
             }
         }
-        (_, TyKind::Dynamic(data, ..)) => get_vtable(ctx, source, data.principal()),
+        (_, TyKind::Dynamic(data, ..)) => get_vtable(
+            ctx,
+            source,
+            data.principal()
+                .map(|principal| ctx.tcx().instantiate_bound_regions_with_erased(principal)),
+        ),
         _ => panic!("unsized_info: invalid unsizing {source:?} -> {target:?}"),
     }
 }
@@ -187,12 +192,11 @@ fn load_scalar_pair(addr: CILNode, ctx: &mut MethodCompileCtx<'_, '_>) -> (CILNo
 pub(crate) fn get_vtable<'tcx>(
     fx: &mut MethodCompileCtx<'tcx, '_>,
     ty: Ty<'tcx>,
-    trait_ref: Option<PolyExistentialTraitRef<'tcx>>,
+    trait_ref: Option<ExistentialTraitRef<'tcx>>,
 ) -> CILNode {
     let ty = fx.monomorphize(ty);
-    // TODO: `PolyExistentialTraitRef` *used to* not have any binders: now it has one. I *assume* things will work out just fine if I discharge that binder(since things worked fine before)
-    // but I don't know for sure.
-    let alloc_id = fx.tcx().vtable_allocation((ty, trait_ref.map(|binder|binder.no_bound_vars().expect("get_vtable called with a trait_ref with a non-dischargeable binder."))));
+
+    let alloc_id = fx.tcx().vtable_allocation((ty, trait_ref));
     CILNode::LoadGlobalAllocPtr {
         alloc_id: alloc_id.0.get(),
     }

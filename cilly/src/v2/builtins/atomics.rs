@@ -103,10 +103,7 @@ pub fn compare_exchange(
                 addr,
                 Box::new(crate::cilnode::PtrCastRes::Ptr(i32_tidx)),
             ));
-            let res = asm.alloc_node(CILNode::Call(Box::new((
-                mref,
-                Box::new([addr, cast_value, cast_comparand]),
-            ))));
+            let res = asm.alloc_node(CILNode::call(mref, [addr, cast_value, cast_comparand]));
             asm.alloc_node(CILNode::IntCast {
                 input: res,
                 target: int,
@@ -128,10 +125,7 @@ pub fn compare_exchange(
                 vec![].into(),
             ));
 
-            asm.alloc_node(CILNode::Call(Box::new((
-                mref,
-                Box::new([addr, value, comaprand]),
-            ))))
+            asm.alloc_node(CILNode::call(mref, [addr, value, comaprand]))
         }
         _ => todo!("Can't cmpxchng {int:?}"),
     }

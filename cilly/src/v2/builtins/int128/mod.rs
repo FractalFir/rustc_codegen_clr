@@ -48,7 +48,7 @@ fn op_indirect(
             asm.alloc_string(op.dotnet_name()),
             asm,
         );
-        let call = asm.alloc_node(CILNode::Call(Box::new((call_op, [lhs, rhs].into()))));
+        let call = asm.alloc_node(CILNode::call(call_op, [lhs, rhs]));
         let ret = asm.alloc_root(CILRoot::Ret(call));
         MethodImpl::MethodBody {
             blocks: vec![BasicBlock::new(vec![ret], 0, None)],
@@ -113,7 +113,7 @@ pub fn i128_mul_ovf_check(asm: &mut Assembly, patcher: &mut MissingMethodPatcher
         let main_module = *asm.main_module();
         let main_module = asm[main_module].clone();
         let const_zero = i128_classref.static_mref(&[], Type::Int(Int::I128), get_zero, asm);
-        let const_zero = asm.alloc_node(CILNode::Call(Box::new((const_zero, [].into()))));
+        let const_zero = asm.alloc_node(CILNode::call(const_zero, []));
         let i128_eq = main_module.static_mref(
             &[Type::Int(Int::I128), Type::Int(Int::I128)],
             Type::Bool,
@@ -132,7 +132,7 @@ pub fn i128_mul_ovf_check(asm: &mut Assembly, patcher: &mut MissingMethodPatcher
             op_div,
             asm,
         );
-        let rhs_zero = asm.alloc_node(CILNode::Call(Box::new((i128_eq, [rhs, const_zero].into()))));
+        let rhs_zero = asm.alloc_node(CILNode::call(i128_eq, [rhs, const_zero]));
         let jmp_nz = asm.alloc_root(CILRoot::Branch(Box::new((
             0,
             1,
@@ -140,15 +140,9 @@ pub fn i128_mul_ovf_check(asm: &mut Assembly, patcher: &mut MissingMethodPatcher
         ))));
         let ret_false = asm.alloc_node(Const::Bool(false));
         let ret_false = asm.alloc_root(CILRoot::Ret(ret_false));
-        let lhs_mul_rhs = asm.alloc_node(CILNode::Call(Box::new((i128_mul, [lhs, rhs].into()))));
-        let recomputed_rhs = asm.alloc_node(CILNode::Call(Box::new((
-            i128_div,
-            [lhs_mul_rhs, rhs].into(),
-        ))));
-        let ovf = asm.alloc_node(CILNode::Call(Box::new((
-            i128_eq,
-            [recomputed_rhs, rhs].into(),
-        ))));
+        let lhs_mul_rhs = asm.alloc_node(CILNode::call(i128_mul, [lhs, rhs]));
+        let recomputed_rhs = asm.alloc_node(CILNode::call(i128_div, [lhs_mul_rhs, rhs]));
+        let ovf = asm.alloc_node(CILNode::call(i128_eq, [recomputed_rhs, rhs]));
         let ret_ovf = asm.alloc_root(CILRoot::Ret(ovf));
 
         MethodImpl::MethodBody {

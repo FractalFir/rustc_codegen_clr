@@ -81,10 +81,7 @@ fn insert_rust_alloc(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
             MethodKind::Static,
             [].into(),
         ));
-        let alloc = asm.alloc_node(CILNode::Call(Box::new((
-            call_method,
-            Box::new([size, align]),
-        ))));
+        let alloc = asm.alloc_node(CILNode::call(call_method, [size, align]));
         let ret = asm.alloc_root(CILRoot::Ret(alloc));
         let cap = asm.alloc_node(Const::USize(ALLOC_CAP));
         let check = asm.alloc_root(CILRoot::Branch(Box::new((
@@ -127,10 +124,7 @@ fn insert_rust_alloc_zeroed(asm: &mut Assembly, patcher: &mut MissingMethodPatch
             MethodKind::Static,
             [].into(),
         ));
-        let alloc = asm.alloc_node(CILNode::Call(Box::new((
-            call_method,
-            Box::new([size, align]),
-        ))));
+        let alloc = asm.alloc_node(CILNode::call(call_method, ([size, align])));
         let alloc = asm.alloc_node(CILNode::PtrCast(
             alloc,
             Box::new(super::cilnode::PtrCastRes::Ptr(void_idx)),
@@ -205,10 +199,7 @@ fn insert_rust_realloc(asm: &mut Assembly, patcher: &mut MissingMethodPatcher, u
                 MethodKind::Static,
                 [].into(),
             ));
-            let _mm_malloc = asm.alloc_node(CILNode::Call(Box::new((
-                _mm_malloc,
-                Box::new([new_size, align]),
-            ))));
+            let _mm_malloc = asm.alloc_node(CILNode::call(_mm_malloc, [new_size, align]));
             let call_mm_malloc = asm.alloc_root(CILRoot::StLoc(0, _mm_malloc));
             // 2. memcpy the buffer.
             let buff = asm.alloc_node(CILNode::LdLoc(0));
@@ -223,8 +214,7 @@ fn insert_rust_realloc(asm: &mut Assembly, patcher: &mut MissingMethodPatcher, u
                 MethodKind::Static,
                 [].into(),
             ));
-            let call_aligned_free =
-                asm.alloc_root(CILRoot::Call(Box::new((aligned_free, [ptr].into()))));
+            let call_aligned_free = asm.alloc_root(CILRoot::call(aligned_free, [ptr]));
             let ret = asm.alloc_root(CILRoot::Ret(buff));
             MethodImpl::MethodBody {
                 blocks: vec![BasicBlock::new(
@@ -265,10 +255,7 @@ fn insert_rust_realloc(asm: &mut Assembly, patcher: &mut MissingMethodPatcher, u
                 MethodKind::Static,
                 [].into(),
             ));
-            let alloc = asm.alloc_node(CILNode::Call(Box::new((
-                call_method,
-                Box::new([ptr, new_size, align]),
-            ))));
+            let alloc = asm.alloc_node(CILNode::call(call_method, ([ptr, new_size, align])));
             let ret = asm.alloc_root(CILRoot::Ret(alloc));
             MethodImpl::MethodBody {
                 blocks: vec![BasicBlock::new(vec![ret], 0, None)],
@@ -299,7 +286,7 @@ fn insert_rust_dealloc(asm: &mut Assembly, patcher: &mut MissingMethodPatcher, u
                 MethodKind::Static,
                 [].into(),
             ));
-            let alloc = asm.alloc_node(CILNode::Call(Box::new((call_method, Box::new([ldarg_0])))));
+            let alloc = asm.alloc_node(CILNode::call(call_method, [ldarg_0]));
             let ret = asm.alloc_root(CILRoot::Ret(alloc));
             MethodImpl::MethodBody {
                 blocks: vec![BasicBlock::new(vec![ret], 0, None)],
@@ -321,7 +308,7 @@ fn insert_rust_dealloc(asm: &mut Assembly, patcher: &mut MissingMethodPatcher, u
                 MethodKind::Static,
                 [].into(),
             ));
-            let alloc = asm.alloc_node(CILNode::Call(Box::new((call_method, Box::new([ldarg_0])))));
+            let alloc = asm.alloc_node(CILNode::call(call_method, [ldarg_0]));
             let ret = asm.alloc_root(CILRoot::Ret(alloc));
             MethodImpl::MethodBody {
                 blocks: vec![BasicBlock::new(vec![ret], 0, None)],

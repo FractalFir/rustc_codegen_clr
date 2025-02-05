@@ -12,7 +12,7 @@ use cmp::{eq_unchecked, gt_unchecked, lt_unchecked, ne_unchecked};
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::{
     mir::{BinOp, Operand},
-    ty::{FloatTy, Instance, IntTy, List, ParamEnv, Ty, TyKind, UintTy},
+    ty::{FloatTy, IntTy, List, Ty, TyKind, UintTy},
 };
 use shift::{shl_checked, shl_unchecked, shr_checked, shr_unchecked};
 

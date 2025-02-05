@@ -1,10 +1,7 @@
 use cilly::cil_node::CILNode;
 use cilly::Type;
 use rustc_middle::mir::interpret::Scalar;
-use rustc_middle::{
-    mir::{ConstValue, Operand},
-    ty::ParamEnv,
-};
+use rustc_middle::mir::{ConstValue, Operand};
 
 use crate::assembly::MethodCompileCtx;
 pub(crate) fn handle_operand<'tcx>(
@@ -128,8 +125,8 @@ pub(crate) fn is_const_zero<'tcx>(
                     // ZeroSized has no data, so it has only 0 values
                     true
                 }
-                ConstValue::Slice { data, .. } => false,
-                ConstValue::Indirect { alloc_id, .. } => false,
+                ConstValue::Slice {  .. } => false,
+                ConstValue::Indirect {  .. } => false,
             }
         }
     }

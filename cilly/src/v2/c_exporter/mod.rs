@@ -1,8 +1,7 @@
 // This exporter is WIP.
 #![allow(dead_code, unused_imports, unused_variables, clippy::let_unit_value)]
-use std::{collections::HashSet, io::Write, path::Path};
-// Strips debuginfo: `#line [0-9]+ "[a-z/.\-0-9_]+"`
 use fxhash::{hash64, FxHashSet, FxHasher};
+use std::{collections::HashSet, io::Write, path::Path};
 
 use crate::{
     config, typecheck,
@@ -17,155 +16,22 @@ config!(NO_DEBUG, bool, false);
 config!(UB_CHECKS, bool, true);
 config!(SHORT_TYPENAMES, bool, false);
 config!(PARTS, u32, 1);
+config!(ASCII_IDENTS, bool, false);
+mod utilis;
 use super::{
-    asm::MAIN_MODULE, basic_block::BlockId, bimap::IntoBiMapIndex, cilnode::{ExtendKind, PtrCastRes}, cilroot::BranchCond, method::LocalDef, tpe::simd::SIMDVector, typecheck::TypeCheckError, Assembly, BinOp, CILIter, CILIterElem, CILNode, CILRoot, ClassDefIdx, ClassRef, ClassRefIdx, Const, Exporter, Int, MethodDef, MethodRef, NodeIdx, RootIdx, SigIdx, Type
+    asm::MAIN_MODULE,
+    basic_block::BlockId,
+    bimap::IntoBiMapIndex,
+    cilnode::{ExtendKind, PtrCastRes},
+    cilroot::BranchCond,
+    method::LocalDef,
+    tpe::simd::SIMDVector,
+    typecheck::TypeCheckError,
+    Assembly, BinOp, CILIter, CILIterElem, CILNode, CILRoot, ClassDefIdx, ClassRef, ClassRefIdx,
+    Const, Exporter, Int, MethodDef, MethodRef, NodeIdx, RootIdx, SigIdx, Type,
 };
-fn local_name(locals: &[LocalDef], asm: &Assembly, loc: u32) -> String {
-    // If the name of this local repeats, use the L form.
-    if locals
-        .iter()
-        .filter(|(name, _)| *name == locals[loc as usize].0)
-        .count()
-        > 1
-    {
-        return format!("L{loc}");
-    }
-    match locals[loc as usize].0 {
-        Some(local_name) => {
-            let ident = escape_nonfn_name(&asm[local_name]);
-            match ident.as_str() {
-                "socket" => {
-                    format!("i{}", encode(hash64(&ident)))
-                }
-                _ => ident,
-            }
-        }
-        None => format!("L{loc}"),
-    }
-}
-config!(ASCII_IDENTS,bool,false);
-fn escape_ident(ident: &str) -> String {
-    let mut escaped = ident
-        .replace(['.', ' '], "_")
-        .replace('~', "_tilda_")
-        .replace('=', "_eq_")
-        .replace("#", "_pound_")
-        .replace(":", "_col_")
-        .replace("[", "_srpar_")
-        .replace("]", "_slpar_")
-        .replace("(", "_rpar_")
-        .replace(")", "_lpar_")
-        .replace("{", "_rbra_")
-        .replace("}", "_lbra_");
-    if *ASCII_IDENTS{
-        escaped = escaped.replace("$","_dsig_");
-    }
-    if escaped.chars().next().unwrap().is_numeric() {
-        escaped = format!("p{escaped}");
-    }
-    // Check if reserved.
-    match escaped.as_str() {
-        "int" | "default" | "float" | "double" | "long" | "short" | "register" | "stderr"
-        | "environ" | "struct" | "union" | "linux" | "inline" | "asm" | "signed" | "unsigned"
-        | "bool" | "char" | "case" | "switch" | "volatile" | "auto" | "void" | "unix" => {
-            format!("i{}", encode(hash64(&escaped)))
-        }
-        _ => escaped,
-    }
-}
-fn nonvoid_c_type(field_tpe: Type, asm: &Assembly) -> String {
-    match field_tpe {
-        Type::Void => "RustVoid".into(),
-        _ => c_tpe(field_tpe, asm),
-    }
-}
-fn c_tpe(field_tpe: Type, asm: &Assembly) -> String {
-    match field_tpe {
-        Type::Ptr(type_idx) | Type::Ref(type_idx) => format!("{}*", c_tpe(asm[type_idx], asm)),
-        Type::Int(int) => match int {
-            Int::U8 => "uint8_t".into(),
-            Int::U16 => "uint16_t".into(),
-            Int::U32 => "uint32_t".into(),
-            Int::U64 => "uint64_t".into(),
-            Int::U128 => "__uint128_t".into(),
-            Int::USize => "uintptr_t".into(),
-            Int::I8 => "int8_t".into(),
-            Int::I16 => "int16_t".into(),
-            Int::I32 => "int32_t".into(),
-            Int::I64 => "int64_t".into(),
-            Int::I128 => "__int128".into(),
-            Int::ISize => "intptr_t".into(),
-        },
-        Type::ClassRef(class_ref_idx) => {
-            if asm.class_ref_to_def(class_ref_idx).is_some_and(|def| {
-                asm[def].has_nonveralpping_layout() && asm[def].explict_size().is_some()
-            }) {
-                format!("struct {}", escape_ident(&asm[asm[class_ref_idx].name()]))
-            } else {
-                format!("union {}", escape_ident(&asm[asm[class_ref_idx].name()]))
-            }
-        }
-        Type::Float(float) => match float {
-            super::Float::F16 => "_Float16".into(),
-            super::Float::F32 => "float".into(),
-            super::Float::F64 => "double".into(),
-            super::Float::F128 => "_Float128".into(),
-        },
-        Type::PlatformString => "char*".into(),
-        Type::PlatformChar => "char".into(),
-        Type::PlatformGeneric(_, generic_kind) => todo!(),
-        Type::PlatformObject => "void*".into(),
-        Type::Bool => "bool".into(),
-        Type::Void => "void".into(),
-        Type::PlatformArray { elem, dims } => format!(
-            "{elem}{dims}",
-            elem = c_tpe(asm[elem], asm),
-            dims = "*".repeat(dims.get() as usize)
-        ),
-        Type::FnPtr(_) => "void*".into(),
-        Type::SIMDVector(vec) => {
-            format!(
-                "__simdvec{elem}_{count}",
-                elem = std::convert::Into::<Type>::into(vec.elem()).mangle(asm),
-                count = vec.count()
-            )
-        }
-    }
-}
-fn mref_to_name(mref: &MethodRef, asm: &Assembly) -> String {
-    let class = &asm[mref.class()];
-    let class_name = escape_nonfn_name(&asm[class.name()]);
-    let mname = escape_ident(&asm[mref.name()]);
-    if class.asm().is_some()
-        || matches!(mref.output(asm), Type::SIMDVector(_))
-        || mref
-            .stack_inputs(asm)
-            .iter()
-            .any(|tpe| matches!(tpe, Type::SIMDVector(_)))
-        || mname == "transmute"
-        || mname == "create_slice"
-        || mname == "_Unwind_Backtrace"
-    {
-        let mangled = escape_ident(
-            &asm[mref.sig()]
-                .iter_types()
-                .map(|tpe| tpe.mangle(asm))
-                .collect::<String>(),
-        );
+use utilis::*;
 
-        let stem = class_member_name(&class_name, &mname);
-        format!("{stem}{mangled}")
-    } else {
-        class_member_name(&class_name, &mname)
-    }
-}
-fn class_member_name(class_name: &str, method_name: &str) -> String {
-    if class_name == MAIN_MODULE {
-        method_name.into()
-    } else {
-        format!("{class_name}_{method_name}")
-    }
-}
 pub struct CExporter {
     is_lib: bool,
     libs: Vec<String>,
@@ -553,7 +419,7 @@ impl CExporter {
             },
             CILNode::LdLocA(loc) => format!("&{}", local_name(locals, asm, loc),),
             CILNode::Call(info) => {
-                let (method, args) = info.as_ref();
+                let (method, args, _is_pure) = info.as_ref();
                 let method = asm[*method].clone();
                 let call_args = args
                     .iter()
@@ -775,7 +641,7 @@ impl CExporter {
         locals: &[LocalDef],
         inputs: &[(Type, Option<StringIdx>)],
         sig: SigIdx,
-        next:Option<BlockId>,
+        next: Option<BlockId>,
     ) -> Result<String, TypeCheckError> {
         Ok(match root {
             CILRoot::StLoc(id, node_idx) => {
@@ -886,7 +752,7 @@ impl CExporter {
                 }
             }
             CILRoot::Call(info) => {
-                let (method, args) = info.as_ref();
+                let (method, args,_is_pure) = info.as_ref();
                 let method = asm[*method].clone();
                 let call_args = args
                     .iter()
@@ -1074,10 +940,10 @@ impl CExporter {
         }
         let blocks = def.blocks(asm).unwrap().to_vec();
         let mut block_iter = blocks.iter().peekable();
-        while let Some(block) = block_iter.next(){
+        while let Some(block) = block_iter.next() {
             writeln!(method_defs, "bb{}:", block.block_id())?;
             let mut root_iter = block.roots().iter().peekable();
-            while let Some(root_idx) = root_iter.next(){
+            while let Some(root_idx) = root_iter.next() {
                 if let Err(err) = asm[*root_idx].clone().typecheck(sig, &locals, asm) {
                     eprintln!("Typecheck error:{err:?}");
                     writeln!(method_defs, "fprintf(stderr,\"Attempted to execute a statement which failed to compile.\" {err:?}); abort();",err = format!("{err:?}"))?;
@@ -1091,7 +957,10 @@ impl CExporter {
                     &stack_inputs[..],
                     sig,
                     // If this is not the last block, but it is the last root of this block, check if the following block is our target. If so, use more optimized branching.
-                    block_iter.peek().map(|block|block.block_id()).filter(|_|root_iter.peek().is_none()),
+                    block_iter
+                        .peek()
+                        .map(|block| block.block_id())
+                        .filter(|_| root_iter.peek().is_none()),
                 );
 
                 match root {
@@ -1189,7 +1058,7 @@ impl CExporter {
                 writeln!(type_defs, "char force_size[{size}];", size = size.get())?;
             }
             if class.fields().is_empty() {
-                writeln!(type_defs, "FORCE_NOT_ZST")?; 
+                writeln!(type_defs, "FORCE_NOT_ZST")?;
             }
             writeln!(type_defs, "}} {class_name};")?;
         }
@@ -1287,6 +1156,7 @@ impl CExporter {
         target: &Path,
         lib: bool,
         extrn: bool,
+        is_main: bool,
     ) -> Result<(), std::io::Error> {
         let mut c_out = std::io::BufWriter::new(std::fs::File::create(c_path)?);
         println!("Exporting {c_path:?}");
@@ -1298,6 +1168,9 @@ impl CExporter {
         drop(c_out);
 
         let mut cmd = std::process::Command::new(Self::c_compiler());
+        if is_main {
+            cmd.args(["-D", "MAIN_FILE"]);
+        }
 
         cmd.arg("-fPIC");
         cmd.arg(c_path).arg("-o").arg(target);
@@ -1333,7 +1206,7 @@ impl CExporter {
         let stderr = String::from_utf8_lossy(&out.stderr);
         if !*LINKER_RECOVER {
             assert!(
-                !(stderr.contains("error") || stderr.contains("fatal")),
+                !(stderr.contains("error:") || stderr.contains("fatal")),
                 "stdout:{} stderr:{} cmd:{cmd:?}",
                 stdout,
                 String::from_utf8_lossy(&out.stderr)
@@ -1350,7 +1223,7 @@ impl Exporter for CExporter {
         if *PARTS == 1 {
             // The IL file should be next to the target
             let c_path = target.with_extension("c");
-            self.export_to_file(&c_path, asm, target, self.is_lib, false)
+            self.export_to_file(&c_path, asm, target, self.is_lib, false, true)
         } else {
             let mut parts = vec![];
             for (id, part) in asm.split_to_parts(*PARTS).enumerate() {
@@ -1359,7 +1232,7 @@ impl Exporter for CExporter {
                     .with_file_name(format!("{name}_{id}"))
                     .with_extension("o");
                 let c_path = target.with_extension("c");
-                self.export_to_file(&c_path, &part, &target, true, true)?;
+                self.export_to_file(&c_path, &part, &target, true, true, id == 0)?;
                 parts.push(target);
             }
 
@@ -1373,7 +1246,7 @@ impl Exporter for CExporter {
             let c_path = target.with_extension("c");
             let only_statics = asm.only_statics();
 
-            self.export_to_file(&c_path, &only_statics, target, true, false)?;
+            self.export_to_file(&c_path, &only_statics, target, true, false, false)?;
             let mut option = std::fs::OpenOptions::new();
             option.read(true);
             option.append(true);
@@ -1446,12 +1319,4 @@ pub fn name_sig_class_to_mangled(
         Some(_) => todo!(),
         None => todo!(),
     };
-}
-fn escape_nonfn_name(name: &str) -> String {
-    let res = escape_ident(name);
-    match res.as_ref() {
-        "sigaction" => "sigactn".to_owned(),
-        "sigaltstack" => "sigaltstck".to_owned(),
-        _ => res,
-    }
 }

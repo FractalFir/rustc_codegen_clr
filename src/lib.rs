@@ -182,7 +182,6 @@ use rustc_session::{
     Session,
 };
 
-use rustc_span::ErrorGuaranteed;
 
 use std::{any::Any, path::Path};
 /// Immutable string - used to save a bit of memory on storage.
@@ -348,12 +347,3 @@ pub extern "Rust" fn __rustc_codegen_backend() -> Box<dyn CodegenBackend> {
     Box::new(MyBackend)
 }
 pub use cilly::{DATA_PTR, ENUM_TAG, METADATA};
-/*
-Compiler test flags, used to skip tests which cause crashes.
-
-For core:
---skip atomic::atomic_access_bool --skip atomic::bool_and  --skip  atomic::bool_nand --skip cell::refcell_ref_coercion --skip future::test_join --skip  hash::test_writer_hasher --skip  manually_drop::smoke --skip num::i128::tests::test_saturating_abs --skip num::i128::tests::test_saturating_neg --skip  ptr::ptr_metadata --skip ptr::test_ptr_metadata_in_const --skip result::result_try_trait_v2_branch --skip simd::testing --skip slice::take_in_bounds_max_range_from --skip slice::take_in_bounds_max_range_to --skip slice::take_mut_in_bounds_max_range_from --skip slice::take_mut_in_bounds_max_range_to --skip slice::take_mut_oob_max_range_to_inclusive --skip slice::take_oob_max_range_to_inclusive --skip cell::refcell_unsized --skip iter::adapters::array_chunks::test_iterator_array_chunks_count --skip num::flt2dec::strategy::dragon::test_to_exact_exp_str --skip num::flt2dec::strategy::dragon::test_to_exact_fixed_str --skip num::flt2dec::strategy::dragon::test_to_shortest_exp_str --skip num::flt2dec::strategy::dragon::test_to_shortest_str --skip num::flt2dec::strategy::grisu::test_to_exact_exp_str --skip num::flt2dec::strategy::grisu::test_to_exact_fixed_str --skip num::flt2dec::strategy::grisu::test_to_shortest_exp_str --skip num::flt2dec::strategy::grisu::test_to_shortest_str --skip num::i128::tests::test_leading_trailing_ones --skip num::i32::tests::test_leading_trailing_ones --skip num::i64::tests::test_leading_trailing_ones --skip num::u128::tests::test_leading_trailing_ones --skip num::u128::tests::test_reverse_bits --skip num::u128::tests::test_reverse_bits --skip num::u32::tests::test_leading_trailing_ones --skip num::u32::tests::test_reverse_bits --skip  num::u64::tests::test_leading_trailing_ones --skip num::u64::tests::test_reverse_bits --skip  slice::select_nth_unstable --skip  slice::test_array_windows_count --skip slice::test_binary_search --skip slice::test_windows_count
-For alloc:
---test-threads 1
-*/
-//

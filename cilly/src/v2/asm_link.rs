@@ -118,7 +118,7 @@ impl Assembly {
                 CILNode::UnOp(self.alloc_node(a), op.clone())
             }
             CILNode::Call(call_arg) => {
-                let (mref, args) = call_arg.as_ref();
+                let (mref, args, pure) = call_arg.as_ref();
                 let method_ref = self.translate_method_ref(source, &source[*mref]);
                 let mref = self.alloc_methodref(method_ref);
                 let args = args
@@ -128,7 +128,7 @@ impl Assembly {
                         self.alloc_node(arg)
                     })
                     .collect();
-                CILNode::Call(Box::new((mref, args)))
+                CILNode::Call(Box::new((mref, args, *pure)))
             }
             CILNode::IntCast {
                 input,
@@ -416,7 +416,7 @@ impl Assembly {
                 CILRoot::SetField(Box::new((field, addr, val)))
             }
             CILRoot::Call(call_arg) => {
-                let (mref, args) = call_arg.as_ref();
+                let (mref, args, pure) = call_arg.as_ref();
                 let method_ref = self.translate_method_ref(source, &source[*mref]);
                 let mref = self.alloc_methodref(method_ref);
                 let args = args
@@ -426,7 +426,7 @@ impl Assembly {
                         self.alloc_node(arg)
                     })
                     .collect();
-                CILRoot::Call(Box::new((mref, args)))
+                CILRoot::Call(Box::new((mref, args, *pure)))
             }
             CILRoot::StInd(info) => {
                 let (addr, val, tpe, volitile) = info.as_ref();

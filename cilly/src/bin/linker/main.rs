@@ -1,6 +1,7 @@
 #![deny(unused_must_use)]
 #![allow(clippy::module_name_repetitions)]
 use cilly::{
+    cilnode::IsPure,
     config, conv_usize,
     libc_fns::{self, LIBC_FNS, LIBC_MODIFIES_ERRNO},
     v2::{
@@ -226,7 +227,7 @@ fn main() {
                fn_name,
                &mut final_assembly,
            );
-           let stat = final_assembly.alloc_root(CILRoot::Call(Box::new((mref, [msg].into()))));
+           let stat = final_assembly.alloc_root(CILRoot::call(((mref, [msg].into()))));
            final_assembly.add_cctor(&[stat]);
        }
     */
@@ -255,6 +256,11 @@ fn main() {
         libc_fns::LIBM_FNS
             .iter()
             .map(|fn_name| (*fn_name, mathf.to_owned())),
+    );
+    externs.extend(
+        libc_fns::GB_FNS
+            .iter()
+            .map(|fn_name| (*fn_name, "gameboy".to_owned())),
     );
     let mut overrides: MissingMethodPatcher = FxHashMap::default();
     overrides.insert(
@@ -343,6 +349,7 @@ fn main() {
                                             cilly::cil_node::CILNode::LDArg(0)
                                         )]),
                                         site: asm.alloc_methodref(exception_ctor),
+                                        is_pure: IsPure::NOT,
                                     },
                                 )),
                             )

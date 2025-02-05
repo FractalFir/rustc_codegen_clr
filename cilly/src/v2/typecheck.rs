@@ -127,7 +127,9 @@ pub enum TypeCheckError {
         name: super::StringIdx,
         owner: super::ClassRefIdx,
     },
-    VoidPointerOp { op: BinOp },
+    VoidPointerOp {
+        op: BinOp,
+    },
 }
 pub fn typecheck_err_to_string(
     root_idx: super::RootIdx,
@@ -212,10 +214,14 @@ impl BinOp {
                 (Type::Float(lhs), Type::Float(rhs)) if rhs == lhs => Ok(Type::Float(lhs)),
                 (Type::Ptr(lhs), Type::Ptr(rhs)) if rhs == lhs => Ok(Type::Ptr(lhs)),
                 (Type::FnPtr(lhs), Type::FnPtr(rhs)) if rhs == lhs => Ok(Type::FnPtr(lhs)),
-                (Type::Ptr(inner), Type::Int(Int::ISize | Int::USize)) => if asm[inner] != Type::Void{
+                (Type::Ptr(_inner), Type::Int(Int::ISize | Int::USize)) => {
+                    // Since pointer ops operate in bytes, this is not an issue ATM.
+                    /*if asm[inner] != Type::Void {
+                        Ok(lhs)
+                    } else {
+                        Err(TypeCheckError::VoidPointerOp { op: self.clone() })
+                    }*/
                     Ok(lhs)
-                }else{
-                    Err(TypeCheckError::VoidPointerOp{op:self.clone()})
                 }
                 (Type::FnPtr(_), Type::Int(Int::ISize | Int::USize)) => Ok(lhs),
                 (Type::Int(Int::ISize | Int::USize), Type::Ptr(_) | Type::FnPtr(_)) => Ok(rhs),
@@ -588,7 +594,7 @@ impl CILNode {
             CILNode::LdArg(arg) => Ok(asm[sig].inputs()[*arg as usize]),
             CILNode::LdArgA(arg) => Ok(asm.nref(asm[sig].inputs()[*arg as usize])),
             CILNode::Call(call_info) => {
-                let (mref, args) = call_info.as_ref();
+                let (mref, args, _is_pure) = call_info.as_ref();
                 let mref = asm[*mref].clone();
                 let inputs: Box<[_]> = mref.stack_inputs(asm).into();
                 if args.len() != inputs.len() {
@@ -1023,7 +1029,7 @@ impl CILRoot {
                 Ok(())
             }
             Self::Call(boxed) => {
-                let (mref, args) = boxed.as_ref();
+                let (mref, args, _is_pure) = boxed.as_ref();
                 let mref = asm[*mref].clone();
                 let call_sig = asm[mref.sig()].clone();
                 match mref.kind() {

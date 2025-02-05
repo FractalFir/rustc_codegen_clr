@@ -14,7 +14,7 @@ use cilly::{
 };
 use rustc_middle::{
     mir::{CastKind, NullOp, Operand, Place, Rvalue},
-    ty::{adjustment::PointerCoercion, GenericArgs, Instance, InstanceKind, ParamEnv, Ty, TyKind},
+    ty::{adjustment::PointerCoercion, GenericArgs, Instance, InstanceKind, Ty, TyKind},
 };
 macro_rules! cast {
     ($ctx:ident,$operand:ident,$target:ident,$cast_name:path,$asm:expr) => {{
@@ -84,8 +84,8 @@ pub fn handle_rvalue<'tcx>(
             }
         }
         Rvalue::Use(operand) => (vec![], handle_operand(operand, ctx)),
-        // TODO: check the exact semantics of `WrapUnsafeBinder` once it has some documentation. 
-        Rvalue::WrapUnsafeBinder(operand,_unknown_ty) => (vec![], handle_operand(operand, ctx)),
+        // TODO: check the exact semantics of `WrapUnsafeBinder` once it has some documentation.
+        Rvalue::WrapUnsafeBinder(operand, _unknown_ty) => (vec![], handle_operand(operand, ctx)),
         Rvalue::CopyForDeref(place) => (vec![], crate::place::place_get(place, ctx)),
         Rvalue::Ref(_region, _borrow_kind, place) => {
             (vec![], crate::place::place_adress(place, ctx))

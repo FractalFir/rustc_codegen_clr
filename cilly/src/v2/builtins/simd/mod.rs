@@ -51,7 +51,7 @@ fn simd_ones_compliment(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) 
             [elem].into(),
         );
         let val = asm.alloc_node(CILNode::LdArg(0));
-        let res = asm.alloc_node(CILNode::Call(Box::new((ones_compliment, [val].into()))));
+        let res = asm.alloc_node(CILNode::call(ones_compliment, [val]));
         let ret = asm.alloc_root(CILRoot::Ret(res));
         MethodImpl::MethodBody {
             blocks: vec![BasicBlock::new(vec![ret], 0, None)],
@@ -92,7 +92,7 @@ fn simd_neg(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
             [elem].into(),
         );
         let val = asm.alloc_node(CILNode::LdArg(0));
-        let res = asm.alloc_node(CILNode::Call(Box::new((ones_compliment, [val].into()))));
+        let res = asm.alloc_node(CILNode::call(ones_compliment, [val]));
         let ret = asm.alloc_root(CILRoot::Ret(res));
         MethodImpl::MethodBody {
             blocks: vec![BasicBlock::new(vec![ret], 0, None)],
@@ -132,7 +132,7 @@ fn simd_abs(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
             [elem].into(),
         );
         let val = asm.alloc_node(CILNode::LdArg(0));
-        let res = asm.alloc_node(CILNode::Call(Box::new((ones_compliment, [val].into()))));
+        let res = asm.alloc_node(CILNode::call(ones_compliment, [val]));
         let ret = asm.alloc_root(CILRoot::Ret(res));
         MethodImpl::MethodBody {
             blocks: vec![BasicBlock::new(vec![ret], 0, None)],
@@ -168,7 +168,7 @@ fn simd_vec_from_val(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
         let create = asm.alloc_string("Create");
         let create = extension_class.static_mref(&[sig.inputs()[0]], *sig.output(), create, asm);
         let val = asm.alloc_node(CILNode::LdArg(0));
-        let res = asm.alloc_node(CILNode::Call(Box::new((create, [val].into()))));
+        let res = asm.alloc_node(CILNode::call(create, [val]));
         let ret = asm.alloc_root(CILRoot::Ret(res));
         MethodImpl::MethodBody {
             blocks: vec![BasicBlock::new(vec![ret], 0, None)],
@@ -195,7 +195,7 @@ fn simd_allset(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
         let generic_class = asm.alloc_class_ref(generic_class);
         let create = asm.alloc_string("get_AllBitsSet");
         let create = class.static_mref(&[], Type::ClassRef(generic_class), create, asm);
-        let res = asm.alloc_node(CILNode::Call(Box::new((create, [].into()))));
+        let res = asm.alloc_node(CILNode::call(create, []));
         let ret = asm.alloc_root(CILRoot::Ret(res));
         MethodImpl::MethodBody {
             blocks: vec![BasicBlock::new(vec![ret], 0, None)],

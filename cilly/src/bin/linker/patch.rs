@@ -17,7 +17,7 @@ pub fn call_alias(
             let inputs: Box<[_]> = asm[call.sig()].inputs().into();
             let original_inputs: Box<[_]> =
                 asm[asm[original].sig()].inputs().into();
-            let args = inputs
+            let args:Box<_> = inputs
                 .iter()
                 .zip(original_inputs.iter())
                 .enumerate()
@@ -86,14 +86,14 @@ pub fn call_alias(
                 })
                 .collect();
             if *asm[call.sig()].output() == Type::Void {
-                let call = asm.alloc_root(CILRoot::Call(Box::new((method_ref, args))));
+                let call = asm.alloc_root(CILRoot::call(method_ref, args));
                 let ret = asm.alloc_root(CILRoot::VoidRet);
                 cilly::v2::MethodImpl::MethodBody {
                     blocks: vec![cilly::v2::BasicBlock::new(vec![call, ret], 0, None)],
                     locals: vec![],
                 }
             } else {
-                let ret_value = asm.alloc_node(CILNode::Call(Box::new((method_ref, args))));
+                let ret_value = asm.alloc_node(CILNode::call(method_ref, args));
                 let ret = asm.alloc_root(CILRoot::Ret(ret_value));
                 cilly::v2::MethodImpl::MethodBody {
                     blocks: vec![cilly::v2::BasicBlock::new(vec![ret], 0, None)],

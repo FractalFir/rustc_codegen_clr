@@ -10,7 +10,7 @@ use cilly::{
     Type,
 };
 use rustc_middle::ty::PseudoCanonicalInput;
-use rustc_middle::ty::{AdtDef, ConstKind, GenericArg, ParamEnv, Ty, TyCtxt, TyKind};
+use rustc_middle::ty::{AdtDef, ConstKind, GenericArg, Ty, TyCtxt, TyKind};
 /// This struct represetnts either a primitive .NET type (F32,F64), or stores information on how to lookup a more complex type (struct,class,array)
 use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, PartialEq, Clone, Eq, Hash, Debug)]
@@ -124,7 +124,8 @@ pub fn garag_to_usize<'tcx>(garg: GenericArg<'tcx>, _ctx: TyCtxt<'tcx>) -> u64 {
     let kind = usize_const.kind();
     match kind {
         ConstKind::Value(val) => {
-            let scalar = val.valtree
+            let scalar = val
+                .valtree
                 .try_to_scalar_int()
                 .expect("String const did not contain valid scalar!");
             let ty = val.ty;

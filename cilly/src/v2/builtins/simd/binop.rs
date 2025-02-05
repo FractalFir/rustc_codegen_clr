@@ -35,7 +35,7 @@ macro_rules! binop {
                 );
                 let lhs = asm.alloc_node(CILNode::LdArg(0));
                 let rhs = asm.alloc_node(CILNode::LdArg(1));
-                let res = asm.alloc_node(CILNode::Call(Box::new((equals, [lhs, rhs].into()))));
+                let res = asm.alloc_node(CILNode::call(equals, [lhs, rhs]));
 
                 let ret = asm.alloc_root(CILRoot::Ret(res));
                 MethodImpl::MethodBody {

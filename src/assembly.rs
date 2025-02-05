@@ -31,7 +31,7 @@ use rustc_middle::{
         mono::MonoItem,
         Local, LocalDecl, Statement, Terminator,
     },
-    ty::{Instance, ParamEnv, TyCtxt, TyKind},
+    ty::{Instance, TyCtxt, TyKind},
 };
 fn linkage_to_access(link: Option<Linkage>) -> AccessModifer {
     match link {
@@ -598,8 +598,7 @@ pub fn add_item<'tcx>(
             if let Some(section) = attrs.link_section {
                 if section.to_string().contains(".init_array") {
                     let argc = utilis::argc_argv_init_method(asm);
-                    let init_argc =
-                        asm.alloc_root(cilly::v2::CILRoot::Call(Box::new((argc, Box::new([])))));
+                    let init_argc = asm.alloc_root(cilly::v2::CILRoot::call(argc, []));
 
                     asm.add_user_init(&[init_argc]);
                     let get_environ: MethodRefIdx = utilis::get_environ(asm);
@@ -646,13 +645,9 @@ pub fn add_item<'tcx>(
                             argv,
                             Box::new(PtrCastRes::Ptr(uint8_ptr_idx)),
                         )),
-                        asm.alloc_node(cilly::v2::CILNode::Call(Box::new((
-                            get_environ,
-                            Box::new([]),
-                        )))),
+                        asm.alloc_node(cilly::v2::CILNode::call(get_environ, [])),
                     ];
-                    let root =
-                        asm.alloc_root(cilly::v2::CILRoot::Call(Box::new((mref, args.into()))));
+                    let root = asm.alloc_root(cilly::v2::CILRoot::call(mref, args));
                     asm.add_user_init(&[root]);
                 } else {
                     panic!("Unsuported link section {section}.")
@@ -850,7 +845,7 @@ pub fn add_allocation(alloc_id: u64, asm: &mut cilly::v2::Assembly, tcx: TyCtxt<
             let init_method = MethodDef::from_v1(&init_method, asm, main_module_id);
             let initialzer = asm.new_method(init_method);
             // Calls the static initialzer, and sets the static field to the returned pointer.
-            let val = asm.alloc_node(cilly::v2::CILNode::Call(Box::new((*initialzer, [].into()))));
+            let val = asm.alloc_node(cilly::v2::CILNode::call(*initialzer, []));
 
             let field = asm.alloc_sfld(field_desc);
             let root = asm.alloc_root(cilly::v2::CILRoot::SetStaticField { field, val });

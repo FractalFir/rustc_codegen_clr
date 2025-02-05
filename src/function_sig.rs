@@ -2,7 +2,7 @@ use crate::codegen_error::CodegenError;
 use crate::fn_ctx::MethodCompileCtx;
 use crate::r#type::get_type;
 use cilly::{v2::FnSig, Type};
-use rustc_middle::ty::{Instance, List, ParamEnv, PseudoCanonicalInput, Ty, TyCtxt, TyKind};
+use rustc_middle::ty::{Instance, List, Ty, TyCtxt, TyKind};
 use rustc_target::abi::call::Conv;
 use rustc_target::spec::abi::Abi as TargetAbi;
 

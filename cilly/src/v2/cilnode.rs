@@ -4,7 +4,7 @@ use super::bimap::BiMapIndex;
 use super::field::StaticFieldIdx;
 
 use super::{bimap::IntoBiMapIndex, Assembly, Const, Int, MethodRefIdx, SigIdx, TypeIdx};
-use super::{ClassRef, FieldIdx, Float};
+use super::{ClassRef, FieldIdx, Float, IntoAsmIndex};
 use crate::cil_node::CILNode as V1Node;
 use crate::v2::Type;
 
@@ -18,7 +18,12 @@ impl IntoBiMapIndex for NodeIdx {
         self.0
     }
 }
-
+#[derive(Hash, PartialEq, Eq, Copy, Clone, Debug, Serialize, Deserialize)]
+pub struct IsPure(pub bool);
+impl IsPure {
+    pub const NOT: Self = Self(false);
+    pub const PURE: Self = Self(true);
+}
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub enum CILNode {
     Const(Box<Const>),
@@ -28,7 +33,8 @@ pub enum CILNode {
     LdLocA(u32),
     LdArg(u32),
     LdArgA(u32),
-    Call(Box<(MethodRefIdx, Box<[NodeIdx]>)>),
+    /// Method, args, pure
+    Call(Box<(MethodRefIdx, Box<[NodeIdx]>, IsPure)>),
     IntCast {
         input: NodeIdx,
         target: Int,
@@ -252,6 +258,9 @@ impl BinOp {
     }
 }
 impl CILNode {
+    pub fn call(mref: MethodRefIdx, args: impl Into<Box<[NodeIdx]>>) -> Self {
+        Self::Call(Box::new((mref, args.into(), IsPure::NOT)))
+    }
     /// Returns all the nodes this node references.
     /// ```
     /// # use cilly::v2::*;
@@ -300,7 +309,7 @@ impl CILNode {
             } => vec![*node_idx],
             CILNode::BinOp(lhs, rhs, _) => vec![*lhs, *rhs],
             CILNode::Call(info) => {
-                let (_, args) = info.as_ref();
+                let (_, args, _is_pure) = info.as_ref();
                 args.to_vec()
             }
             CILNode::CallI(info) => {
@@ -330,8 +339,8 @@ impl CILNode {
             asm,
         );
         let arg = asm.alloc_node(self.clone());
-        let alloc = asm.alloc_node(CILNode::Call(Box::new((alloc, [arg].into()))));
-        CILNode::Call(Box::new((op_explict, [alloc].into())))
+        let alloc = asm.alloc_node(CILNode::call(alloc, [arg]));
+        CILNode::call(op_explict, [alloc])
     }
 
     // This function has to be complex
@@ -736,7 +745,7 @@ impl CILNode {
                         asm.alloc_node(node)
                     })
                     .collect();
-                Self::Call(Box::new((callargs.site, args)))
+                Self::Call(Box::new((callargs.site, args, callargs.is_pure)))
             }
             V1Node::CallVirt(callargs) => {
                 let args: Box<[_]> = callargs
@@ -748,7 +757,7 @@ impl CILNode {
                     })
                     .collect();
 
-                Self::Call(Box::new((callargs.site, args)))
+                Self::Call(Box::new((callargs.site, args, IsPure::NOT)))
             }
             V1Node::NewObj(callargs) => {
                 let args: Box<[_]> = callargs
@@ -759,7 +768,7 @@ impl CILNode {
                         asm.alloc_node(node)
                     })
                     .collect();
-                Self::Call(Box::new((callargs.site, args)))
+                Self::Call(Box::new((callargs.site, args, IsPure::NOT)))
             }
             // Special
             V1Node::GetException => Self::GetException,
@@ -886,16 +895,16 @@ impl CILNode {
                 map(node, asm)
             }
             CILNode::Call(call_info) => {
-                let (method_id, args) = *call_info;
+                let (method_id, args, _is_pure) = *call_info;
                 let args = args
                     .iter()
                     .map(|arg| {
                         let node = asm.get_node(*arg).clone().map(asm, map);
                         asm.alloc_node(node)
                     })
-                    .collect();
+                    .collect::<Box<_>>();
 
-                let node = CILNode::Call(Box::new((method_id, args)));
+                let node = CILNode::call(method_id, args);
                 map(node, asm)
             }
             CILNode::IntCast {

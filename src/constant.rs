@@ -5,6 +5,7 @@ use crate::assembly::MethodCompileCtx;
 use cilly::{
     call,
     cil_node::{CILNode, CallOpArgs},
+    cilnode::IsPure,
     v2::{
         cilnode::MethodKind,
         hashable::{HashableF32, HashableF64},
@@ -12,13 +13,12 @@ use cilly::{
     },
     Const, NodeIdx, Type,
 };
-use rustc_middle::ty::AdtKind;
 use rustc_middle::{
     mir::{
         interpret::{AllocId, GlobalAlloc, Scalar},
         ConstOperand, ConstValue,
     },
-    ty::{FloatTy, IntTy, ParamEnv, Ty, TyKind, UintTy},
+    ty::{FloatTy, IntTy, Ty, TyKind, UintTy},
 };
 pub fn handle_constant<'tcx>(
     constant_op: &ConstOperand<'tcx>,
@@ -52,7 +52,7 @@ fn create_const_from_data<'tcx>(
             .inspect_with_uninit_and_ptr_outside_interpreter(0..const_allocation.len())
             .into();
         // Right aligment, fits, and has no pointers - can be a scalar.
-        if (align <= 8 && bytes.len() <= 16 && const_allocation.provenance().ptrs().is_empty()) {
+        if align <= 8 && bytes.len() <= 16 && const_allocation.provenance().ptrs().is_empty() {
             while bytes.len() < 16 {
                 bytes.push(0);
             }
@@ -145,6 +145,7 @@ fn load_scalar_ptr(
                     CILNode::Call(Box::new(CallOpArgs {
                         args: Box::new([]),
                         site: ctx.alloc_methodref(mref),
+                        is_pure: IsPure::NOT,
                     })),
                     ctx.alloc_type(u8_ptr_ptr),
                     ctx,
@@ -205,7 +206,11 @@ fn load_scalar_ptr(
         }
         GlobalAlloc::VTable(_, _) => {
             let (ty, polyref) = global_alloc.unwrap_vtable();
-            crate::unsize::get_vtable(ctx, ctx.monomorphize(ty), polyref)
+            crate::unsize::get_vtable(
+                ctx,
+                ctx.monomorphize(ty),
+                polyref.map(|principal| ctx.tcx().instantiate_bound_regions_with_erased(principal)),
+            )
         }
     }
     //panic!("alloc_id:{alloc_id:?}")

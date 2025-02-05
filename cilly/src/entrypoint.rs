@@ -53,12 +53,12 @@ pub fn wrapper(entrypoint: MethodRef, asm: &mut Assembly) -> MethodDefIdx {
         ));
         let args = [asm.alloc_node(Const::ISize(0_i64)), argv];
 
-        let call_main = CILNode::Call(Box::new(((entrypoint), args.into())));
+        let call_main = CILNode::call(entrypoint, args);
         let call_main = asm.alloc_node(call_main);
         let blocks = vec![BasicBlock::new(
             vec![
-                asm.alloc_root(CILRoot::Call(Box::new((tcctor, [].into())))),
-                asm.alloc_root(CILRoot::Call(Box::new((static_init, [].into())))),
+                asm.alloc_root(CILRoot::call(tcctor, [])),
+                asm.alloc_root(CILRoot::call(static_init, [])),
                 asm.alloc_root(CILRoot::Pop(call_main)),
                 asm.alloc_root(CILRoot::VoidRet),
             ],
@@ -100,9 +100,9 @@ pub fn wrapper(entrypoint: MethodRef, asm: &mut Assembly) -> MethodDefIdx {
         let static_init = asm.alloc_methodref(static_init);
         let blocks = vec![BasicBlock::new(
             vec![
-                asm.alloc_root(CILRoot::Call(Box::new((tcctor, [].into())))),
-                asm.alloc_root(CILRoot::Call(Box::new(((static_init), [].into())))),
-                asm.alloc_root(CILRoot::Call(Box::new((entrypoint, [].into())))),
+                asm.alloc_root(CILRoot::call(tcctor, [])),
+                asm.alloc_root(CILRoot::call(static_init, [])),
+                asm.alloc_root(CILRoot::call(entrypoint, [])),
                 //CILRoot::debug(&format!("Preparing to execute the main program.")).into(),
                 asm.alloc_root(CILRoot::VoidRet),
             ],

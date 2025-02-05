@@ -168,7 +168,15 @@ impl CILNode {
             CILNode::LdLocA(loc) => CILNode::LdLocA(*loc), // This takes an address, so we can't propagate it
             CILNode::LdArg(arg) => CILNode::LdArg(*arg),
             CILNode::LdArgA(arg) => CILNode::LdArgA(*arg),
-            CILNode::Call(_) => todo!(),
+            CILNode::Call(info) => {
+                let (mref, mut args, is_pure) = *info.clone();
+                args.iter_mut().for_each(|arg_mut| {
+                    let arg = asm[*arg_mut].clone();
+                    let arg = arg.propagate_locals(asm, idx, tpe, new_node, fuel);
+                    *arg_mut = asm.alloc_node(arg);
+                });
+                CILNode::Call(Box::new((mref, args, is_pure)))
+            }
             CILNode::IntCast {
                 input,
                 target,

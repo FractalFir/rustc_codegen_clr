@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 
-use crate::v2::{Assembly, CILNode, NodeIdx};
+use crate::{
+    cilnode::IsPure,
+    v2::{Assembly, CILNode, NodeIdx},
+};
 #[derive(Default)]
 pub struct SideEffectInfoCache {
     side_effects: HashMap<NodeIdx, bool>,
@@ -24,7 +27,15 @@ impl SideEffectInfoCache {
             CILNode::UnOp(arg, _) => self.has_side_effects(*arg, asm), // UnOp, only has side effects if its arg has side effects
             CILNode::LdLoc(_) | CILNode::LdArg(_) => false, // Reading a variable has no side effects
             CILNode::LdLocA(_) | CILNode::LdArgA(_) => false, // Getting the address of something has no side effects.
-            CILNode::Call(_) => true, // For now, we assume all calls have side effects.
+            CILNode::Call(info) => {
+                let (_, args, pure) = info.as_ref();
+                // Impure call, may have side effects
+                if *pure == IsPure::NOT {
+                    return true;
+                }
+                // Check all args
+                args.iter().any(|arg| self.has_side_effects(*arg, asm))
+            }
             CILNode::RefToPtr(input)
             | CILNode::IntCast { input, .. }
             | CILNode::FloatCast { input, .. }
@@ -88,4 +99,17 @@ fn const_no_side_effect() {
         let node = asm.alloc_node(node);
         assert!(cache.has_side_effects(node, &asm));
     }
+}
+#[test]
+fn select_no_side_effects() {
+    use crate::{Int, Type};
+    let mut asm = Assembly::default();
+    let a = crate::cil_node::CILNode::V2(asm.alloc_node(1_usize));
+    let b = crate::cil_node::CILNode::V2(asm.alloc_node(2_usize));
+    let predictate = crate::cil_node::CILNode::LDLoc(0);
+    let v1 = crate::cil_node::CILNode::select(Type::Int(Int::USize), a, b, predictate, &mut asm);
+    let v2 = CILNode::from_v1(&v1, &mut asm);
+    let v2 = asm.alloc_node(v2);
+    let mut cache = SideEffectInfoCache::default();
+    assert!(!cache.has_side_effects(v2, &asm), "v2:{:?}", asm[v2]);
 }

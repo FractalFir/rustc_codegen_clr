@@ -53,7 +53,7 @@ impl Float {
                     MethodKind::Static,
                     [].into(),
                 ));
-                asm.alloc_node(CILNode::Call(Box::new((mref, [val].into()))))
+                asm.alloc_node(CILNode::call(mref, [val]))
             }
             Float::F32 => {
                 let single = ClassRef::single(asm);
@@ -64,7 +64,7 @@ impl Float {
                     MethodKind::Static,
                     [].into(),
                 ));
-                asm.alloc_node(CILNode::Call(Box::new((mref, [val].into()))))
+                asm.alloc_node(CILNode::call(mref, [val]))
             }
             Float::F64 => {
                 let double = ClassRef::single(asm);
@@ -75,7 +75,7 @@ impl Float {
                     MethodKind::Static,
                     [].into(),
                 ));
-                asm.alloc_node(CILNode::Call(Box::new((mref, [val].into()))))
+                asm.alloc_node(CILNode::call(mref, [val]))
             }
             Float::F128 => todo!(),
         }
@@ -105,7 +105,7 @@ impl Float {
             MethodKind::Static,
             [].into(),
         ));
-        asm.alloc_node(CILNode::Call(Box::new((mref, [val, fmin, fmax].into()))))
+        asm.alloc_node(CILNode::call(mref, [val, fmin, fmax]))
     }
     /// Returns a class representing this flaoting-point type.
     pub fn class(&self, asm: &mut Assembly) -> ClassRefIdx {
@@ -128,7 +128,7 @@ impl Float {
             MethodKind::Static,
             [].into(),
         ));
-        asm.alloc_node(CILNode::Call(Box::new((mref, Box::new([base, exp])))))
+        asm.alloc_node(CILNode::call(mref, [base, exp]))
     }
     /// Raises base to power.
     pub fn math2(&self, base: NodeIdx, exp: NodeIdx, asm: &mut Assembly, name: &str) -> NodeIdx {
@@ -142,7 +142,7 @@ impl Float {
             MethodKind::Static,
             [].into(),
         ));
-        asm.alloc_node(CILNode::Call(Box::new((mref, Box::new([base, exp])))))
+        asm.alloc_node(CILNode::call(mref, [base, exp]))
     }
 
     pub fn math1(&self, val: NodeIdx, asm: &mut Assembly, name: &str) -> NodeIdx {
@@ -156,7 +156,7 @@ impl Float {
             MethodKind::Static,
             [].into(),
         ));
-        asm.alloc_node(CILNode::Call(Box::new((mref, Box::new([val])))))
+        asm.alloc_node(CILNode::call(mref, [val]))
     }
     /// Counts the number of bits this number has.
     /// ```

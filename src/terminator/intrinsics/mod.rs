@@ -11,14 +11,13 @@ use cilly::{
     cilnode::MethodKind,
     conv_i16, conv_i32, conv_i64, conv_i8, conv_isize, conv_u16, conv_u32, conv_u64, conv_u8,
     conv_usize,
-    tpe::int,
     v2::{ClassRef, Float, Int},
     Const, FieldDesc, IntoAsmIndex, MethodRef, Type,
 };
 use ints::{ctlz, rotate_left, rotate_right};
 use rustc_middle::{
     mir::{Operand, Place},
-    ty::{Instance, ParamEnv, Ty, UintTy},
+    ty::{Instance, Ty, UintTy},
 };
 use rustc_span::source_map::Spanned;
 use saturating::{saturating_add, saturating_sub};
@@ -1546,7 +1545,7 @@ pub fn handle_intrinsic<'tcx>(
             let tpe = ctx.type_from_cache(
                 call_instance.args[0]
                     .as_type()
-                    .expect("simd_eq works only on types!"),
+                    .expect("select_unpredictable works only on types!"),
             );
             let cond = handle_operand(&args[0].node, ctx);
             let true_val = handle_operand(&args[1].node, ctx);

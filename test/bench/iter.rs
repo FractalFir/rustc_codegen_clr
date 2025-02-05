@@ -5,7 +5,6 @@ extern "C" {
     fn printf(fmt: *const c_char, ...) -> c_int;
 }
 fn bench_for_each_chain_fold<const BIG:u32>() -> u32 {
-    let postifix_msg = [0x44,0x4F,0x4E,0x45,0x21,0x5C,0x6E,black_box(0_i8)];
     let mut acc = 0;
     unsafe{printf(c"Prepari".as_ptr())};
     unsafe{printf(c"ng to r".as_ptr())};

@@ -28,7 +28,7 @@ fn handle_to_obj(asm: &mut Assembly, _: &mut MissingMethodPatcher) {
             from_int_ptr,
             asm,
         );
-        let handle = asm.alloc_node(CILNode::Call(Box::new((from_int_ptr, [handle].into()))));
+        let handle = asm.alloc_node(CILNode::call(from_int_ptr, [handle]));
         let get_handle = asm.alloc_root(CILRoot::StLoc(0, handle));
         // Get the target of the handle
         let target = asm.alloc_string("get_Target");
@@ -37,7 +37,7 @@ fn handle_to_obj(asm: &mut Assembly, _: &mut MissingMethodPatcher) {
                 .clone()
                 .instance(&[], Type::PlatformObject, target, asm);
         let handle = asm.alloc_node(CILNode::LdLocA(0));
-        let target = asm.alloc_node(CILNode::Call(Box::new((target, [handle].into()))));
+        let target = asm.alloc_node(CILNode::call(target, [handle]));
         let ret = asm.alloc_root(CILRoot::Ret(target));
         MethodImpl::MethodBody {
             blocks: vec![BasicBlock::new(vec![get_handle, ret], 0, None)],
@@ -187,7 +187,7 @@ fn insert_pthread_join(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
             target: Int::ISize,
             extend: ExtendKind::ZeroExtend,
         });
-        let obj = asm.alloc_node(CILNode::Call(Box::new((handle_to_obj, [ldarg_0].into()))));
+        let obj = asm.alloc_node(CILNode::call(handle_to_obj, [ldarg_0]));
         let thread_idx = asm.alloc_type(Type::ClassRef(thread));
         let obj = asm.alloc_node(CILNode::CheckedCast(obj, thread_idx));
         let get_thread = asm.alloc_root(CILRoot::StLoc(0, obj));
@@ -199,7 +199,7 @@ fn insert_pthread_join(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
             .class_ref(thread)
             .clone()
             .virtual_mref(&[], Type::Void, join, asm);
-        let join = asm.alloc_root(CILRoot::Call(Box::new((join, Box::new([joined_thread])))));
+        let join = asm.alloc_root(CILRoot::call(join, [joined_thread]));
         // Check if result_ptr == null. If so, jump to ret.
         let check_res_nonnull = asm.alloc_root(CILRoot::Branch(Box::new((
             1,
@@ -212,8 +212,7 @@ fn insert_pthread_join(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
             asm.class_ref(thread)
                 .clone()
                 .virtual_mref(&[], Type::Int(Int::I32), thread_id, asm);
-        let thread_id =
-            asm.alloc_node(CILNode::Call(Box::new((thread_id, [joined_thread].into()))));
+        let thread_id = asm.alloc_node(CILNode::call(thread_id, [joined_thread]));
         let thread_results = asm.alloc_string("thread_results");
         let dict = ClassRef::concurent_dictionary(Type::Int(Int::I32), Type::Int(Int::ISize), asm);
         let thread_results = asm.alloc_sfld(StaticFieldDesc::new(
@@ -229,10 +228,7 @@ fn insert_pthread_join(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
             get_item,
             asm,
         );
-        let thread_result = asm.alloc_node(CILNode::Call(Box::new((
-            get_dict,
-            Box::new([thread_results, thread_id]),
-        ))));
+        let thread_result = asm.alloc_node(CILNode::call(get_dict, [thread_results, thread_id]));
         let set_result = asm.alloc_root(CILRoot::StInd(Box::new((
             result_ptr,
             thread_result,
@@ -295,10 +291,10 @@ fn insert_pthread_create(asm: &mut Assembly, patcher: &mut MissingMethodPatcher)
         let unmanaged_thread_start_start =
             unmanaged_thread_start.virtual_mref(&[], Type::Void, start, asm);
         // Create UnmanagedThreadStart
-        let unmanaged_thread_start_obj = asm.alloc_node(CILNode::Call(Box::new((
+        let unmanaged_thread_start_obj = asm.alloc_node(CILNode::call(
             unmanaged_thread_start_ctor,
-            [ldarg_2, ldarg_3].into(),
-        ))));
+            [ldarg_2, ldarg_3],
+        ));
         // Get pointer to UnmanagedThreadStart.Start
 
         let unmanaged_thread_start_fn =
@@ -313,10 +309,10 @@ fn insert_pthread_create(asm: &mut Assembly, patcher: &mut MissingMethodPatcher)
             .class_ref(thread_start)
             .clone()
             .ctor(&[Type::PlatformObject, Type::Int(Int::ISize)], asm);
-        let thread_start_obj = asm.alloc_node(CILNode::Call(Box::new((
+        let thread_start_obj = asm.alloc_node(CILNode::call(
             thread_start_ctor,
-            [unmanaged_thread_start_obj, unmanaged_thread_start_fn].into(),
-        ))));
+            [unmanaged_thread_start_obj, unmanaged_thread_start_fn],
+        ));
         let create_thread_start = asm.alloc_root(CILRoot::StLoc(1, thread_start_obj));
         let thread_start_obj = asm.alloc_node(CILNode::LdLoc(1));
         let thread_start_type = asm.alloc_type(Type::ClassRef(thread_start));
@@ -327,17 +323,14 @@ fn insert_pthread_create(asm: &mut Assembly, patcher: &mut MissingMethodPatcher)
             .class_ref(thread_type)
             .clone()
             .ctor(&[Type::ClassRef(thread_start)], asm);
-        let thread_obj = asm.alloc_node(CILNode::Call(Box::new((
-            thread_ctor,
-            [thread_start_obj].into(),
-        ))));
+        let thread_obj = asm.alloc_node(CILNode::call(thread_ctor, [thread_start_obj]));
         let create_thread = asm.alloc_root(CILRoot::StLoc(0, thread_obj));
         let thread_start =
             asm.class_ref(thread_type)
                 .clone()
                 .virtual_mref(&[], Type::Void, start, asm);
         let thread = asm.alloc_node(CILNode::LdLoc(0));
-        let start_thread = asm.alloc_root(CILRoot::Call(Box::new((thread_start, [thread].into()))));
+        let start_thread = asm.alloc_root(CILRoot::call(thread_start, [thread]));
         let thread_handle = CILNode::LdLoc(0).ref_to_handle(asm);
         let thread_handle = asm.alloc_node(thread_handle);
         let set_thread_handle = asm.alloc_root(CILRoot::StInd(Box::new((
@@ -398,7 +391,7 @@ pub fn instert_threading(asm: &mut Assembly, patcher: &mut MissingMethodPatcher)
         Type::ClassRef(thread_key_dict),
     ));
     let thread_key_dict_ctor = asm[thread_key_dict].clone().ctor(&[], asm);
-    let ctor = asm.alloc_node(CILNode::Call(Box::new((thread_key_dict_ctor, [].into()))));
+    let ctor = asm.alloc_node(CILNode::call(thread_key_dict_ctor, []));
     let init_dict = asm.alloc_root(CILRoot::SetStaticField {
         field: pthread_keys_static,
         val: ctor,
@@ -471,7 +464,7 @@ pub fn instert_threading(asm: &mut Assembly, patcher: &mut MissingMethodPatcher)
     let start = asm.alloc_string("Start");
     // Call tcctor
     let tctor = asm.tcctor();
-    let call_tcctor = asm.alloc_root(CILRoot::Call(Box::new((*tctor, [].into()))));
+    let call_tcctor = asm.alloc_root(CILRoot::call(*tctor, []));
     // Call the thread main function.
     let this = asm.alloc_node(CILNode::LdArg(0));
     let start_fn_node = asm.alloc_node(CILNode::LdField {
@@ -495,16 +488,13 @@ pub fn instert_threading(asm: &mut Assembly, patcher: &mut MissingMethodPatcher)
         asm.class_ref(thread)
             .clone()
             .static_mref(&[], Type::ClassRef(thread), current_thread, asm);
-    let current_thread = asm.alloc_node(CILNode::Call(Box::new((current_thread, [].into()))));
+    let current_thread = asm.alloc_node(CILNode::call(current_thread, []));
     let thread_id = asm.alloc_string("get_ManagedThreadId");
     let thread_id =
         asm.class_ref(thread)
             .clone()
             .virtual_mref(&[], Type::Int(Int::I32), thread_id, asm);
-    let thread_id = asm.alloc_node(CILNode::Call(Box::new((
-        thread_id,
-        [current_thread].into(),
-    ))));
+    let thread_id = asm.alloc_node(CILNode::call(thread_id, [current_thread]));
     // Thread result static
     let main_module = asm.main_module();
     let thread_results = asm.alloc_string("thread_results");
@@ -520,7 +510,7 @@ pub fn instert_threading(asm: &mut Assembly, patcher: &mut MissingMethodPatcher)
         Type::ClassRef(dict),
     ));
     let dict_ctor = asm.class_ref(dict).clone().ctor(&[], asm);
-    let init_thread_results = asm.alloc_node(CILNode::Call(Box::new((dict_ctor, [].into()))));
+    let init_thread_results = asm.alloc_node(CILNode::call(dict_ctor, []));
     let init_thread_results = asm.alloc_root(CILRoot::SetStaticField {
         field: thread_results,
         val: init_thread_results,
@@ -539,10 +529,10 @@ pub fn instert_threading(asm: &mut Assembly, patcher: &mut MissingMethodPatcher)
         asm,
     );
     let ldloc_0 = asm.alloc_node(CILNode::LdLoc(0));
-    let set_result = asm.alloc_root(CILRoot::Call(Box::new((
+    let set_result = asm.alloc_root(CILRoot::call(
         set_dict,
-        [thread_results, thread_id, ldloc_0].into(),
-    ))));
+        [thread_results, thread_id, ldloc_0],
+    ));
     let void_ptr_idx = asm.alloc_type(void_ptr);
     asm.new_method(MethodDef::new(
         Access::Public,
@@ -599,10 +589,7 @@ fn insert_pthread_setspecific(asm: &mut Assembly, patcher: &mut MissingMethodPat
         );
         let arg_0 = asm.alloc_node(CILNode::LdArg(0));
         let arg_1 = asm.alloc_node(CILNode::LdArg(1));
-        let insert_key = asm.alloc_root(CILRoot::Call(Box::new((
-            dict_add,
-            [pthread_keys, arg_0, arg_1].into(),
-        ))));
+        let insert_key = asm.alloc_root(CILRoot::call(dict_add, [pthread_keys, arg_0, arg_1]));
         // Set the key_t to this key.
 
         MethodImpl::MethodBody {
@@ -649,10 +636,7 @@ fn insert_pthread_key_create(asm: &mut Assembly, patcher: &mut MissingMethodPatc
             add_name,
             asm,
         );
-        let insert_key = asm.alloc_root(CILRoot::Call(Box::new((
-            dict_add,
-            [pthread_keys, zero_isize, loc_0].into(),
-        ))));
+        let insert_key = asm.alloc_root(CILRoot::call(dict_add, [pthread_keys, zero_isize, loc_0]));
         // Set the key_t to this key.
         let arg_0 = asm.alloc_node(CILNode::LdArg(0));
         let key_t = asm.alloc_type(Type::Int(PTHREAD_KEY_T));
@@ -696,10 +680,7 @@ fn insert_pthread_key_delete(asm: &mut Assembly, patcher: &mut MissingMethodPatc
             add_name,
             asm,
         );
-        let remove_key = asm.alloc_node(CILNode::Call(Box::new((
-            dict_rem,
-            [pthread_keys, arg_0].into(),
-        ))));
+        let remove_key = asm.alloc_node(CILNode::call(dict_rem, [pthread_keys, arg_0]));
         let remove_key = asm.alloc_root(CILRoot::Pop(remove_key));
         MethodImpl::MethodBody {
             blocks: vec![BasicBlock::new(vec![remove_key, ret], 0, None)],

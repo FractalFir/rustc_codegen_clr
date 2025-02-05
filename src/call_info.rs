@@ -1,5 +1,5 @@
 use cilly::v2::FnSig;
-use rustc_middle::ty::{Instance, List, ParamEnv, PseudoCanonicalInput, TyKind};
+use rustc_middle::ty::{Instance, List, PseudoCanonicalInput, TyKind};
 use rustc_target::abi::call::Conv;
 use rustc_target::spec::abi::Abi as TargetAbi;
 

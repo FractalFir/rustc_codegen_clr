@@ -17,7 +17,7 @@ pub fn int_max(asm: &mut Assembly, lhs: NodeIdx, rhs: NodeIdx, int: Int) -> Node
         MethodKind::Static,
         vec![].into(),
     ));
-    asm.alloc_node(CILNode::Call(Box::new((mref, Box::new([lhs, rhs])))))
+    asm.alloc_node(CILNode::call(mref, ([lhs, rhs])))
 }
 
 pub fn int_min(asm: &mut Assembly, lhs: NodeIdx, rhs: NodeIdx, int: Int) -> NodeIdx {
@@ -31,7 +31,7 @@ pub fn int_min(asm: &mut Assembly, lhs: NodeIdx, rhs: NodeIdx, int: Int) -> Node
         MethodKind::Static,
         vec![].into(),
     ));
-    asm.alloc_node(CILNode::Call(Box::new((mref, Box::new([lhs, rhs])))))
+    asm.alloc_node(CILNode::call(mref, ([lhs, rhs])))
 }
 pub fn ldexpf(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
     let name = asm.alloc_string("ldexpf");
@@ -293,23 +293,14 @@ fn bitreverse_u128(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
             let mask = asm.alloc_node(Const::U128(curr_mask));
             let curr_mask = !masks[i];
             let inv_mask = asm.alloc_node(Const::U128(curr_mask));
-            let masked = asm.alloc_node(CILNode::Call(Box::new((and, [curr, mask].into()))));
-            let inv_masked =
-                asm.alloc_node(CILNode::Call(Box::new((and, [curr, inv_mask].into()))));
+            let masked = asm.alloc_node(CILNode::call(and, [curr, mask]));
+            let inv_masked = asm.alloc_node(CILNode::call(and, [curr, inv_mask]));
             let shift_ammount = asm.alloc_node(Const::I32(shift));
-            let masked_shifted = asm.alloc_node(CILNode::Call(Box::new((
-                rshift,
-                [masked, shift_ammount].into(),
-            ))));
-            let inv_masked_shifted = asm.alloc_node(CILNode::Call(Box::new((
-                lshift,
-                [inv_masked, shift_ammount].into(),
-            ))));
+            let masked_shifted = asm.alloc_node(CILNode::call(rshift, [masked, shift_ammount]));
+            let inv_masked_shifted =
+                asm.alloc_node(CILNode::call(lshift, [inv_masked, shift_ammount]));
 
-            let curr_val = asm.alloc_node(CILNode::Call(Box::new((
-                or,
-                [masked_shifted, inv_masked_shifted].into(),
-            ))));
+            let curr_val = asm.alloc_node(CILNode::call(or, [masked_shifted, inv_masked_shifted]));
             trees.push(asm.alloc_root(CILRoot::StLoc(0, curr_val)));
             i += 1;
             shift /= 2;

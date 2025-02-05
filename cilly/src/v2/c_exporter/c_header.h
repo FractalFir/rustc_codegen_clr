@@ -54,6 +54,34 @@ inline uint64_t __builtin_bswap64(uint64_t val){
     return res;
 }
 #endif
+#ifdef __clang__
+static inline __uint128_t __builtin_bswap128(__uint128_t val){
+    __uint128_t res;
+    uint8_t* ptr = &val;
+    uint8_t* rptr = &res;
+    rptr[0] = ptr[15];
+    rptr[1] = ptr[14];
+    rptr[2] = ptr[13];
+    rptr[3] = ptr[12];
+    rptr[4] = ptr[11];
+    rptr[5] = ptr[10];
+    rptr[6] = ptr[9];
+    rptr[7] = ptr[8];
+    rptr[8] = ptr[7];
+    rptr[9] = ptr[6];
+    rptr[10] = ptr[5];
+    rptr[11] = ptr[4];
+    rptr[12] = ptr[3];
+    rptr[13] = ptr[2];
+    rptr[14] = ptr[1];
+    rptr[15] = ptr[0];
+    return res;
+}
+#else
+#ifdef __SIZEOF_INT128__
+__uint128_t __builtin_bswap128(__uint128_t val);
+#endif
+#endif
 #ifdef __TINYC__
 #define _Thread_local __attribute__((section(".tbss")))
 #elif defined(__SDCC)
@@ -279,7 +307,6 @@ static inline int32_t System_UInt128_TrailingZeroCountu128u128(__uint128_t val) 
 static inline int32_t System_Numerics_BitOperations_LeadingZeroCountu64i32(uint64_t val) { if (val == 0) return 64; return __builtin_clzl(val); }
 static inline int32_t System_Numerics_BitOperations_LeadingZeroCountusizei32(uintptr_t val) { if (val == 0) return sizeof(uintptr_t) * 8; return __builtin_clzl((uint64_t)val); }
 #endif
-__uint128_t __builtin_bswap128(__uint128_t val);
 
 #define System_Numerics_BitOperations_PopCountusizei32(val) __builtin_popcountl((uint64_t)val)
 #define System_Numerics_BitOperations_PopCountu32i32(val) __builtin_popcountl((uint32_t)val)
@@ -710,8 +737,14 @@ static inline __int128 System_Int128_Clampi128i128i128i128(__int128 val, __int12
 }
 #define System_Int128_get_MaxValuei128() (-(((__uint128_t)((__int128_t)(-1L))) >> 1) - 1)
 static inline void System_Threading_Thread_MemoryBarrierv() {}
-static int argc;
-static char **argv;
+#ifndef __SDCC
+#ifdef MAIN_FILE
+int argc;
+char **argv;
+#else
+extern int argc;
+extern char **argv;
+#endif
 static inline char **System_Environment_GetCommandLineArgsa1st() { return argv; }
 static inline uintptr_t ld_len(void *arr)
 {
@@ -731,6 +764,7 @@ static inline intptr_t System_Runtime_InteropServices_Marshal_StringToCoTaskMemU
     memcpy(ptr, str, len + 1);
     return len;
 }
+#endif
 float fabsf32(float input);
 #define System_Half_op_Explicitf32f2(f)(_Float16)(f)
 #define TYPEDEF_SIMDVEC(TYPE, MANGLED, SIZE) \

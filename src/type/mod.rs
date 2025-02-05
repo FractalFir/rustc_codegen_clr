@@ -20,7 +20,7 @@ use cilly::{
     Assembly, IntoAsmIndex,
 };
 pub use r#type::*;
-use rustc_middle::ty::{AdtDef, AdtKind, FloatTy, IntTy, List, ParamEnv, Ty, TyKind, UintTy};
+use rustc_middle::ty::{AdtDef, AdtKind, FloatTy, IntTy, List, Ty, TyKind, UintTy};
 use rustc_span::def_id::DefId;
 use rustc_target::abi::Layout;
 //pub use tycache::*;

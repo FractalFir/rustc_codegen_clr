@@ -13,6 +13,7 @@ use cilly::{
     call, call_virt,
     cil_node::{CILNode, CallOpArgs},
     cil_root::CILRoot,
+    cilnode::IsPure,
     conv_usize, ld_field,
     v2::{cilnode::MethodKind, ClassRef, FieldDesc, FnSig, Int},
     IntoAsmIndex,
@@ -21,7 +22,7 @@ use cilly::{v2::MethodRef, Type};
 use rustc_middle::ty::InstanceKind;
 use rustc_middle::{
     mir::{Operand, Place},
-    ty::{GenericArg, Instance, ParamEnv, Ty, TyKind},
+    ty::{GenericArg, Instance, Ty, TyKind},
 };
 use rustc_span::source_map::Spanned;
 fn argc_from_fn_name(function_name: &str, prefix: &str) -> u32 {
@@ -216,6 +217,7 @@ fn call_ctor<'tcx>(
             CILNode::NewObj(Box::new(CallOpArgs {
                 site: ctx.alloc_methodref(mref),
                 args: [].into(),
+                is_pure: IsPure::NOT,
             })),
             ctx,
         )
@@ -248,6 +250,7 @@ fn call_ctor<'tcx>(
             CILNode::NewObj(Box::new(CallOpArgs {
                 site: ctx.alloc_methodref(ctor),
                 args: call.into(),
+                is_pure: IsPure::NOT,
             })),
             ctx,
         )

@@ -4,6 +4,7 @@ use crate::{
     },
     Type,
 };
+/// Implements a given BinOp directly, as an operation on two floating-point args.
 fn op_direct(
     asm: &mut Assembly,
     patcher: &mut MissingMethodPatcher,
@@ -23,6 +24,7 @@ fn op_direct(
     };
     patcher.insert(name, Box::new(generator));
 }
+/// Implements a given binop indirectly, delegating it to a .NET impl.
 fn op_indirect(
     asm: &mut Assembly,
     patcher: &mut MissingMethodPatcher,
@@ -47,7 +49,7 @@ fn op_indirect(
             asm.alloc_string(op.dotnet_name()),
             asm,
         );
-        let call = asm.alloc_node(CILNode::Call(Box::new((call_op, [lhs, rhs].into()))));
+        let call = asm.alloc_node(CILNode::call(call_op, [lhs, rhs]));
         let ret = asm.alloc_root(CILRoot::Ret(call));
         MethodImpl::MethodBody {
             blocks: vec![BasicBlock::new(vec![ret], 0, None)],
@@ -56,6 +58,7 @@ fn op_indirect(
     };
     patcher.insert(name, Box::new(generator));
 }
+/// Generates all ops operating on a 16 bit float.
 pub fn generate_f16_ops(asm: &mut Assembly, patcher: &mut MissingMethodPatcher, direct: bool) {
     const OPS: [BinOp; 8] = [
         BinOp::Add,

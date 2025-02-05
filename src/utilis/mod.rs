@@ -7,7 +7,7 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::{
     mir::interpret::AllocId,
     ty::{
-        AdtDef, Const, ConstKind, EarlyBinder, GenericArg, Instance, List, ParamEnv,
+        AdtDef, Const, ConstKind, EarlyBinder, GenericArg, Instance, List,
         PseudoCanonicalInput, SymbolName, Ty, TyCtxt, TyKind, TypeFoldable,
     },
 };
@@ -230,7 +230,12 @@ pub fn try_resolve_const_size(size: Const) -> Result<usize, &'static str> {
         Some(value) => Ok(value),
         None => Err("Can't resolve scalar array size!"),
     }?;
-    let value = value.valtree.try_to_scalar().unwrap().to_u64().expect("Could not convert scalar to u64!");
+    let value = value
+        .valtree
+        .try_to_scalar()
+        .unwrap()
+        .to_u64()
+        .expect("Could not convert scalar to u64!");
     Ok(usize::try_from(value).expect("Const size value too big."))
 }
 
@@ -242,10 +247,12 @@ pub fn garg_to_string<'tcx>(garg: GenericArg<'tcx>, ctx: TyCtxt<'tcx>) -> IStrin
     let kind = str_const.kind();
     match kind {
         ConstKind::Value(val) => {
-            let raw_bytes = val.valtree
+            let raw_bytes = val
+                .valtree
                 .try_to_raw_bytes(ctx, val.ty)
                 .expect("String const did not contain valid string!");
-            let tpe = val.ty
+            let tpe = val
+                .ty
                 .builtin_deref(true)
                 .expect("Type of generic argument was not a reference, can't resolve as string!");
             assert!(
@@ -268,7 +275,8 @@ pub fn garag_to_bool<'tcx>(garg: GenericArg<'tcx>, _ctx: TyCtxt<'tcx>) -> bool {
     let kind = usize_const.kind();
     match kind {
         ConstKind::Value(val) => {
-            let scalar = val.valtree
+            let scalar = val
+                .valtree
                 .try_to_scalar_int()
                 .expect("String const did not contain valid scalar!");
             let ty = val.ty;

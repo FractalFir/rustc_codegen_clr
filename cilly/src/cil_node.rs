@@ -1,3 +1,4 @@
+use crate::cilnode::IsPure;
 use crate::v2::cilnode::MethodKind;
 use crate::v2::method::LocalDef;
 use crate::v2::{
@@ -17,6 +18,7 @@ use serde::{Deserialize, Serialize};
 pub struct CallOpArgs {
     pub args: Box<[CILNode]>,
     pub site: MethodRefIdx,
+    pub is_pure: IsPure,
 }
 
 #[derive(Clone, Eq, PartialEq, Serialize, Deserialize, Debug, Hash)]
@@ -377,7 +379,11 @@ impl CILNode {
                     MethodKind::Static,
                     vec![].into(),
                 );
-                call!(asm.alloc_methodref(select), [a, b, predictate])
+                CILNode::Call(Box::new(crate::cil_node::CallOpArgs {
+                    args: [a, b, predictate].into(),
+                    site: (asm.alloc_methodref(select)),
+                    is_pure: crate::v2::cilnode::IsPure::PURE,
+                }))
             }
             Type::Ptr(_) => {
                 let int = Int::USize;
@@ -388,14 +394,16 @@ impl CILNode {
                     MethodKind::Static,
                     vec![].into(),
                 );
-                call!(
-                    asm.alloc_methodref(select),
-                    [
+                CILNode::Call(Box::new(crate::cil_node::CallOpArgs {
+                    args: [
                         a.cast_ptr(Type::Int(int)),
                         b.cast_ptr(Type::Int(int)),
-                        predictate
+                        predictate,
                     ]
-                )
+                    .into(),
+                    site: (asm.alloc_methodref(select)),
+                    is_pure: crate::v2::cilnode::IsPure::PURE,
+                }))
             }
             _ => todo!(),
         }
@@ -417,6 +425,7 @@ impl CILNode {
         CILNode::Call(Box::new(CallOpArgs {
             args: Box::new([self]),
             site: mref,
+            is_pure: crate::v2::cilnode::IsPure::NOT,
         }))
         /*
         let stack_addr = {
@@ -729,15 +738,18 @@ macro_rules! call {
         CILNode::Call(Box::new($crate::cil_node::CallOpArgs {
             args: $args.into(),
             site: $call_site.into(),
+            is_pure: $crate::v2::cilnode::IsPure::NOT,
         }))
     };
 }
+
 #[macro_export]
 macro_rules! call_virt {
     ($call_site:expr,$args:expr) => {
         CILNode::CallVirt(Box::new($crate::cil_node::CallOpArgs {
             args: $args.into(),
             site: $call_site.into(),
+            is_pure: $crate::v2::cilnode::IsPure::NOT,
         }))
     };
 }

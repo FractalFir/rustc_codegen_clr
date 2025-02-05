@@ -39,7 +39,7 @@ pub(super) fn simd_eq(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
         );
         let lhs = asm.alloc_node(CILNode::LdArg(0));
         let rhs = asm.alloc_node(CILNode::LdArg(1));
-        let equals = asm.alloc_node(CILNode::Call(Box::new((equals, [lhs, rhs].into()))));
+        let equals = asm.alloc_node(CILNode::call(equals, [lhs, rhs]));
         let cast = dotnet_vec_cast(equals, *comparands, *result, asm);
         let ret = asm.alloc_root(CILRoot::Ret(cast));
         MethodImpl::MethodBody {
@@ -82,7 +82,7 @@ pub(super) fn simd_eq_all(asm: &mut Assembly, patcher: &mut MissingMethodPatcher
         );
         let lhs = asm.alloc_node(CILNode::LdArg(0));
         let rhs = asm.alloc_node(CILNode::LdArg(1));
-        let equals = asm.alloc_node(CILNode::Call(Box::new((equals, [lhs, rhs].into()))));
+        let equals = asm.alloc_node(CILNode::call(equals, [lhs, rhs]));
 
         let ret = asm.alloc_root(CILRoot::Ret(equals));
         MethodImpl::MethodBody {
@@ -125,7 +125,7 @@ pub(super) fn simd_eq_any(asm: &mut Assembly, patcher: &mut MissingMethodPatcher
         );
         let lhs = asm.alloc_node(CILNode::LdArg(0));
         let rhs = asm.alloc_node(CILNode::LdArg(1));
-        let equals = asm.alloc_node(CILNode::Call(Box::new((equals, [lhs, rhs].into()))));
+        let equals = asm.alloc_node(CILNode::call(equals, [lhs, rhs]));
 
         let ret = asm.alloc_root(CILRoot::Ret(equals));
         MethodImpl::MethodBody {

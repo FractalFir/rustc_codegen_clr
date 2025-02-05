@@ -1,3 +1,4 @@
+use crate::cilnode::IsPure;
 use crate::v2::cilnode::MethodKind;
 use crate::v2::method::LocalDef;
 use crate::v2::{
@@ -171,6 +172,7 @@ impl CILRoot {
                 vec![].into(),
             )),
             args: [CILNode::LdStr(msg.into())].into(),
+            is_pure: IsPure::NOT,
         })))
     }
     #[must_use]

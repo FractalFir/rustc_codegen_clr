@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{
     bimap::{BiMapIndex, IntoBiMapIndex},
+    cilnode::IsPure,
     field::FieldIdx,
     Assembly, CILNode, Float, Int, MethodRefIdx, NodeIdx, SigIdx, StaticFieldIdx, StringIdx, Type,
     TypeIdx,
@@ -29,7 +30,7 @@ pub enum CILRoot {
     },
     /// Field,  addr,value
     SetField(Box<(FieldIdx, NodeIdx, NodeIdx)>),
-    Call(Box<(MethodRefIdx, Box<[NodeIdx]>)>),
+    Call(Box<(MethodRefIdx, Box<[NodeIdx]>, IsPure)>),
     /// addr, value, type
     StInd(Box<(NodeIdx, NodeIdx, Type, bool)>),
     /// dst, val, count
@@ -117,6 +118,13 @@ impl IntoBiMapIndex for RootIdx {
     }
 }
 impl CILRoot {
+    pub fn call(mref: MethodRefIdx, args: impl Into<Box<[NodeIdx]>>) -> Self {
+        Self::Call(Box::new((mref, args.into(), IsPure::NOT)))
+    }
+    /// Checks if this root has any effect on the execution of this program.
+    pub fn is_meaningufull(&self) -> bool {
+        !matches!(self, CILRoot::Nop | CILRoot::SourceFileInfo { .. })
+    }
     /// Returns a mutable reference to all the arguments of this CIL root, in the order they are evaluated.
     pub fn nodes_mut(&mut self) -> Box<[&mut NodeIdx]> {
         match self {
@@ -326,7 +334,7 @@ impl CILRoot {
                         asm.alloc_node(node)
                     })
                     .collect();
-                Self::Call(Box::new((*site, args)))
+                Self::call(*site, args)
             }
             V1Root::CallVirt { site, args } => {
                 let args: Box<[_]> = args
@@ -336,7 +344,7 @@ impl CILRoot {
                         asm.alloc_node(node)
                     })
                     .collect();
-                Self::Call(Box::new((*site, args)))
+                Self::call(*site, args)
             }
             V1Root::SetField { value, addr, desc } => {
                 let value = CILNode::from_v1(value, asm);
@@ -605,7 +613,7 @@ impl CILRoot {
                 root_map(root, asm)
             }
             CILRoot::Call(call_info) => {
-                let (method_id, args) = *call_info;
+                let (method_id, args, is_pure) = *call_info;
                 let args = args
                     .iter()
                     .map(|arg| {
@@ -614,7 +622,7 @@ impl CILRoot {
                     })
                     .collect();
 
-                let root = CILRoot::Call(Box::new((method_id, args)));
+                let root = CILRoot::Call(Box::new((method_id, args, is_pure)));
                 root_map(root, asm)
             }
             CILRoot::StInd(ind) => {
