@@ -499,11 +499,9 @@ pub fn instert_threading(asm: &mut Assembly, patcher: &mut MissingMethodPatcher)
     let main_module = asm.main_module();
     let thread_results = asm.alloc_string("thread_results");
     let dict = ClassRef::concurent_dictionary(Type::Int(Int::I32), Type::Int(Int::ISize), asm);
-    asm.class_mut(main_module).static_fields_mut().push((
-        Type::ClassRef(dict),
-        thread_results,
-        false,
-    ));
+    asm.add_static( Type::ClassRef(dict),
+    "thread_results",
+    false,main_module);
     let thread_results = asm.alloc_sfld(StaticFieldDesc::new(
         *main_module,
         thread_results,

@@ -12,8 +12,19 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-#if !(defined(__TINYC__) || defined(__SDCC))
+#if !(defined(__TINYC__) || defined(__SDCC) || defined(_MSC_VER))
 #include <mm_malloc.h>
+#elif defined(_MSC_VER)
+void * _aligned_malloc(
+    size_t size,
+    size_t alignment
+);
+inline void* _mm_malloc(size_t size, size_t align){
+    return _aligned_malloc(align,size);
+}
+inline void _mm_free (void *p){
+    _aligned_free(p);
+}
 #else
 inline void* _mm_malloc(size_t size, size_t align){
     return aligned_alloc(align,size);
@@ -84,19 +95,23 @@ __uint128_t __builtin_bswap128(__uint128_t val);
 #endif
 #ifdef __TINYC__
 #define _Thread_local __attribute__((section(".tbss")))
+#elif defined(_MSC_VER)
+#define _Thread_local __declspec(thread)
 #elif defined(__SDCC)
 // Assumes single-threaded env!
 #define _Thread_local 
 #endif
 
-#ifndef __SDCC
+#if !(defined(__SDCC) || defined(_MSC_VER))
 #define FORCE_NOT_ZST 
 #else
 #define FORCE_NOT_ZST char force_not_zst;
 #endif
 
-#ifndef __SDCC
+#if !(defined(__SDCC) || defined(_MSC_VER))
 #include <alloca.h>
+#elif defined(_MSC_VER)
+#define alloca _alloca
 #else
 #define alloca(arg) ((void*)0)
 #endif
@@ -135,7 +150,7 @@ bool __atomic_compare_exchange_n(uintptr_t *ptr, uintptr_t *expected, uintptr_t 
 }
 #endif
 
-#if !(defined(__TINYC__) || defined(__SDCC))
+#if !(defined(__TINYC__) || defined(__SDCC) || defined(_MSC_VER))
 static inline _Float16 System_Half_op_Explicitf32f16(float val){
     return (_Float16)val;
 }

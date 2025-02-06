@@ -4,7 +4,7 @@ use super::bimap::BiMapIndex;
 use super::field::StaticFieldIdx;
 
 use super::{bimap::IntoBiMapIndex, Assembly, Const, Int, MethodRefIdx, SigIdx, TypeIdx};
-use super::{ClassRef, FieldIdx, Float, IntoAsmIndex};
+use super::{ClassRef, FieldIdx, Float};
 use crate::cil_node::CILNode as V1Node;
 use crate::v2::Type;
 

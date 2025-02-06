@@ -8,6 +8,7 @@ use crate::{
     utilis::{assert_unique, encode},
     v2::{asm::LINKER_RECOVER, BiMap, MethodImpl, StringIdx},
 };
+
 config!(NO_SFI, bool, false);
 config!(ANSI_C, bool, false);
 config!(NO_OPT, bool, false);
@@ -19,16 +20,7 @@ config!(PARTS, u32, 1);
 config!(ASCII_IDENTS, bool, false);
 mod utilis;
 use super::{
-    asm::MAIN_MODULE,
-    basic_block::BlockId,
-    bimap::IntoBiMapIndex,
-    cilnode::{ExtendKind, PtrCastRes},
-    cilroot::BranchCond,
-    method::LocalDef,
-    tpe::simd::SIMDVector,
-    typecheck::TypeCheckError,
-    Assembly, BinOp, CILIter, CILIterElem, CILNode, CILRoot, ClassDefIdx, ClassRef, ClassRefIdx,
-    Const, Exporter, Int, MethodDef, MethodRef, NodeIdx, RootIdx, SigIdx, Type,
+    asm::MAIN_MODULE, basic_block::BlockId, bimap::IntoBiMapIndex, cilnode::{ExtendKind, PtrCastRes}, cilroot::BranchCond, class::StaticFieldDef, method::LocalDef, tpe::simd::SIMDVector, typecheck::TypeCheckError, Assembly, BinOp, CILIter, CILIterElem, CILNode, CILRoot, ClassDefIdx, ClassRef, ClassRefIdx, Const, Exporter, Int, MethodDef, MethodRef, NodeIdx, RootIdx, SigIdx, Type
 };
 use utilis::*;
 
@@ -1065,7 +1057,7 @@ impl CExporter {
         if !class.static_fields().is_empty() {
             writeln!(type_defs, "\n/*START OF STATCIDEFS*/\n")?;
         }
-        for (sfield_tpe, sfname, is_thread_local) in class.static_fields() {
+        for StaticFieldDef{tpe:sfield_tpe, name:sfname, is_tls:is_thread_local} in class.static_fields() {
             let fname = escape_nonfn_name(&asm[*sfname]);
             let field_tpe = c_tpe(*sfield_tpe, asm);
             let fname = class_member_name(&class_name, &fname);

@@ -17,7 +17,7 @@ pub fn int_max(asm: &mut Assembly, lhs: NodeIdx, rhs: NodeIdx, int: Int) -> Node
         MethodKind::Static,
         vec![].into(),
     ));
-    asm.alloc_node(CILNode::call(mref, ([lhs, rhs])))
+    asm.alloc_node(CILNode::call(mref, [lhs, rhs]))
 }
 
 pub fn int_min(asm: &mut Assembly, lhs: NodeIdx, rhs: NodeIdx, int: Int) -> NodeIdx {
@@ -31,7 +31,7 @@ pub fn int_min(asm: &mut Assembly, lhs: NodeIdx, rhs: NodeIdx, int: Int) -> Node
         MethodKind::Static,
         vec![].into(),
     ));
-    asm.alloc_node(CILNode::call(mref, ([lhs, rhs])))
+    asm.alloc_node(CILNode::call(mref, [lhs, rhs]))
 }
 pub fn ldexpf(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
     let name = asm.alloc_string("ldexpf");

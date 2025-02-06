@@ -124,7 +124,7 @@ fn insert_rust_alloc_zeroed(asm: &mut Assembly, patcher: &mut MissingMethodPatch
             MethodKind::Static,
             [].into(),
         ));
-        let alloc = asm.alloc_node(CILNode::call(call_method, ([size, align])));
+        let alloc = asm.alloc_node(CILNode::call(call_method, [size, align]));
         let alloc = asm.alloc_node(CILNode::PtrCast(
             alloc,
             Box::new(super::cilnode::PtrCastRes::Ptr(void_idx)),
@@ -255,7 +255,7 @@ fn insert_rust_realloc(asm: &mut Assembly, patcher: &mut MissingMethodPatcher, u
                 MethodKind::Static,
                 [].into(),
             ));
-            let alloc = asm.alloc_node(CILNode::call(call_method, ([ptr, new_size, align])));
+            let alloc = asm.alloc_node(CILNode::call(call_method, [ptr, new_size, align]));
             let ret = asm.alloc_root(CILRoot::Ret(alloc));
             MethodImpl::MethodBody {
                 blocks: vec![BasicBlock::new(vec![ret], 0, None)],

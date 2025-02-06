@@ -248,8 +248,7 @@ pub fn garg_to_string<'tcx>(garg: GenericArg<'tcx>, ctx: TyCtxt<'tcx>) -> IStrin
     match kind {
         ConstKind::Value(val) => {
             let raw_bytes = val
-                .valtree
-                .try_to_raw_bytes(ctx, val.ty)
+                .try_to_raw_bytes(ctx)
                 .expect("String const did not contain valid string!");
             let tpe = val
                 .ty

@@ -439,13 +439,19 @@ impl ClassRef {
     }
 }
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
+pub struct StaticFieldDef{
+    pub tpe:Type,
+    pub name:StringIdx, 
+    pub is_tls:bool
+}
+#[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub struct ClassDef {
     name: StringIdx,
     is_valuetype: bool,
     generics: u32,
     extends: Option<ClassRefIdx>,
     fields: Vec<(Type, StringIdx, Option<u32>)>,
-    static_fields: Vec<(Type, StringIdx, bool)>,
+    static_fields: Vec<StaticFieldDef>,
     methods: Vec<MethodDefIdx>,
     access: Access,
     explict_size: Option<NonZeroU32>,
@@ -458,13 +464,13 @@ impl ClassDef {
     pub fn has_static_field(&self, fld_name: StringIdx, fld_tpe: Type) -> bool {
         self.static_fields
             .iter()
-            .any(|(tpe, name, _)| *tpe == fld_tpe && *name == fld_name)
+            .any(|StaticFieldDef{tpe, name, ..}| *tpe == fld_tpe && *name == fld_name)
     }
     pub(crate) fn iter_types(&self) -> impl Iterator<Item = Type> + '_ {
         self.fields()
             .iter()
             .map(|(tpe, _, _)| tpe)
-            .chain(self.static_fields().iter().map(|(tpe, _, _)| tpe))
+            .chain(self.static_fields().iter().map(|StaticFieldDef{tpe,..}| tpe))
             .copied()
             .chain(self.extends.iter().map(|cref| Type::ClassRef(*cref)))
     }
@@ -476,7 +482,7 @@ impl ClassDef {
         generics: u32,
         extends: Option<ClassRefIdx>,
         fields: Vec<(Type, StringIdx, Option<u32>)>,
-        static_fields: Vec<(Type, StringIdx, bool)>,
+        static_fields: Vec<StaticFieldDef>,
         access: Access,
         explict_size: Option<NonZeroU32>,
         align: Option<NonZeroU32>,
@@ -510,7 +516,7 @@ impl ClassDef {
         &mut self.methods
     }
 
-    pub fn static_fields_mut(&mut self) -> &mut Vec<(Type, StringIdx, bool)> {
+    pub fn static_fields_mut(&mut self) -> &mut Vec<StaticFieldDef> {
         &mut self.static_fields
     }
     pub fn fields_mut(&mut self) -> &mut Vec<(Type, StringIdx, Option<u32>)> {
@@ -546,7 +552,7 @@ impl ClassDef {
     }
 
     #[must_use]
-    pub fn static_fields(&self) -> &[(Type, StringIdx, bool)] {
+    pub fn static_fields(&self) -> &[StaticFieldDef] {
         &self.static_fields
     }
 
@@ -577,7 +583,7 @@ impl ClassDef {
         assert_eq!(self.extends(), translated.extends());
 
         // Merge the static fields, removing duplicates
-        self.static_fields_mut().extend(translated.static_fields());
+        self.static_fields_mut().extend(translated.static_fields().iter().cloned());
         make_unique(&mut self.static_fields);
         // Merge the methods, removing duplicates
         self.methods_mut().extend(translated.methods());
@@ -698,7 +704,7 @@ fn has_explicit_layout() {
             0,
             None,
             vec![],
-            vec![(Type::Bool, name, false)],
+            vec![StaticFieldDef{tpe:Type::Bool, name, is_tls:false}],
             Access::Extern,
             None,
             None,

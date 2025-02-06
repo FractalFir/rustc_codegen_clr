@@ -9,7 +9,6 @@ fn trivial_inline_block<'def, 'asm: 'def>(
     def: &'def MethodDef,
     asm: &'asm mut Assembly,
 ) -> Option<impl Iterator<Item = RootIdx> + 'def> {
-    let name = asm[def.name()].to_string();
     let method = def.resolved_implementation(asm);
     // Can only inline methods which have a concreate implementation.
     let MethodImpl::MethodBody { blocks, locals } = method else {
@@ -100,8 +99,6 @@ fn trivial_inline_root(
     fuel: &mut OptFuel,
     asm: &mut Assembly,
 ) -> Option<CILRoot> {
-    let name = asm[def.name()].to_string();
-
     let mut roots = trivial_inline_block(def, asm)?;
 
     // Can only trivaily inline methods with only one root and a void ret

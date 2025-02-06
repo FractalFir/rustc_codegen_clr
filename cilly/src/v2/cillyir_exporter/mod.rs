@@ -1,3 +1,4 @@
+use super::class::StaticFieldDef;
 #[allow(dead_code)]
 use super::{Assembly, ClassRef, Exporter, FnSig, Type};
 use std::io::Write;
@@ -47,10 +48,10 @@ impl Exporter for CillyIRExpoter {
             let static_fields: String = def
                 .static_fields()
                 .iter()
-                .map(|(tpe, name, thread_local)| {
+                .map(|StaticFieldDef{tpe, name, is_tls }| {
                     let tpe = tpe_to(tpe, asm);
                     let name = &asm[*name];
-                    format!("({tpe},{{asm.alloc_string({name:?})}},{thread_local})")
+                    format!("({tpe},{{asm.alloc_string({name:?})}},{is_tls})")
                 })
                 .intersperse(",".to_owned())
                 .collect();
