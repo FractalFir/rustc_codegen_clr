@@ -31,7 +31,7 @@ use rustc_middle::{
         mono::MonoItem,
         Local, LocalDecl, Statement, Terminator,
     },
-    ty::{Instance, TyCtxt, TyKind},
+    ty::{TyCtxt, TyKind},
 };
 fn linkage_to_access(link: Option<Linkage>) -> AccessModifer {
     match link {
@@ -41,22 +41,7 @@ fn linkage_to_access(link: Option<Linkage>) -> AccessModifer {
 }
 type LocalDefList = Vec<LocalDef>;
 type ArgsDebugInfo = Vec<Option<StringIdx>>;
-fn check_align_adjust<'tcx>(
-    locals: &rustc_index::IndexVec<Local, LocalDecl<'tcx>>,
-    tcx: TyCtxt<'tcx>,
-    method_instance: &Instance<'tcx>,
-    argc: usize,
-) -> Vec<Option<u64>> {
-    let mut adjusts: Vec<Option<u64>> = Vec::with_capacity(locals.len());
-    for (local_id, local) in locals.iter().enumerate() {
-        if local_id == 0 || local_id > argc {
-            let ty = crate::utilis::monomorphize(method_instance, local.ty, tcx);
-            let adjust = crate::utilis::requries_align_adjustement(ty, tcx);
-            adjusts.push(adjust);
-        }
-    }
-    adjusts
-}
+
 /// Returns the list of all local variables within MIR of a function, and converts them to the internal type represenation `Type`
 fn locals_from_mir<'tcx>(
     locals: &rustc_index::IndexVec<Local, LocalDecl<'tcx>>,
@@ -531,8 +516,6 @@ pub fn add_fn<'tcx, 'asm, 'a: 'asm>(
 
     method.allocate_temporaries();
 
-    let adjust = check_align_adjust(&mir.local_decls, ctx.tcx(), &ctx.instance(), mir.arg_count);
-
     let main_module = ctx.main_module();
     let method = MethodDef::from_v1(&method, ctx, main_module);
     ctx.new_method(method);
@@ -808,7 +791,7 @@ pub fn add_allocation(alloc_id: u64, asm: &mut cilly::v2::Assembly, tcx: TyCtxt<
                 asm.add_tcctor(&roots);
             } else {
                 asm.add_cctor(&roots);
-            };
+            }
             CILNode::AddressOfStaticField(Box::new(field_desc))
         }
         _ => {
@@ -853,23 +836,12 @@ pub fn add_allocation(alloc_id: u64, asm: &mut cilly::v2::Assembly, tcx: TyCtxt<
                 asm.add_tcctor(&[root]);
             } else {
                 asm.add_cctor(&[root]);
-            };
+            }
 
             CILNode::LDStaticField(Box::new(field_desc))
         }
     }
 }
-/*
-pub fn alloc_buff_tpe(asm: &mut cilly::v2::Assembly, len: u64) -> Option<Type> {
-    match len {
-        0 => None,
-        1 => Some(Type::Int(Int::U8)),
-        2 => Some(Type::Int(Int::U16)),
-        4 => Some(Type::Int(Int::U32)),
-        8 => Some(Type::Int(Int::U64)),
-        _ => array_type(),
-    }
-}*/
 pub fn add_const_value(asm: &mut cilly::v2::Assembly, bytes: u128) -> StaticFieldDesc {
     let uint8_ptr = Type::Int(Int::U128);
     let main_module_id = asm.main_module();

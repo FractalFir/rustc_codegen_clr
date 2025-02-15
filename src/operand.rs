@@ -125,8 +125,7 @@ pub(crate) fn is_const_zero<'tcx>(
                     // ZeroSized has no data, so it has only 0 values
                     true
                 }
-                ConstValue::Slice {  .. } => false,
-                ConstValue::Indirect {  .. } => false,
+                ConstValue::Slice { .. } | ConstValue::Indirect { .. } => false,
             }
         }
     }

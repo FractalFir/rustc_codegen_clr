@@ -1,5 +1,8 @@
 use super::{
-    asm::{CCTOR, TCCTOR, USER_INIT}, class::StaticFieldDef, Assembly, BasicBlock, CILNode, CILRoot, ClassDef, ClassDefIdx, ClassRef, ClassRefIdx, FieldDesc, FnSig, MethodDef, MethodDefIdx, MethodRef, StaticFieldDesc, Type
+    asm::{CCTOR, TCCTOR, USER_INIT},
+    class::StaticFieldDef,
+    Assembly, BasicBlock, CILNode, CILRoot, ClassDef, ClassDefIdx, ClassRef, ClassRefIdx,
+    FieldDesc, FnSig, MethodDef, MethodDefIdx, MethodRef, StaticFieldDesc, Type,
 };
 impl Assembly {
     pub(crate) fn translate_type(&mut self, source: &Self, tpe: Type) -> Type {
@@ -593,10 +596,14 @@ impl Assembly {
         let static_fields = def
             .static_fields()
             .iter()
-            .map(|StaticFieldDef{tpe, name, is_tls }| {
+            .map(|StaticFieldDef { tpe, name, is_tls }| {
                 let tpe = self.translate_type(source, *tpe);
                 let name = self.alloc_string(source[*name].as_ref());
-                StaticFieldDef{tpe, name, is_tls:*is_tls }
+                StaticFieldDef {
+                    tpe,
+                    name,
+                    is_tls: *is_tls,
+                }
             })
             .collect();
         let translated = ClassDef::new(

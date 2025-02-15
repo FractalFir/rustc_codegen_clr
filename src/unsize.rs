@@ -8,11 +8,11 @@ use cilly::cil_root::CILRoot;
 use cilly::v2::{FieldDesc, Int};
 use cilly::{conv_u32, conv_usize, IntoAsmIndex};
 use cilly::{Const, Type};
+use rustc_abi::FIRST_VARIANT;
 use rustc_middle::{
     mir::{Operand, Place},
     ty::{layout::TyAndLayout, ExistentialTraitRef, Ty, TyKind, UintTy},
 };
-use rustc_target::abi::FIRST_VARIANT;
 
 /// Preforms an unsizing cast on operand `operand`, converting it to the `target` type.
 pub fn unsize2<'tcx>(

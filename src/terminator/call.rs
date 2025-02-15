@@ -605,7 +605,7 @@ pub fn call<'tcx>(
     //rustc_middle::ty::print::with_no_trimmed_paths! {call.push(CILOp::Comment(format!("Calling {instance:?}").into()))};
     if let InstanceKind::DropGlue(_def, None) = instance.def {
         return vec![CILRoot::Nop];
-    };
+    }
     let call_site = MethodRef::new(
         *ctx.main_module(),
         ctx.alloc_string(function_name),

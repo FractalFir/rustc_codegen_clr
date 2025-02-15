@@ -144,13 +144,11 @@ pub fn typecheck_err_to_string(
         .iter()
         .map(|node| display_node(**node, asm, sig, locals, &mut set))
         .collect::<String>();
-    let root_connections: String = root
-        .nodes().iter()
-        .fold(String::new(), |mut output, node|{
-            use std::fmt::Write;
-            writeln!(output,"n{node} ", node = node.as_bimap_index()).unwrap();
-            output
-        });
+    let root_connections: String = root.nodes().iter().fold(String::new(), |mut output, node| {
+        use std::fmt::Write;
+        writeln!(output, "n{node} ", node = node.as_bimap_index()).unwrap();
+        output
+    });
     let root_string = root.display(asm, sig, locals);
     match root.typecheck(sig, locals, asm){
         Ok(_)=> format!("digraph G{{edge [dir=\"back\"];\n{nodes} r{root_idx}  [label = \"{root_string}\" color = \"green\"] r{root_idx} ->{root_connections}}}",root_idx = root_idx.as_bimap_index()),

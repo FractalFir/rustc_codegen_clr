@@ -8,16 +8,13 @@ use cilly::{
     v2::{ClassRef, Float},
     Int, MethodRef, Type,
 };
-use rustc_middle::{
-    mir::{Operand, Place},
-    ty::Instance,
-};
+use rustc_middle::mir::{Operand, Place};
 use rustc_span::source_map::Spanned;
 /// Implementation of the fmaf32 intrinsics. Takes in 3 arguments: a, b, c. Calcualtes a * b + c
 pub fn fmaf32<'tcx>(
     args: &[Spanned<Operand<'tcx>>],
     destination: &Place<'tcx>,
-    call_instance: Instance<'tcx>,
+
     ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> CILRoot {
     let mref = MethodRef::new(
@@ -48,7 +45,7 @@ pub fn fmaf32<'tcx>(
 pub fn fmaf64<'tcx>(
     args: &[Spanned<Operand<'tcx>>],
     destination: &Place<'tcx>,
-    call_instance: Instance<'tcx>,
+
     ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> CILRoot {
     let mref = MethodRef::new(
@@ -78,7 +75,7 @@ pub fn fmaf64<'tcx>(
 pub fn powif32<'tcx>(
     args: &[Spanned<Operand<'tcx>>],
     destination: &Place<'tcx>,
-    call_instance: Instance<'tcx>,
+
     ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> CILRoot {
     debug_assert_eq!(
@@ -111,7 +108,7 @@ pub fn powif32<'tcx>(
 pub fn powif64<'tcx>(
     args: &[Spanned<Operand<'tcx>>],
     destination: &Place<'tcx>,
-    call_instance: Instance<'tcx>,
+
     ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> CILRoot {
     debug_assert_eq!(
@@ -144,7 +141,7 @@ pub fn powif64<'tcx>(
 pub fn powf32<'tcx>(
     args: &[Spanned<Operand<'tcx>>],
     destination: &Place<'tcx>,
-    call_instance: Instance<'tcx>,
+
     ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> CILRoot {
     let pow = MethodRef::new(
@@ -169,7 +166,7 @@ pub fn powf32<'tcx>(
 pub fn powf64<'tcx>(
     args: &[Spanned<Operand<'tcx>>],
     destination: &Place<'tcx>,
-    call_instance: Instance<'tcx>,
+
     ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> CILRoot {
     let pow = MethodRef::new(

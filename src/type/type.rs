@@ -174,7 +174,7 @@ pub fn is_fat_ptr<'tcx>(
     tcx: TyCtxt<'tcx>,
     method: rustc_middle::ty::Instance<'tcx>,
 ) -> bool {
-    use rustc_target::abi::BackendRepr;
+    use rustc_abi::BackendRepr;
     let ptr_type = monomorphize(&method, ptr_type, tcx);
     let layout = tcx
         .layout_of(PseudoCanonicalInput {

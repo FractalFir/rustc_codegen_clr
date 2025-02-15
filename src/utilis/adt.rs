@@ -6,10 +6,8 @@ use cilly::{
     v2::{cilnode::MethodKind, Assembly, ClassRef, ClassRefIdx, FieldDesc, Float, Int, MethodRef},
     Const, Type,
 };
+use rustc_abi::{FieldIdx, FieldsShape, Layout, LayoutData, TagEncoding, VariantIdx, Variants};
 use rustc_middle::ty::{AdtDef, Ty};
-use rustc_target::abi::{
-    FieldIdx, FieldsShape, Layout, LayoutData, TagEncoding, VariantIdx, Variants,
-};
 
 use crate::fn_ctx::MethodCompileCtx;
 pub fn enum_variant_offsets(_: AdtDef, layout: Layout, vidix: VariantIdx) -> FieldOffsetIterator {
@@ -44,7 +42,7 @@ impl Iterator for FieldOffsetIterator {
     }
 }
 impl FieldOffsetIterator {
-    pub fn from_fields_shape(fields: &rustc_target::abi::FieldsShape<FieldIdx>) -> Self {
+    pub fn from_fields_shape(fields: &rustc_abi::FieldsShape<FieldIdx>) -> Self {
         match fields {
             FieldsShape::Arbitrary {
                 offsets,
@@ -89,9 +87,7 @@ impl FieldOffsetIterator {
             }
         }
     }
-    pub fn fields(
-        parent: LayoutData<FieldIdx, rustc_target::abi::VariantIdx>,
-    ) -> FieldOffsetIterator {
+    pub fn fields(parent: LayoutData<FieldIdx, rustc_abi::VariantIdx>) -> FieldOffsetIterator {
         //eprintln!("ADT fields:{:?}",parent.fields);
         Self::from_fields_shape(&parent.fields)
     }
@@ -114,16 +110,15 @@ pub fn enum_tag_info(r#enum: Layout<'_>, asm: &mut Assembly) -> (Type, u32) {
         Variants::Empty => (Type::Void, 0),
     }
 }
-fn scalr_to_type(scalar: rustc_target::abi::Scalar, asm: &mut Assembly) -> Type {
+fn scalr_to_type(scalar: rustc_abi::Scalar, asm: &mut Assembly) -> Type {
     let primitive = match scalar {
-        rustc_target::abi::Scalar::Union { value }
-        | rustc_target::abi::Scalar::Initialized { value, .. } => value,
+        rustc_abi::Scalar::Union { value } | rustc_abi::Scalar::Initialized { value, .. } => value,
     };
     primitive_to_type(primitive, asm)
 }
-fn primitive_to_type(primitive: rustc_target::abi::Primitive, asm: &mut Assembly) -> Type {
-    use rustc_target::abi::Integer;
-    use rustc_target::abi::Primitive;
+fn primitive_to_type(primitive: rustc_abi::Primitive, asm: &mut Assembly) -> Type {
+    use rustc_abi::Integer;
+    use rustc_abi::Primitive;
     match primitive {
         Primitive::Int(int, sign) => match (int, sign) {
             (Integer::I8, true) => Type::Int(Int::I8),
@@ -146,8 +141,8 @@ fn primitive_to_type(primitive: rustc_target::abi::Primitive, asm: &mut Assembly
 }
 pub fn get_variant_at_index(
     variant_index: VariantIdx,
-    layout: LayoutData<FieldIdx, rustc_target::abi::VariantIdx>,
-) -> LayoutData<FieldIdx, rustc_target::abi::VariantIdx> {
+    layout: LayoutData<FieldIdx, rustc_abi::VariantIdx>,
+) -> LayoutData<FieldIdx, rustc_abi::VariantIdx> {
     match layout.variants {
         Variants::Single { .. } => layout,
         Variants::Multiple { variants, .. } => variants[variant_index].clone(),

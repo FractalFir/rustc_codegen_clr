@@ -138,8 +138,8 @@ pub fn handle_intrinsic<'tcx>(
                 ctx,
             )]
         }
-        "fmaf32" => vec![fmaf32(args, destination, call_instance, ctx)],
-        "fmaf64" => vec![fmaf64(args, destination, call_instance, ctx)],
+        "fmaf32" => vec![fmaf32(args, destination, ctx)],
+        "fmaf64" => vec![fmaf64(args, destination, ctx)],
         "raw_eq" => vec![raw_eq(args, destination, call_instance, ctx)],
         "bswap" => vec![bswap::bswap(args, destination, ctx)],
         "cttz" | "cttz_nonzero" => vec![ints::cttz(args, destination, ctx, call_instance)],
@@ -466,9 +466,8 @@ pub fn handle_intrinsic<'tcx>(
         | "atomic_xchg_acquire"
         | "atomic_xchg_acqrel"
         | "atomic_xchg_relaxed"
-        | "atomic_xchg_seqcst" => vec![atomic::xchg(args, destination, call_instance, ctx)],
+        | "atomic_xchg_seqcst" => vec![atomic::xchg(args, destination, ctx)],
         // TODO:Those are not stricly neccessary, but SHOULD be implemented at some point.
-        "assert_inhabited" | "assert_zero_valid" | "const_deallocate" => vec![CILRoot::Nop],
         "ptr_offset_from_unsigned" => {
             vec![ptr::ptr_offset_from_unsigned(
                 args,
@@ -700,8 +699,8 @@ pub fn handle_intrinsic<'tcx>(
                 },
             ]
         }
-        "powif32" => vec![powif32(args, destination, call_instance, ctx)],
-        "powif64" => vec![powif64(args, destination, call_instance, ctx)],
+        "powif32" => vec![powif32(args, destination, ctx)],
+        "powif64" => vec![powif64(args, destination, ctx)],
         "size_of_val" => vec![size_of_val(args, destination, ctx, call_instance)],
         "typed_swap_nonoverlapping" => {
             let pointed_ty = ctx.monomorphize(
@@ -918,8 +917,8 @@ pub fn handle_intrinsic<'tcx>(
             );
             vec![place_set(destination, value_calc, ctx)]
         }
-        "powf32" => vec![powf32(args, destination, call_instance, ctx)],
-        "powf64" => vec![powf64(args, destination, call_instance, ctx)],
+        "powf32" => vec![powf32(args, destination, ctx)],
+        "powf64" => vec![powf64(args, destination, ctx)],
         "copysignf32" => {
             let copy_sign = MethodRef::new(
                 ClassRef::single(ctx),

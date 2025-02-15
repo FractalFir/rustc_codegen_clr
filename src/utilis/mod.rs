@@ -7,8 +7,8 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::{
     mir::interpret::AllocId,
     ty::{
-        AdtDef, Const, ConstKind, EarlyBinder, GenericArg, Instance, List,
-        PseudoCanonicalInput, SymbolName, Ty, TyCtxt, TyKind, TypeFoldable,
+        AdtDef, Const, ConstKind, EarlyBinder, GenericArg, Instance, List, PseudoCanonicalInput,
+        SymbolName, Ty, TyCtxt, TyKind, TypeFoldable,
     },
 };
 
@@ -206,7 +206,7 @@ pub fn field_descrptor<'tcx>(
             field_name,
             field_type,
         ));
-    };
+    }
     let (adt, subst) = as_adt(owner_ty).expect("Tried to get a field of a non ADT or tuple type!");
     let field = adt
         .all_fields()
@@ -348,16 +348,4 @@ pub fn is_zst<'tcx>(ty: rustc_middle::ty::Ty<'tcx>, tcx: TyCtxt<'tcx>) -> bool {
         .expect("Can't get layout of a type.")
         .layout;
     layout.is_zst()
-}
-pub fn requries_align_adjustement<'tcx>(
-    ty: rustc_middle::ty::Ty<'tcx>,
-    tcx: TyCtxt<'tcx>,
-) -> Option<u64> {
-    //TODO: some types requre aligement smaller than 16 bytes but larger than their size. Handle that. Requires reimplementing .NETs algiement clacualtions.
-    let align = align_of(ty, tcx);
-    if align > 8 {
-        Some(align)
-    } else {
-        None
-    }
 }

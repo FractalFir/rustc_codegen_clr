@@ -1,5 +1,12 @@
 use super::{
-    bimap::{BiMap, BiMapIndex, IntoBiMapIndex}, cilnode::{BinOp, ExtendKind, MethodKind, PtrCastRes, UnOp}, class::StaticFieldDef, opt::{OptFuel, SideEffectInfoCache}, Access, CILNode, CILRoot, ClassDef, ClassDefIdx, ClassRef, ClassRefIdx, Const, Exporter, FieldDesc, FieldIdx, FnSig, Int, IntoAsmIndex, MethodDef, MethodDefIdx, MethodRef, MethodRefIdx, NodeIdx, RootIdx, SigIdx, StaticFieldDesc, StaticFieldIdx, StringIdx, Type, TypeIdx
+    bimap::{BiMap, BiMapIndex, IntoBiMapIndex},
+    cilnode::{BinOp, ExtendKind, MethodKind, PtrCastRes, UnOp},
+    class::StaticFieldDef,
+    opt::{OptFuel, SideEffectInfoCache},
+    Access, CILNode, CILRoot, ClassDef, ClassDefIdx, ClassRef, ClassRefIdx, Const, Exporter,
+    FieldDesc, FieldIdx, FnSig, Int, IntoAsmIndex, MethodDef, MethodDefIdx, MethodRef,
+    MethodRefIdx, NodeIdx, RootIdx, SigIdx, StaticFieldDesc, StaticFieldIdx, StringIdx, Type,
+    TypeIdx,
 };
 use crate::{config, IString};
 use crate::{utilis::encode, v2::MethodImpl};
@@ -375,11 +382,19 @@ impl Assembly {
         if !self
             .class_mut(in_class)
             .static_fields()
-            .contains(&StaticFieldDef{tpe, name,  is_tls: thread_local })
+            .contains(&StaticFieldDef {
+                tpe,
+                name,
+                is_tls: thread_local,
+            })
         {
             self.class_mut(in_class)
                 .static_fields_mut()
-                .push(StaticFieldDef{tpe, name,   is_tls:thread_local});
+                .push(StaticFieldDef {
+                    tpe,
+                    name,
+                    is_tls: thread_local,
+                });
         }
 
         idx

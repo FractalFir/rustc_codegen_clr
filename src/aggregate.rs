@@ -11,12 +11,12 @@ use cilly::{
     v2::{cilnode::MethodKind, ClassRef, FieldDesc, FnSig, Int, MethodRef},
     Const, Type,
 };
+use rustc_abi::FieldIdx;
 use rustc_index::IndexVec;
 use rustc_middle::{
     mir::{AggregateKind, Operand, Place},
     ty::{AdtDef, AdtKind, GenericArg, List, Ty, TyKind},
 };
-use rustc_target::abi::FieldIdx;
 /// Returns the CIL ops to create the aggreagate value specifed by `aggregate_kind` at `target_location`. Uses indivlidual values specifed by `value_index`
 pub fn handle_aggregate<'tcx>(
     ctx: &mut MethodCompileCtx<'tcx, '_>,
@@ -175,7 +175,7 @@ pub fn handle_aggregate<'tcx>(
             if disrc_type != Type::Void {
                 sub_trees.push(set_discr(
                     layout.layout,
-                    rustc_target::abi::VariantIdx::from_u32(0), // TODO: this assumes all coroutines start with a tag of 0
+                    rustc_abi::VariantIdx::from_u32(0), // TODO: this assumes all coroutines start with a tag of 0
                     closure_getter,
                     closure_dotnet,
                     layout.ty,

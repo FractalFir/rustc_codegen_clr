@@ -20,7 +20,17 @@ config!(PARTS, u32, 1);
 config!(ASCII_IDENTS, bool, false);
 mod utilis;
 use super::{
-    asm::MAIN_MODULE, basic_block::BlockId, bimap::IntoBiMapIndex, cilnode::{ExtendKind, PtrCastRes}, cilroot::BranchCond, class::StaticFieldDef, method::LocalDef, tpe::simd::SIMDVector, typecheck::TypeCheckError, Assembly, BinOp, CILIter, CILIterElem, CILNode, CILRoot, ClassDefIdx, ClassRef, ClassRefIdx, Const, Exporter, Int, MethodDef, MethodRef, NodeIdx, RootIdx, SigIdx, Type
+    asm::MAIN_MODULE,
+    basic_block::BlockId,
+    bimap::IntoBiMapIndex,
+    cilnode::{ExtendKind, PtrCastRes},
+    cilroot::BranchCond,
+    class::StaticFieldDef,
+    method::LocalDef,
+    tpe::simd::SIMDVector,
+    typecheck::TypeCheckError,
+    Assembly, BinOp, CILIter, CILIterElem, CILNode, CILRoot, ClassDefIdx, ClassRef, ClassRefIdx,
+    Const, Exporter, Int, MethodDef, MethodRef, NodeIdx, RootIdx, SigIdx, Type,
 };
 use utilis::*;
 
@@ -678,7 +688,6 @@ impl CExporter {
                     else{
                         return Ok(format!("goto bb{target};"));
                     }
-                    
                 };
                 match cond {
                     BranchCond::True(node_idx) => format!(
@@ -1057,7 +1066,12 @@ impl CExporter {
         if !class.static_fields().is_empty() {
             writeln!(type_defs, "\n/*START OF STATCIDEFS*/\n")?;
         }
-        for StaticFieldDef{tpe:sfield_tpe, name:sfname, is_tls:is_thread_local} in class.static_fields() {
+        for StaticFieldDef {
+            tpe: sfield_tpe,
+            name: sfname,
+            is_tls: is_thread_local,
+        } in class.static_fields()
+        {
             let fname = escape_nonfn_name(&asm[*sfname]);
             let field_tpe = c_tpe(*sfield_tpe, asm);
             let fname = class_member_name(&class_name, &fname);

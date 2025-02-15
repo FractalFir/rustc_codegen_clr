@@ -20,9 +20,9 @@ use cilly::{
     Assembly, IntoAsmIndex,
 };
 pub use r#type::*;
+use rustc_abi::Layout;
 use rustc_middle::ty::{AdtDef, AdtKind, FloatTy, IntTy, List, Ty, TyKind, UintTy};
 use rustc_span::def_id::DefId;
-use rustc_target::abi::Layout;
 //pub use tycache::*;
 //pub use type_def::*;
 
@@ -335,10 +335,7 @@ fn fixed_array(
     if asm.class_ref_to_def(cref).is_none() {
         let fields = vec![(element, asm.alloc_string("f0"), Some(0))];
         let class_ref = asm.class_ref(cref).clone();
-
-        let size = if let Ok(size) = std::convert::TryInto::<u32>::try_into(arr_size) {
-            size
-        } else {
+        let Ok(size) = std::convert::TryInto::<u32>::try_into(arr_size) else {
             panic!(
                 "Array of {element:?} with size {arr_size} >= 2^32. Unsuported.",
                 element = element.mangle(asm)
@@ -576,7 +573,7 @@ fn struct_<'tcx>(
         crate::utilis::adt::FieldOffsetIterator::fields((*layout.layout.0).clone());
     let mut unique_checks = HashSet::new();
     for (field, offset) in adt
-        .variant(rustc_target::abi::VariantIdx::from_u32(0))
+        .variant(rustc_abi::VariantIdx::from_u32(0))
         .fields
         .iter()
         .zip(explicit_offset_iter)
@@ -631,15 +628,15 @@ fn handle_tag<'tcx>(
     fields: &mut Vec<(Type, StringIdx, Option<u32>)>,
 ) {
     match &layout.variants {
-        rustc_target::abi::Variants::Single { index: _ } => {
+        rustc_abi::Variants::Single { index: _ } => {
             let (tag_type, offset) = crate::utilis::adt::enum_tag_info(*layout, ctx);
 
             if tag_type != Type::Void {
                 fields.push((tag_type, ctx.alloc_string(crate::ENUM_TAG), Some(offset)));
             }
         }
-        rustc_target::abi::Variants::Empty => (),
-        rustc_target::abi::Variants::Multiple {
+        rustc_abi::Variants::Empty => (),
+        rustc_abi::Variants::Multiple {
             tag: _,
             tag_encoding,
             tag_field: _,
@@ -648,14 +645,14 @@ fn handle_tag<'tcx>(
             let layout = ctx.layout_of(adt_ty);
 
             match tag_encoding {
-                rustc_target::abi::TagEncoding::Direct => {
+                rustc_abi::TagEncoding::Direct => {
                     let (tag_type, offset) = crate::utilis::adt::enum_tag_info(layout.layout, ctx);
 
                     if tag_type != Type::Void {
                         fields.push((tag_type, ctx.alloc_string(crate::ENUM_TAG), Some(offset)));
                     }
                 }
-                rustc_target::abi::TagEncoding::Niche {
+                rustc_abi::TagEncoding::Niche {
                     untagged_variant: _,
                     niche_variants: _,
                     ..
@@ -670,7 +667,7 @@ fn handle_tag<'tcx>(
                 }
             }
         }
-    };
+    }
 }
 /// Turns an adt enum defintion into a [`ClassDef`]
 fn enum_<'tcx>(

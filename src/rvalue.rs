@@ -156,6 +156,10 @@ pub fn handle_rvalue<'tcx>(
                 let ub_checks = ctx.tcx().sess.ub_checks();
                 (vec![], CILNode::V2(ctx.alloc_node(ub_checks)))
             }
+            rustc_middle::mir::NullOp::ContractChecks => {
+                let cc_checks = ctx.tcx().sess.contract_checks();
+                (vec![], CILNode::V2(ctx.alloc_node(cc_checks)))
+            }
         },
         Rvalue::Aggregate(aggregate_kind, field_index) => crate::aggregate::handle_aggregate(
             ctx,

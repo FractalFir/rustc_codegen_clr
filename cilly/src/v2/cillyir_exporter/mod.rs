@@ -48,7 +48,7 @@ impl Exporter for CillyIRExpoter {
             let static_fields: String = def
                 .static_fields()
                 .iter()
-                .map(|StaticFieldDef{tpe, name, is_tls }| {
+                .map(|StaticFieldDef { tpe, name, is_tls }| {
                     let tpe = tpe_to(tpe, asm);
                     let name = &asm[*name];
                     format!("({tpe},{{asm.alloc_string({name:?})}},{is_tls})")

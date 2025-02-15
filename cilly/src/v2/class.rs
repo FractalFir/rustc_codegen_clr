@@ -439,10 +439,10 @@ impl ClassRef {
     }
 }
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
-pub struct StaticFieldDef{
-    pub tpe:Type,
-    pub name:StringIdx, 
-    pub is_tls:bool
+pub struct StaticFieldDef {
+    pub tpe: Type,
+    pub name: StringIdx,
+    pub is_tls: bool,
 }
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub struct ClassDef {
@@ -464,13 +464,17 @@ impl ClassDef {
     pub fn has_static_field(&self, fld_name: StringIdx, fld_tpe: Type) -> bool {
         self.static_fields
             .iter()
-            .any(|StaticFieldDef{tpe, name, ..}| *tpe == fld_tpe && *name == fld_name)
+            .any(|StaticFieldDef { tpe, name, .. }| *tpe == fld_tpe && *name == fld_name)
     }
     pub(crate) fn iter_types(&self) -> impl Iterator<Item = Type> + '_ {
         self.fields()
             .iter()
             .map(|(tpe, _, _)| tpe)
-            .chain(self.static_fields().iter().map(|StaticFieldDef{tpe,..}| tpe))
+            .chain(
+                self.static_fields()
+                    .iter()
+                    .map(|StaticFieldDef { tpe, .. }| tpe),
+            )
             .copied()
             .chain(self.extends.iter().map(|cref| Type::ClassRef(*cref)))
     }
@@ -583,7 +587,8 @@ impl ClassDef {
         assert_eq!(self.extends(), translated.extends());
 
         // Merge the static fields, removing duplicates
-        self.static_fields_mut().extend(translated.static_fields().iter().cloned());
+        self.static_fields_mut()
+            .extend(translated.static_fields().iter().cloned());
         make_unique(&mut self.static_fields);
         // Merge the methods, removing duplicates
         self.methods_mut().extend(translated.methods());
@@ -704,7 +709,11 @@ fn has_explicit_layout() {
             0,
             None,
             vec![],
-            vec![StaticFieldDef{tpe:Type::Bool, name, is_tls:false}],
+            vec![StaticFieldDef {
+                tpe: Type::Bool,
+                name,
+                is_tls: false,
+            }],
             Access::Extern,
             None,
             None,

@@ -8,15 +8,11 @@ use cilly::{
     call, cil_node::CILNode, cil_root::CILRoot, cilnode::MethodKind, conv_usize, v2::ClassRef, Int,
     MethodRef, Type,
 };
-use rustc_middle::{
-    mir::{Operand, Place},
-    ty::Instance,
-};
+use rustc_middle::mir::{Operand, Place};
 use rustc_span::source_map::Spanned;
 pub fn xchg<'tcx>(
     args: &[Spanned<Operand<'tcx>>],
     destination: &Place<'tcx>,
-    call_instance: Instance<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> CILRoot {
     let interlocked = ClassRef::interlocked(ctx);

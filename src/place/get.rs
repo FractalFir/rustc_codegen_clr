@@ -132,10 +132,7 @@ fn place_elem_get<'a>(
             let curr_ty = curr_type
                 .as_ty()
                 .expect("INVALID PLACE: Indexing into enum variant???");
-
-            let index_type = ctx.monomorphize(ctx.body().local_decls[*index].ty);
             let index = crate::place::local_get(index.as_usize(), ctx.body(), ctx);
-
             match curr_ty.kind() {
                 TyKind::Slice(inner) => {
                     let inner = ctx.monomorphize(*inner);

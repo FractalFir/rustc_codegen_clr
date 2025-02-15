@@ -998,8 +998,7 @@ static IS_DOTNET_PRESENT: std::sync::LazyLock<bool> =
     std::sync::LazyLock::new(|| std::process::Command::new("dotnet").output().is_ok());
 static IS_MONO_PRESENT: std::sync::LazyLock<bool> =
     std::sync::LazyLock::new(|| std::process::Command::new("mono").output().is_ok());
-static IS_PEVERIFY_PRESENT: std::sync::LazyLock<bool> =
-    std::sync::LazyLock::new(|| std::process::Command::new("peverify").output().is_ok());
+
 static RUSTC_BUILD_STATUS: std::sync::LazyLock<Result<(), String>> =
     std::sync::LazyLock::new(build_backend);
 static RUSTC_CODEGEN_CLR_LINKER: std::sync::LazyLock<PathBuf> = std::sync::LazyLock::new(|| {

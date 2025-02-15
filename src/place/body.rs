@@ -301,7 +301,7 @@ pub fn place_elem_body<'tcx>(
                             MethodKind::Instance,
                             vec![].into(),
                         );
-                        let ops = call!(ctx.alloc_methodref(mref), [parrent_node, (index.into())]);
+                        let ops = call!(ctx.alloc_methodref(mref), [parrent_node, index]);
                         ((element_ty).into(), ops)
                     } else {
                         let mref = MethodRef::new(
@@ -311,7 +311,7 @@ pub fn place_elem_body<'tcx>(
                             MethodKind::Instance,
                             vec![].into(),
                         );
-                        let ops = call!(ctx.alloc_methodref(mref), [parrent_node, (index.into())]);
+                        let ops = call!(ctx.alloc_methodref(mref), [parrent_node, index]);
                         ((element_ty).into(), ops)
                     }
                 }
