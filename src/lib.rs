@@ -115,8 +115,7 @@ mod casts;
 mod fn_ctx;
 pub mod native_pastrough;
 
-/// A representation of C# IL op.
-pub mod cil;
+
 /// Runtime errors and utlity functions/macros related to them
 mod codegen_error;
 /// Test harnesses.

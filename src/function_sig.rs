@@ -4,7 +4,7 @@ use crate::r#type::get_type;
 use cilly::{v2::FnSig, Type};
 use rustc_middle::ty::{Instance, List, Ty, TyCtxt, TyKind};
 use rustc_target::callconv::Conv;
-use rustc_target::spec::abi::Abi as TargetAbi;
+use rustc_abi::ExternAbi as TargetAbi;
 
 /// Creates a `FnSig` from ` `. May not match the result of `sig_from_instance_`!
 /// Use ONLY for function pointers!

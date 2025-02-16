@@ -1,8 +1,7 @@
 use cilly::v2::FnSig;
 use rustc_middle::ty::{Instance, List, PseudoCanonicalInput, TyKind};
 use rustc_target::callconv::Conv;
-use rustc_target::spec::abi::Abi as TargetAbi;
-
+use rustc_abi::ExternAbi as TargetAbi;
 use crate::fn_ctx::MethodCompileCtx;
 use crate::r#type::get_type;
 pub struct CallInfo {
@@ -46,7 +45,7 @@ impl CallInfo {
         let internal_abi = match fn_ty.kind() {
             TyKind::FnDef(_, _) => fn_ty.fn_sig(ctx.tcx()).abi(),
             TyKind::Closure(_, args) => args.as_closure().sig().abi(),
-            TyKind::Coroutine(_, _) => rustc_target::spec::abi::Abi::Rust, // TODO: this assumes all coroutines have the ABI Rust. This *should* be correct.
+            TyKind::Coroutine(_, _) => TargetAbi::Rust, // TODO: this assumes all coroutines have the ABI Rust. This *should* be correct.
             _ => todo!("Can't get signature of {fn_ty}"),
         };
         // Only those ABIs are supported
