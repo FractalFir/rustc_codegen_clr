@@ -96,8 +96,7 @@ extern crate rustc_symbol_mangling;
 extern crate rustc_target;
 extern crate rustc_ty_utils;
 extern crate stable_mir;
-/// Used for handling OOM in compiler
-mod alloc_erorr_hook;
+
 
 // Modules
 /// Code handling the creation of aggreate values (Arrays, enums,structs,tuples,etc.)
@@ -108,8 +107,7 @@ pub mod assembly;
 pub mod basic_block;
 /// Code handling binary operations
 mod binop;
-/// Implementation of key external functions(eg. libc) necesary for propely running a Rust executable
-pub mod builtin;
+
 mod call_info;
 /// Code hansling rust `as` casts.
 mod casts;
@@ -146,8 +144,6 @@ mod rvalue;
 pub mod statement;
 /// Converts a terminator of a basic block into CIL ops.
 mod terminator;
-/// Code handling transmutes.
-mod transmute;
 /// Code related to types.
 pub mod r#type;
 
@@ -341,7 +337,12 @@ impl ArchiveBuilderBuilder for RlibArchiveBuilder {
 #[no_mangle]
 /// Entrypoint of the codegen. This function starts the backend up, and returns a reference to it to rustc.
 pub extern "Rust" fn __rustc_codegen_backend() -> Box<dyn CodegenBackend> {
-    std::alloc::set_alloc_error_hook(alloc_erorr_hook::custom_alloc_error_hook);
+    std::alloc::set_alloc_error_hook(custom_alloc_error_hook);
     Box::new(MyBackend)
 }
 pub use cilly::{DATA_PTR, ENUM_TAG, METADATA};
+use std::alloc::Layout;
+
+pub fn custom_alloc_error_hook(layout: Layout) {
+    panic!("memory allocation of {} bytes failed", layout.size());
+}

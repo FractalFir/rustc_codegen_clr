@@ -41,6 +41,23 @@ use mem::{copy, raw_eq, write_bytes};
 mod atomic;
 mod tpe;
 mod vtable;
+fn call_atomic<'tcx>(
+    args: &[Spanned<Operand<'tcx>>],
+    destination: &Place<'tcx>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
+    atomic: fn(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut cilly::Assembly) -> CILNode,
+) -> Vec<CILRoot> {
+    // *T
+    let dst = handle_operand(&args[0].node, ctx);
+    // T
+    let arg = handle_operand(&args[1].node, ctx);
+
+    let src_type = ctx.monomorphize(args[1].node.ty(ctx.body(), ctx.tcx()));
+    let src_type = ctx.type_from_cache(src_type);
+
+    vec![place_set(destination, atomic(dst, arg, src_type, ctx), ctx)]
+}
+
 pub fn breakpoint(args: &[Spanned<Operand<'_>>]) -> CILRoot {
     debug_assert_eq!(
         args.len(),
@@ -122,15 +139,16 @@ pub fn handle_intrinsic<'tcx>(
                 0,
                 "The intrinsic `needs_drop` MUST take in exactly 0 argument!"
             );
-            let tpe = ctx.monomorphize(
-                call_instance.args[0]
-                    .as_type()
-                    .expect("needs_drop works only on types!"),
-            );
-            let needs_drop = tpe.needs_drop(
-                ctx.tcx(),
-                rustc_middle::ty::TypingEnv::fully_monomorphized(),
-            );
+            let needs_drop = ctx
+                .monomorphize(
+                    call_instance.args[0]
+                        .as_type()
+                        .expect("needs_drop works only on types!"),
+                )
+                .needs_drop(
+                    ctx.tcx(),
+                    rustc_middle::ty::TypingEnv::fully_monomorphized(),
+                );
             let needs_drop = i32::from(needs_drop);
             vec![place_set(
                 destination,
@@ -309,72 +327,16 @@ pub fn handle_intrinsic<'tcx>(
             }
         }
         "atomic_or_seqcst" | "atomic_or_release" | "atomic_or_acqrel" | "atomic_or_acquire"
-        | "atomic_or_relaxed" => {
-            // *T
-            let dst = handle_operand(&args[0].node, ctx);
-            // T
-            let orand = handle_operand(&args[1].node, ctx);
-
-            let src_type = ctx.monomorphize(args[1].node.ty(ctx.body(), ctx.tcx()));
-            let src_type = ctx.type_from_cache(src_type);
-
-            vec![place_set(
-                destination,
-                atomic_or(dst, orand, src_type, ctx),
-                ctx,
-            )]
-        }
+        | "atomic_or_relaxed" => call_atomic(args, destination, ctx, atomic_or),
         "atomic_xor_seqcst" | "atomic_xor_release" | "atomic_xor_acqrel" | "atomic_xor_acquire"
-        | "atomic_xor_relaxed" => {
-            // *T
-            let dst = handle_operand(&args[0].node, ctx);
-            // T
-            let xorand = handle_operand(&args[1].node, ctx);
-
-            let src_type = ctx.monomorphize(args[1].node.ty(ctx.body(), ctx.tcx()));
-            let src_type = ctx.type_from_cache(src_type);
-
-            vec![place_set(
-                destination,
-                atomic_xor(dst, xorand, src_type, ctx),
-                ctx,
-            )]
-        }
+        | "atomic_xor_relaxed" => call_atomic(args, destination, ctx, atomic_xor),
         "atomic_and_seqcst" | "atomic_and_release" | "atomic_and_acqrel" | "atomic_and_acquire"
-        | "atomic_and_relaxed" => {
-            // *T
-            let dst = handle_operand(&args[0].node, ctx);
-            // T
-            let andand = handle_operand(&args[1].node, ctx);
-
-            let src_type = ctx.monomorphize(args[1].node.ty(ctx.body(), ctx.tcx()));
-            let src_type = ctx.type_from_cache(src_type);
-
-            vec![place_set(
-                destination,
-                atomic_and(dst, andand, src_type, ctx),
-                ctx,
-            )]
-        }
+        | "atomic_and_relaxed" => call_atomic(args, destination, ctx, atomic_and),
         "atomic_nand_seqcst"
         | "atomic_nand_release"
         | "atomic_nand_acqrel"
         | "atomic_nand_acquire"
-        | "atomic_nand_relaxed" => {
-            // *T
-            let dst = handle_operand(&args[0].node, ctx);
-            // T
-            let andand = handle_operand(&args[1].node, ctx);
-
-            let src_type = ctx.monomorphize(args[1].node.ty(ctx.body(), ctx.tcx()));
-            let src_type = ctx.type_from_cache(src_type);
-
-            vec![place_set(
-                destination,
-                atomic_nand(dst, andand, src_type, ctx),
-                ctx,
-            )]
-        }
+        | "atomic_nand_relaxed" => call_atomic(args, destination, ctx, atomic_nand),
         "atomic_fence_acquire"
         | "atomic_fence_seqcst"
         | "atomic_fence_release"
@@ -396,22 +358,7 @@ pub fn handle_intrinsic<'tcx>(
         | "atomic_xadd_relaxed"
         | "atomic_xadd_seqcst"
         | "atomic_xadd_acqrel"
-        | "atomic_xadd_acquire" => {
-            // *T
-            let dst = handle_operand(&args[0].node, ctx);
-            // T
-            let add_ammount = handle_operand(&args[1].node, ctx);
-            // we sub by adding a negative number
-
-            let src_type = ctx.monomorphize(args[1].node.ty(ctx.body(), ctx.tcx()));
-            let src_type = ctx.type_from_cache(src_type);
-
-            vec![place_set(
-                destination,
-                atomic_add(dst, add_ammount, src_type, ctx),
-                ctx,
-            )]
-        }
+        | "atomic_xadd_acquire" => call_atomic(args, destination, ctx, atomic_add),
         "atomic_umin_release"
         | "atomic_umin_relaxed"
         | "atomic_umin_seqcst"
@@ -421,22 +368,7 @@ pub fn handle_intrinsic<'tcx>(
         | "atomic_min_relaxed"
         | "atomic_min_seqcst"
         | "atomic_min_acqrel"
-        | "atomic_min_acquire" => {
-            // *T
-            let dst = handle_operand(&args[0].node, ctx);
-            // T
-            let min_ammount = handle_operand(&args[1].node, ctx);
-            // we sub by mining a negative number
-
-            let src_type = ctx.monomorphize(args[1].node.ty(ctx.body(), ctx.tcx()));
-            let src_type = ctx.type_from_cache(src_type);
-
-            vec![place_set(
-                destination,
-                atomic_min(dst, min_ammount, src_type, ctx),
-                ctx,
-            )]
-        }
+        | "atomic_min_acquire" => call_atomic(args, destination, ctx, atomic_min),
         "atomic_umax_release"
         | "atomic_umax_relaxed"
         | "atomic_umax_seqcst"
@@ -446,22 +378,7 @@ pub fn handle_intrinsic<'tcx>(
         | "atomic_max_relaxed"
         | "atomic_max_seqcst"
         | "atomic_max_acqrel"
-        | "atomic_max_acquire" => {
-            // *T
-            let dst = handle_operand(&args[0].node, ctx);
-            // T
-            let max_ammount = handle_operand(&args[1].node, ctx);
-            // we sub by maxing a negative number
-
-            let src_type = ctx.monomorphize(args[1].node.ty(ctx.body(), ctx.tcx()));
-            let src_type = ctx.type_from_cache(src_type);
-
-            vec![place_set(
-                destination,
-                atomic_max(dst, max_ammount, src_type, ctx),
-                ctx,
-            )]
-        }
+        | "atomic_max_acquire" => call_atomic(args, destination, ctx, atomic_max),
         "atomic_xchg_release"
         | "atomic_xchg_acquire"
         | "atomic_xchg_acqrel"
@@ -536,28 +453,7 @@ pub fn handle_intrinsic<'tcx>(
             let ops = crate::place::deref_op(arg_ty.into(), ctx, ops);
             vec![place_set(destination, ops, ctx)]
         }
-        "sqrtf32" => {
-            debug_assert_eq!(
-                args.len(),
-                1,
-                "The intrinsic `sqrtf32` MUST take in exactly 1 argument!"
-            );
-            let sqrt = MethodRef::new(
-                ClassRef::mathf(ctx),
-                ctx.alloc_string("Sqrt"),
-                ctx.sig([Type::Float(Float::F32)], Type::Float(Float::F32)),
-                MethodKind::Static,
-                vec![].into(),
-            );
-            vec![place_set(
-                destination,
-                call!(
-                    ctx.alloc_methodref(sqrt),
-                    [handle_operand(&args[0].node, ctx)]
-                ),
-                ctx,
-            )]
-        }
+        "sqrtf32" => float_unop(args, destination, ctx, Float::F32, "Sqrt"),
         "carrying_mul_add" => {
             let wrapping = ctx.type_from_cache(
                 call_instance.args[0]
@@ -770,307 +666,28 @@ pub fn handle_intrinsic<'tcx>(
                 ctx,
             )]
         }
-        "fabsf32" => {
-            let abs = MethodRef::new(
-                ClassRef::single(ctx),
-                ctx.alloc_string("Abs"),
-                ctx.sig([Type::Float(Float::F32)], Type::Float(Float::F32)),
-                MethodKind::Static,
-                vec![].into(),
-            );
-            let value_calc = call!(
-                ctx.alloc_methodref(abs),
-                [handle_operand(&args[0].node, ctx),]
-            );
-            vec![place_set(destination, value_calc, ctx)]
-        }
-        "fabsf64" => {
-            let abs = MethodRef::new(
-                ClassRef::double(ctx),
-                ctx.alloc_string("Abs"),
-                ctx.sig([Type::Float(Float::F64)], Type::Float(Float::F64)),
-                MethodKind::Static,
-                vec![].into(),
-            );
-
-            vec![place_set(
-                destination,
-                call!(
-                    ctx.alloc_methodref(abs),
-                    [handle_operand(&args[0].node, ctx),]
-                ),
-                ctx,
-            )]
-        }
-        "expf32" => {
-            let exp = MethodRef::new(
-                ClassRef::single(ctx),
-                ctx.alloc_string("Exp"),
-                ctx.sig([Type::Float(Float::F32)], Type::Float(Float::F32)),
-                MethodKind::Static,
-                vec![].into(),
-            );
-            let value_calc = call!(
-                ctx.alloc_methodref(exp),
-                [handle_operand(&args[0].node, ctx),]
-            );
-            vec![place_set(destination, value_calc, ctx)]
-        }
-        "expf64" => {
-            let exp = MethodRef::new(
-                ClassRef::double(ctx),
-                ctx.alloc_string("Exp"),
-                ctx.sig([Type::Float(Float::F64)], Type::Float(Float::F64)),
-                MethodKind::Static,
-                vec![].into(),
-            );
-            let value_calc = call!(
-                ctx.alloc_methodref(exp),
-                [handle_operand(&args[0].node, ctx),]
-            );
-            vec![place_set(destination, value_calc, ctx)]
-        }
-        "logf32" => {
-            let log = MethodRef::new(
-                ClassRef::single(ctx),
-                ctx.alloc_string("Log"),
-                ctx.sig([Type::Float(Float::F32)], Type::Float(Float::F32)),
-                MethodKind::Static,
-                vec![].into(),
-            );
-            let value_calc = call!(
-                ctx.alloc_methodref(log),
-                [handle_operand(&args[0].node, ctx),]
-            );
-            vec![place_set(destination, value_calc, ctx)]
-        }
-        "logf64" => {
-            let log = MethodRef::new(
-                ClassRef::double(ctx),
-                ctx.alloc_string("Log"),
-                ctx.sig([Type::Float(Float::F64)], Type::Float(Float::F64)),
-                MethodKind::Static,
-                vec![].into(),
-            );
-            vec![place_set(
-                destination,
-                call!(
-                    ctx.alloc_methodref(log),
-                    [handle_operand(&args[0].node, ctx),]
-                ),
-                ctx,
-            )]
-        }
-        "log2f32" => {
-            let log = MethodRef::new(
-                ClassRef::single(ctx),
-                ctx.alloc_string("Log2"),
-                ctx.sig([Type::Float(Float::F32)], Type::Float(Float::F32)),
-                MethodKind::Static,
-                vec![].into(),
-            );
-            let value_calc = call!(
-                ctx.alloc_methodref(log),
-                [handle_operand(&args[0].node, ctx),]
-            );
-            vec![place_set(destination, value_calc, ctx)]
-        }
-        "log2f64" => {
-            let log = MethodRef::new(
-                ClassRef::double(ctx),
-                ctx.alloc_string("Log2"),
-                ctx.sig([Type::Float(Float::F64)], Type::Float(Float::F64)),
-                MethodKind::Static,
-                vec![].into(),
-            );
-            let value_calc = call!(
-                ctx.alloc_methodref(log),
-                [handle_operand(&args[0].node, ctx),]
-            );
-            vec![place_set(destination, value_calc, ctx)]
-        }
-        "log10f32" => {
-            let log = MethodRef::new(
-                ClassRef::single(ctx),
-                ctx.alloc_string("Log10"),
-                ctx.sig([Type::Float(Float::F32)], Type::Float(Float::F32)),
-                MethodKind::Static,
-                vec![].into(),
-            );
-            let value_calc = call!(
-                ctx.alloc_methodref(log),
-                [handle_operand(&args[0].node, ctx),]
-            );
-            vec![place_set(destination, value_calc, ctx)]
-        }
-        "log10f64" => {
-            let log = MethodRef::new(
-                ClassRef::double(ctx),
-                ctx.alloc_string("Log10"),
-                ctx.sig([Type::Float(Float::F64)], Type::Float(Float::F64)),
-                MethodKind::Static,
-                vec![].into(),
-            );
-            let value_calc = call!(
-                ctx.alloc_methodref(log),
-                [handle_operand(&args[0].node, ctx),]
-            );
-            vec![place_set(destination, value_calc, ctx)]
-        }
+        "fabsf32" => float_unop(args, destination, ctx, Float::F32, "Abs"),
+        "fabsf64" => float_unop(args, destination, ctx, Float::F64, "Abs"),
+        "expf32" => float_unop(args, destination, ctx, Float::F32, "Exp"),
+        "expf64" => float_unop(args, destination, ctx, Float::F64, "Exp"),
+        "logf32" => float_unop(args, destination, ctx, Float::F32, "Log"),
+        "logf64" => float_unop(args, destination, ctx, Float::F64, "Log"),
+        "log2f32" => float_unop(args, destination, ctx, Float::F32, "Log2"),
+        "log2f64" => float_unop(args, destination, ctx, Float::F64, "Log2"),
+        "log10f32" => float_unop(args, destination, ctx, Float::F32, "Log10"),
+        "log10f64" => float_unop(args, destination, ctx, Float::F64, "Log10"),
         "powf32" => vec![powf32(args, destination, ctx)],
         "powf64" => vec![powf64(args, destination, ctx)],
-        "copysignf32" => {
-            let copy_sign = MethodRef::new(
-                ClassRef::single(ctx),
-                ctx.alloc_string("CopySign"),
-                ctx.sig(
-                    [Type::Float(Float::F32), Type::Float(Float::F32)],
-                    Type::Float(Float::F32),
-                ),
-                MethodKind::Static,
-                vec![].into(),
-            );
-            let value_calc = call!(
-                ctx.alloc_methodref(copy_sign),
-                [
-                    handle_operand(&args[0].node, ctx),
-                    handle_operand(&args[1].node, ctx),
-                ]
-            );
-            vec![place_set(destination, value_calc, ctx)]
-        }
-        "copysignf64" => {
-            let copy_sign = MethodRef::new(
-                ClassRef::double(ctx),
-                ctx.alloc_string("CopySign"),
-                ctx.sig(
-                    [Type::Float(Float::F64), Type::Float(Float::F64)],
-                    Type::Float(Float::F64),
-                ),
-                MethodKind::Static,
-                vec![].into(),
-            );
-            let value_calc = call!(
-                ctx.alloc_methodref(copy_sign),
-                [
-                    handle_operand(&args[0].node, ctx),
-                    handle_operand(&args[1].node, ctx),
-                ]
-            );
-            vec![place_set(destination, value_calc, ctx)]
-        }
-        "sinf32" => {
-            let sin = MethodRef::new(
-                ClassRef::single(ctx),
-                ctx.alloc_string("Sin"),
-                ctx.sig([Type::Float(Float::F32)], Type::Float(Float::F32)),
-                MethodKind::Static,
-                vec![].into(),
-            );
-            let value_calc = call!(
-                ctx.alloc_methodref(sin),
-                [handle_operand(&args[0].node, ctx),]
-            );
-            vec![place_set(destination, value_calc, ctx)]
-        }
-        "sinf64" => {
-            let sin = MethodRef::new(
-                ClassRef::double(ctx),
-                ctx.alloc_string("Sin"),
-                ctx.sig([Type::Float(Float::F64)], Type::Float(Float::F64)),
-                MethodKind::Static,
-                vec![].into(),
-            );
-            let value_calc = call!(
-                ctx.alloc_methodref(sin),
-                [handle_operand(&args[0].node, ctx),]
-            );
-            vec![place_set(destination, value_calc, ctx)]
-        }
-        "cosf32" => {
-            let cos = MethodRef::new(
-                ClassRef::single(ctx),
-                ctx.alloc_string("Cos"),
-                ctx.sig([Type::Float(Float::F32)], Type::Float(Float::F32)),
-                MethodKind::Static,
-                vec![].into(),
-            );
-            let value_calc = call!(
-                ctx.alloc_methodref(cos),
-                [handle_operand(&args[0].node, ctx),]
-            );
-            vec![place_set(destination, value_calc, ctx)]
-        }
-        "cosf64" => {
-            let cos = MethodRef::new(
-                ClassRef::double(ctx),
-                ctx.alloc_string("Cos"),
-                ctx.sig([Type::Float(Float::F64)], Type::Float(Float::F64)),
-                MethodKind::Static,
-                vec![].into(),
-            );
-            let value_calc = call!(
-                ctx.alloc_methodref(cos),
-                [handle_operand(&args[0].node, ctx),]
-            );
-            vec![place_set(destination, value_calc, ctx)]
-        }
-        "exp2f32" => {
-            let exp = MethodRef::new(
-                ClassRef::single(ctx),
-                ctx.alloc_string("Exp2"),
-                ctx.sig([Type::Float(Float::F32)], Type::Float(Float::F32)),
-                MethodKind::Static,
-                vec![].into(),
-            );
-            let value_calc = call!(
-                ctx.alloc_methodref(exp),
-                [handle_operand(&args[0].node, ctx),]
-            );
-            vec![place_set(destination, value_calc, ctx)]
-        }
-        "exp2f64" => {
-            let exp = MethodRef::new(
-                ClassRef::double(ctx),
-                ctx.alloc_string("Exp2"),
-                ctx.sig([Type::Float(Float::F64)], Type::Float(Float::F64)),
-                MethodKind::Static,
-                vec![].into(),
-            );
-            let value_calc = call!(
-                ctx.alloc_methodref(exp),
-                [handle_operand(&args[0].node, ctx),]
-            );
-            vec![place_set(destination, value_calc, ctx)]
-        }
-        "truncf32" => {
-            let trunc = MethodRef::new(
-                ClassRef::mathf(ctx),
-                ctx.alloc_string("Truncate"),
-                ctx.sig([Type::Float(Float::F32)], Type::Float(Float::F32)),
-                MethodKind::Static,
-                vec![].into(),
-            );
-            let value_calc = call!(
-                ctx.alloc_methodref(trunc),
-                [handle_operand(&args[0].node, ctx),]
-            );
-            vec![place_set(destination, value_calc, ctx)]
-        }
-        "truncf64" => {
-            let trunc = MethodRef::new(
-                ClassRef::math(ctx),
-                ctx.alloc_string("Truncate"),
-                ctx.sig([Type::Float(Float::F64)], Type::Float(Float::F64)),
-                MethodKind::Static,
-                vec![].into(),
-            );
-            let value_calc = call!(
-                ctx.alloc_methodref(trunc),
-                [handle_operand(&args[0].node, ctx),]
-            );
-            vec![place_set(destination, value_calc, ctx)]
-        }
+        "copysignf32" => float_binop(args, destination, ctx, Float::F32, "CopySign"),
+        "copysignf64" => float_binop(args, destination, ctx, Float::F64, "CopySign"),
+        "sinf32" => float_unop(args, destination, ctx, Float::F32, "Sin"),
+        "sinf64" => float_unop(args, destination, ctx, Float::F64, "Sin"),
+        "cosf32" => float_unop(args, destination, ctx, Float::F32, "Cos"),
+        "cosf64" => float_unop(args, destination, ctx, Float::F64, "Cos"),
+        "exp2f32" => float_unop(args, destination, ctx, Float::F32, "Exp2"),
+        "exp2f64" => float_unop(args, destination, ctx, Float::F64, "Exp2"),
+        "truncf32" => float_unop(args, destination, ctx, Float::F32, "Truncate"),
+        "truncf64" => float_unop(args, destination, ctx, Float::F64, "Truncate"),
         // `roundf32` should be a differnt intrinsics, but it requires some .NET fuckery to implement(.NET enums are **wierd**)
         "nearbyintf32" | "rintf32" | "roundevenf32" => {
             let round = MethodRef::new(
@@ -1102,143 +719,14 @@ pub fn handle_intrinsic<'tcx>(
             );
             vec![place_set(destination, value_calc, ctx)]
         }
-
-        "floorf32" => {
-            let floor = MethodRef::new(
-                ClassRef::mathf(ctx),
-                ctx.alloc_string("Floor"),
-                ctx.sig([Type::Float(Float::F32)], Type::Float(Float::F32)),
-                MethodKind::Static,
-                vec![].into(),
-            );
-            let value_calc = call!(
-                ctx.alloc_methodref(floor),
-                [handle_operand(&args[0].node, ctx),]
-            );
-            vec![place_set(destination, value_calc, ctx)]
-        }
-        "floorf64" => {
-            let floor = MethodRef::new(
-                ClassRef::math(ctx),
-                ctx.alloc_string("Floor"),
-                ctx.sig([Type::Float(Float::F64)], Type::Float(Float::F64)),
-                MethodKind::Static,
-                vec![].into(),
-            );
-            let value_calc = call!(
-                ctx.alloc_methodref(floor),
-                [handle_operand(&args[0].node, ctx),]
-            );
-            vec![place_set(destination, value_calc, ctx)]
-        }
-        "ceilf32" => {
-            let ceil = MethodRef::new(
-                ClassRef::mathf(ctx),
-                ctx.alloc_string("Ceiling"),
-                ctx.sig([Type::Float(Float::F32)], Type::Float(Float::F32)),
-                MethodKind::Static,
-                vec![].into(),
-            );
-            let value_calc = call!(
-                ctx.alloc_methodref(ceil),
-                [handle_operand(&args[0].node, ctx),]
-            );
-            vec![place_set(destination, value_calc, ctx)]
-        }
-        "ceilf64" => {
-            let ceil = MethodRef::new(
-                ClassRef::math(ctx),
-                ctx.alloc_string("Ceiling"),
-                ctx.sig([Type::Float(Float::F64)], Type::Float(Float::F64)),
-                MethodKind::Static,
-                vec![].into(),
-            );
-            let value_calc = call!(
-                ctx.alloc_methodref(ceil),
-                [handle_operand(&args[0].node, ctx),]
-            );
-            vec![place_set(destination, value_calc, ctx)]
-        }
-        "maxnumf64" => {
-            let max = MethodRef::new(
-                ClassRef::double(ctx),
-                ctx.alloc_string("MaxNumber"),
-                ctx.sig(
-                    [Type::Float(Float::F64), Type::Float(Float::F64)],
-                    Type::Float(Float::F64),
-                ),
-                MethodKind::Static,
-                vec![].into(),
-            );
-            let value_calc = call!(
-                ctx.alloc_methodref(max),
-                [
-                    handle_operand(&args[0].node, ctx),
-                    handle_operand(&args[1].node, ctx),
-                ]
-            );
-            vec![place_set(destination, value_calc, ctx)]
-        }
-        "maxnumf32" => {
-            let max = MethodRef::new(
-                ClassRef::single(ctx),
-                ctx.alloc_string("MaxNumber"),
-                ctx.sig(
-                    [Type::Float(Float::F32), Type::Float(Float::F32)],
-                    Type::Float(Float::F32),
-                ),
-                MethodKind::Static,
-                vec![].into(),
-            );
-            let value_calc = call!(
-                ctx.alloc_methodref(max),
-                [
-                    handle_operand(&args[0].node, ctx),
-                    handle_operand(&args[1].node, ctx),
-                ]
-            );
-            vec![place_set(destination, value_calc, ctx)]
-        }
-        "minnumf64" => {
-            let min = MethodRef::new(
-                ClassRef::double(ctx),
-                ctx.alloc_string("MinNumber"),
-                ctx.sig(
-                    [Type::Float(Float::F64), Type::Float(Float::F64)],
-                    Type::Float(Float::F64),
-                ),
-                MethodKind::Static,
-                vec![].into(),
-            );
-            let value_calc = call!(
-                ctx.alloc_methodref(min),
-                [
-                    handle_operand(&args[0].node, ctx),
-                    handle_operand(&args[1].node, ctx),
-                ]
-            );
-            vec![place_set(destination, value_calc, ctx)]
-        }
-        "minnumf32" => {
-            let min = MethodRef::new(
-                ClassRef::single(ctx),
-                ctx.alloc_string("MinNumber"),
-                ctx.sig(
-                    [Type::Float(Float::F32), Type::Float(Float::F32)],
-                    Type::Float(Float::F32),
-                ),
-                MethodKind::Static,
-                vec![].into(),
-            );
-            let value_calc = call!(
-                ctx.alloc_methodref(min),
-                [
-                    handle_operand(&args[0].node, ctx),
-                    handle_operand(&args[1].node, ctx),
-                ]
-            );
-            vec![place_set(destination, value_calc, ctx)]
-        }
+        "floorf32" => float_unop(args, destination, ctx, Float::F32, "Floor"),
+        "floorf64" => float_unop(args, destination, ctx, Float::F64, "Floor"),
+        "ceilf32" => float_unop(args, destination, ctx, Float::F32, "Ceiling"),
+        "ceilf64" => float_unop(args, destination, ctx, Float::F64, "Ceiling"),
+        "maxnumf64" => float_binop(args, destination, ctx, Float::F64, "MaxNumber"),
+        "maxnumf32" => float_binop(args, destination, ctx, Float::F32, "MaxNumber"),
+        "minnumf64" => float_binop(args, destination, ctx, Float::F64, "MinNumber"),
+        "minnumf32" => float_binop(args, destination, ctx, Float::F32, "MinNumber"),
         "variant_count" => {
             let const_val = ctx
                 .tcx()
@@ -1258,25 +746,7 @@ pub fn handle_intrinsic<'tcx>(
                 ctx,
             )]
         }
-        "sqrtf64" => {
-            debug_assert_eq!(
-                args.len(),
-                1,
-                "The intrinsic `sqrtf64` MUST take in exactly 1 argument!"
-            );
-            let sqrt = MethodRef::new(
-                ClassRef::math(ctx),
-                ctx.alloc_string("Sqrt"),
-                ctx.sig([Type::Float(Float::F64)], Type::Float(Float::F64)),
-                MethodKind::Static,
-                vec![].into(),
-            );
-            let ops = call!(
-                ctx.alloc_methodref(sqrt),
-                [handle_operand(&args[0].node, ctx)]
-            );
-            vec![place_set(destination, ops, ctx)]
-        }
+        "sqrtf64" => float_unop(args, destination, ctx, Float::F64, "Sqrt"),
         "rotate_right" => vec![rotate_right(args, destination, ctx, call_instance)],
         "catch_unwind" => {
             debug_assert_eq!(
@@ -1633,6 +1103,55 @@ fn demangled_to_stem(s: &str) -> &str {
         res = Some(element);
     }
     res.unwrap()
+}
+fn float_unop<'tcx>(
+    args: &[Spanned<Operand<'tcx>>],
+    destination: &Place<'tcx>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
+    float: Float,
+    name: &str,
+) -> Vec<CILRoot> {
+    let log = MethodRef::new(
+        float.class(ctx),
+        ctx.alloc_string(name),
+        ctx.sig([Type::Float(float)], float),
+        MethodKind::Static,
+        vec![].into(),
+    );
+    vec![place_set(
+        destination,
+        call!(
+            ctx.alloc_methodref(log),
+            [handle_operand(&args[0].node, ctx),]
+        ),
+        ctx,
+    )]
+}
+fn float_binop<'tcx>(
+    args: &[Spanned<Operand<'tcx>>],
+    destination: &Place<'tcx>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
+    float: Float,
+    name: &str,
+) -> Vec<CILRoot> {
+    let log = MethodRef::new(
+        float.class(ctx),
+        ctx.alloc_string(name),
+        ctx.sig([Type::Float(float), Type::Float(float)], float),
+        MethodKind::Static,
+        vec![].into(),
+    );
+    vec![place_set(
+        destination,
+        call!(
+            ctx.alloc_methodref(log),
+            [
+                handle_operand(&args[0].node, ctx),
+                handle_operand(&args[1].node, ctx)
+            ]
+        ),
+        ctx,
+    )]
 }
 #[test]
 fn test_intrinsic_slow_escape() {

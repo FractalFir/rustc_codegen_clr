@@ -1,7 +1,6 @@
 pub use crate::fn_ctx::MethodCompileCtx;
 use crate::{
     basic_block::handler_for_block,
-    cil::span_source_info,
     codegen_error::{CodegenError, MethodCodegenError},
     r#type::get_type,
     rustc_middle::dep_graph::DepContext,
@@ -865,4 +864,22 @@ pub fn add_const_value(asm: &mut cilly::v2::Assembly, bytes: u128) -> StaticFiel
     asm.add_cctor(&[set]);
 
     field_desc
+}
+
+
+pub(crate) fn span_source_info(tcx: TyCtxt, span: rustc_span::Span) -> CILRoot {
+    let (file, lstart, cstart, lend, mut cend) = tcx.sess.source_map().span_to_location_info(span);
+    let file = file.map_or(String::new(), |file| {
+        file.name
+            .display(rustc_span::FileNameDisplayPreference::Local)
+            .to_string()
+    });
+    if cstart >= cend {
+        cend = cstart + 1;
+    }
+    CILRoot::source_info(
+        &file,
+        (lstart as u64)..(lend as u64),
+        (cstart as u64)..(cend as u64),
+    )
 }
