@@ -1,4 +1,5 @@
 use self::checked::{add_signed, add_unsigned, sub_signed, sub_unsigned};
+use rustc_codegen_clr_type::GetTypeExt;
 use crate::assembly::MethodCompileCtx;
 use bitop::{bit_and_unchecked, bit_or_unchecked, bit_xor_unchecked};
 use cilly::{

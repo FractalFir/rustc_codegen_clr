@@ -1,4 +1,6 @@
-use crate::{assembly::MethodCompileCtx, place::place_set, r#type::pointer_to_is_fat};
+use crate::assembly::MethodCompileCtx;
+use rustc_codegen_clr_place::place_set;
+use rustc_codegen_clr_type::{utilis::pointer_to_is_fat, GetTypeExt};
 use cilly::{
     cil_node::CILNode,
     cil_root::CILRoot,

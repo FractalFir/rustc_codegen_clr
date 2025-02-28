@@ -2,7 +2,7 @@ use std::ops::DerefMut;
 
 use cilly::{cil_iter_mut::CILIterElemMut, cil_node::CILNode, method::Method};
 
-use crate::fn_ctx::MethodCompileCtx;
+use rustc_codegen_clr_ctx::MethodCompileCtx;
 
 pub(crate) fn resolve_global_allocations(method: &mut Method, ctx: &mut MethodCompileCtx<'_, '_>) {
     let mut blocks = method.blocks_mut();

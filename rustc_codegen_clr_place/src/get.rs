@@ -1,10 +1,12 @@
-use crate::{assembly::MethodCompileCtx, r#type::fat_ptr_to};
 use cilly::{
-    call,
+    Assembly, Const, IntoAsmIndex, NodeIdx, Type, call,
     cil_node::CILNode,
     conv_usize, ld_field,
-    v2::{cilnode::MethodKind, FieldDesc, Int, MethodRef},
-    Assembly, Const, IntoAsmIndex, NodeIdx, Type,
+    v2::{FieldDesc, Int, MethodRef, cilnode::MethodKind},
+};
+use rustc_codegen_clr_ctx::MethodCompileCtx;
+use rustc_codegen_clr_type::{
+    adt::{enum_field_descriptor, field_descrptor, FieldOffsetIterator}, r#type::fat_ptr_to, utilis::pointer_to_is_fat, GetTypeExt
 };
 use rustc_middle::{
     mir::{Place, PlaceElem},
@@ -74,21 +76,22 @@ fn get_field<'a>(
             let curr_type = ctx.monomorphize(curr_type);
             let field_type = ctx.monomorphize(field_type);
             match (
-                crate::r#type::pointer_to_is_fat(curr_type, ctx.tcx(), ctx.instance()),
-                crate::r#type::pointer_to_is_fat(field_type, ctx.tcx(), ctx.instance()),
+                pointer_to_is_fat(curr_type, ctx.tcx(), ctx.instance()),
+                pointer_to_is_fat(field_type, ctx.tcx(), ctx.instance()),
             ) {
                 (false, false) => {
-                    let field_desc = crate::utilis::field_descrptor(curr_type, field_index, ctx);
+                    let field_desc = field_descrptor(curr_type, field_index, ctx);
                     CILNode::LDField {
                         addr: addr_calc.into(),
                         field: field_desc,
                     }
                 }
-                (false, true) => panic!("Sized type {curr_type:?} contains an unsized field of type {field_type}. This is a bug."),
-                (true,false)=>{
-                    let mut explicit_offset_iter = crate::utilis::adt::FieldOffsetIterator::fields(
-                        ctx.layout_of(curr_type).layout.0 .0.clone()
-                    );
+                (false, true) => panic!(
+                    "Sized type {curr_type:?} contains an unsized field of type {field_type}. This is a bug."
+                ),
+                (true, false) => {
+                    let mut explicit_offset_iter =
+                        FieldOffsetIterator::fields(ctx.layout_of(curr_type).layout.0.0.clone());
                     let offset = explicit_offset_iter
                         .nth(field_index as usize)
                         .expect("Field index not in field offset iterator");
@@ -97,19 +100,32 @@ fn get_field<'a>(
                         curr_type,
                         rustc_middle::ty::Mutability::Mut,
                     ));
-                    let addr_descr = FieldDesc::new(curr_type_fat_ptr.as_class_ref().unwrap(),ctx.alloc_string(crate::DATA_PTR),ctx.nptr(Type::Void),);
+                    let addr_descr = FieldDesc::new(
+                        curr_type_fat_ptr.as_class_ref().unwrap(),
+                        ctx.alloc_string(cilly::DATA_PTR),
+                        ctx.nptr(Type::Void),
+                    );
                     // Get the address of the unsized object.
                     let obj_addr = ld_field!(addr_calc, ctx.alloc_field(addr_descr));
                     let obj = ctx.type_from_cache(field_type);
                     // Add the offset to the object.
-                    CILNode::LdObj{ ptr: Box::new((obj_addr + CILNode::V2(ctx.alloc_node(Const::USize(u64::from(offset))))).cast_ptr(ctx.nptr(obj))), obj: Box::new(obj) }
-                },
-                (true,true)=>panic!("Nonsensical operation: attempted to get value of the unsized type {field_type}. Unsized types can only be accessed by address."),
+                    CILNode::LdObj {
+                        ptr: Box::new(
+                            (obj_addr
+                                + CILNode::V2(ctx.alloc_node(Const::USize(u64::from(offset)))))
+                            .cast_ptr(ctx.nptr(obj)),
+                        ),
+                        obj: Box::new(obj),
+                    }
+                }
+                (true, true) => panic!(
+                    "Nonsensical operation: attempted to get value of the unsized type {field_type}. Unsized types can only be accessed by address."
+                ),
             }
         }
         super::PlaceTy::EnumVariant(enm, var_idx) => {
             let owner = ctx.monomorphize(enm);
-            let field_desc = crate::utilis::enum_field_descriptor(owner, field_index, var_idx, ctx);
+            let field_desc = enum_field_descriptor(owner, field_index, var_idx, ctx);
             CILNode::LDField {
                 addr: addr_calc.into(),
                 field: field_desc,
@@ -132,7 +148,7 @@ fn place_elem_get<'a>(
             let curr_ty = curr_type
                 .as_ty()
                 .expect("INVALID PLACE: Indexing into enum variant???");
-            let index = crate::place::local_get(index.as_usize(), ctx.body(), ctx);
+            let index = crate::local_get(index.as_usize(), ctx.body(), ctx);
             match curr_ty.kind() {
                 TyKind::Slice(inner) => {
                     let inner = ctx.monomorphize(*inner);
@@ -140,7 +156,7 @@ fn place_elem_get<'a>(
                     let slice = fat_ptr_to(Ty::new_slice(ctx.tcx(), inner), ctx);
                     let desc = FieldDesc::new(
                         slice,
-                        ctx.alloc_string(crate::DATA_PTR),
+                        ctx.alloc_string(cilly::DATA_PTR),
                         ctx.nptr(Type::Void),
                     );
                     let size = ctx.size_of(inner_type);
@@ -157,7 +173,7 @@ fn place_elem_get<'a>(
                     super::deref_op(super::PlaceTy::Ty(inner), ctx, addr)
                 }
                 TyKind::Array(element, _) => {
-                    let mref = array_get_item(ctx,*element,curr_ty);
+                    let mref = array_get_item(ctx, *element, curr_ty);
                     call!(ctx.alloc_methodref(mref), [addr_calc, CILNode::V2(index)])
                 }
                 _ => {
@@ -182,12 +198,12 @@ fn place_elem_get<'a>(
                     let slice = fat_ptr_to(Ty::new_slice(ctx.tcx(), inner), ctx);
                     let data_pointer = FieldDesc::new(
                         slice,
-                        ctx.alloc_string(crate::DATA_PTR),
+                        ctx.alloc_string(cilly::DATA_PTR),
                         ctx.nptr(Type::Void),
                     );
                     let metadata = FieldDesc::new(
                         slice,
-                        ctx.alloc_string(crate::METADATA),
+                        ctx.alloc_string(cilly::METADATA),
                         Type::Int(Int::USize),
                     );
                     let index = if *from_end {
@@ -212,8 +228,14 @@ fn place_elem_get<'a>(
                     if *from_end {
                         todo!("Can't index array from end!");
                     } else {
-                        let mref = array_get_item(ctx,*element,curr_ty);
-                        call!(ctx.alloc_methodref(mref), [addr_calc, CILNode::V2(ctx.alloc_node(cilly::Const::USize(*offset)))])
+                        let mref = array_get_item(ctx, *element, curr_ty);
+                        call!(
+                            ctx.alloc_methodref(mref),
+                            [
+                                addr_calc,
+                                CILNode::V2(ctx.alloc_node(cilly::Const::USize(*offset)))
+                            ]
+                        )
                     }
                 }
                 _ => {

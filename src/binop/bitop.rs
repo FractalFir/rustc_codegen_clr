@@ -1,4 +1,5 @@
 use crate::assembly::MethodCompileCtx;
+use rustc_codegen_clr_type::GetTypeExt;
 use cilly::{
     and, call,
     cil_node::CILNode,

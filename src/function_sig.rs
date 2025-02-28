@@ -1,8 +1,8 @@
 use crate::codegen_error::CodegenError;
-use crate::fn_ctx::MethodCompileCtx;
-use crate::r#type::get_type;
+use rustc_codegen_clr_ctx::MethodCompileCtx;
 use cilly::{v2::FnSig, Type};
 use rustc_abi::ExternAbi as TargetAbi;
+use rustc_codegen_clr_type::r#type::get_type;
 use rustc_middle::ty::{Instance, List, Ty, TyCtxt, TyKind};
 use rustc_target::callconv::Conv;
 

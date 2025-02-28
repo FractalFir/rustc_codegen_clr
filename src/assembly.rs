@@ -1,12 +1,11 @@
-pub use crate::fn_ctx::MethodCompileCtx;
+pub use rustc_codegen_clr_ctx::MethodCompileCtx;
 use crate::{
     basic_block::handler_for_block,
     codegen_error::{CodegenError, MethodCodegenError},
-    r#type::get_type,
     rustc_middle::dep_graph::DepContext,
-    utilis::field_descrptor,
     IString,
 };
+use rustc_codegen_clr_type::{adt::field_descrptor, r#type::get_type, GetTypeExt};
 use cilly::{
     access_modifier::AccessModifer,
     basic_block::BasicBlock,
@@ -445,9 +444,7 @@ pub fn add_fn<'tcx, 'asm, 'a: 'asm>(
             }
             trees.extend(statement_tree);
 
-            //crate::utilis::check_debugable(&statement_ops, statement, does_return_void);
-            //ops.extend(statement_ops);
-            //
+           
         }
         if let Some(term) = &block_data.terminator {
             if *crate::config::INSERT_MIR_DEBUG_COMMENTS {
@@ -510,10 +507,9 @@ pub fn add_fn<'tcx, 'asm, 'a: 'asm>(
         arg_names,
         ctx,
     );
-
     crate::method::resolve_global_allocations(&mut method, ctx);
 
-    method.allocate_temporaries();
+
 
     let main_module = ctx.main_module();
     let method = MethodDef::from_v1(&method, ctx, main_module);

@@ -1,5 +1,4 @@
 use crate::assembly::MethodCompileCtx;
-use crate::r#type::get_type;
 
 use cilly::cil_node::CILNode;
 
@@ -7,6 +6,7 @@ use cilly::v2::cilnode::MethodKind;
 use cilly::v2::{ClassRef, FieldDesc, Int, MethodRef};
 use cilly::{call, ld_field, Type};
 
+use rustc_codegen_clr_type::r#type::get_type;
 use rustc_middle::mir::{Operand, UnOp};
 use rustc_middle::ty::{IntTy, TyKind, UintTy};
 

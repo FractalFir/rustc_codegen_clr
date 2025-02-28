@@ -1,5 +1,6 @@
 use crate::assembly::MethodCompileCtx;
-use crate::place::place_get;
+use rustc_codegen_clr_place::{place_adress, place_get, place_set};
+use rustc_codegen_clr_type::GetTypeExt;
 use crate::rvalue::is_rvalue_unint;
 
 use cilly::zero_extend;
@@ -33,7 +34,7 @@ pub fn handle_statement<'tcx>(
             vec![crate::utilis::adt::set_discr(
                 layout.layout,
                 *variant_index,
-                crate::place::place_adress(place, ctx),
+                place_adress(place, ctx),
                 owner,
                 owner_ty,
                 ctx,
@@ -54,10 +55,10 @@ pub fn handle_statement<'tcx>(
             let tpe = ctx.type_from_cache(ty);
             let tpe = ctx.alloc_type(tpe);
             if crate::rvalue::is_rvalue_const_0(rvalue, ctx) {
-                return vec![CILRoot::InitObj(crate::place::place_adress(&place, ctx), tpe).into()];
+                return vec![CILRoot::InitObj(place_adress(&place, ctx), tpe).into()];
             }
             let (mut trees, value_calc) = crate::rvalue::handle_rvalue(rvalue, &place, ctx);
-            trees.push(crate::place::place_set(&place, value_calc, ctx));
+            trees.push(place_set(&place, value_calc, ctx));
             trees.into_iter().map(std::convert::Into::into).collect()
         }
         StatementKind::Intrinsic(non_diverging_intirinsic) => {

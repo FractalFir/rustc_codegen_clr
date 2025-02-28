@@ -1,15 +1,16 @@
 use crate::{
     assembly::MethodCompileCtx,
-    operand::handle_operand,
-    place::{place_adress, place_set},
-    utilis::field_descrptor,
+    operand::handle_operand,  
 };
 use cilly::{
     call, cil_node::CILNode, cil_root::CILRoot, cilnode::MethodKind, conv_usize, v2::ClassRef, Int,
     MethodRef, Type,
 };
+use rustc_codegen_clr_place::{place_adress, place_set};
+use rustc_codegen_clr_type::adt::field_descrptor;
 use rustc_middle::mir::{Operand, Place};
 use rustc_span::source_map::Spanned;
+use rustc_codegen_clr_type::GetTypeExt;
 pub fn xchg<'tcx>(
     args: &[Spanned<Operand<'tcx>>],
     destination: &Place<'tcx>,
@@ -161,3 +162,4 @@ pub fn cxchg<'tcx>(
         flag_desc,
     )
 }
+

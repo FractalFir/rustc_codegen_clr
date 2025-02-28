@@ -1,8 +1,9 @@
 use cilly::cil_node::CILNode;
 use cilly::Type;
+use rustc_codegen_clr_place::{deref_op, place_adress, place_get, PlaceTy};
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::{ConstValue, Operand};
-
+use rustc_codegen_clr_type::GetTypeExt;
 use crate::assembly::MethodCompileCtx;
 pub(crate) fn handle_operand<'tcx>(
     operand: &Operand<'tcx>,
@@ -13,7 +14,7 @@ pub(crate) fn handle_operand<'tcx>(
         return CILNode::uninit_val(Type::Void, ctx);
     }
     match operand {
-        Operand::Copy(place) | Operand::Move(place) => crate::place::place_get(place, ctx),
+        Operand::Copy(place) | Operand::Move(place) => place_get(place, ctx),
         Operand::Constant(const_val) => crate::constant::handle_constant(const_val, ctx),
     }
 }
@@ -22,13 +23,13 @@ pub(crate) fn operand_address<'tcx>(
     ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> CILNode {
     match operand {
-        Operand::Copy(place) | Operand::Move(place) => crate::place::place_adress(place, ctx),
+        Operand::Copy(place) | Operand::Move(place) => place_adress(place, ctx),
         Operand::Constant(const_val) => {
             let local_type = ctx.type_from_cache(operand.ty(ctx.body(), ctx.tcx()));
             let constant = crate::constant::handle_constant(const_val, ctx);
             let ptr = CILNode::stack_addr(constant, ctx.alloc_type(local_type), ctx);
-            crate::place::deref_op(
-                crate::place::PlaceTy::Ty(operand.ty(ctx.body(), ctx.tcx())),
+            deref_op(
+                PlaceTy::Ty(operand.ty(ctx.body(), ctx.tcx())),
                 ctx,
                 ptr,
             )

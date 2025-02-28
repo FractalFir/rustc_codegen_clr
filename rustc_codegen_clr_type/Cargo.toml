@@ -1,0 +1,10 @@
+[package]
+name = "rustc_codegen_clr_type"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+rustc_codegen_clr_ctx = {path = "../rustc_codegen_clr_ctx"}
+cilly = {path = "../cilly"}
+serde = "*"
+rustc-demangle = "0.1.24"

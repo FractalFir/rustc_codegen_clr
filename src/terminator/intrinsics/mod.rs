@@ -2,8 +2,9 @@ use crate::{
     assembly::MethodCompileCtx,
     casts,
     operand::handle_operand,
-    place::{place_adress, place_set},
 };
+use rustc_codegen_clr_place::{deref_op, place_adress, place_set, ptr_set_op};
+use rustc_codegen_clr_type::GetTypeExt;
 use cilly::{
     call,
     cil_node::CILNode,
@@ -192,7 +193,7 @@ pub fn handle_intrinsic<'tcx>(
             );
             let addr_calc = handle_operand(&args[0].node, ctx);
             let value_calc = handle_operand(&args[1].node, ctx);
-            vec![CILRoot::Volatile(Box::new(crate::place::ptr_set_op(
+            vec![CILRoot::Volatile(Box::new(ptr_set_op(
                 pointed_type.into(),
                 ctx,
                 addr_calc,
@@ -210,7 +211,7 @@ pub fn handle_intrinsic<'tcx>(
             let arg = ctx.monomorphize(args[0].node.ty(ctx.body(), ctx.tcx()));
             let arg_ty = arg.builtin_deref(true).unwrap();
             let arg = handle_operand(&args[0].node, ctx);
-            let ops = crate::place::deref_op(arg_ty.into(), ctx, arg);
+            let ops = deref_op(arg_ty.into(), ctx, arg);
             vec![place_set(destination, ops, ctx)]
         }
         "atomic_load_acquire" | "atomic_load_seqcst" => {
@@ -224,7 +225,7 @@ pub fn handle_intrinsic<'tcx>(
             let arg = ctx.monomorphize(args[0].node.ty(ctx.body(), ctx.tcx()));
             let arg_ty = arg.builtin_deref(true).unwrap();
 
-            let ops = crate::place::deref_op(arg_ty.into(), ctx, ops);
+            let ops = deref_op(arg_ty.into(), ctx, ops);
             vec![place_set(destination, ops, ctx)]
         }
         "atomic_store_relaxed"
@@ -241,7 +242,7 @@ pub fn handle_intrinsic<'tcx>(
             let val = handle_operand(&args[1].node, ctx);
             let arg_ty = ctx.monomorphize(args[1].node.ty(ctx.body(), ctx.tcx()));
 
-            vec![crate::place::ptr_set_op(arg_ty.into(), ctx, addr, val)]
+            vec![ptr_set_op(arg_ty.into(), ctx, addr, val)]
         }
         "atomic_cxchgweak_acquire_acquire"
         | "atomic_cxchgweak_acquire_relaxed"
@@ -450,7 +451,7 @@ pub fn handle_intrinsic<'tcx>(
             let arg = ctx.monomorphize(args[0].node.ty(ctx.body(), ctx.tcx()));
             let arg_ty = arg.builtin_deref(true).unwrap();
 
-            let ops = crate::place::deref_op(arg_ty.into(), ctx, ops);
+            let ops = deref_op(arg_ty.into(), ctx, ops);
             vec![place_set(destination, ops, ctx)]
         }
         "sqrtf32" => float_unop(args, destination, ctx, Float::F32, "Sqrt"),
@@ -1077,7 +1078,7 @@ fn volitale_load<'tcx>(
     let arg = ctx.monomorphize(args[0].node.ty(ctx.body(), ctx.tcx()));
     let arg_ty = arg.builtin_deref(true).unwrap();
     let arg = handle_operand(&args[0].node, ctx);
-    let ops = CILNode::Volatile(Box::new(crate::place::deref_op(arg_ty.into(), ctx, arg)));
+    let ops = CILNode::Volatile(Box::new(deref_op(arg_ty.into(), ctx, arg)));
     place_set(destination, ops, ctx)
 }
 fn caller_location<'tcx>(
@@ -1087,7 +1088,7 @@ fn caller_location<'tcx>(
 ) -> CILRoot {
     let caller_loc = ctx.tcx().span_as_caller_location(span);
     let caller_loc_ty = ctx.tcx().caller_location_ty();
-    crate::place::place_set(
+    place_set(
         destination,
         crate::constant::load_const_value(caller_loc, caller_loc_ty, ctx),
         ctx,

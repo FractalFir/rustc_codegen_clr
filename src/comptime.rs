@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-use crate::fn_ctx::MethodCompileCtx;
+use rustc_codegen_clr_ctx::MethodCompileCtx;
 use cilly::v2::ClassDef;
 #[derive(Clone)]
 enum ComptimeLocalVar {

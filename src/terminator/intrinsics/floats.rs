@@ -1,4 +1,4 @@
-use crate::{assembly::MethodCompileCtx, operand::handle_operand, place::place_set};
+use crate::{assembly::MethodCompileCtx, operand::handle_operand};
 use cilly::{
     call,
     cil_node::CILNode,
@@ -8,6 +8,7 @@ use cilly::{
     v2::{ClassRef, Float},
     Int, MethodRef, Type,
 };
+use rustc_codegen_clr_place::place_set;
 use rustc_middle::mir::{Operand, Place};
 use rustc_span::source_map::Spanned;
 /// Implementation of the fmaf32 intrinsics. Takes in 3 arguments: a, b, c. Calcualtes a * b + c

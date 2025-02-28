@@ -1,11 +1,13 @@
-use crate::{assembly::MethodCompileCtx, operand::handle_operand, place::place_set};
+use crate::{assembly::MethodCompileCtx, operand::handle_operand};
 use cilly::{
     cil_node::CILNode, cil_root::CILRoot, conv_isize, conv_usize, Int, IntoAsmIndex, Type,
 };
+use rustc_codegen_clr_place::place_set;
 use rustc_middle::{
     mir::{Operand, Place},
     ty::Instance,
 };
+use rustc_codegen_clr_type::GetTypeExt;
 use rustc_span::source_map::Spanned;
 pub fn arith_offset<'tcx>(
     args: &[Spanned<Operand<'tcx>>],

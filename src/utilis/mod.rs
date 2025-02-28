@@ -1,8 +1,8 @@
-use crate::{assembly::MethodCompileCtx, IString};
-use cilly::{
-    utilis::escape_class_name,
-    v2::{FieldDesc, FieldIdx},
-};
+use crate::IString;
+use cilly::
+    utilis::escape_class_name
+;
+use rustc_codegen_clr_type::r#type::escape_field_name;
 use rustc_hir::def_id::DefId;
 use rustc_abi::VariantIdx;
 use rustc_middle::{
@@ -25,12 +25,7 @@ pub const MANAGED_LD_ELEM_REF: &str = "rustc_clr_interop_managed_ld_elem_ref";
 pub fn is_function_magic(name: &str) -> bool {
     name.contains(CTOR_FN_NAME) || name.contains(MANAGED_CALL_FN_NAME)
 }
-pub fn as_adt(ty: Ty) -> Option<(AdtDef, &List<GenericArg>)> {
-    match ty.kind() {
-        TyKind::Adt(adt, subst) => Some((*adt, subst)),
-        _ => None,
-    }
-}
+
 // WARNING: this is *wrong*: For some reason, `Instance::try_resolve` should not operate on structs(why?), and this just silences the newly introduced warning.
 pub fn instance_try_resolve<'tcx>(
     adt: DefId,
@@ -72,7 +67,7 @@ pub fn field_name(ty: Ty, idx: u32) -> crate::IString {
                 .all_fields()
                 .nth(idx as usize)
                 .expect("Field index out of range.");
-            crate::r#type::escape_field_name(&field_def.name.to_string()).into()
+            escape_field_name(&field_def.name.to_string()).into()
         }
         TyKind::Tuple(_) => format!("Item{}", idx + 1).into(),
         _ => todo!("Can't yet get fields of typr {ty:?}"),
@@ -121,108 +116,6 @@ pub fn monomorphize<'tcx, T: TypeFoldable<TyCtxt<'tcx>> + Clone>(
         rustc_middle::ty::TypingEnv::fully_monomorphized(),
         EarlyBinder::bind(ty),
     )
-}
-pub fn enum_field_descriptor<'tcx>(
-    owner_ty: Ty<'tcx>,
-    field_idx: u32,
-    variant_idx: u32,
-    ctx: &mut MethodCompileCtx<'tcx, '_>,
-) -> FieldIdx {
-    let (adt, subst) = as_adt(owner_ty).expect("Tried to get a field of a non ADT type!");
-    let variant = adt
-        .variants()
-        .iter()
-        .nth(variant_idx as usize)
-        .expect("No enum variant with such index!");
-    let field = variant
-        .fields
-        .iter()
-        .nth(field_idx as usize)
-        .expect("No enum field with provided index!");
-    let variant_name: IString = variant.name.to_string().into();
-    let field_name = ctx.alloc_string(format!(
-        "{variant_name}_{fname}",
-        fname = crate::r#type::escape_field_name(&field.name.to_string())
-    ));
-    let field_ty = field.ty(ctx.tcx(), subst);
-    let field_ty = ctx.monomorphize(field_ty);
-    let field_ty = ctx.type_from_cache(field_ty);
-    let owner_ty = ctx
-        .type_from_cache(owner_ty)
-        .as_class_ref()
-        .expect("Error: tried to set a field of a non-object type!");
-
-    ctx.alloc_field(FieldDesc::new(owner_ty, field_name, field_ty))
-}
-pub fn field_descrptor<'tcx>(
-    owner_ty: Ty<'tcx>,
-    field_idx: u32,
-    ctx: &mut MethodCompileCtx<'tcx, '_>,
-) -> FieldIdx {
-    if let TyKind::Tuple(elements) = owner_ty.kind() {
-        let element = elements[field_idx as usize];
-        let element = ctx.monomorphize(element);
-        let element = ctx.type_from_cache(element);
-        let elements = elements
-            .iter()
-            .map(|tpe| {
-                let tpe = ctx.monomorphize(tpe);
-                ctx.type_from_cache(tpe)
-            })
-            .collect::<Vec<_>>();
-        let field_name = ctx.alloc_string(format!("Item{}", field_idx + 1));
-        let tuple_type = crate::r#type::simple_tuple(&elements, ctx);
-        return ctx.alloc_field(FieldDesc::new(tuple_type, field_name, element));
-    } else if let TyKind::Closure(_, args) = owner_ty.kind() {
-        let closure = args.as_closure();
-        let field_type = closure
-            .upvar_tys()
-            .iter()
-            .nth(field_idx as usize)
-            .expect("Could not find closure fields!");
-        let field_type = ctx.monomorphize(field_type);
-        let field_type = ctx.type_from_cache(field_type);
-        let owner_ty = ctx.monomorphize(owner_ty);
-        let owner_type = ctx.type_from_cache(owner_ty);
-        let field_name = ctx.alloc_string(format!("f_{field_idx}"));
-        return ctx.alloc_field(FieldDesc::new(
-            owner_type.as_class_ref().expect("Closure type invalid!"),
-            field_name,
-            field_type,
-        ));
-    } else if let TyKind::Coroutine(_, args) = owner_ty.kind() {
-        let coroutine = args.as_coroutine();
-        let field_type = coroutine
-            .upvar_tys()
-            .iter()
-            .nth(field_idx as usize)
-            .expect("Could not find coroutine fields!");
-        let field_type = ctx.monomorphize(field_type);
-        let field_type = ctx.type_from_cache(field_type);
-        let owner_ty = ctx.monomorphize(owner_ty);
-        let owner_type = ctx.type_from_cache(owner_ty);
-        let field_name = ctx.alloc_string(format!("f_{field_idx}"));
-        return ctx.alloc_field(FieldDesc::new(
-            owner_type.as_class_ref().expect("Coroutine type invalid!"),
-            field_name,
-            field_type,
-        ));
-    }
-    let (adt, subst) = as_adt(owner_ty).expect("Tried to get a field of a non ADT or tuple type!");
-    let field = adt
-        .all_fields()
-        .nth(field_idx as usize)
-        .expect("No field with provided index!");
-    let field_name = crate::r#type::escape_field_name(&field.name.to_string());
-    let field_ty = field.ty(ctx.tcx(), subst);
-    let field_ty = ctx.monomorphize(field_ty);
-    let field_ty = ctx.type_from_cache(field_ty);
-    let owner_ty = ctx
-        .type_from_cache(owner_ty)
-        .as_class_ref()
-        .expect("Error: tried to set a field of a non-object type!");
-    let field_name = ctx.alloc_string(field_name);
-    ctx.alloc_field(FieldDesc::new(owner_ty, field_name, field_ty))
 }
 
 /// Tires to get the value of Const `size` as usize.

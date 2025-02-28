@@ -1,4 +1,6 @@
-use crate::{assembly::MethodCompileCtx, operand::handle_operand, place::place_set};
+use crate::{assembly::MethodCompileCtx, operand::handle_operand};
+use rustc_codegen_clr_place::place_set;
+use rustc_codegen_clr_type::{utilis::max_value, GetTypeExt};
 use cilly::{
     call,
     cil_node::CILNode,
@@ -39,7 +41,7 @@ pub fn saturating_add<'tcx>(
             let sum = crate::binop::add_unchecked(a_ty, a_ty, ctx, a.clone(), b.clone());
             let or = crate::binop::bitop::bit_or_unchecked(a_ty, a_ty, ctx, a.clone(), b.clone());
             let flag = crate::binop::cmp::lt_unchecked(a_ty, sum.clone(), or.clone(), ctx);
-            let max = crate::r#type::max_value(&a_type, ctx);
+            let max = max_value(&a_type, ctx);
             CILNode::select(a_type, max, sum, flag, ctx)
         }
         Type::Int(Int::I32) => {

@@ -1,19 +1,16 @@
-use super::{array_get_address, array_get_item, pointed_type, PlaceTy};
-
-use crate::{
-    assembly::MethodCompileCtx,
-    assert_morphic,
-    place::{body_ty_is_by_adress, deref_op},
-    r#type::fat_ptr_to,
-};
+use super::{PlaceTy, array_get_address, array_get_item, pointed_type};
+use crate::{body_ty_is_by_adress, deref_op};
 use cilly::{
-    call,
+    Const, IntoAsmIndex, NodeIdx, Type, call,
     cil_node::CILNode,
     conv_usize, ld_field,
     v2::{FieldDesc, Int},
-    Const, IntoAsmIndex, NodeIdx, Type,
 };
-use rustc_middle::mir::{Local,PlaceElem};
+use rustc_codegen_clr_ctx::MethodCompileCtx;
+use rustc_codegen_clr_type::{
+    adt::{enum_field_descriptor, field_descrptor, FieldOffsetIterator}, r#type::fat_ptr_to, utilis::pointer_to_is_fat, GetTypeExt
+};
+use rustc_middle::mir::{Local, PlaceElem};
 use rustc_middle::ty::{Ty, TyKind};
 pub fn local_body<'tcx>(local: usize, ctx: &mut MethodCompileCtx<'tcx, '_>) -> (NodeIdx, Ty<'tcx>) {
     let ty = ctx.body().local_decls[Local::from_usize(local)].ty;
@@ -36,11 +33,11 @@ fn body_field<'a>(
             let curr_type = ctx.monomorphize(curr_type);
             let field_type = ctx.monomorphize(field_ty);
             match (
-                crate::r#type::pointer_to_is_fat(curr_type, ctx.tcx(), ctx.instance()),
-                crate::r#type::pointer_to_is_fat(field_type, ctx.tcx(), ctx.instance()),
+                pointer_to_is_fat(curr_type, ctx.tcx(), ctx.instance()),
+                pointer_to_is_fat(field_type, ctx.tcx(), ctx.instance()),
             ) {
                 (false, false) => {
-                    let field_desc = crate::utilis::field_descrptor(curr_type, field_index, ctx);
+                    let field_desc = field_descrptor(curr_type, field_index, ctx);
                     if body_ty_is_by_adress(field_type, ctx) {
                         (
                             (field_type).into(),
@@ -59,12 +56,12 @@ fn body_field<'a>(
                         )
                     }
                 }
-                (false, true) => panic!("Sized type {curr_type:?} contains an unsized field of type {field_type}. This is a bug."),
-                (true,false)=>
-                {
-                    let mut explicit_offset_iter = crate::utilis::adt::FieldOffsetIterator::fields(
-                        ctx.layout_of(curr_type).layout.0 .0.clone(),
-                    );
+                (false, true) => panic!(
+                    "Sized type {curr_type:?} contains an unsized field of type {field_type}. This is a bug."
+                ),
+                (true, false) => {
+                    let mut explicit_offset_iter =
+                        FieldOffsetIterator::fields(ctx.layout_of(curr_type).layout.0.0.clone());
                     let offset = explicit_offset_iter
                         .nth(field_index as usize)
                         .expect("Field index not in field offset iterator");
@@ -73,24 +70,32 @@ fn body_field<'a>(
                         curr_type,
                         rustc_middle::ty::Mutability::Mut,
                     ));
-                    let addr_descr = FieldDesc::new(curr_type_fat_ptr.as_class_ref().unwrap(),ctx.alloc_string(crate::DATA_PTR),ctx.nptr(Type::Void),);
+                    let addr_descr = FieldDesc::new(
+                        curr_type_fat_ptr.as_class_ref().unwrap(),
+                        ctx.alloc_string(cilly::DATA_PTR),
+                        ctx.nptr(Type::Void),
+                    );
                     // Get the address of the unsized object.
                     let obj_addr = ld_field!(parrent_node, ctx.alloc_field(addr_descr));
                     let obj = ctx.type_from_cache(field_type);
-                    let field_addr = (obj_addr + CILNode::V2(ctx.alloc_node(Const::USize(u64::from(offset))))).cast_ptr(ctx.nptr(obj));
+                    let field_addr = (obj_addr
+                        + CILNode::V2(ctx.alloc_node(Const::USize(u64::from(offset)))))
+                    .cast_ptr(ctx.nptr(obj));
                     if body_ty_is_by_adress(field_type, ctx) {
-                        (field_type.into(),field_addr)
-                    }else{
-                        (field_type.into(),CILNode::LdObj{ ptr: Box::new(field_addr), obj: Box::new(obj) })
+                        (field_type.into(), field_addr)
+                    } else {
+                        (
+                            field_type.into(),
+                            CILNode::LdObj {
+                                ptr: Box::new(field_addr),
+                                obj: Box::new(obj),
+                            },
+                        )
                     }
                     // Add the offset to the object.
                 }
-                (true,true)=>{
-                    assert_eq!(
-                        field_index,
-                        0,
-                        "Can't handle DST with more than 1 field."
-                    );
+                (true, true) => {
+                    assert_eq!(field_index, 0, "Can't handle DST with more than 1 field.");
                     let curr_type = ctx.type_from_cache(Ty::new_ptr(
                         ctx.tcx(),
                         curr_type,
@@ -101,12 +106,21 @@ fn body_field<'a>(
                         field_type,
                         rustc_middle::ty::Mutability::Mut,
                     ));
-                   (
-                    field_ty.into(),
-                    CILNode::stack_addr(CILNode::transmute_on_stack(CILNode::LdObj {
+                    (
+                        field_ty.into(),
+                        CILNode::stack_addr(
+                            CILNode::transmute_on_stack(
+                                CILNode::LdObj {
                                     ptr: Box::new(parrent_node),
                                     obj: Box::new(curr_type),
-                                }, curr_type, field_type, ctx),ctx.alloc_type(field_type),      ctx)
+                                },
+                                curr_type,
+                                field_type,
+                                ctx,
+                            ),
+                            ctx.alloc_type(field_type),
+                            ctx,
+                        ),
                     )
                 }
             }
@@ -114,7 +128,7 @@ fn body_field<'a>(
         super::PlaceTy::EnumVariant(enm, var_idx) => {
             let owner = ctx.monomorphize(enm);
 
-            let field_desc = crate::utilis::enum_field_descriptor(owner, field_index, var_idx, ctx);
+            let field_desc = enum_field_descriptor(owner, field_index, var_idx, ctx);
 
             (
                 field_ty.into(),
@@ -132,7 +146,7 @@ pub fn place_elem_body_index<'tcx>(
     parrent_node: CILNode,
     index: rustc_middle::mir::Local,
 ) -> (PlaceTy<'tcx>, CILNode) {
-    let index = crate::place::local_get(index.as_usize(), ctx.body(), ctx);
+    let index = crate::local_get(index.as_usize(), ctx.body(), ctx);
     match curr_ty.kind() {
         TyKind::Slice(inner) => {
             let inner = ctx.monomorphize(*inner);
@@ -140,7 +154,7 @@ pub fn place_elem_body_index<'tcx>(
             let slice = fat_ptr_to(Ty::new_slice(ctx.tcx(), inner), ctx);
             let desc = FieldDesc::new(
                 slice,
-                ctx.alloc_string(crate::DATA_PTR),
+                ctx.alloc_string(cilly::DATA_PTR),
                 ctx.nptr(Type::Void),
             );
             let size = ctx.size_of(inner_type);
@@ -164,7 +178,7 @@ pub fn place_elem_body_index<'tcx>(
                 )
             }
         }
-        TyKind::Array(element, _length) => {      
+        TyKind::Array(element, _length) => {
             let index = ctx.alloc_node(cilly::CILNode::IntCast {
                 input: index,
                 target: Int::USize,
@@ -172,11 +186,17 @@ pub fn place_elem_body_index<'tcx>(
             });
             let index = CILNode::V2(index);
             if body_ty_is_by_adress(*element, ctx) {
-                let mref = array_get_address(ctx,*element,curr_ty);
-                ((*element).into(), call!(ctx.alloc_methodref(mref), [parrent_node, index]))
+                let mref = array_get_address(ctx, *element, curr_ty);
+                (
+                    (*element).into(),
+                    call!(ctx.alloc_methodref(mref), [parrent_node, index]),
+                )
             } else {
-                let mref = array_get_item(ctx,*element,curr_ty);
-                ((*element).into(), call!(ctx.alloc_methodref(mref), [parrent_node, index]))
+                let mref = array_get_item(ctx, *element, curr_ty);
+                (
+                    (*element).into(),
+                    call!(ctx.alloc_methodref(mref), [parrent_node, index]),
+                )
             }
         }
         _ => {
@@ -194,11 +214,9 @@ pub fn place_elem_body<'tcx>(
         PlaceTy::Ty(ty) => PlaceTy::Ty(ctx.monomorphize(ty)),
         PlaceTy::EnumVariant(enm, idx) => PlaceTy::EnumVariant(ctx.monomorphize(enm), idx),
     };
-    assert_morphic!(curr_ty);
     match place_elem {
         PlaceElem::Deref => {
             let pointed = pointed_type(curr_ty);
-            assert_morphic!(pointed);
             if body_ty_is_by_adress(pointed, ctx) {
                 (pointed.into(), parrent_node)
             } else {
@@ -218,7 +236,9 @@ pub fn place_elem_body<'tcx>(
                 .expect("Can't get enum variant of an enum varaint!");
             let curr_type = ctx.monomorphize(curr_type);
             if matches!(curr_ty.as_ty().unwrap().kind(), TyKind::Coroutine(_, _)) {
-                eprintln!("UNTESTED:  downcaststing coroutines is not fully supported, and the behaviour of corrutines is not yet fully tested! variant:{variant:?} curr_type:{curr_type:?}");
+                eprintln!(
+                    "UNTESTED:  downcaststing coroutines is not fully supported, and the behaviour of corrutines is not yet fully tested! variant:{variant:?} curr_type:{curr_type:?}"
+                );
                 return (curr_type.into(), parrent_node);
             }
             let variant_type = PlaceTy::EnumVariant(curr_type, variant.as_u32());
@@ -250,7 +270,7 @@ pub fn place_elem_body<'tcx>(
                     let slice = fat_ptr_to(Ty::new_slice(ctx.tcx(), inner), ctx);
                     let desc = FieldDesc::new(
                         slice,
-                        ctx.alloc_string(crate::DATA_PTR),
+                        ctx.alloc_string(cilly::DATA_PTR),
                         ctx.nptr(Type::Void),
                     );
 
@@ -268,11 +288,17 @@ pub fn place_elem_body<'tcx>(
                 }
                 TyKind::Array(element, _length) => {
                     if body_ty_is_by_adress(*element, ctx) {
-                        let mref = array_get_address(ctx,*element,curr_ty);
-                        ((*element).into(), call!(ctx.alloc_methodref(mref), [parrent_node, index]))
+                        let mref = array_get_address(ctx, *element, curr_ty);
+                        (
+                            (*element).into(),
+                            call!(ctx.alloc_methodref(mref), [parrent_node, index]),
+                        )
                     } else {
-                        let mref = array_get_item(ctx,*element,curr_ty);
-                        ((*element).into(), call!(ctx.alloc_methodref(mref), [parrent_node, index]))
+                        let mref = array_get_item(ctx, *element, curr_ty);
+                        (
+                            (*element).into(),
+                            call!(ctx.alloc_methodref(mref), [parrent_node, index]),
+                        )
                     }
                 }
                 _ => {

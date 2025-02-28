@@ -9,6 +9,7 @@ use crate::{
         MANAGED_LD_NULL,
     },
 };
+use rustc_codegen_clr_type::GetTypeExt;
 use cilly::{
     call, call_virt,
     cil_node::{CILNode, CallOpArgs},
@@ -19,6 +20,7 @@ use cilly::{
     IntoAsmIndex,
 };
 use cilly::{v2::MethodRef, Type};
+use rustc_codegen_clr_place::place_set;
 use rustc_middle::ty::InstanceKind;
 use rustc_middle::{
     mir::{Operand, Place},
@@ -72,7 +74,7 @@ fn call_managed<'tcx>(
                 args: [].into(),
             }
         } else {
-            crate::place::place_set(destination, call!(call_site, []), ctx)
+            place_set(destination, call!(call_site, []), ctx)
         }
     } else {
         let is_static = crate::utilis::garag_to_bool(subst_ref[4], ctx.tcx());
@@ -99,7 +101,7 @@ fn call_managed<'tcx>(
                 args: call_args.into(),
             }
         } else {
-            crate::place::place_set(destination, call!(call, call_args), ctx)
+            place_set(destination, call!(call, call_args), ctx)
         }
     }
 }
@@ -146,7 +148,7 @@ fn callvirt_managed<'tcx>(
                 args: [].into(),
             }
         } else {
-            crate::place::place_set(destination, call_virt!(call, []), ctx)
+            place_set(destination, call_virt!(call, []), ctx)
         }
     } else {
         let is_static = crate::utilis::garag_to_bool(subst_ref[4], ctx.tcx());
@@ -172,7 +174,7 @@ fn callvirt_managed<'tcx>(
                 args: call_args.into(),
             }
         } else {
-            crate::place::place_set(
+            place_set(
                 destination,
                 call_virt!(ctx.alloc_methodref(call), call_args),
                 ctx,
@@ -212,7 +214,7 @@ fn call_ctor<'tcx>(
             MethodKind::Constructor,
             vec![].into(),
         );
-        crate::place::place_set(
+        place_set(
             destination,
             CILNode::NewObj(Box::new(CallOpArgs {
                 site: ctx.alloc_methodref(mref),
@@ -245,7 +247,7 @@ fn call_ctor<'tcx>(
             MethodKind::Constructor,
             vec![].into(),
         );
-        crate::place::place_set(
+        place_set(
             destination,
             CILNode::NewObj(Box::new(CallOpArgs {
                 site: ctx.alloc_methodref(ctor),
@@ -324,7 +326,7 @@ pub fn call_closure<'tcx>(
             args: call_args.into(),
         }
     } else {
-        crate::place::place_set(destination, call!(call, call_args), ctx)
+        place_set(destination, call!(call, call_args), ctx)
     }
 }
 /// Calls `fn_type` with `args`, placing the return value in destination.
@@ -445,7 +447,7 @@ pub fn call<'tcx>(
                 args: call_args.into(),
             }]
         } else {
-            vec![crate::place::place_set(
+            vec![place_set(
                 destination,
                 CILNode::CallI(Box::new((signature, fn_ptr, call_args.into()))),
                 ctx,
@@ -508,7 +510,7 @@ pub fn call<'tcx>(
             "Managed calls may not use the `rust_call` calling convention!"
         );
         // Not-Virtual (for interop)
-        return vec![crate::place::place_set(
+        return vec![place_set(
             destination,
             CILNode::LDLen {
                 arr: Box::new(crate::operand::handle_operand(&args[0].node, ctx)),
@@ -523,7 +525,7 @@ pub fn call<'tcx>(
         // Not-Virtual (for interop)
         let tpe = ctx.type_from_cache(subst_ref[0].as_type().unwrap());
 
-        return vec![crate::place::place_set(
+        return vec![place_set(
             destination,
             CILNode::LdNull(tpe.as_class_ref().unwrap()),
             ctx,
@@ -535,7 +537,7 @@ pub fn call<'tcx>(
             .unwrap();
         let input = crate::operand::handle_operand(&args[0].node, ctx);
         // Not-Virtual (for interop)
-        return vec![crate::place::place_set(
+        return vec![place_set(
             destination,
             CILNode::CheckedCast(Box::new((input, tpe))),
             ctx,
@@ -547,7 +549,7 @@ pub fn call<'tcx>(
             .unwrap();
         let input = crate::operand::handle_operand(&args[0].node, ctx);
         // Not-Virtual (for interop)
-        return vec![crate::place::place_set(
+        return vec![place_set(
             destination,
             CILNode::IsInst(Box::new((input, tpe))),
             ctx,
@@ -558,7 +560,7 @@ pub fn call<'tcx>(
             "Managed calls may not use the `rust_call` calling convention!"
         );
         // Not-Virtual (for interop)
-        return vec![crate::place::place_set(
+        return vec![place_set(
             destination,
             CILNode::LDElelemRef {
                 arr: Box::new(crate::operand::handle_operand(&args[0].node, ctx)),
@@ -622,6 +624,6 @@ pub fn call<'tcx>(
         }]
     } else {
         let res_calc = call!(site, call_args);
-        vec![crate::place::place_set(destination, res_calc, ctx)]
+        vec![place_set(destination, res_calc, ctx)]
     }
 }

@@ -1,7 +1,6 @@
 use crate::assembly::MethodCompileCtx;
 use crate::operand::{handle_operand, operand_address};
-use crate::place::place_address_raw;
-use crate::r#type::fat_ptr_to;
+
 use cilly::cil_node::CILNode;
 use cilly::cil_root::CILRoot;
 
@@ -9,12 +8,15 @@ use cilly::v2::{FieldDesc, Int};
 use cilly::{conv_u32, conv_usize, IntoAsmIndex};
 use cilly::{Const, Type};
 use rustc_abi::FIRST_VARIANT;
+use rustc_codegen_clr_place::place_address_raw;
+use rustc_codegen_clr_type::r#type::fat_ptr_to;
+use rustc_codegen_clr_type::utilis::is_fat_ptr;
 use rustc_middle::{
     mir::{Operand, Place},
     ty::{layout::TyAndLayout, ExistentialTraitRef, Ty, TyKind, UintTy},
 };
 use rustc_abi::FieldIdx;
-
+use rustc_codegen_clr_type::GetTypeExt;
 /// Preforms an unsizing cast on operand `operand`, converting it to the `target` type.
 pub fn unsize2<'tcx>(
     ctx: &mut MethodCompileCtx<'tcx, '_>,
@@ -59,7 +61,7 @@ pub fn unsize2<'tcx>(
         ctx.alloc_field(metadata_field),
     );
 
-    let init_ptr = if crate::r#type::is_fat_ptr(source, ctx.tcx(), ctx.instance()) {
+    let init_ptr = if is_fat_ptr(source, ctx.tcx(), ctx.instance()) {
         let void_ptr = ctx.nptr(Type::Void);
         CILRoot::set_field(
             target_ptr.cast_ptr(ctx.nptr(fat_ptr_type)),

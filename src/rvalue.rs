@@ -2,9 +2,9 @@ use crate::{
     assembly::MethodCompileCtx,
     call_info::CallInfo,
     operand::{handle_operand, operand_address},
-    place::{place_adress, place_get},
-    r#type::{fat_ptr_to, get_type, pointer_to_is_fat},
 };
+use rustc_codegen_clr_place::{place_address_raw, place_adress, place_get};
+use rustc_codegen_clr_type::{r#type::{fat_ptr_to, get_type}, utilis::pointer_to_is_fat, GetTypeExt};
 use cilly::{
     cil_node::CILNode,
     cil_root::CILRoot,
@@ -65,7 +65,7 @@ pub fn handle_rvalue<'tcx>(
                         ctx.alloc_string(crate::METADATA),
                         cilly::v2::Type::Int(Int::USize),
                     );
-                    let addr = crate::place::place_address_raw(operand, ctx);
+                    let addr = place_address_raw(operand, ctx);
                     assert!(
                         !matches!(addr, CILNode::LDLoc(_)),
                         "improper addr {addr:?}. operand:{operand:?}"
@@ -86,11 +86,11 @@ pub fn handle_rvalue<'tcx>(
         Rvalue::Use(operand) => (vec![], handle_operand(operand, ctx)),
         // TODO: check the exact semantics of `WrapUnsafeBinder` once it has some documentation.
         Rvalue::WrapUnsafeBinder(operand, _unknown_ty) => (vec![], handle_operand(operand, ctx)),
-        Rvalue::CopyForDeref(place) => (vec![], crate::place::place_get(place, ctx)),
+        Rvalue::CopyForDeref(place) => (vec![], place_get(place, ctx)),
         Rvalue::Ref(_region, _borrow_kind, place) => {
-            (vec![], crate::place::place_adress(place, ctx))
+            (vec![], place_adress(place, ctx))
         }
-        Rvalue::RawPtr(_mutability, place) => (vec![], crate::place::place_adress(place, ctx)),
+        Rvalue::RawPtr(_mutability, place) => (vec![], place_adress(place, ctx)),
         Rvalue::Cast(
             CastKind::PointerCoercion(PointerCoercion::UnsafeFnPointer, _),
             operand,
@@ -338,7 +338,7 @@ pub fn handle_rvalue<'tcx>(
         }
 
         Rvalue::Discriminant(place) => {
-            let addr = crate::place::place_adress(place, ctx);
+            let addr = place_adress(place, ctx);
             let owner_ty = ctx.monomorphize(place.ty(ctx.body(), ctx.tcx()).ty);
             let owner = ctx.type_from_cache(owner_ty);
 

@@ -9,7 +9,7 @@ use cilly::{
 use rustc_abi::{FieldIdx, FieldsShape, Layout, LayoutData, TagEncoding, VariantIdx, Variants};
 use rustc_middle::ty::{AdtDef, Ty};
 
-use crate::fn_ctx::MethodCompileCtx;
+use rustc_codegen_clr_ctx::MethodCompileCtx;
 pub fn enum_variant_offsets(_: AdtDef, layout: Layout, vidix: VariantIdx) -> FieldOffsetIterator {
     FieldOffsetIterator::fields(get_variant_at_index(vidix, (*layout.0).clone()))
 }

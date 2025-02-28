@@ -1,11 +1,16 @@
-// FIXME: This file may contain unnecesary morphize calls.
-
-use crate::assembly::MethodCompileCtx;
-use crate::r#type::pointer_to_is_fat;
+#![feature(rustc_private)]
+#![feature(let_chains)]
+extern crate rustc_abi;
+extern crate rustc_driver;
+extern crate rustc_hir;
+extern crate rustc_middle;
 use cilly::cil_node::CILNode;
 use cilly::cil_root::CILRoot;
 use cilly::v2::{ClassRef, Float};
 use cilly::{Const, Type};
+use rustc_codegen_clr_ctx::MethodCompileCtx;
+use rustc_codegen_clr_type::GetTypeExt;
+use rustc_codegen_clr_type::utilis::pointer_to_is_fat;
 
 use rustc_middle::mir::Place;
 
@@ -18,6 +23,7 @@ pub use body::*;
 pub use get::*;
 use rustc_middle::ty::{FloatTy, IntTy, Ty, TyKind, UintTy};
 pub use set::*;
+
 fn slice_head<T>(slice: &[T]) -> (&T, &[T]) {
     assert!(!slice.is_empty());
     let last = &slice[slice.len() - 1];
@@ -37,7 +43,6 @@ fn pointed_type(ty: PlaceTy) -> Ty {
     }
 }
 fn body_ty_is_by_adress<'tcx>(last_ty: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_>) -> bool {
-    crate::assert_morphic!(last_ty);
     match *last_ty.kind() {
         // True for non-0 tuples
         TyKind::Tuple(elements) => !elements.is_empty(),
@@ -193,7 +198,7 @@ pub fn place_adress<'a>(place: &Place<'a>, ctx: &mut MethodCompileCtx<'a, '_>) -
     }
 }
 /// Should be only used in certain builit-in features. For unsized types, returns the address of the fat pointer, not the address contained within it.
-pub(crate) fn place_address_raw<'a>(
+pub fn place_address_raw<'a>(
     place: &Place<'a>,
     ctx: &mut MethodCompileCtx<'a, '_>,
 ) -> CILNode {
@@ -229,7 +234,7 @@ pub(crate) fn place_address_raw<'a>(
         adress::place_elem_adress(head, ty, ctx, place_ty, addr_calc)
     }
 }
-pub(crate) fn place_set<'tcx>(
+pub fn place_set<'tcx>(
     place: &Place<'tcx>,
     value_calc: CILNode,
     ctx: &mut MethodCompileCtx<'tcx, '_>,

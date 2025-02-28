@@ -96,7 +96,7 @@ extern crate rustc_symbol_mangling;
 extern crate rustc_target;
 extern crate rustc_ty_utils;
 extern crate stable_mir;
-
+pub use rustc_codegen_clr_place::*;
 // Modules
 /// Code handling the creation of aggreate values (Arrays, enums,structs,tuples,etc.)
 mod aggregate;
@@ -132,9 +132,6 @@ mod interop;
 pub mod method;
 /// Handles a MIR operand.
 mod operand;
-
-/// Code handling getting/setting/adressing memory locations.
-mod place;
 /// Converts righthandside of a MIR statement into CIL ops.
 mod rvalue;
 /// Code dealing with truning an individual MIR statement into CIL ops.
@@ -157,7 +154,7 @@ use cilly::{
     v2::{cilnode::MethodKind, MethodRef},
     Assembly,
 };
-use fn_ctx::MethodCompileCtx;
+use rustc_codegen_clr_ctx::MethodCompileCtx;
 use rustc_codegen_ssa::{
     back::archive::{ArArchiveBuilder, ArchiveBuilder, ArchiveBuilderBuilder},
     traits::CodegenBackend,

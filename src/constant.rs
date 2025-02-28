@@ -1,7 +1,7 @@
 use core::f16;
 
 use crate::assembly::MethodCompileCtx;
-
+use rustc_codegen_clr_type::GetTypeExt;
 use cilly::{
     call,
     cil_node::{CILNode, CallOpArgs},
@@ -13,6 +13,7 @@ use cilly::{
     },
     Const, NodeIdx, Type,
 };
+use rustc_codegen_clr_place::deref_op;
 use rustc_middle::{
     mir::{
         interpret::{AllocId, GlobalAlloc, Scalar},
@@ -68,7 +69,7 @@ fn create_const_from_data<'tcx>(
 
     let tpe = ctx.type_from_cache(ty);
     let tpe_ptr = ctx.nptr(tpe);
-    crate::place::deref_op(ty.into(), ctx, ptr.cast_ptr(tpe_ptr))
+    deref_op(ty.into(), ctx, ptr.cast_ptr(tpe_ptr))
 }
 
 pub(crate) fn load_const_value<'tcx>(

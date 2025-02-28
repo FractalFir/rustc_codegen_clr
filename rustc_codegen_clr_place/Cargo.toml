@@ -1,0 +1,9 @@
+[package]
+name = "rustc_codegen_clr_place"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+cilly = {path = "../cilly"}
+rustc_codegen_clr_ctx = {path = "../rustc_codegen_clr_ctx"}
+rustc_codegen_clr_type = {path = "../rustc_codegen_clr_type"}

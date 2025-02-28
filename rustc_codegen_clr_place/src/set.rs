@@ -1,15 +1,13 @@
-use crate::{
-    assembly::MethodCompileCtx,
-    place::{pointed_type, PlaceTy},
-    r#type::{fat_ptr_to, pointer_to_is_fat},
-};
+use rustc_codegen_clr_ctx::MethodCompileCtx;
+use rustc_codegen_clr_type::{adt::{enum_field_descriptor, field_descrptor}, r#type::fat_ptr_to, utilis::pointer_to_is_fat, GetTypeExt};
+
+use crate::{PlaceTy, pointed_type};
 use cilly::{
-    call,
+    BinOp, IntoAsmIndex, Type, call,
     cil_node::CILNode,
     cil_root::CILRoot,
     conv_usize, ld_field,
-    v2::{cilnode::MethodKind, ClassRef, FieldDesc, Int, MethodRef},
-    BinOp, IntoAsmIndex, Type,
+    v2::{ClassRef, FieldDesc, Int, MethodRef, cilnode::MethodKind},
 };
 use rustc_middle::{
     mir::PlaceElem,
@@ -56,14 +54,12 @@ pub fn place_elem_set<'a>(
         PlaceElem::Field(field_index, _field_type) => match curr_type {
             PlaceTy::Ty(curr_type) => {
                 let curr_type = ctx.monomorphize(curr_type);
-                let field_desc =
-                    crate::utilis::field_descrptor(curr_type, (*field_index).into(), ctx);
+                let field_desc = field_descrptor(curr_type, (*field_index).into(), ctx);
                 CILRoot::set_field(addr_calc, value_calc, field_desc)
             }
             super::PlaceTy::EnumVariant(enm, var_idx) => {
                 let enm = ctx.monomorphize(enm);
-                let field_desc =
-                    crate::utilis::enum_field_descriptor(enm, field_index.as_u32(), var_idx, ctx);
+                let field_desc = enum_field_descriptor(enm, field_index.as_u32(), var_idx, ctx);
 
                 CILRoot::SetField {
                     addr: Box::new(addr_calc),
@@ -76,7 +72,7 @@ pub fn place_elem_set<'a>(
             let curr_ty = curr_type
                 .as_ty()
                 .expect("INVALID PLACE: Indexing into enum variant???");
-            let index = crate::place::local_get(index.as_usize(), ctx.body(), ctx);
+            let index = crate::get::local_get(index.as_usize(), ctx.body(), ctx);
 
             match curr_ty.kind() {
                 TyKind::Slice(inner) => {
@@ -86,7 +82,7 @@ pub fn place_elem_set<'a>(
                     let slice = fat_ptr_to(Ty::new_slice(ctx.tcx(), inner), ctx);
                     let desc = FieldDesc::new(
                         slice,
-                        ctx.alloc_string(crate::DATA_PTR),
+                        ctx.alloc_string(cilly::DATA_PTR),
                         ctx.nptr(Type::Void),
                     );
                     let field_val = ld_field!(addr_calc, ctx.alloc_field(desc));
@@ -145,12 +141,12 @@ pub fn place_elem_set<'a>(
                     let slice = fat_ptr_to(Ty::new_slice(ctx.tcx(), inner), ctx);
                     let desc = FieldDesc::new(
                         slice,
-                        ctx.alloc_string(crate::DATA_PTR),
+                        ctx.alloc_string(cilly::DATA_PTR),
                         ctx.nptr(Type::Void),
                     );
                     let metadata = FieldDesc::new(
                         slice,
-                        ctx.alloc_string(crate::METADATA),
+                        ctx.alloc_string(cilly::METADATA),
                         Type::Int(Int::USize),
                     );
                     let mref = MethodRef::new(
