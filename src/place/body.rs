@@ -10,13 +10,13 @@ use cilly::{
     call,
     cil_node::CILNode,
     conv_usize, ld_field,
-    v2::{cilnode::MethodKind, FieldDesc, Int, MethodRef},
+    v2::{FieldDesc, Int},
     Const, IntoAsmIndex, NodeIdx, Type,
 };
-use rustc_middle::mir::PlaceElem;
+use rustc_middle::mir::{Local,PlaceElem};
 use rustc_middle::ty::{Ty, TyKind};
 pub fn local_body<'tcx>(local: usize, ctx: &mut MethodCompileCtx<'tcx, '_>) -> (NodeIdx, Ty<'tcx>) {
-    let ty = ctx.body().local_decls[local.into()].ty;
+    let ty = ctx.body().local_decls[Local::from_usize(local)].ty;
     let ty = ctx.monomorphize(ty);
     if body_ty_is_by_adress(ty, ctx) {
         (super::adress::local_adress(local, ctx.body(), ctx), ty)

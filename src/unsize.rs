@@ -13,6 +13,7 @@ use rustc_middle::{
     mir::{Operand, Place},
     ty::{layout::TyAndLayout, ExistentialTraitRef, Ty, TyKind, UintTy},
 };
+use rustc_abi::FieldIdx;
 
 /// Preforms an unsizing cast on operand `operand`, converting it to the `target` type.
 pub fn unsize2<'tcx>(
@@ -228,8 +229,8 @@ fn unsize_metadata<'tcx>(
             assert_eq!(def_a, def_b);
 
             for i in 0..def_a.variant(FIRST_VARIANT).fields.len() {
-                let src_f = &def_a.variant(FIRST_VARIANT).fields[i.into()];
-                let dst_f = &def_b.variant(FIRST_VARIANT).fields[i.into()];
+                let src_f = &def_a.variant(FIRST_VARIANT).fields[FieldIdx::from_usize(i)];
+                let dst_f = &def_b.variant(FIRST_VARIANT).fields[FieldIdx::from_usize(i)];
                 let src_f_ty = fx.layout_of(src_f.ty(fx.tcx(), subst_a));
                 let dst_f_ty = fx.layout_of(dst_f.ty(fx.tcx(), subst_b));
                 if src_f_ty.layout.is_zst() {

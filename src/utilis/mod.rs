@@ -4,6 +4,7 @@ use cilly::{
     v2::{FieldDesc, FieldIdx},
 };
 use rustc_hir::def_id::DefId;
+use rustc_abi::VariantIdx;
 use rustc_middle::{
     mir::interpret::AllocId,
     ty::{
@@ -81,7 +82,7 @@ pub fn field_name(ty: Ty, idx: u32) -> crate::IString {
 pub fn variant_name(ty: Ty, idx: u32) -> crate::IString {
     match ty.kind() {
         TyKind::Adt(adt_def, _subst) => {
-            let variant_def = &adt_def.variants()[idx.into()];
+            let variant_def = &adt_def.variants()[VariantIdx::from_u32(idx)];
             variant_def.name.to_string().into()
         }
         _ => todo!("Can't yet get fields of typr {ty:?}"),

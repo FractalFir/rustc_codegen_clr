@@ -689,7 +689,7 @@ pub fn handle_intrinsic<'tcx>(
         "truncf32" => float_unop(args, destination, ctx, Float::F32, "Truncate"),
         "truncf64" => float_unop(args, destination, ctx, Float::F64, "Truncate"),
         // `roundf32` should be a differnt intrinsics, but it requires some .NET fuckery to implement(.NET enums are **wierd**)
-        "nearbyintf32" | "rintf32" | "roundevenf32" => {
+        "nearbyintf32" | "rintf32" | "round_ties_even_f32" => {
             let round = MethodRef::new(
                 ClassRef::mathf(ctx),
                 ctx.alloc_string("Round"),
@@ -705,7 +705,7 @@ pub fn handle_intrinsic<'tcx>(
         }
         "roundf32" => vec![roundf32(args, destination, ctx)],
         "roundf64" => vec![roundf64(args, destination, ctx)],
-        "nearbyintf64" | "rintf64" | "roundevenf64" => {
+        "nearbyintf64" | "rintf64" | "round_ties_even_f64" => {
             let round = MethodRef::new(
                 ClassRef::math(ctx),
                 ctx.alloc_string("Round"),

@@ -1,5 +1,5 @@
 use cilly::basic_block::Handler;
-use rustc_middle::mir::BasicBlockData;
+use rustc_middle::mir::{BasicBlockData,BasicBlock};
 use rustc_middle::mir::UnwindAction;
 use rustc_middle::{
     mir::{BasicBlocks, Body, TerminatorKind},
@@ -35,10 +35,10 @@ fn simplify_handler<'tcx>(
         return None;
     }
     let handler = handler?;
-    if !blocks[handler.into()].statements.is_empty() {
+    if !blocks[BasicBlock::from_u32(handler)].statements.is_empty() {
         return Some(handler);
     }
-    match blocks[handler.into()].terminator.as_ref()?.kind {
+    match blocks[BasicBlock::from_u32(handler)].terminator.as_ref()?.kind {
         TerminatorKind::TailCall { .. } => None,
         TerminatorKind::Goto { target } => {
             simplify_handler(Some(target.as_u32()), blocks, tcx, method_instance, method)
