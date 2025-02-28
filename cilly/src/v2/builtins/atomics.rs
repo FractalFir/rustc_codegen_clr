@@ -14,26 +14,26 @@ pub fn emulate_uint8_cmp_xchng(asm: &mut Assembly, patcher: &mut MissingMethodPa
         asm,
         patcher,
         "cmpxchng8",
-        |asm, prev, arg, _| {
+        Box::new(|asm, prev, arg, _| {
             // 1st, mask the previous value
             let prev_mask = asm.alloc_node(Const::I32(0xFFFF_FF00_u32 as i32));
             let prev = asm.alloc_node(CILNode::BinOp(prev, prev_mask, BinOp::And));
 
             asm.alloc_node(CILNode::BinOp(prev, arg, BinOp::Or))
-        },
+        }),
         Int::I32,
     );
     generate_atomic(
         asm,
         patcher,
         "cmpxchng16",
-        |asm, prev, arg, _| {
+        Box::new(|asm, prev, arg, _| {
             // 1st, mask the previous value
             let prev_mask = asm.alloc_node(Const::I32(0xFFFF_0000_u32 as i32));
             let prev = asm.alloc_node(CILNode::BinOp(prev, prev_mask, BinOp::And));
 
             asm.alloc_node(CILNode::BinOp(prev, arg, BinOp::Or))
-        },
+        }),
         Int::I32,
     );
     let name = asm.alloc_string("atomic_xchng_u8");
@@ -134,7 +134,7 @@ pub fn generate_atomic(
     asm: &mut Assembly,
     patcher: &mut MissingMethodPatcher,
     op_name: &str,
-    op: impl Fn(&mut Assembly, NodeIdx, NodeIdx, Int) -> NodeIdx + 'static,
+    op: Box<(dyn Fn(&mut Assembly, NodeIdx, NodeIdx, Int) -> NodeIdx)>,
     int: Int,
 ) {
     let name = asm.alloc_string(format!("atomic_{op_name}_{int}", int = int.name()));
@@ -197,7 +197,7 @@ pub fn generate_atomic_for_ints(
         Int::ISize,
     ];
     for int in ATOMIC_INTS {
-        generate_atomic(asm, patcher, op_name, op.clone(), int);
+        generate_atomic(asm, patcher, op_name, Box::new(op.clone()), int);
     }
 }
 /// Adds all the builitn atomic functions to the patcher, allowing for their use.
@@ -228,21 +228,21 @@ pub fn generate_all_atomics(asm: &mut Assembly, patcher: &mut MissingMethodPatch
             asm,
             patcher,
             "or",
-            |asm, lhs, rhs, _| asm.alloc_node(CILNode::BinOp(lhs, rhs, BinOp::Or)),
+            Box:: new(|asm, lhs, rhs, _| asm.alloc_node(CILNode::BinOp(lhs, rhs, BinOp::Or))),
             int,
         );
         generate_atomic(
             asm,
             patcher,
             "and",
-            |asm, lhs, rhs, _| asm.alloc_node(CILNode::BinOp(lhs, rhs, BinOp::And)),
+            Box:: new(|asm, lhs, rhs, _| asm.alloc_node(CILNode::BinOp(lhs, rhs, BinOp::And))),
             int,
         );
         generate_atomic(
             asm,
             patcher,
             "add",
-            |asm, lhs, rhs, _| asm.alloc_node(CILNode::BinOp(lhs, rhs, BinOp::Add)),
+            Box:: new(|asm, lhs, rhs, _| asm.alloc_node(CILNode::BinOp(lhs, rhs, BinOp::Add))),
             int,
         );
     }

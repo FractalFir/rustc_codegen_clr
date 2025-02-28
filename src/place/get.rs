@@ -156,19 +156,8 @@ fn place_elem_get<'a>(
                         + CILNode::V2(ctx.alloc_node(offset));
                     super::deref_op(super::PlaceTy::Ty(inner), ctx, addr)
                 }
-                TyKind::Array(element, _length) => {
-                    let element = ctx.monomorphize(*element);
-                    let element = ctx.type_from_cache(element);
-                    let array_type = ctx.type_from_cache(curr_ty);
-                    let array_dotnet = array_type.as_class_ref().expect("Non array type");
-                    let arr_ref = ctx.nref(array_type);
-                    let mref = MethodRef::new(
-                        array_dotnet,
-                        ctx.alloc_string("get_Item"),
-                        ctx.sig([arr_ref, Type::Int(Int::USize)], element),
-                        MethodKind::Instance,
-                        vec![].into(),
-                    );
+                TyKind::Array(element, _) => {
+                    let mref = array_get_item(ctx,*element,curr_ty);
                     call!(ctx.alloc_methodref(mref), [addr_calc, CILNode::V2(index)])
                 }
                 _ => {
@@ -220,24 +209,11 @@ fn place_elem_get<'a>(
                     super::deref_op(super::PlaceTy::Ty(inner), ctx, addr)
                 }
                 TyKind::Array(element, _length) => {
-                    let element = ctx.monomorphize(*element);
-                    let element = ctx.type_from_cache(element);
-                    let array_type = ctx.type_from_cache(curr_ty);
-                    let array_dotnet = array_type.as_class_ref().expect("Non array type");
-                    //eprintln!("WARNING: ConstantIndex has required min_length of {min_length}, but bounds checking on const access not supported yet!");
-                    let arr_ref = ctx.nref(array_type);
                     if *from_end {
                         todo!("Can't index array from end!");
                     } else {
-                        let index = CILNode::V2(ctx.alloc_node(cilly::Const::USize(*offset)));
-                        let mref = MethodRef::new(
-                            array_dotnet,
-                            ctx.alloc_string("get_Item"),
-                            ctx.sig([arr_ref, Type::Int(Int::USize)], element),
-                            MethodKind::Instance,
-                            vec![].into(),
-                        );
-                        call!(ctx.alloc_methodref(mref), [addr_calc, index])
+                        let mref = array_get_item(ctx,*element,curr_ty);
+                        call!(ctx.alloc_methodref(mref), [addr_calc, CILNode::V2(ctx.alloc_node(cilly::Const::USize(*offset)))])
                     }
                 }
                 _ => {
@@ -254,4 +230,22 @@ fn place_elem_get<'a>(
         }
         _ => todo!("Can't handle porojection {place_elem:?} in get"),
     }
+}
+pub fn array_get_item<'tcx>(
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
+    element: Ty<'tcx>,
+    curr_ty: Ty<'tcx>,
+) -> MethodRef {
+    let element = ctx.monomorphize(element);
+    let element = ctx.type_from_cache(element);
+    let array_type = ctx.type_from_cache(curr_ty);
+    let array_dotnet = array_type.as_class_ref().expect("Non array type");
+    let arr_ref = ctx.nref(array_type);
+    MethodRef::new(
+        array_dotnet,
+        ctx.alloc_string("get_Item"),
+        ctx.sig([arr_ref, Type::Int(Int::USize)], element),
+        MethodKind::Instance,
+        vec![].into(),
+    )
 }

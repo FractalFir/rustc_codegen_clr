@@ -866,7 +866,6 @@ pub fn add_const_value(asm: &mut cilly::v2::Assembly, bytes: u128) -> StaticFiel
     field_desc
 }
 
-
 pub(crate) fn span_source_info(tcx: TyCtxt, span: rustc_span::Span) -> CILRoot {
     let (file, lstart, cstart, lend, mut cend) = tcx.sess.source_map().span_to_location_info(span);
     let file = file.map_or(String::new(), |file| {

@@ -1,4 +1,4 @@
-use super::{pointed_type, PlaceTy};
+use super::{array_get_address, array_get_item, pointed_type, PlaceTy};
 
 use crate::{
     assembly::MethodCompileCtx,
@@ -164,39 +164,19 @@ pub fn place_elem_body_index<'tcx>(
                 )
             }
         }
-        TyKind::Array(element, _length) => {
-            let element = ctx.monomorphize(*element);
-            let element_type = ctx.type_from_cache(element);
-            let array_type = ctx.type_from_cache(curr_ty);
-            let array_dotnet = array_type.as_class_ref().expect("Non array type");
-            let arr_ref = ctx.nref(array_type);
+        TyKind::Array(element, _length) => {      
             let index = ctx.alloc_node(cilly::CILNode::IntCast {
                 input: index,
                 target: Int::USize,
                 extend: cilly::cilnode::ExtendKind::ZeroExtend,
             });
             let index = CILNode::V2(index);
-            if body_ty_is_by_adress(element, ctx) {
-                let elem_ptr = ctx.nptr(element_type);
-                let mref = MethodRef::new(
-                    array_dotnet,
-                    ctx.alloc_string("get_Address"),
-                    ctx.sig([arr_ref, Type::Int(Int::USize)], elem_ptr),
-                    MethodKind::Instance,
-                    vec![].into(),
-                );
-                let ops = call!(ctx.alloc_methodref(mref), [parrent_node, index]);
-                ((element).into(), ops)
+            if body_ty_is_by_adress(*element, ctx) {
+                let mref = array_get_address(ctx,*element,curr_ty);
+                ((*element).into(), call!(ctx.alloc_methodref(mref), [parrent_node, index]))
             } else {
-                let mref = MethodRef::new(
-                    array_dotnet,
-                    ctx.alloc_string("get_Item"),
-                    ctx.sig([arr_ref, Type::Int(Int::USize)], element_type),
-                    MethodKind::Instance,
-                    vec![].into(),
-                );
-                let ops = call!(ctx.alloc_methodref(mref), [parrent_node, index]);
-                ((element).into(), ops)
+                let mref = array_get_item(ctx,*element,curr_ty);
+                ((*element).into(), call!(ctx.alloc_methodref(mref), [parrent_node, index]))
             }
         }
         _ => {
@@ -287,32 +267,12 @@ pub fn place_elem_body<'tcx>(
                     }
                 }
                 TyKind::Array(element, _length) => {
-                    let element_ty = ctx.monomorphize(*element);
-                    let element = ctx.type_from_cache(element_ty);
-                    let array_type = ctx.type_from_cache(curr_ty);
-                    let array_dotnet = array_type.as_class_ref().expect("Non array type");
-                    let arr_ref = ctx.nref(array_type);
-                    if body_ty_is_by_adress(element_ty, ctx) {
-                        let elem_ptr = ctx.nptr(element);
-                        let mref = MethodRef::new(
-                            array_dotnet,
-                            ctx.alloc_string("get_Address"),
-                            ctx.sig([arr_ref, Type::Int(Int::USize)], elem_ptr),
-                            MethodKind::Instance,
-                            vec![].into(),
-                        );
-                        let ops = call!(ctx.alloc_methodref(mref), [parrent_node, index]);
-                        ((element_ty).into(), ops)
+                    if body_ty_is_by_adress(*element, ctx) {
+                        let mref = array_get_address(ctx,*element,curr_ty);
+                        ((*element).into(), call!(ctx.alloc_methodref(mref), [parrent_node, index]))
                     } else {
-                        let mref = MethodRef::new(
-                            array_dotnet,
-                            ctx.alloc_string("get_Item"),
-                            ctx.sig([arr_ref, Type::Int(Int::USize)], element),
-                            MethodKind::Instance,
-                            vec![].into(),
-                        );
-                        let ops = call!(ctx.alloc_methodref(mref), [parrent_node, index]);
-                        ((element_ty).into(), ops)
+                        let mref = array_get_item(ctx,*element,curr_ty);
+                        ((*element).into(), call!(ctx.alloc_methodref(mref), [parrent_node, index]))
                     }
                 }
                 _ => {

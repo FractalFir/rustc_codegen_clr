@@ -334,6 +334,8 @@ fn main() {
         //main2();
     }
     layout_round_up_to_align_edge_cases();
+    do_nothing(0);
+    vec3_add(Vec3::default(), Vec3::default());
 }
 struct UnsizedStruct<T: ?Sized> {
     unsized_field: T,
@@ -369,4 +371,22 @@ fn layout_round_up_to_align_edge_cases() {
             );
         }
     }
+   
 }
+#[no_mangle]
+fn do_nothing(a:u32)->u32{
+    a
+}
+#[derive(Default)]
+struct Vec3{
+    x:f32,
+    y:f32,
+    z:f32,
+    }
+#[inline(never)]
+#[no_mangle]
+fn vec3_add(a:Vec3,b:Vec3)->Vec3{
+    return Vec3{x: a.x + b.x, y: a.y + b.y, z: a.z + b.z};
+}
+    
+    

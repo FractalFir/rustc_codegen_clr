@@ -868,7 +868,7 @@ impl CILNode {
     pub fn map(
         self,
         asm: &mut Assembly,
-        map: &mut impl FnMut(Self, &mut Assembly) -> Self,
+        map: &mut dyn FnMut(Self, &mut Assembly) -> Self,
     ) -> Self {
         match self {
             CILNode::Const(_)

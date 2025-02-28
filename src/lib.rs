@@ -97,7 +97,6 @@ extern crate rustc_target;
 extern crate rustc_ty_utils;
 extern crate stable_mir;
 
-
 // Modules
 /// Code handling the creation of aggreate values (Arrays, enums,structs,tuples,etc.)
 mod aggregate;
@@ -114,7 +113,6 @@ mod casts;
 /// Method compilation context
 mod fn_ctx;
 pub mod native_pastrough;
-
 
 /// Runtime errors and utlity functions/macros related to them
 mod codegen_error;

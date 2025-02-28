@@ -45,7 +45,6 @@ pub fn address_last_dereference<'tcx>(
         // Enums don't require any special handling
         PlaceTy::EnumVariant(_, _) => return addr_calc,
     };
-    //eprintln!("target_type:{target_type:?} curr_type:{curr_type:?}");
     // Get the type curr_type points to!
     let curr_points_to = super::pointed_type(curr_type.into());
     let curr_type = ctx.type_from_cache(curr_type);
@@ -77,20 +76,6 @@ pub fn address_last_dereference<'tcx>(
             obj: Box::new(curr_type),
         },
     }
-    /*match (curr_points_to.kind(), target_type.kind()) {
-        (TyKind::Slice(_), TyKind::Slice(_)) => addr_calc,
-        (TyKind::Slice(_), _) => CILNode::LDField {
-            field: FieldDesc::new(
-                curr_type.as_class_ref().unwrap(),
-                ctx.nptr(Type::Void.into()),
-                ctx.alloc_string(crate::DATA_PTR),
-            )
-            .into(),
-            addr: addr_calc.into(),
-        },
-        _ => addr_calc,
-    }*/
-    //println!("casting {source:?} source_pointed_to:{source_pointed_to:?} to {target:?} target_pointed_to:{target_pointed_to:?}. ops:{ops:?}");
 }
 fn field_address<'a>(
     curr_type: super::PlaceTy<'a>,
@@ -220,24 +205,12 @@ pub fn place_elem_adress<'tcx>(
                     (ld_field!(addr_calc.clone(), desc)).cast_ptr(ctx.nptr(inner_type))
                         + CILNode::V2(ctx.alloc_node(offset))
                 }
-                TyKind::Array(element, _length) => {
-                    let element = ctx.monomorphize(*element);
-                    let element_type = ctx.type_from_cache(element);
-                    let array_type = ctx.type_from_cache(curr_ty);
-                    let array_dotnet = array_type.as_class_ref().expect("Non array type");
-                    let arr_ref = ctx.nref(array_type);
-                    let element_ptr = ctx.nptr(element_type);
-                    let mref = MethodRef::new(
-                        array_dotnet,
-                        ctx.alloc_string("get_Address"),
-                        ctx.sig([arr_ref, Type::Int(Int::USize)], element_ptr),
-                        MethodKind::Instance,
-                        vec![].into(),
-                    );
+                TyKind::Array(element, _) => {
+                    let mref = array_get_address(ctx, *element, curr_ty);
                     call!(ctx.alloc_methodref(mref), [addr_calc, CILNode::V2(index)])
                 }
                 _ => {
-                    rustc_middle::ty::print::with_no_trimmed_paths! {todo!("Can't index into {curr_ty}!")}
+                   todo!("Can't index into {curr_ty}!")
                 }
             }
         }
@@ -311,20 +284,7 @@ pub fn place_elem_adress<'tcx>(
                         + (index * conv_usize!(CILNode::V2(ctx.size_of(inner_type).into_idx(ctx))))
                 }
                 TyKind::Array(element, _) => {
-                    let element_ty = ctx.monomorphize(*element);
-
-                    let element = ctx.type_from_cache(element_ty);
-                    let array_type = ctx.type_from_cache(curr_ty);
-                    let array_dotnet = array_type.as_class_ref().expect("Non array type");
-                    let arr_ref = ctx.nref(array_type);
-                    let element_ptr = ctx.nptr(element);
-                    let mref = MethodRef::new(
-                        array_dotnet,
-                        ctx.alloc_string("get_Address"),
-                        ctx.sig([arr_ref, Type::Int(Int::USize)], element_ptr),
-                        MethodKind::Instance,
-                        vec![].into(),
-                    );
+                    let mref = array_get_address(ctx, *element, curr_ty);
                     if *from_end {
                         todo!("Can't index array from end!");
                     } else {
@@ -346,4 +306,23 @@ pub fn place_elem_adress<'tcx>(
             rustc_middle::ty::print::with_no_trimmed_paths! {todo!("Can't handle porojection {place_elem:?} in adress")}
         }
     }
+}
+pub fn array_get_address<'tcx>(
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
+    element: Ty<'tcx>,
+    curr_ty: Ty<'tcx>,
+) -> MethodRef {
+    let element = ctx.monomorphize(element);
+    let element = ctx.type_from_cache(element);
+    let array_type = ctx.type_from_cache(curr_ty);
+    let array_dotnet = array_type.as_class_ref().expect("Non array type");
+    let arr_ref = ctx.nref(array_type);
+    let element_ptr = ctx.nptr(element);
+    MethodRef::new(
+        array_dotnet,
+        ctx.alloc_string("get_Address"),
+        ctx.sig([arr_ref, Type::Int(Int::USize)], element_ptr),
+        MethodKind::Instance,
+        vec![].into(),
+    )
 }
