@@ -1,6 +1,6 @@
 #![allow(dead_code)]
-use rustc_codegen_clr_ctx::MethodCompileCtx;
 use cilly::v2::ClassDef;
+use rustc_codegen_clr_ctx::MethodCompileCtx;
 #[derive(Clone)]
 enum ComptimeLocalVar {
     NotSet,
@@ -90,20 +90,20 @@ pub fn interpret<'tcx>(
                         todo!("Trying to call a type which is not a function definition!");
                     };
                     let function_name =
-                        crate::utilis::function_name(ctx.tcx().symbol_name(call_instance));
+                        function_name(ctx.tcx().symbol_name(call_instance));
                     let local = destination
                         .as_local()
                         .expect("ERROR: unuported operation in interop type definiton.");
                     locals[usize::from(local)] = if function_name
                         .contains("rustc_codegen_clr_new_typedef")
                     {
-                        let name = crate::utilis::garg_to_string(subst_ref[0], ctx.tcx())
+                        let name = garg_to_string(subst_ref[0], ctx.tcx())
                             .replace("::", ".");
-                        let is_value_type = crate::utilis::garag_to_bool(subst_ref[1], ctx.tcx());
-                        let superclass_asm = crate::utilis::garg_to_string(subst_ref[2], ctx.tcx())
+                        let is_value_type = garag_to_bool(subst_ref[1], ctx.tcx());
+                        let superclass_asm = garg_to_string(subst_ref[2], ctx.tcx())
                             .replace("::", ".");
                         let superclass_name =
-                            crate::utilis::garg_to_string(subst_ref[3], ctx.tcx())
+                            garg_to_string(subst_ref[3], ctx.tcx())
                                 .replace("::", ".");
                         let inherits = if superclass_name.is_empty() {
                             None
@@ -154,13 +154,13 @@ pub fn interpret<'tcx>(
                             .as_local()
                             .expect("ERROR: unuported operation in interop type definiton.");
                         let mut type_def = locals[usize::from(src)].as_type_def().unwrap().clone();
-                        let tpe = crate::utilis::monomorphize(
+                        let tpe = monomorphize(
                             &instance,
                             subst_ref[0].as_type().unwrap(),
                             tcx,
                         );
                         let tpe = get_type(tpe, ctx);
-                        let name = crate::utilis::garg_to_string(subst_ref[1], ctx.tcx());
+                        let name = garg_to_string(subst_ref[1], ctx.tcx());
                         type_def.add_field(name.into(), tpe);
                         ComptimeLocalVar::ClassDef(type_def)
                     } else if function_name.contains("rustc_codegen_clr_add_method_def") {
@@ -172,17 +172,17 @@ pub fn interpret<'tcx>(
                             .expect("ERROR: unuported operation in interop type definiton.");
 
                         let mut type_def = locals[usize::from(src)].as_type_def().unwrap().clone();
-                        let fn_type = crate::utilis::monomorphize(
+                        let fn_type = monomorphize(
                             &instance,
                             subst_ref[3].as_type().unwrap(),
                             ctx.tcx(),
                         );
-                        let this_fname = crate::utilis::garg_to_string(subst_ref[2], ctx.tcx())
+                        let this_fname = garg_to_string(subst_ref[2], ctx.tcx())
                             .replace("::", ".");
                         let def_instance = if let TyKind::FnDef(def_id, subst_ref) = fn_type.kind()
                         {
                             let subst_ref =
-                                crate::utilis::monomorphize(&instance, *subst_ref, ctx.tcx());
+                                monomorphize(&instance, *subst_ref, ctx.tcx());
                             let env = rustc_middle::ty::TypingEnv::fully_monomorphized();
                             let Some(instance) =
                                 Instance::try_resolve(ctx.tcx(), env, *def_id, subst_ref)
@@ -199,7 +199,7 @@ pub fn interpret<'tcx>(
                         };
                         let call_info = CallInfo::sig_from_instance_(def_instance, ctx);
                         let target_function_name =
-                            crate::utilis::function_name(ctx.tcx().symbol_name(def_instance));
+                            function_name(ctx.tcx().symbol_name(def_instance));
                         let call_site = MethodRefIdx::new(
                             None,
                             target_function_name,

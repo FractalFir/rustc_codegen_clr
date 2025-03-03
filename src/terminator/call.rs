@@ -1,15 +1,12 @@
 use crate::{
     assembly::MethodCompileCtx,
-    call_info::CallInfo,
     interop::AssemblyRef,
-    operand::operand_address,
     utilis::{
-        garg_to_string, CTOR_FN_NAME, MANAGED_CALL_FN_NAME, MANAGED_CALL_VIRT_FN_NAME,
-        MANAGED_CHECKED_CAST, MANAGED_IS_INST, MANAGED_LD_ELEM_REF, MANAGED_LD_LEN,
-        MANAGED_LD_NULL,
+        garag_to_bool, is_fn_intrinsic, CTOR_FN_NAME, MANAGED_CALL_FN_NAME,
+        MANAGED_CALL_VIRT_FN_NAME, MANAGED_CHECKED_CAST, MANAGED_IS_INST, MANAGED_LD_ELEM_REF,
+        MANAGED_LD_LEN, MANAGED_LD_NULL,
     },
 };
-use rustc_codegen_clr_type::GetTypeExt;
 use cilly::{
     call, call_virt,
     cil_node::{CILNode, CallOpArgs},
@@ -20,7 +17,11 @@ use cilly::{
     IntoAsmIndex,
 };
 use cilly::{v2::MethodRef, Type};
+use rustc_codegen_clr_call::CallInfo;
+use rustc_codegen_clr_ctx::function_name;
 use rustc_codegen_clr_place::place_set;
+use rustc_codegen_clr_type::{utilis::garg_to_string, GetTypeExt};
+use rustc_codgen_clr_operand::{handle_operand, operand_address};
 use rustc_middle::ty::InstanceKind;
 use rustc_middle::{
     mir::{Operand, Place},
@@ -50,7 +51,7 @@ fn call_managed<'tcx>(
     let asm = asm.name().map(|name| ctx.alloc_string(name));
     let class_name = garg_to_string(subst_ref[1], ctx.tcx());
     let class_name = ctx.alloc_string(class_name);
-    let is_valuetype = crate::utilis::garag_to_bool(subst_ref[2], ctx.tcx());
+    let is_valuetype = garag_to_bool(subst_ref[2], ctx.tcx());
     let managed_fn_name = garg_to_string(subst_ref[3], ctx.tcx());
     let tpe = ClassRef::new(class_name, asm, is_valuetype, [].into());
 
@@ -77,11 +78,11 @@ fn call_managed<'tcx>(
             place_set(destination, call!(call_site, []), ctx)
         }
     } else {
-        let is_static = crate::utilis::garag_to_bool(subst_ref[4], ctx.tcx());
+        let is_static = garag_to_bool(subst_ref[4], ctx.tcx());
 
         let mut call_args = Vec::new();
         for arg in args {
-            call_args.push(crate::operand::handle_operand(&arg.node, ctx));
+            call_args.push(handle_operand(&arg.node, ctx));
         }
         let call = MethodRef::new(
             ctx.alloc_class_ref(tpe),
@@ -123,7 +124,7 @@ fn callvirt_managed<'tcx>(
     let asm = asm.name().map(|name| ctx.alloc_string(name));
     let class_name = garg_to_string(subst_ref[1], ctx.tcx());
     let class_name = ctx.alloc_string(class_name);
-    let is_valuetype = crate::utilis::garag_to_bool(subst_ref[2], ctx.tcx());
+    let is_valuetype = garag_to_bool(subst_ref[2], ctx.tcx());
 
     let managed_fn_garg = &subst_ref[3];
     let managed_fn_garg = ctx.monomorphize(*managed_fn_garg);
@@ -151,11 +152,11 @@ fn callvirt_managed<'tcx>(
             place_set(destination, call_virt!(call, []), ctx)
         }
     } else {
-        let is_static = crate::utilis::garag_to_bool(subst_ref[4], ctx.tcx());
+        let is_static = garag_to_bool(subst_ref[4], ctx.tcx());
 
         let mut call_args = Vec::new();
         for arg in args {
-            call_args.push(crate::operand::handle_operand(&arg.node, ctx));
+            call_args.push(handle_operand(&arg.node, ctx));
         }
         let call = MethodRef::new(
             ctx.alloc_class_ref(tpe),
@@ -202,7 +203,7 @@ fn call_ctor<'tcx>(
     let class_name = garg_to_string(subst_ref[1], ctx.tcx());
     let class_name = ctx.alloc_string(class_name);
     // Check if the costructed object is valuetype. TODO: this may be unnecesary. Are valuetpes constructed using newobj?
-    let is_valuetype = crate::utilis::garag_to_bool(subst_ref[2], ctx.tcx());
+    let is_valuetype = garag_to_bool(subst_ref[2], ctx.tcx());
     let tpe = ClassRef::new(class_name, asm, is_valuetype, [].into());
     let tpe = ctx.alloc_class_ref(tpe);
     // If no arguments, inputs don't have to be handled, so a simpler call handling is used.
@@ -238,7 +239,7 @@ fn call_ctor<'tcx>(
         let sig = ctx.sig(inputs, cilly::Type::Void);
         let mut call = Vec::new();
         for arg in args {
-            call.push(crate::operand::handle_operand(&arg.node, ctx));
+            call.push(handle_operand(&arg.node, ctx));
         }
         let ctor = MethodRef::new(
             tpe,
@@ -272,7 +273,7 @@ pub fn call_closure<'tcx>(
     let other_args = &args[..args.len() - 1];
     let mut call_args = Vec::new();
     for arg in other_args {
-        call_args.push(crate::operand::handle_operand(&arg.node, ctx));
+        call_args.push(handle_operand(&arg.node, ctx));
     }
     // "Rust call" is wierd, and not at all optimized for .NET. Passing all the arguments in a tuple is bad for performance and simplicty. Thus, unpacking this tuple and forcing "Rust call" to be
     // "normal" is far easier and better for performance.
@@ -297,7 +298,7 @@ pub fn call_closure<'tcx>(
                     );
 
                     call_args.push(ld_field!(
-                        crate::operand::handle_operand(&last_arg.node, ctx),
+                        handle_operand(&last_arg.node, ctx),
                         ctx.alloc_field(field_descriptor)
                     ));
                 }
@@ -392,7 +393,7 @@ pub fn call<'tcx>(
 
             let other_args = &args[..args.len() - 1];
             for arg in other_args.iter().skip(1) {
-                call_args.push(crate::operand::handle_operand(&arg.node, ctx));
+                call_args.push(handle_operand(&arg.node, ctx));
             }
             // "Rust call" is wierd, and not at all optimized for .NET. Passing all the arguments in a tuple is bad for performance and simplicty. Thus, unpacking this tuple and forcing "Rust call" to be
             // "normal" is far easier and better for performance.
@@ -416,7 +417,7 @@ pub fn call<'tcx>(
                                 element_type,
                             );
                             call_args.push(ld_field!(
-                                crate::operand::handle_operand(&last_arg.node, ctx),
+                                handle_operand(&last_arg.node, ctx),
                                 ctx.alloc_field(field_descriptor)
                             ));
                         }
@@ -426,7 +427,7 @@ pub fn call<'tcx>(
             }
         } else {
             for arg in args.iter().skip(1) {
-                call_args.push(crate::operand::handle_operand(&arg.node, ctx));
+                call_args.push(handle_operand(&arg.node, ctx));
             }
         }
         let sig = ctx.alloc_sig(signature.clone());
@@ -456,8 +457,8 @@ pub fn call<'tcx>(
     }
     let call_info = CallInfo::sig_from_instance_(instance, ctx);
 
-    let function_name = crate::utilis::function_name(ctx.tcx().symbol_name(instance));
-    if crate::utilis::is_fn_intrinsic(fn_type, ctx.tcx()) {
+    let function_name = function_name(ctx.tcx().symbol_name(instance));
+    if is_fn_intrinsic(fn_type, ctx.tcx()) {
         return super::intrinsics::handle_intrinsic(
             &function_name,
             args,
@@ -513,7 +514,7 @@ pub fn call<'tcx>(
         return vec![place_set(
             destination,
             CILNode::LDLen {
-                arr: Box::new(crate::operand::handle_operand(&args[0].node, ctx)),
+                arr: Box::new(handle_operand(&args[0].node, ctx)),
             },
             ctx,
         )];
@@ -535,7 +536,7 @@ pub fn call<'tcx>(
             .type_from_cache(subst_ref[0].as_type().unwrap())
             .as_class_ref()
             .unwrap();
-        let input = crate::operand::handle_operand(&args[0].node, ctx);
+        let input = handle_operand(&args[0].node, ctx);
         // Not-Virtual (for interop)
         return vec![place_set(
             destination,
@@ -547,7 +548,7 @@ pub fn call<'tcx>(
             .type_from_cache(subst_ref[0].as_type().unwrap())
             .as_class_ref()
             .unwrap();
-        let input = crate::operand::handle_operand(&args[0].node, ctx);
+        let input = handle_operand(&args[0].node, ctx);
         // Not-Virtual (for interop)
         return vec![place_set(
             destination,
@@ -563,8 +564,8 @@ pub fn call<'tcx>(
         return vec![place_set(
             destination,
             CILNode::LDElelemRef {
-                arr: Box::new(crate::operand::handle_operand(&args[0].node, ctx)),
-                idx: Box::new(crate::operand::handle_operand(&args[1].node, ctx)),
+                arr: Box::new(handle_operand(&args[0].node, ctx)),
+                idx: Box::new(handle_operand(&args[1].node, ctx)),
             },
             ctx,
         )];
@@ -581,7 +582,7 @@ pub fn call<'tcx>(
 
     let mut call_args = Vec::new();
     for arg in args {
-        let res_calc = crate::operand::handle_operand(&arg.node, ctx);
+        let res_calc = handle_operand(&arg.node, ctx);
         call_args.push(res_calc);
     }
     if crate::function_sig::is_fn_variadic(fn_type, ctx.tcx()) {

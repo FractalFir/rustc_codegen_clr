@@ -865,11 +865,7 @@ impl CILNode {
     // The complexity of this function is unavoidable.
     #[allow(clippy::too_many_lines)]
     #[must_use]
-    pub fn map(
-        self,
-        asm: &mut Assembly,
-        map: &mut dyn FnMut(Self, &mut Assembly) -> Self,
-    ) -> Self {
+    pub fn map(self, asm: &mut Assembly, map: &mut dyn FnMut(Self, &mut Assembly) -> Self) -> Self {
         match self {
             CILNode::Const(_)
             | CILNode::LdLoc(_)

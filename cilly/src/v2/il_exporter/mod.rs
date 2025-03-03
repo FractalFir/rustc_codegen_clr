@@ -1,4 +1,4 @@
-use crate::v2::MethodImpl;
+use crate::{utilis::assert_unique, v2::MethodImpl};
 
 use std::{io::Write, path::Path};
 
@@ -71,7 +71,7 @@ impl ILExporter {
                     writeln!(out, ".field {tpe} '{name}'")
                 }?;
             }
-            crate::utilis::assert_unique(
+            assert_unique(
                 class_def.static_fields(),
                 format!(
                     "The class {} contains a duplicate static field",

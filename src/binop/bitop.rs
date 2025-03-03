@@ -1,5 +1,4 @@
 use crate::assembly::MethodCompileCtx;
-use rustc_codegen_clr_type::GetTypeExt;
 use cilly::{
     and, call,
     cil_node::CILNode,
@@ -7,6 +6,7 @@ use cilly::{
     v2::{cilnode::MethodKind, ClassRef, Int, MethodRef},
     xor, Type,
 };
+use rustc_codegen_clr_type::GetTypeExt;
 use rustc_middle::ty::{IntTy, Ty, TyKind, UintTy};
 
 pub fn bit_and_unchecked<'tcx>(

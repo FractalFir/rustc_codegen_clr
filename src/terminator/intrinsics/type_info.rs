@@ -1,6 +1,4 @@
 use crate::assembly::MethodCompileCtx;
-use rustc_codegen_clr_place::place_set;
-use rustc_codegen_clr_type::{utilis::pointer_to_is_fat, GetTypeExt};
 use cilly::{
     cil_node::CILNode,
     cil_root::CILRoot,
@@ -8,6 +6,12 @@ use cilly::{
     v2::{FieldDesc, Int},
     Const, IntoAsmIndex, Type,
 };
+use rustc_codegen_clr_place::place_set;
+use rustc_codegen_clr_type::{
+    utilis::{is_zst, pointer_to_is_fat},
+    GetTypeExt,
+};
+use rustc_codgen_clr_operand::operand_address;
 use rustc_middle::{
     mir::{Operand, Place},
     ty::{Instance, TyKind},
@@ -43,7 +47,7 @@ pub fn size_of_val<'tcx>(
             .as_type()
             .expect("needs_drop works only on types!"),
     );
-    if crate::utilis::is_zst(pointed_ty, ctx.tcx()) {
+    if is_zst(pointed_ty, ctx.tcx()) {
         return place_set(
             destination,
             CILNode::V2(ctx.alloc_node(Const::USize(0))),
@@ -60,7 +64,7 @@ pub fn size_of_val<'tcx>(
                     ctx.alloc_string(crate::METADATA),
                     Type::Int(Int::USize),
                 );
-                let addr = crate::operand::operand_address(&args[0].node, ctx);
+                let addr = operand_address(&args[0].node, ctx);
                 return place_set(
                     destination,
                     ld_field!(addr, ctx.alloc_field(descriptor)),
@@ -76,7 +80,7 @@ pub fn size_of_val<'tcx>(
                     ctx.alloc_string(crate::METADATA),
                     Type::Int(Int::USize),
                 );
-                let addr = crate::operand::operand_address(&args[0].node, ctx);
+                let addr = operand_address(&args[0].node, ctx);
                 return place_set(
                     destination,
                     ld_field!(addr, ctx.alloc_field(descriptor))
@@ -93,7 +97,7 @@ pub fn size_of_val<'tcx>(
                     ctx.alloc_string(crate::METADATA),
                     Type::Int(Int::USize),
                 );
-                let addr = crate::operand::operand_address(&args[0].node, ctx);
+                let addr = operand_address(&args[0].node, ctx);
                 return place_set(
                     destination,
                     CILNode::LDIndUSize {

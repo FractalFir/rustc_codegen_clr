@@ -1,10 +1,4 @@
-use crate::{
-    assembly::MethodCompileCtx,
-    casts,
-    operand::handle_operand,
-};
-use rustc_codegen_clr_place::{deref_op, place_adress, place_set, ptr_set_op};
-use rustc_codegen_clr_type::GetTypeExt;
+use crate::{assembly::MethodCompileCtx, casts};
 use cilly::{
     call,
     cil_node::CILNode,
@@ -16,6 +10,9 @@ use cilly::{
     Const, FieldDesc, IntoAsmIndex, MethodRef, Type,
 };
 use ints::{ctlz, rotate_left, rotate_right};
+use rustc_codegen_clr_place::{deref_op, place_adress, place_set, ptr_set_op};
+use rustc_codegen_clr_type::GetTypeExt;
+use rustc_codgen_clr_operand::{constant::load_const_value, handle_operand};
 use rustc_middle::{
     mir::{Operand, Place},
     ty::{Instance, Ty, UintTy},
@@ -636,7 +633,7 @@ pub fn handle_intrinsic<'tcx>(
                 .unwrap();
             vec![place_set(
                 destination,
-                crate::constant::load_const_value(const_val, Ty::new_static_str(ctx.tcx()), ctx),
+                load_const_value(const_val, Ty::new_static_str(ctx.tcx()), ctx),
                 ctx,
             )]
         }
@@ -739,11 +736,7 @@ pub fn handle_intrinsic<'tcx>(
                 .unwrap();
             vec![place_set(
                 destination,
-                crate::constant::load_const_value(
-                    const_val,
-                    Ty::new_uint(ctx.tcx(), UintTy::Usize),
-                    ctx,
-                ),
+                load_const_value(const_val, Ty::new_uint(ctx.tcx(), UintTy::Usize), ctx),
                 ctx,
             )]
         }
@@ -1090,7 +1083,7 @@ fn caller_location<'tcx>(
     let caller_loc_ty = ctx.tcx().caller_location_ty();
     place_set(
         destination,
-        crate::constant::load_const_value(caller_loc, caller_loc_ty, ctx),
+        load_const_value(caller_loc, caller_loc_ty, ctx),
         ctx,
     )
 }

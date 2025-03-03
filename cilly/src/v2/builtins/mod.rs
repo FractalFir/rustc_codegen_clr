@@ -1,6 +1,6 @@
 use std::num::{NonZeroU32, NonZeroU8};
 
-use crate::{IntoAsmIndex, StaticFieldDesc};
+use crate::{utilis::mstring_to_utf8ptr, IntoAsmIndex, StaticFieldDesc};
 
 use super::{
     asm::MissingMethodPatcher,
@@ -737,7 +737,7 @@ pub fn argc_argv_init(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
             idx: CILNode::LDLoc(arg_idx).into(),
         };
         // Convert the nth managed argument to UTF16
-        let uarg = crate::utilis::mstring_to_utf8ptr(arg_nth, asm);
+        let uarg = mstring_to_utf8ptr(arg_nth, asm);
         // Store the converted arg at idx+1
         loop_block.trees_mut().push(
             CILRoot::STIndPtr(

@@ -16,7 +16,8 @@ postcard = { version = "1.0.8", features = ["use-std"] }
 rustc_codegen_clr_place = {path = "./rustc_codegen_clr_place"}
 rustc_codegen_clr_ctx = {path = "./rustc_codegen_clr_ctx"}
 rustc_codegen_clr_type = {path = "./rustc_codegen_clr_type"}
-
+rustc_codegen_clr_call = {path = "./rustc_codegen_clr_call"}
+rustc_codgen_clr_operand = {path = "./rustc_codgen_clr_operand"}
 rustc-demangle = "0.1.23"
 cilly = {path = "./cilly"}
 serde = { version = "1.0.183", features = ["derive"] }
@@ -28,7 +29,7 @@ crate-type = ["dylib"]
 
 [workspace]
 members = [ "cilly", "dotnet_aot",
-    "mycorrhiza", "rustc_codegen_clr_ctx", "rustc_codegen_clr_place", "rustc_codegen_clr_type", 
+    "mycorrhiza", "rustc_codegen_clr_call", "rustc_codegen_clr_ctx", "rustc_codegen_clr_place", "rustc_codegen_clr_type", "rustc_codgen_clr_operand", 
 ]
 exclude = ["rust/src/bootstrap","backup_rust/src/bootstrap"]
 [profile.release]

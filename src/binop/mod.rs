@@ -1,5 +1,4 @@
 use self::checked::{add_signed, add_unsigned, sub_signed, sub_unsigned};
-use rustc_codegen_clr_type::GetTypeExt;
 use crate::assembly::MethodCompileCtx;
 use bitop::{bit_and_unchecked, bit_or_unchecked, bit_xor_unchecked};
 use cilly::{
@@ -10,6 +9,9 @@ use cilly::{
     IntoAsmIndex, Type,
 };
 use cmp::{eq_unchecked, gt_unchecked, lt_unchecked, ne_unchecked};
+use rustc_codegen_clr_type::{utilis::instance_try_resolve, GetTypeExt};
+
+use rustc_codgen_clr_operand::handle_operand;
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::{
     mir::{BinOp, Operand},
@@ -29,8 +31,8 @@ pub(crate) fn binop<'tcx>(
     operand_b: &Operand<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> CILNode {
-    let ops_a = crate::operand::handle_operand(operand_a, ctx);
-    let ops_b = crate::operand::handle_operand(operand_b, ctx);
+    let ops_a = handle_operand(operand_a, ctx);
+    let ops_b = handle_operand(operand_b, ctx);
     let ty_a = operand_a.ty(&ctx.body().local_decls, ctx.tcx());
     let ty_b = operand_b.ty(&ctx.body().local_decls, ctx.tcx());
     match binop {
@@ -142,7 +144,7 @@ pub(crate) fn binop<'tcx>(
                 .get_lang_items(())
                 .get(LangItem::OrderingEnum)
                 .unwrap();
-            let ordering = crate::utilis::instance_try_resolve(ordering, ctx.tcx(), List::empty());
+            let ordering = instance_try_resolve(ordering, ctx.tcx(), List::empty());
             let ordering_ty = ordering.ty(
                 ctx.tcx(),
                 rustc_middle::ty::TypingEnv::fully_monomorphized(),

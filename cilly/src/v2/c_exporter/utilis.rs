@@ -1,3 +1,5 @@
+use crate::utilis::encode;
+
 use super::super::{
     asm::MAIN_MODULE,
     basic_block::BlockId,
@@ -10,7 +12,7 @@ use super::super::{
     Assembly, BinOp, CILIter, CILIterElem, CILNode, CILRoot, ClassDefIdx, ClassRef, ClassRefIdx,
     Const, Exporter, Float, Int, MethodDef, MethodRef, NodeIdx, RootIdx, SigIdx, Type,
 };
-use crate::utilis::encode;
+
 use fxhash::{hash64, FxHashSet, FxHasher};
 /// Finds the name of this local
 pub(super) fn local_name(locals: &[LocalDef], asm: &Assembly, loc: u32) -> String {

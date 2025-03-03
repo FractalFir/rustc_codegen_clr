@@ -1,6 +1,10 @@
-use crate::GetTypeExt;
 use crate::adt::FieldOffsetIterator;
+use crate::utilis::{
+    INTEROP_ARR_TPE_NAME, INTEROP_CHR_TPE_NAME, INTEROP_CLASS_TPE_NAME, INTEROP_STRUCT_TPE_NAME,
+    is_zst, try_resolve_const_size,
+};
 use crate::utilis::{garag_to_usize, garg_to_string, is_name_magic, pointer_to_is_fat, tuple_name};
+use crate::{GetTypeExt, utilis::adt_name};
 use cilly::{
     Assembly, IntoAsmIndex, add, ld_arg, ptr_cast,
     tpe::simd::SIMDVector,
@@ -81,7 +85,7 @@ fn get_adt<'tcx>(
 pub fn get_type<'tcx>(ty: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_>) -> Type {
     let ty = ctx.monomorphize(ty);
     // If this is a ZST, return a void type.
-    if crate::utilis::is_zst(ty, ctx.tcx()) {
+    if is_zst(ty, ctx.tcx()) {
         return Type::Void;
     }
 
@@ -199,7 +203,7 @@ pub fn get_type<'tcx>(ty: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_>) -> Typ
             }
         }
         TyKind::Adt(def, subst) => {
-            let name = crate::utilis::adt_name(*def, ctx.tcx(), subst);
+            let name = adt_name(*def, ctx.tcx(), subst);
             if def.repr().simd() {
                 let (count, elem) = ty.simd_size_and_type(ctx.tcx());
                 let elem = ctx.type_from_cache(elem);
@@ -213,7 +217,7 @@ pub fn get_type<'tcx>(ty: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_>) -> Typ
                 ));
             }
             if is_name_magic(name.as_ref()) {
-                if name.contains(crate::utilis::INTEROP_CLASS_TPE_NAME) {
+                if name.contains(INTEROP_CLASS_TPE_NAME) {
                     assert!(
                         subst.len() == 2,
                         "Managed object reference must have exactly 2 generic arguments!"
@@ -230,7 +234,7 @@ pub fn get_type<'tcx>(ty: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_>) -> Typ
                         false,
                         [].into(),
                     )))
-                } else if name.contains(crate::utilis::INTEROP_STRUCT_TPE_NAME) {
+                } else if name.contains(INTEROP_STRUCT_TPE_NAME) {
                     assert!(
                         subst.len() == 2,
                         "Managed struct reference must have exactly 2 generic arguments!"
@@ -247,7 +251,7 @@ pub fn get_type<'tcx>(ty: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_>) -> Typ
                         true,
                         [].into(),
                     )))
-                } else if name.contains(crate::utilis::INTEROP_ARR_TPE_NAME) {
+                } else if name.contains(INTEROP_ARR_TPE_NAME) {
                     assert!(
                         subst.len() == 2,
                         "Managed array reference must have exactly 2 generic arguments: type and dimension count!"
@@ -259,7 +263,7 @@ pub fn get_type<'tcx>(ty: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_>) -> Typ
                         elem: ctx.alloc_type(element),
                         dims: std::num::NonZeroU8::new(dimensions.try_into().unwrap()).unwrap(),
                     }
-                } else if name.contains(crate::utilis::INTEROP_CHR_TPE_NAME) {
+                } else if name.contains(INTEROP_CHR_TPE_NAME) {
                     Type::PlatformChar
                 } else {
                     todo!("Interop type {name:?} is not yet supported!")
@@ -272,7 +276,7 @@ pub fn get_type<'tcx>(ty: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_>) -> Typ
         TyKind::Array(element, length) => {
             // Get the lenght of thid array
             let length = ctx.monomorphize(*length);
-            let length: usize = crate::utilis::try_resolve_const_size(length).unwrap();
+            let length: usize = try_resolve_const_size(length).unwrap();
             // Get the element of the array
             let element = ctx.monomorphize(*element);
             let element = get_type(element, ctx);
@@ -568,8 +572,7 @@ fn struct_<'tcx>(
 
     // Go trough fields, collectiing them and their offsets
     let mut fields = Vec::new();
-    let explicit_offset_iter =
-       FieldOffsetIterator::fields((*layout.layout.0).clone());
+    let explicit_offset_iter = FieldOffsetIterator::fields((*layout.layout.0).clone());
     let mut unique_checks = HashSet::new();
     for (field, offset) in adt
         .variant(rustc_abi::VariantIdx::from_u32(0))

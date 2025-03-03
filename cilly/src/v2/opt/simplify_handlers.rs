@@ -6,7 +6,7 @@ use crate::v2::{Assembly, BasicBlock, CILRoot};
 use super::{block_with_id, blockid_from_jump, OptFuel, SideEffectInfoCache};
 
 fn block_gc(blocks: &mut Vec<BasicBlock>, asm: &Assembly) {
-    //debug_assert!(crate::utilis::is_sorted(bbs.iter(),|a,b|a.id + 1 == b.id));
+    //debug_assert!(is_sorted(bbs.iter(),|a,b|a.id + 1 == b.id));
     let mut alive: FxHashSet<u32> = FxHashSet::default();
     let mut resurecting = FxHashSet::default();
     let mut to_resurect = FxHashSet::default();

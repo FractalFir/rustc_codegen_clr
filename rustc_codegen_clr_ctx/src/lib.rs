@@ -1,8 +1,9 @@
 #![feature(rustc_private)]
 extern crate rustc_abi;
-extern crate rustc_middle;
 extern crate rustc_driver;
+extern crate rustc_middle;
 use cilly::v2::Assembly;
+use rustc_middle::ty::SymbolName;
 use rustc_middle::ty::layout::HasTypingEnv;
 use rustc_middle::ty::{Instance, PseudoCanonicalInput, TyCtxt};
 pub struct MethodCompileCtx<'tcx, 'asm> {
@@ -84,7 +85,7 @@ impl<'tcx, 'asm> MethodCompileCtx<'tcx, 'asm> {
                 rustc_middle::ty::EarlyBinder::bind(ty),
             )
     }
-    
+
     #[must_use]
     pub fn layout_of(
         &self,
@@ -120,5 +121,26 @@ impl rustc_abi::HasDataLayout for MethodCompileCtx<'_, '_> {
 impl<'tcx> HasTypingEnv<'tcx> for MethodCompileCtx<'tcx, '_> {
     fn typing_env(&self) -> rustc_middle::ty::TypingEnv<'tcx> {
         rustc_middle::ty::TypingEnv::fully_monomorphized()
+    }
+}
+/// Escapes the name of a function
+pub fn function_name(name: SymbolName) -> String {
+    let name: String = name.to_string();
+    /*// Name TOO long
+    if *crate::config::ESCAPE_NAMES {
+        name = name.replace('.', "_dot_").replace('$', "_ds_");
+    }*/
+    if name.len() > 1000 {
+        use std::collections::hash_map::DefaultHasher;
+        use std::hash::{Hash, Hasher};
+        //TODO: make hashes consitant!
+        fn calculate_hash<T: Hash>(t: &T) -> u64 {
+            let mut s = DefaultHasher::new();
+            t.hash(&mut s);
+            s.finish()
+        }
+        format!("{}_{}", &name[..1000], calculate_hash(&name))
+    } else {
+        name
     }
 }

@@ -7,6 +7,8 @@ use cilly::v2::{ClassRef, FieldDesc, Int, MethodRef};
 use cilly::{call, ld_field, Type};
 
 use rustc_codegen_clr_type::r#type::get_type;
+
+use rustc_codgen_clr_operand::handle_operand;
 use rustc_middle::mir::{Operand, UnOp};
 use rustc_middle::ty::{IntTy, TyKind, UintTy};
 
@@ -16,7 +18,7 @@ pub fn unop<'tcx>(
     operand: &Operand<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> CILNode {
-    let parrent_node = crate::operand::handle_operand(operand, ctx);
+    let parrent_node = handle_operand(operand, ctx);
     let ty = operand.ty(&ctx.body().local_decls, ctx.tcx());
     match unnop {
         UnOp::Neg => match ty.kind() {

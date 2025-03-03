@@ -191,70 +191,68 @@ impl CodegenBackend for MyBackend {
         metadata: EncodedMetadata,
         need_metadata_module: bool,
     ) -> Box<dyn Any> {
-        {
-            let cgus = tcx.collect_and_partition_mono_items(());
+        let cgus = tcx.collect_and_partition_mono_items(());
 
-            let mut asm = Assembly::default();
-            if need_metadata_module {
-                use std::io::Write;
-                let mut packed_metadata = rustc_metadata::METADATA_HEADER.to_vec();
-                packed_metadata
-                    .write_all(&(metadata.raw_data().len() as u64).to_le_bytes())
-                    .unwrap();
-                packed_metadata.extend(metadata.raw_data());
-                asm.add_section(".rustc", packed_metadata);
-            }
-            let _ = cilly::utilis::get_environ(&mut asm);
-
-            for cgu in cgus.codegen_units {
-                //println!("codegen {} has {} items.", cgu.name(), cgu.items().len());
-                for (item, _data) in cgu.items() {
-                    assembly::add_item(&mut asm, *item, tcx).expect("Could not add function");
-                }
-            }
-
-            if let Some((entrypoint, _kind)) = tcx.entry_fn(()) {
-                let penv = rustc_middle::ty::TypingEnv::fully_monomorphized();
-                let entrypoint = rustc_middle::ty::Instance::try_resolve(
-                    tcx,
-                    penv,
-                    entrypoint,
-                    rustc_middle::ty::List::empty(),
-                )
-                .expect("Could not resolve entrypoint!")
-                .expect("Could not resolve entrypoint!");
-                let mut ctx = MethodCompileCtx::new(tcx, None, entrypoint, &mut asm);
-                let sig = function_sig::sig_from_instance_(entrypoint, &mut ctx)
-                    .expect("Could not get the signature of the entrypoint.");
-                let symbol = tcx.symbol_name(entrypoint);
-                let symbol = format!("{symbol:?}");
-                let cs = MethodRef::new(
-                    *asm.main_module(),
-                    asm.alloc_string(symbol),
-                    asm.alloc_sig(sig),
-                    MethodKind::Static,
-                    vec![].into(),
-                );
-
-                cilly::entrypoint::wrapper(cs, &mut asm);
-            }
-
-            let ffi_compile_timer = tcx
-                .profiler()
-                .generic_activity("insert .NET FFI functions/types");
-            //builtin::insert_ffi_functions(&mut asm, tcx);
-            drop(ffi_compile_timer);
-            let name: IString = cgus
-                .codegen_units
-                .iter()
-                .next()
-                .unwrap()
-                .name()
-                .to_string()
-                .into();
-
-            Box::new((name, asm, metadata, CrateInfo::new(tcx, "clr".to_string())))
+        let mut asm = Assembly::default();
+        if need_metadata_module {
+            use std::io::Write;
+            let mut packed_metadata = rustc_metadata::METADATA_HEADER.to_vec();
+            packed_metadata
+                .write_all(&(metadata.raw_data().len() as u64).to_le_bytes())
+                .unwrap();
+            packed_metadata.extend(metadata.raw_data());
+            asm.add_section(".rustc", packed_metadata);
         }
+        let _ = cilly::utilis::get_environ(&mut asm);
+
+        for cgu in cgus.codegen_units {
+            //println!("codegen {} has {} items.", cgu.name(), cgu.items().len());
+            for (item, _data) in cgu.items() {
+                assembly::add_item(&mut asm, *item, tcx).expect("Could not add function");
+            }
+        }
+
+        if let Some((entrypoint, _kind)) = tcx.entry_fn(()) {
+            let penv = rustc_middle::ty::TypingEnv::fully_monomorphized();
+            let entrypoint = rustc_middle::ty::Instance::try_resolve(
+                tcx,
+                penv,
+                entrypoint,
+                rustc_middle::ty::List::empty(),
+            )
+            .expect("Could not resolve entrypoint!")
+            .expect("Could not resolve entrypoint!");
+            let mut ctx = MethodCompileCtx::new(tcx, None, entrypoint, &mut asm);
+            let sig = function_sig::sig_from_instance_(entrypoint, &mut ctx)
+                .expect("Could not get the signature of the entrypoint.");
+            let symbol = tcx.symbol_name(entrypoint);
+            let symbol = format!("{symbol:?}");
+            let cs = MethodRef::new(
+                *asm.main_module(),
+                asm.alloc_string(symbol),
+                asm.alloc_sig(sig),
+                MethodKind::Static,
+                vec![].into(),
+            );
+
+            cilly::entrypoint::wrapper(cs, &mut asm);
+        }
+
+        let ffi_compile_timer = tcx
+            .profiler()
+            .generic_activity("insert .NET FFI functions/types");
+        //builtin::insert_ffi_functions(&mut asm, tcx);
+        drop(ffi_compile_timer);
+        let name: IString = cgus
+            .codegen_units
+            .iter()
+            .next()
+            .unwrap()
+            .name()
+            .to_string()
+            .into();
+
+        Box::new((name, asm, metadata, CrateInfo::new(tcx, "clr".to_string())))
     }
     /// Saves an in-memory assemably to codegen specific IR in a .bc file.
     fn join_codegen(

@@ -1,10 +1,7 @@
 use crate::{
     assembly::MethodCompileCtx,
-    call_info::CallInfo,
-    operand::{handle_operand, operand_address},
+    utilis::{adt::get_discr, compiletime_sizeof},
 };
-use rustc_codegen_clr_place::{place_address_raw, place_adress, place_get};
-use rustc_codegen_clr_type::{r#type::{fat_ptr_to, get_type}, utilis::pointer_to_is_fat, GetTypeExt};
 use cilly::{
     cil_node::CILNode,
     cil_root::CILRoot,
@@ -12,6 +9,16 @@ use cilly::{
     v2::{cilnode::MethodKind, FieldDesc, Float, Int, MethodRef},
     Const, Type,
 };
+use rustc_codegen_clr_call::CallInfo;
+use rustc_codegen_clr_ctx::function_name;
+use rustc_codegen_clr_place::{place_address_raw, place_adress, place_get};
+use rustc_codegen_clr_type::{
+    adt::enum_tag_info,
+    r#type::{fat_ptr_to, get_type},
+    utilis::{pointer_to_is_fat, try_resolve_const_size},
+    GetTypeExt,
+};
+use rustc_codgen_clr_operand::{handle_operand, is_const_zero, is_uninit, operand_address};
 use rustc_middle::{
     mir::{CastKind, NullOp, Operand, Place, Rvalue},
     ty::{adjustment::PointerCoercion, GenericArgs, Instance, InstanceKind, Ty, TyKind},
@@ -23,18 +30,21 @@ macro_rules! cast {
         let src = $operand.ty(&$ctx.body().local_decls, $ctx.tcx());
         let src = $ctx.monomorphize(src);
         let src = $ctx.type_from_cache(src);
-        $cast_name(src, target, handle_operand($operand, $ctx), $asm)
+        $cast_name(
+            src,
+            target,
+            rustc_codgen_clr_operand::handle_operand($operand, $ctx),
+            $asm,
+        )
     }};
 }
 pub fn is_rvalue_unint<'tcx>(rvalue: &Rvalue<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_>) -> bool {
     match rvalue {
-        Rvalue::Repeat(operand, _) | Rvalue::Use(operand) => {
-            crate::operand::is_uninit(operand, ctx)
-        }
+        Rvalue::Repeat(operand, _) | Rvalue::Use(operand) => is_uninit(operand, ctx),
         /* TODO: before enabling this, check if the aggregate is an enum, and if so, check if it has a discriminant.
         Rvalue::Aggregate(_, field_index) => field_index
         .iter()
-        .all(|operand| crate::operand::is_uninit(operand, ctx)),*/
+        .all(|operand| is_uninit(operand, ctx)),*/
         _ => false,
     }
 }
@@ -43,9 +53,7 @@ pub fn is_rvalue_const_0<'tcx>(
     ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> bool {
     match rvalue {
-        Rvalue::Repeat(operand, _) | Rvalue::Use(operand) => {
-            crate::operand::is_const_zero(operand, ctx)
-        }
+        Rvalue::Repeat(operand, _) | Rvalue::Use(operand) => is_const_zero(operand, ctx),
         _ => false,
     }
 }
@@ -73,8 +81,7 @@ pub fn handle_rvalue<'tcx>(
                     (vec![], ld_field!(addr, ctx.alloc_field(descriptor)))
                 }
                 TyKind::Array(_ty, length) => {
-                    let len =
-                        crate::utilis::try_resolve_const_size(ctx.monomorphize(*length)).unwrap();
+                    let len = try_resolve_const_size(ctx.monomorphize(*length)).unwrap();
                     (
                         vec![],
                         CILNode::V2(ctx.alloc_node(Const::USize(len as u64))),
@@ -87,9 +94,7 @@ pub fn handle_rvalue<'tcx>(
         // TODO: check the exact semantics of `WrapUnsafeBinder` once it has some documentation.
         Rvalue::WrapUnsafeBinder(operand, _unknown_ty) => (vec![], handle_operand(operand, ctx)),
         Rvalue::CopyForDeref(place) => (vec![], place_get(place, ctx)),
-        Rvalue::Ref(_region, _borrow_kind, place) => {
-            (vec![], place_adress(place, ctx))
-        }
+        Rvalue::Ref(_region, _borrow_kind, place) => (vec![], place_adress(place, ctx)),
         Rvalue::RawPtr(_mutability, place) => (vec![], place_adress(place, ctx)),
         Rvalue::Cast(
             CastKind::PointerCoercion(PointerCoercion::UnsafeFnPointer, _),
@@ -182,7 +187,7 @@ pub fn handle_rvalue<'tcx>(
                 );
                 let call_info = CallInfo::sig_from_instance_(instance, ctx);
 
-                let function_name = crate::utilis::function_name(ctx.tcx().symbol_name(instance));
+                let function_name = function_name(ctx.tcx().symbol_name(instance));
                 let fn_ptr_sig = ctx.alloc_sig(call_info.sig().clone());
                 let call_site = MethodRef::new(
                     *ctx.main_module(),
@@ -323,7 +328,7 @@ pub fn handle_rvalue<'tcx>(
             } else {
                 todo!("Trying to call a type which is not a function definition!");
             };
-            let function_name = crate::utilis::function_name(ctx.tcx().symbol_name(instance));
+            let function_name = function_name(ctx.tcx().symbol_name(instance));
             let function_sig = crate::function_sig::sig_from_instance_(instance, ctx)
                 .expect("Could not get function signature when trying to get a function pointer!");
             //FIXME: propely handle `#[track_caller]`
@@ -344,7 +349,7 @@ pub fn handle_rvalue<'tcx>(
 
             let layout = ctx.layout_of(owner_ty);
             let target = ctx.type_from_cache(owner_ty.discriminant_ty(ctx.tcx()));
-            let (disrc_type, _) = crate::utilis::adt::enum_tag_info(layout.layout, ctx);
+            let (disrc_type, _) = enum_tag_info(layout.layout, ctx);
             let Type::ClassRef(owner) = owner else {
                 eprintln!("Can't get the discirminant of type {owner_ty:?}, because it is a zst. Size:{} Discr type:{:?}",layout.layout.size.bytes(), owner_ty.discriminant_ty(ctx.tcx()));
                 return (
@@ -375,7 +380,7 @@ pub fn handle_rvalue<'tcx>(
                     crate::casts::int_to_int(
                         disrc_type,
                         target,
-                        crate::utilis::adt::get_discr(layout.layout, addr, owner, owner_ty, ctx),
+                        get_discr(layout.layout, addr, owner, owner_ty, ctx),
                         ctx,
                     ),
                 )
@@ -439,7 +444,7 @@ fn repeat<'tcx>(
     let array = ctx.type_from_cache(array);
     let array_dotnet = array.clone().as_class_ref().expect("Invalid array type.");
     // Check if the element is byte sized. If so, use initblk to quickly initialize this array.
-    if crate::utilis::compiletime_sizeof(element_ty, ctx.tcx()) == 1 {
+    if compiletime_sizeof(element_ty, ctx.tcx()) == 1 {
         let place_address = place_adress(target_location, ctx);
         let val = Box::new(element.transmute_on_stack(element_type, Type::Int(Int::U8), ctx));
         let init = CILRoot::InitBlk {

@@ -130,11 +130,12 @@ pub fn compare_exchange(
         _ => todo!("Can't cmpxchng {int:?}"),
     }
 }
+type AsmGen = (dyn Fn(&mut Assembly, NodeIdx, NodeIdx, Int) -> NodeIdx);
 pub fn generate_atomic(
     asm: &mut Assembly,
     patcher: &mut MissingMethodPatcher,
     op_name: &str,
-    op: Box<(dyn Fn(&mut Assembly, NodeIdx, NodeIdx, Int) -> NodeIdx)>,
+    op: Box<AsmGen>,
     int: Int,
 ) {
     let name = asm.alloc_string(format!("atomic_{op_name}_{int}", int = int.name()));
@@ -228,21 +229,21 @@ pub fn generate_all_atomics(asm: &mut Assembly, patcher: &mut MissingMethodPatch
             asm,
             patcher,
             "or",
-            Box:: new(|asm, lhs, rhs, _| asm.alloc_node(CILNode::BinOp(lhs, rhs, BinOp::Or))),
+            Box::new(|asm, lhs, rhs, _| asm.alloc_node(CILNode::BinOp(lhs, rhs, BinOp::Or))),
             int,
         );
         generate_atomic(
             asm,
             patcher,
             "and",
-            Box:: new(|asm, lhs, rhs, _| asm.alloc_node(CILNode::BinOp(lhs, rhs, BinOp::And))),
+            Box::new(|asm, lhs, rhs, _| asm.alloc_node(CILNode::BinOp(lhs, rhs, BinOp::And))),
             int,
         );
         generate_atomic(
             asm,
             patcher,
             "add",
-            Box:: new(|asm, lhs, rhs, _| asm.alloc_node(CILNode::BinOp(lhs, rhs, BinOp::Add))),
+            Box::new(|asm, lhs, rhs, _| asm.alloc_node(CILNode::BinOp(lhs, rhs, BinOp::Add))),
             int,
         );
     }

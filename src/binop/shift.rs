@@ -1,6 +1,4 @@
-use crate::assembly::MethodCompileCtx;
-use crate::utilis::compiletime_sizeof;
-use rustc_codegen_clr_type::GetTypeExt;
+use crate::{assembly::MethodCompileCtx, utilis::compiletime_sizeof};
 use cilly::{
     call,
     cil_node::CILNode,
@@ -8,6 +6,8 @@ use cilly::{
     v2::{cilnode::MethodKind, ClassRef, Int, MethodRef},
     Type,
 };
+
+use rustc_codegen_clr_type::GetTypeExt;
 
 use rustc_middle::ty::{IntTy, Ty, TyKind, UintTy};
 pub fn shr_unchecked<'tcx>(

@@ -1,4 +1,4 @@
-use crate::{assembly::MethodCompileCtx, operand::handle_operand};
+use crate::assembly::MethodCompileCtx;
 use cilly::{
     and, call,
     cil_node::CILNode,
@@ -9,6 +9,7 @@ use cilly::{
 };
 use rustc_codegen_clr_place::place_set;
 use rustc_codegen_clr_type::GetTypeExt;
+use rustc_codgen_clr_operand::handle_operand;
 use rustc_middle::{
     mir::{Operand, Place},
     ty::Instance,

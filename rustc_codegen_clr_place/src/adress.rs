@@ -7,7 +7,11 @@ use cilly::{
     v2::{FieldDesc, Int, MethodRef, cilnode::MethodKind},
 };
 use rustc_codegen_clr_ctx::MethodCompileCtx;
-use rustc_codegen_clr_type::{adt::{enum_field_descriptor, field_descrptor, FieldOffsetIterator}, r#type::fat_ptr_to, GetTypeExt};
+use rustc_codegen_clr_type::{
+    GetTypeExt,
+    adt::{FieldOffsetIterator, enum_field_descriptor, field_descrptor},
+    r#type::fat_ptr_to,
+};
 use rustc_middle::{
     mir::PlaceElem,
     ty::{Ty, TyKind},

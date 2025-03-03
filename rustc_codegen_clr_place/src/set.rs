@@ -1,5 +1,10 @@
 use rustc_codegen_clr_ctx::MethodCompileCtx;
-use rustc_codegen_clr_type::{adt::{enum_field_descriptor, field_descrptor}, r#type::fat_ptr_to, utilis::pointer_to_is_fat, GetTypeExt};
+use rustc_codegen_clr_type::{
+    GetTypeExt,
+    adt::{enum_field_descriptor, field_descrptor},
+    r#type::fat_ptr_to,
+    utilis::pointer_to_is_fat,
+};
 
 use crate::{PlaceTy, pointed_type};
 use cilly::{

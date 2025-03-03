@@ -1,6 +1,4 @@
-use crate::{assembly::MethodCompileCtx, operand::handle_operand};
-use rustc_codegen_clr_place::place_set;
-use rustc_codegen_clr_type::{utilis::max_value, GetTypeExt};
+use crate::assembly::MethodCompileCtx;
 use cilly::{
     call,
     cil_node::CILNode,
@@ -10,7 +8,10 @@ use cilly::{
     v2::{ClassRef, Int},
     MethodRef, Type,
 };
+use rustc_codegen_clr_place::place_set;
+use rustc_codegen_clr_type::{utilis::max_value, GetTypeExt};
 
+use rustc_codgen_clr_operand::handle_operand;
 use rustc_middle::{
     mir::{Operand, Place},
     ty::Instance,

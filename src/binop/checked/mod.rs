@@ -1,5 +1,4 @@
 use crate::{assembly::MethodCompileCtx, casts};
-use rustc_codegen_clr_type::GetTypeExt;
 use cilly::{
     and, call,
     cil_node::CILNode,
@@ -8,6 +7,7 @@ use cilly::{
     Type,
 };
 use rustc_codegen_clr_type::utilis::simple_tuple;
+use rustc_codegen_clr_type::GetTypeExt;
 use rustc_middle::ty::{IntTy, Ty, TyKind, UintTy};
 
 pub fn result_tuple(tpe: Type, out_of_range: CILNode, val: CILNode, asm: &mut Assembly) -> CILNode {

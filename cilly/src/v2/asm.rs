@@ -8,7 +8,7 @@ use super::{
     MethodRefIdx, NodeIdx, RootIdx, SigIdx, StaticFieldDesc, StaticFieldIdx, StringIdx, Type,
     TypeIdx,
 };
-use crate::{config, IString};
+use crate::{config, utilis::assert_unique, IString};
 use crate::{utilis::encode, v2::MethodImpl};
 use fxhash::{hash64, FxHashMap, FxHashSet};
 
@@ -720,7 +720,7 @@ impl Assembly {
     #[track_caller]
     pub fn sanity_check(&self) {
         self.class_defs.values().for_each(|class| {
-            crate::utilis::assert_unique(class.methods(), class.ref_to().display(self));
+            assert_unique(class.methods(), class.ref_to().display(self));
         });
     }
     #[cfg(not(miri))]

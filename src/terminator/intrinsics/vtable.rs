@@ -1,6 +1,7 @@
-use crate::{assembly::MethodCompileCtx, operand::handle_operand};
+use crate::assembly::MethodCompileCtx;
 use cilly::{cil_node::CILNode, cil_root::CILRoot, conv_usize, Int, IntoAsmIndex, Type};
 use rustc_codegen_clr_place::place_set;
+use rustc_codgen_clr_operand::handle_operand;
 use rustc_middle::mir::{Operand, Place};
 use rustc_span::source_map::Spanned;
 /// Gets the aligement of a dynamic object from a fat pointer, by looking it up from the vtable.

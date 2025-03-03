@@ -1,18 +1,18 @@
-
 use crate::r#type::get_type;
+use cilly::{
+    Type, call,
+    cil_node::CILNode,
+    utilis::escape_class_name,
+    v2::{Assembly, ClassRef, ClassRefIdx, Int, MethodRef, cilnode::MethodKind},
+};
+use rustc_codegen_clr_ctx::MethodCompileCtx;
+use rustc_middle::ty::Const;
 use rustc_middle::ty::List;
 use rustc_middle::ty::{
     AdtDef, ConstKind, EarlyBinder, GenericArg, Instance, PseudoCanonicalInput, Ty, TyCtxt, TyKind,
     TypeFoldable,
 };
-use rustc_middle::ty::Const;
 use rustc_span::def_id::DefId;
-use cilly::{
-    utilis::escape_class_name, Type, call,
-    cil_node::CILNode,
-    v2::{Assembly, ClassRef, ClassRefIdx, Int, MethodRef, cilnode::MethodKind},
-};
-use rustc_codegen_clr_ctx::MethodCompileCtx;
 
 /// This struct represetnts either a primitive .NET type (F32,F64), or stores information on how to lookup a more complex type (struct,class,array)
 use serde::{Deserialize, Serialize};
@@ -214,8 +214,7 @@ pub fn garg_to_string<'tcx>(garg: GenericArg<'tcx>, ctx: TyCtxt<'tcx>) -> String
                 tpe.is_str(),
                 "Generic argument was not a string, but {str_const:?}!"
             );
-            String::from_utf8(raw_bytes.into())
-                .expect("String constant invalid!")
+            String::from_utf8(raw_bytes.into()).expect("String constant invalid!")
         }
         _ => todo!("Can't convert generic arg of const kind {kind:?} to string!"),
     }

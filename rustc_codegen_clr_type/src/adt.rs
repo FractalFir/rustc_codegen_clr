@@ -1,11 +1,12 @@
+use crate::{GetTypeExt, utilis::simple_tuple};
 use cilly::{
-    v2::{Assembly, Float, Int}, FieldDesc, Type
+    FieldDesc, Type,
+    v2::{Assembly, Float, Int},
 };
 use rustc_abi::{FieldIdx, FieldsShape, Layout, LayoutData, VariantIdx, Variants};
 use rustc_codegen_clr_ctx::MethodCompileCtx;
-use rustc_middle::ty::{Ty,TyKind,GenericArg,AdtDef};
 use rustc_middle::ty::List;
-use crate::{utilis::simple_tuple, GetTypeExt};
+use rustc_middle::ty::{AdtDef, GenericArg, Ty, TyKind};
 
 pub fn enum_variant_offsets(_: AdtDef, layout: Layout, vidix: VariantIdx) -> FieldOffsetIterator {
     FieldOffsetIterator::fields(get_variant_at_index(vidix, (*layout.0).clone()))

@@ -492,7 +492,7 @@ impl ClassDef {
         align: Option<NonZeroU32>,
         has_nonveralpping_layout: bool,
     ) -> Self {
-        //crate::utilis::assert_unique(&methods);
+        //assert_unique(&methods);
         Self {
             name,
             is_valuetype,

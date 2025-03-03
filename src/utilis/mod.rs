@@ -1,15 +1,10 @@
-use crate::IString;
-use cilly::
-    utilis::escape_class_name
-;
+use rustc_abi::VariantIdx;
 use rustc_codegen_clr_type::r#type::escape_field_name;
 use rustc_hir::def_id::DefId;
-use rustc_abi::VariantIdx;
 use rustc_middle::{
     mir::interpret::AllocId,
     ty::{
-        AdtDef, Const, ConstKind, EarlyBinder, GenericArg, Instance, List, PseudoCanonicalInput,
-        SymbolName, Ty, TyCtxt, TyKind, TypeFoldable,
+        ConstKind, GenericArg, Instance, List, PseudoCanonicalInput, Ty, TyCtxt, TyKind,
     },
 };
 
@@ -39,25 +34,7 @@ pub fn instance_try_resolve<'tcx>(
     .unwrap()
     .unwrap()
 }
-pub fn adt_name<'tcx>(
-    adt: AdtDef<'tcx>,
-    tcx: TyCtxt<'tcx>,
-    gargs: &'tcx List<GenericArg<'tcx>>,
-) -> crate::IString {
-    //TODO: find a better way to get adt instances!
-    let krate = adt.did().krate;
-    let adt_instance = instance_try_resolve(adt.did(), tcx, gargs);
-    // Get the mangled path: it is absolute, and not poluted by types being rexported
-    let auto_mangled =
-        rustc_symbol_mangling::symbol_name_for_instance_in_crate(tcx, adt_instance, krate);
-    // Then, demangle the type name, converting it to a Rust-style one (eg. `core::option::Option::h8zc8s`)
-    let demangled = rustc_demangle::demangle(&auto_mangled);
-    // Using formating preserves the generic hash.
-    let demangled = format!("{demangled}");
-    // Replace Rust namespace(module) spearators with C# ones.
-    let dotnet_class_name = demangled.replace("::", ".");
-    escape_class_name(&dotnet_class_name).into()
-}
+
 
 /// Gets the name of a field with index `idx`
 pub fn field_name(ty: Ty, idx: u32) -> crate::IString {
@@ -84,81 +61,8 @@ pub fn variant_name(ty: Ty, idx: u32) -> crate::IString {
     }
 }
 
-/// Escapes the name of a function
-pub fn function_name(name: SymbolName) -> IString {
-    let mut name: String = name.to_string();
-    // Name TOO long
-    if *crate::config::ESCAPE_NAMES {
-        name = name.replace('.', "_dot_").replace('$', "_ds_");
-    }
-    if name.len() > 1000 {
-        use std::collections::hash_map::DefaultHasher;
-        use std::hash::{Hash, Hasher};
-        //TODO: make hashes consitant!
-        fn calculate_hash<T: Hash>(t: &T) -> u64 {
-            let mut s = DefaultHasher::new();
-            t.hash(&mut s);
-            s.finish()
-        }
-        format!("{}_{}", &name[..1000], calculate_hash(&name)).into()
-    } else {
-        name.into()
-    }
-}
-/// Monomorphizes type `ty`
-pub fn monomorphize<'tcx, T: TypeFoldable<TyCtxt<'tcx>> + Clone>(
-    instance: &Instance<'tcx>,
-    ty: T,
-    ctx: TyCtxt<'tcx>,
-) -> T {
-    instance.instantiate_mir_and_normalize_erasing_regions(
-        ctx,
-        rustc_middle::ty::TypingEnv::fully_monomorphized(),
-        EarlyBinder::bind(ty),
-    )
-}
 
-/// Tires to get the value of Const `size` as usize.
-pub fn try_resolve_const_size(size: Const) -> Result<usize, &'static str> {
-    let value = match size.try_to_value() {
-        Some(value) => Ok(value),
-        None => Err("Can't resolve scalar array size!"),
-    }?;
-    let value = value
-        .valtree
-        .try_to_scalar()
-        .unwrap()
-        .to_u64()
-        .expect("Could not convert scalar to u64!");
-    Ok(usize::try_from(value).expect("Const size value too big."))
-}
 
-/// Converts a generic argument to a string, and panics if it could not.
-pub fn garg_to_string<'tcx>(garg: GenericArg<'tcx>, ctx: TyCtxt<'tcx>) -> IString {
-    let str_const = garg
-        .as_const()
-        .expect("Generic argument was not an constant!");
-    let kind = str_const.kind();
-    match kind {
-        ConstKind::Value(val) => {
-            let raw_bytes = val
-                .try_to_raw_bytes(ctx)
-                .expect("String const did not contain valid string!");
-            let tpe = val
-                .ty
-                .builtin_deref(true)
-                .expect("Type of generic argument was not a reference, can't resolve as string!");
-            assert!(
-                tpe.is_str(),
-                "Generic argument was not a string, but {str_const:?}!"
-            );
-            String::from_utf8(raw_bytes.into())
-                .expect("String constant invalid!")
-                .into()
-        }
-        _ => todo!("Can't convert generic arg of const kind {kind:?} to string!"),
-    }
-}
 /// Converts a generic argument to a boolean, and panics if it could not.
 pub fn garag_to_bool<'tcx>(garg: GenericArg<'tcx>, _ctx: TyCtxt<'tcx>) -> bool {
     let usize_const = garg
@@ -233,13 +137,4 @@ pub fn align_of<'tcx>(ty: rustc_middle::ty::Ty<'tcx>, tcx: TyCtxt<'tcx>) -> u64 
     let align = layout.align.abi;
     align.bytes()
 }
-pub fn is_zst<'tcx>(ty: rustc_middle::ty::Ty<'tcx>, tcx: TyCtxt<'tcx>) -> bool {
-    let layout = tcx
-        .layout_of(PseudoCanonicalInput {
-            typing_env: rustc_middle::ty::TypingEnv::fully_monomorphized(),
-            value: ty,
-        })
-        .expect("Can't get layout of a type.")
-        .layout;
-    layout.is_zst()
-}
+

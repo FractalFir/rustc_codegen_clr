@@ -198,10 +198,7 @@ pub fn place_adress<'a>(place: &Place<'a>, ctx: &mut MethodCompileCtx<'a, '_>) -
     }
 }
 /// Should be only used in certain builit-in features. For unsized types, returns the address of the fat pointer, not the address contained within it.
-pub fn place_address_raw<'a>(
-    place: &Place<'a>,
-    ctx: &mut MethodCompileCtx<'a, '_>,
-) -> CILNode {
+pub fn place_address_raw<'a>(place: &Place<'a>, ctx: &mut MethodCompileCtx<'a, '_>) -> CILNode {
     let place_ty = place.ty(ctx.body(), ctx.tcx());
     let place_ty = ctx.monomorphize(place_ty).ty;
 

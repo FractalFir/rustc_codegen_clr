@@ -38,7 +38,7 @@ fn find_bb(id: u32, bbs: &[BasicBlock]) -> &BasicBlock {
     bbs.iter().find(|bb| bb.id() == id).unwrap()
 }
 fn block_gc(entrypoint: u32, bbs: &[BasicBlock]) -> Vec<BasicBlock> {
-    //debug_assert!(crate::utilis::is_sorted(bbs.iter(),|a,b|a.id + 1 == b.id));
+    //debug_assert!(is_sorted(bbs.iter(),|a,b|a.id + 1 == b.id));
     let mut alive: FxHashSet<u32> = FxHashSet::with_hasher(FxBuildHasher::default());
     let mut resurecting = FxHashSet::with_hasher(FxBuildHasher::default());
     let mut to_resurect = FxHashSet::with_hasher(FxBuildHasher::default());

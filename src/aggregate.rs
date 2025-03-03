@@ -1,11 +1,7 @@
 use crate::{
     assembly::MethodCompileCtx,
-    operand::handle_operand,
-
-    utilis::{adt::set_discr, field_name, instance_try_resolve},
+    utilis::{adt::set_discr, field_name, instance_try_resolve, variant_name},
 };
-use rustc_codegen_clr_place::{place_adress, place_get, place_set};
-use rustc_codegen_clr_type::{adt::field_descrptor, r#type::{escape_field_name, get_type}, utilis::{pointer_to_is_fat, simple_tuple}, GetTypeExt};
 use cilly::{
     cil_node::CILNode,
     cil_root::CILRoot,
@@ -13,6 +9,14 @@ use cilly::{
     Const, Type,
 };
 use rustc_abi::FieldIdx;
+use rustc_codegen_clr_place::{place_adress, place_get, place_set};
+use rustc_codegen_clr_type::{
+    adt::{enum_tag_info, field_descrptor},
+    r#type::{escape_field_name, get_type},
+    utilis::{is_zst, pointer_to_is_fat, simple_tuple},
+    GetTypeExt,
+};
+use rustc_codgen_clr_operand::{handle_operand, is_uninit};
 use rustc_index::IndexVec;
 use rustc_middle::{
     mir::{AggregateKind, Operand, Place},
@@ -32,7 +36,7 @@ pub fn handle_aggregate<'tcx>(
         .map(|operand| {
             (
                 u32::try_from(operand.0).unwrap(),
-                crate::operand::handle_operand(operand.1, ctx),
+                handle_operand(operand.1, ctx),
             )
         })
         .collect();
@@ -60,7 +64,7 @@ pub fn handle_aggregate<'tcx>(
         }
         AggregateKind::Array(element) => {
             // Check if this array is made up from uninit values
-            if crate::operand::is_uninit(&value_index[FieldIdx::from_usize(0)], ctx) {
+            if is_uninit(&value_index[FieldIdx::from_usize(0)], ctx) {
                 // This array is created from uninitalized data, so it itsefl is uninitialzed, so we can skip initializing it.
                 return (vec![], place_get(target_location, ctx));
             }
@@ -172,7 +176,7 @@ pub fn handle_aggregate<'tcx>(
                 });
             }
             let layout = ctx.layout_of(coroutine_ty);
-            let (disrc_type, _) = crate::utilis::adt::enum_tag_info(layout.layout, ctx);
+            let (disrc_type, _) = enum_tag_info(layout.layout, ctx);
             if disrc_type != Type::Void {
                 sub_trees.push(set_discr(
                     layout.layout,
@@ -200,7 +204,7 @@ pub fn handle_aggregate<'tcx>(
                 // Double-check the pointer is REALLY thin
                 assert!(fat_ptr_type.as_class_ref().is_none());
                 assert!(
-                    !crate::utilis::is_zst(data_ty, ctx.tcx()),
+                    !is_zst(data_ty, ctx.tcx()),
                     "data_ty:{data_ty:?} is a zst. That is bizzare, cause it should be a pointer?"
                 );
                 let data_type = ctx.type_from_cache(data_ty);
@@ -217,7 +221,7 @@ pub fn handle_aggregate<'tcx>(
                     (place_get(target_location, ctx)),
                 );
             }
-            assert!(pointer_to_is_fat(pointee,ctx.tcx(), ctx.instance()), "A pointer to {pointee:?} is not fat, but its metadata is {meta_ty:?}, and not a zst:{is_meta_zst}",is_meta_zst = crate::utilis::is_zst(meta_ty,  ctx.tcx()));
+            assert!(pointer_to_is_fat(pointee,ctx.tcx(), ctx.instance()), "A pointer to {pointee:?} is not fat, but its metadata is {meta_ty:?}, and not a zst:{is_meta_zst}",is_meta_zst = is_zst(meta_ty,  ctx.tcx()));
             let fat_ptr_type = get_type(fat_ptr, ctx);
             // Assign the components
             let data_ptr_name = ctx.alloc_string(crate::DATA_PTR);
@@ -247,7 +251,7 @@ pub fn handle_aggregate<'tcx>(
                 (place_get(target_location, ctx)),
             )
         }
-        _ => todo!("Unsuported aggregate kind {aggregate_kind:?}"),
+        AggregateKind::CoroutineClosure(..) => todo!("Unsuported aggregate kind {aggregate_kind:?}"),
     }
 }
 /// Builds an Algebraic Data Type (struct,enum,union) at location `target_location`, with fields set using ops in `fields`.
@@ -295,7 +299,7 @@ fn aggregate_adt<'tcx>(
         AdtKind::Enum => {
             let adt_adress_ops = place_adress(target_location, ctx);
 
-            let variant_name = crate::utilis::variant_name(adt_type, variant_idx);
+            let variant_name = variant_name(adt_type, variant_idx);
 
             let variant_address = adt_adress_ops.clone();
             let mut sub_trees = Vec::new();
@@ -323,7 +327,7 @@ fn aggregate_adt<'tcx>(
             }
 
             let layout = ctx.layout_of(adt_type);
-            let (disrc_type, _) = crate::utilis::adt::enum_tag_info(layout.layout, ctx);
+            let (disrc_type, _) = enum_tag_info(layout.layout, ctx);
             if disrc_type != Type::Void {
                 sub_trees.push(set_discr(
                     layout.layout,

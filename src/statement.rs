@@ -1,11 +1,14 @@
 use crate::assembly::MethodCompileCtx;
-use rustc_codegen_clr_place::{place_adress, place_get, place_set};
-use rustc_codegen_clr_type::GetTypeExt;
 use crate::rvalue::is_rvalue_unint;
+use crate::utilis::adt::set_discr;
+use rustc_codegen_clr_place::{place_adress, place_get, place_set};
+use rustc_codegen_clr_type::utilis::is_zst;
+use rustc_codegen_clr_type::GetTypeExt;
 
 use cilly::zero_extend;
 use cilly::{cil_node::CILNode, cil_root::CILRoot, cil_tree::CILTree, size_of};
 
+use rustc_codgen_clr_operand::handle_operand;
 use rustc_middle::mir::{CopyNonOverlapping, NonDivergingIntrinsic, Statement, StatementKind};
 #[allow(clippy::match_same_arms)]
 pub fn handle_statement<'tcx>(
@@ -25,13 +28,13 @@ pub fn handle_statement<'tcx>(
             let owner = ctx.type_from_cache(owner_ty);
 
             let layout = ctx.layout_of(owner_ty);
-            //let (disrc_type, _) = crate::utilis::adt::enum_tag_info(&layout.layout, tcx);
+            //let (disrc_type, _) = adt::enum_tag_info(&layout.layout, tcx);
             let cilly::Type::ClassRef(owner) = owner else {
                 panic!("Nonsense operation: attempted to set the discriminant of type {owner_ty:?}, which is not valid.");
             };
             //ops.push();
 
-            vec![crate::utilis::adt::set_discr(
+            vec![set_discr(
                 layout.layout,
                 *variant_index,
                 place_adress(place, ctx),
@@ -49,7 +52,7 @@ pub fn handle_statement<'tcx>(
             let rvalue = &palce_rvalue.as_ref().1;
             let ty = ctx.monomorphize(place.ty(ctx.body(), ctx.tcx()).ty);
             // Skip void assigments. Assigining to or from void type is a NOP.
-            if crate::utilis::is_zst(ctx.monomorphize(ty), ctx.tcx()) {
+            if is_zst(ctx.monomorphize(ty), ctx.tcx()) {
                 return vec![];
             }
             let tpe = ctx.type_from_cache(ty);
@@ -69,9 +72,9 @@ pub fn handle_statement<'tcx>(
                     dst,
                     count,
                 }) => {
-                    let dst_op = crate::operand::handle_operand(dst, ctx);
-                    let src_op = crate::operand::handle_operand(src, ctx);
-                    let count_op = crate::operand::handle_operand(count, ctx);
+                    let dst_op = handle_operand(dst, ctx);
+                    let src_op = handle_operand(src, ctx);
+                    let count_op = handle_operand(count, ctx);
                     let src_ty = src.ty(ctx.body(), ctx.tcx());
                     let src_ty = ctx.monomorphize(src_ty);
                     let ptr_type = ctx.type_from_cache(src_ty);

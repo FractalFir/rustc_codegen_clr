@@ -1,6 +1,7 @@
 use cilly::basic_block::Handler;
-use rustc_middle::mir::{BasicBlockData,BasicBlock};
+use rustc_codegen_clr_type::utilis::monomorphize;
 use rustc_middle::mir::UnwindAction;
+use rustc_middle::mir::{BasicBlock, BasicBlockData};
 use rustc_middle::{
     mir::{BasicBlocks, Body, TerminatorKind},
     ty::{Instance, InstanceKind, TyCtxt},
@@ -38,7 +39,11 @@ fn simplify_handler<'tcx>(
     if !blocks[BasicBlock::from_u32(handler)].statements.is_empty() {
         return Some(handler);
     }
-    match blocks[BasicBlock::from_u32(handler)].terminator.as_ref()?.kind {
+    match blocks[BasicBlock::from_u32(handler)]
+        .terminator
+        .as_ref()?
+        .kind
+    {
         TerminatorKind::TailCall { .. } => None,
         TerminatorKind::Goto { target } => {
             simplify_handler(Some(target.as_u32()), blocks, tcx, method_instance, method)
@@ -53,7 +58,7 @@ fn simplify_handler<'tcx>(
             unwind: _,
             replace: _,
         } => {
-            let ty = crate::utilis::monomorphize(method_instance, place.ty(method, tcx).ty, tcx);
+            let ty = monomorphize(method_instance, place.ty(method, tcx).ty, tcx);
 
             let drop_instance = Instance::resolve_drop_in_place(tcx, ty);
             if let InstanceKind::DropGlue(_, None) = drop_instance.def {

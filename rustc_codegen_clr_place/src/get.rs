@@ -6,7 +6,10 @@ use cilly::{
 };
 use rustc_codegen_clr_ctx::MethodCompileCtx;
 use rustc_codegen_clr_type::{
-    adt::{enum_field_descriptor, field_descrptor, FieldOffsetIterator}, r#type::fat_ptr_to, utilis::pointer_to_is_fat, GetTypeExt
+    GetTypeExt,
+    adt::{FieldOffsetIterator, enum_field_descriptor, field_descrptor},
+    r#type::fat_ptr_to,
+    utilis::pointer_to_is_fat,
 };
 use rustc_middle::{
     mir::{Place, PlaceElem},

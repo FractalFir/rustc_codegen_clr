@@ -1,11 +1,10 @@
-pub use rustc_codegen_clr_ctx::MethodCompileCtx;
 use crate::{
     basic_block::handler_for_block,
     codegen_error::{CodegenError, MethodCodegenError},
     rustc_middle::dep_graph::DepContext,
+    utilis::{alloc_id_to_u64, is_function_magic},
     IString,
 };
-use rustc_codegen_clr_type::{adt::field_descrptor, r#type::get_type, GetTypeExt};
 use cilly::{
     access_modifier::AccessModifer,
     basic_block::BasicBlock,
@@ -22,6 +21,10 @@ use cilly::{
     },
     Assembly, Const, IntoAsmIndex, StringIdx, Type,
 };
+use rustc_codegen_clr_call::CallInfo;
+use rustc_codegen_clr_ctx::function_name;
+pub use rustc_codegen_clr_ctx::MethodCompileCtx;
+use rustc_codegen_clr_type::{adt::field_descrptor, r#type::get_type, utilis::is_zst, GetTypeExt};
 use rustc_middle::mir::mono::Linkage;
 use rustc_middle::{
     mir::{
@@ -211,8 +214,8 @@ fn allocation_initializer_method(
             {
                 // If it is a function, patch its pointer up.
                 let mut ctx = MethodCompileCtx::new(tcx, None, finstance, asm);
-                let call_info = crate::call_info::CallInfo::sig_from_instance_(finstance, &mut ctx);
-                let function_name = crate::utilis::function_name(tcx.symbol_name(finstance));
+                let call_info = CallInfo::sig_from_instance_(finstance, &mut ctx);
+                let function_name = function_name(tcx.symbol_name(finstance));
                 let mref = MethodRef::new(
                     *asm.main_module(),
                     asm.alloc_string(function_name),
@@ -356,7 +359,7 @@ pub fn add_fn<'tcx, 'asm, 'a: 'asm>(
         crate::comptime::interpret(ctx, mir);
         return Ok(());
     }
-    if crate::utilis::is_function_magic(name) {
+    if is_function_magic(name) {
         println!(
             "fn item {instance:?} is magic and is being skiped.",
             instance = ctx.instance()
@@ -371,7 +374,7 @@ pub fn add_fn<'tcx, 'asm, 'a: 'asm>(
     let attrs = ctx.tcx().codegen_fn_attrs(ctx.instance().def_id());
     let access_modifier = linkage_to_access(attrs.linkage);
     // Handle the function signature
-    let call_site = crate::call_info::CallInfo::sig_from_instance_(ctx.instance(), ctx);
+    let call_site = CallInfo::sig_from_instance_(ctx.instance(), ctx);
     let sig = call_site.sig().clone();
 
     // Get locals
@@ -400,7 +403,7 @@ pub fn add_fn<'tcx, 'asm, 'a: 'asm>(
             panic!("Arg to spread not a tuple???")
         };
         for (arg_id, ty) in packed.iter().enumerate() {
-            if crate::utilis::is_zst(ty, ctx.tcx()) {
+            if is_zst(ty, ctx.tcx()) {
                 continue;
             }
             let arg_field = field_descrptor(repacked_ty, arg_id.try_into().unwrap(), ctx);
@@ -443,8 +446,6 @@ pub fn add_fn<'tcx, 'asm, 'a: 'asm>(
                 trees.push(span_source_info(ctx.tcx(), statement.source_info.span).into());
             }
             trees.extend(statement_tree);
-
-           
         }
         if let Some(term) = &block_data.terminator {
             if *crate::config::INSERT_MIR_DEBUG_COMMENTS {
@@ -509,8 +510,6 @@ pub fn add_fn<'tcx, 'asm, 'a: 'asm>(
     );
     crate::method::resolve_global_allocations(&mut method, ctx);
 
-
-
     let main_module = ctx.main_module();
     let method = MethodDef::from_v1(&method, ctx, main_module);
     ctx.new_method(method);
@@ -547,7 +546,7 @@ pub fn add_item<'tcx>(
 ) -> Result<(), CodegenError> {
     match item {
         MonoItem::Fn(instance) => {
-            let symbol_name: IString = crate::utilis::function_name(item.symbol_name(tcx));
+            let symbol_name: IString = function_name(item.symbol_name(tcx)).into();
             let mut ctx = MethodCompileCtx::new(tcx, None, instance, asm);
             let function_compile_timer = tcx
                 .profiler()
@@ -588,10 +587,8 @@ pub fn add_item<'tcx>(
                     {
                         let mut ctx = MethodCompileCtx::new(tcx, None, finstance, asm);
                         // If it is a function, patch its pointer up.
-                        let call_info =
-                            crate::call_info::CallInfo::sig_from_instance_(finstance, &mut ctx);
-                        let function_name =
-                            crate::utilis::function_name(tcx.symbol_name(finstance));
+                        let call_info = CallInfo::sig_from_instance_(finstance, &mut ctx);
+                        let function_name = function_name(tcx.symbol_name(finstance));
                         MethodRef::new(
                             *asm.main_module(),
                             asm.alloc_string(function_name),
@@ -631,7 +628,7 @@ pub fn add_item<'tcx>(
                     panic!("Unsuported link section {section}.")
                 }
             }
-            add_allocation(crate::utilis::alloc_id_to_u64(alloc_id), asm, tcx);
+            add_allocation(alloc_id_to_u64(alloc_id), asm, tcx);
 
             drop(static_compile_timer);
 
@@ -718,7 +715,7 @@ pub fn add_allocation(alloc_id: u64, asm: &mut cilly::v2::Assembly, tcx: TyCtxt<
                 .into()
             };
             let name = asm.alloc_string(alloc_name.clone());
-            let tpe: Int = Int::from_size_sign((bytes.len() as u8).next_power_of_two(), false);
+            let tpe: Int = Int::from_size_sign(u8::try_from(bytes.len()).unwrap().next_power_of_two(), false);
             let field_desc = StaticFieldDesc::new(*asm.main_module(), name, cilly::Type::Int(tpe));
             // Currently, all static fields are in one module. Consider spliting them up.
             let main_module = asm.class_mut(main_module_id);
@@ -747,9 +744,8 @@ pub fn add_allocation(alloc_id: u64, asm: &mut cilly::v2::Assembly, tcx: TyCtxt<
                 {
                     // If it is a function, patch its pointer up.
                     let mut ctx = MethodCompileCtx::new(tcx, None, finstance, asm);
-                    let call_info =
-                        crate::call_info::CallInfo::sig_from_instance_(finstance, &mut ctx);
-                    let function_name = crate::utilis::function_name(tcx.symbol_name(finstance));
+                    let call_info = CallInfo::sig_from_instance_(finstance, &mut ctx);
+                    let function_name = function_name(tcx.symbol_name(finstance));
                     let mref = MethodRef::new(
                         *asm.main_module(),
                         asm.alloc_string(function_name),

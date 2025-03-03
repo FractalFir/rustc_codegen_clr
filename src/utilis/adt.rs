@@ -7,12 +7,10 @@ use cilly::{
     Const, Type,
 };
 use rustc_abi::{FieldIdx, FieldsShape, Layout, LayoutData, TagEncoding, VariantIdx, Variants};
-use rustc_middle::ty::{AdtDef, Ty};
+use rustc_middle::ty::Ty;
 
 use rustc_codegen_clr_ctx::MethodCompileCtx;
-pub fn enum_variant_offsets(_: AdtDef, layout: Layout, vidix: VariantIdx) -> FieldOffsetIterator {
-    FieldOffsetIterator::fields(get_variant_at_index(vidix, (*layout.0).clone()))
-}
+
 
 #[derive(Clone, Debug)]
 pub(crate) enum FieldOffsetIterator {
@@ -87,10 +85,7 @@ impl FieldOffsetIterator {
             }
         }
     }
-    pub fn fields(parent: LayoutData<FieldIdx, rustc_abi::VariantIdx>) -> FieldOffsetIterator {
-        //eprintln!("ADT fields:{:?}",parent.fields);
-        Self::from_fields_shape(&parent.fields)
-    }
+
 }
 /// Takes layout of an enum as input, and returns the type of its tag(Void if no tag) and the size of the tag(0 if no tag).
 pub fn enum_tag_info(r#enum: Layout<'_>, asm: &mut Assembly) -> (Type, u32) {
@@ -236,7 +231,7 @@ pub fn get_discr<'tcx>(
 ) -> CILNode {
     //return CILNode::
     assert!(!layout.is_uninhabited(), "UB: enum layout is unanhibited!");
-    let (tag_tpe, _) = crate::utilis::adt::enum_tag_info(layout, ctx);
+    let (tag_tpe, _) = enum_tag_info(layout, ctx);
     let tag_encoding = match layout.variants {
         Variants::Single { index } => {
             let discr_val = ty
@@ -282,7 +277,7 @@ pub fn get_discr<'tcx>(
             ref niche_variants,
             niche_start,
         } => {
-            let (disrc_type, _) = crate::utilis::adt::enum_tag_info(layout, ctx);
+            let (disrc_type, _) = enum_tag_info(layout, ctx);
             let relative_max = niche_variants.end().as_u32() - niche_variants.start().as_u32();
             let enum_tag_name = ctx.alloc_string(crate::ENUM_TAG);
             let tag = CILNode::LDField {

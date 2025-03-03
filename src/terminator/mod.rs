@@ -1,6 +1,4 @@
 use crate::assembly::MethodCompileCtx;
-use rustc_codegen_clr_place::{place_adress, place_set};
-use rustc_codegen_clr_type::GetTypeExt;
 use cilly::{
     cil_node::CILNode,
     cil_root::CILRoot,
@@ -8,6 +6,14 @@ use cilly::{
     ld_field,
     v2::{cilnode::MethodKind, Assembly, FieldDesc, FnSig, Int, MethodRef},
     Const, Type,
+};
+use rustc_codegen_clr_ctx::function_name;
+use rustc_codegen_clr_place::{place_adress, place_set};
+use rustc_codegen_clr_type::GetTypeExt;
+
+use rustc_codgen_clr_operand::{
+    constant::{load_const_int, load_const_uint},
+    handle_operand,
 };
 use rustc_middle::{
     mir::{BasicBlock, Operand, Place, SwitchTargets, Terminator, TerminatorKind},
@@ -52,9 +58,9 @@ pub fn handle_call_terminator<'tycxt>(
             let sig = crate::function_sig::from_poly_sig(ctx, sig);
             let mut arg_operands = Vec::new();
             for arg in args {
-                arg_operands.push(crate::operand::handle_operand(&arg.node, ctx));
+                arg_operands.push(handle_operand(&arg.node, ctx));
             }
-            let called_operand = crate::operand::handle_operand(func, ctx);
+            let called_operand = handle_operand(func, ctx);
             if *sig.output() == cilly::Type::Void {
                 trees.push(
                     CILRoot::CallI {
@@ -123,7 +129,7 @@ pub fn handle_terminator<'tcx>(
         }
         TerminatorKind::SwitchInt { discr, targets } => {
             let ty = ctx.monomorphize(discr.ty(ctx.body(), ctx.tcx()));
-            let discr = crate::operand::handle_operand(discr, ctx);
+            let discr = handle_operand(discr, ctx);
             handle_switch(ty, &discr, targets, ctx)
         }
         TerminatorKind::Assert {
@@ -224,8 +230,7 @@ pub fn handle_terminator<'tcx>(
                     _ => {
                         let sig =
                             crate::function_sig::sig_from_instance_(drop_instance, ctx).unwrap();
-                        let function_name =
-                            crate::utilis::function_name(ctx.tcx().symbol_name(drop_instance));
+                        let function_name = function_name(ctx.tcx().symbol_name(drop_instance));
                         let mref = MethodRef::new(
                             *ctx.main_module(),
                             ctx.alloc_string(function_name),
@@ -334,12 +339,10 @@ fn handle_switch(
         //ops.extend(CILOp::debug_msg("Switchin"));
 
         let const_val = CILNode::V2(match ty.kind() {
-            TyKind::Int(int) => crate::constant::load_const_int(value, *int, asm),
-            TyKind::Uint(uint) => crate::constant::load_const_uint(value, *uint, asm),
+            TyKind::Int(int) => load_const_int(value, *int, asm),
+            TyKind::Uint(uint) => load_const_uint(value, *uint, asm),
             TyKind::Bool => asm.alloc_node(value != 0),
-            TyKind::Char => {
-                crate::constant::load_const_uint(value, rustc_middle::ty::UintTy::U32, asm)
-            }
+            TyKind::Char => load_const_uint(value, rustc_middle::ty::UintTy::U32, asm),
             _ => todo!("Unsuported switch discriminant type {ty:?}"),
         });
         //ops.push(CILOp::LdcI64(value as i64));
