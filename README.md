@@ -56,11 +56,20 @@ Because of that, the support for C in the project is almost as good as support f
 The project currently supports most Rust features (except proc macros), but it is not bug-free. It can compile a mostly working version of Rust std, but there are many minor bugs make such `std` not 100% functional.
 
 Most components of `std` are about 95% working in .NET, and 80% working in C.
-
-Currently, the GCC and clang C compilers are supported, with plans to add support
-for `tcc`, and maybe even `sdcc`.
-
 So, you *can* compile a lot of existing Rust code, but it may not necessarily *work*.
+
+## Supported C compilers
+
+Currently, the GCC and clang C compilers are supported, with partial support for `tcc` and `sdcc`.
+For obvious reasons, I am unable to add support for any C propietary compilers which are not free to use.
+However, if you have access to such a compiler, I can assist you in adding support for it.
+
+| Compiler | Status |
+| GCC | Fully Supported & regularly tested |
+| Clang | Fully Supported & regularly tested |
+| TCC | Partially supported - issues with TLS / multithreading |
+| SDCC | Partailly supported - no atomics, no statics / constants larger than 8 bytes supported |
+| CompCert | Partailly supported(no known issues), not tested! |
 
 ### core, std, and alloc uint tests.
 

@@ -1,8 +1,12 @@
 #include <stdio.h>
 #include <stdint.h>
 
-#ifndef __TINYC__
+#if !defined(__TINYC__) && !defined(__LCC__)
 #include <stdbool.h>
+#elif defined(__LCC__)
+#define bool uint8_t
+#define false 0
+#define true 1
 #else
 #define bool _Bool
 #define false 0
@@ -12,6 +16,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#ifdef __LCC__
+#define inline
+#endif
 #if !(defined(__TINYC__) || defined(__SDCC) || defined(_MSC_VER))
 #include <mm_malloc.h>
 #elif defined(_MSC_VER)
@@ -89,11 +96,11 @@ static inline __uint128_t __builtin_bswap128(__uint128_t val){
     return res;
 }
 #else
-#ifdef __SIZEOF_INT128__
+#if defined(__SIZEOF_INT128__) && !defined(__LCC__)
 __uint128_t __builtin_bswap128(__uint128_t val);
 #endif
 #endif
-#ifdef __TINYC__
+#if defined(__TINYC__) || defined(__COMPCERT__) || defined(__LCC__)
 #define _Thread_local __attribute__((section(".tbss")))
 #elif defined(_MSC_VER)
 #define _Thread_local __declspec(thread)
@@ -102,7 +109,7 @@ __uint128_t __builtin_bswap128(__uint128_t val);
 #define _Thread_local 
 #endif
 
-#if !(defined(__SDCC) || defined(_MSC_VER))
+#if !(defined(__SDCC) || defined(_MSC_VER) || defined(__COMPCERT__) || defined(__LCC__))
 #define FORCE_NOT_ZST 
 #else
 #define FORCE_NOT_ZST char force_not_zst;
@@ -116,7 +123,7 @@ __uint128_t __builtin_bswap128(__uint128_t val);
 #define alloca(arg) ((void*)0)
 #endif
 /* Backup for targets that don't support i128 - TODO: replace this with software emulation!*/
-#ifndef __SIZEOF_INT128__
+#if !defined(__SIZEOF_INT128__) || defined(__LCC__)
 #define __int128_t long long
 #define __int128 __int128_t
 #define __uint128_t unsigned long long
@@ -150,7 +157,7 @@ bool __atomic_compare_exchange_n(uintptr_t *ptr, uintptr_t *expected, uintptr_t 
 }
 #endif
 
-#if !(defined(__TINYC__) || defined(__SDCC) || defined(_MSC_VER))
+#if !(defined(__TINYC__) || defined(__SDCC) || defined(_MSC_VER) || defined(__COMPCERT__) || defined(__LCC__))
 static inline _Float16 System_Half_op_Explicitf32f16(float val){
     return (_Float16)val;
 }
@@ -162,6 +169,12 @@ static inline _Float16 System_Half_op_Explicitf32f16(float val){
 #define System_Runtime_InteropServices_Marshal_ReAllocHGlobalisizeisizeisize(ptr, new_size) realloc(ptr, new_size)
 #define System_Runtime_InteropServices_Marshal_FreeHGlobalisizev(ptr) free(ptr)
 static void pal_internal_error(){}
+#ifdef __LCC__
+void* aligned_alloc(size_t align, size_t size){
+	if(align > 8) abort();
+	return malloc(size);
+}
+#endif
 static inline void* System_Runtime_InteropServices_NativeMemory_AlignedAllocusizeusizepv(size_t size,size_t align) {
     if (align > (0x10000))pal_internal_error();
     return aligned_alloc(align, size);
@@ -482,7 +495,7 @@ double fabsf64(double val);
 #define System_Math_Maxisizeisizeisize(x, y) (((x) > (y)) ? (x) : (y))
 #define System_Math_Minusizeusizeusize(x, y) (((x) < (y)) ? (x) : (y))
 #define System_Math_Maxusizeusizeusize(x, y) (((x) > (y)) ? (x) : (y))
-
+#ifndef __LCC__
 typedef struct TSWData
 {
     void *start_routine;
@@ -497,7 +510,8 @@ static inline void *thread_start_wrapper(TSWData *data)
     free(data);
     return start_routine(arg);
 }
-#ifndef __SDCC
+#endif
+#if !(defined(__SDCC) || defined(__LCC__))
 int32_t pthread_create(void *thread,
                        void *attr,
                        void *(*start_routine)(void *),

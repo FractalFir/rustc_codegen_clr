@@ -509,7 +509,7 @@ pub fn add_unsigned<'tcx>(
         super::cmp::lt_unchecked(
             ty,
             res.clone(),
-            super::bit_or_unchecked(ty, ty, ctx, ops_a.clone(), ops_b.clone()),
+            ops_a.clone(),
             ctx,
         ),
         res,
