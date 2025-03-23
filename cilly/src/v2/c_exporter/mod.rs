@@ -648,6 +648,9 @@ impl CExporter {
         Ok(match root {
             CILRoot::StLoc(id, node_idx) => {
                 let name = local_name(locals, asm, id);
+                if let CILNode::LocAllocAlgined { tpe, align } = asm[node_idx]{
+                    return Ok(format!("loc_alloc_aligned({name},{tpe},{align},t{hash})",tpe = c_tpe(asm[tpe],asm),hash = encode(asm.alloc_root(root).as_bimap_index().get() as u64)));
+                }
                 return Ok(format!("{name} = {node};", node = Self::node_to_string(asm[node_idx].clone(), asm, locals, inputs, sig)?,));
             },
             CILRoot::StArg(arg, node_idx) =>match inputs[arg as usize].1 {
@@ -940,6 +943,21 @@ impl CExporter {
             )?;
         }
         let blocks = def.blocks(asm).unwrap().to_vec();
+           // Prepare allocas, if needed.
+           for root in blocks[0].roots(){
+                let CILRoot::StLoc(loc,node ) = asm[*root] else{
+                    continue;
+                };
+                let CILNode::LocAllocAlgined { tpe, align } = asm[node] else {
+                    continue;
+                };
+                writeln!(
+                    method_defs,
+                    "register_alloca_aligned(t{hash}, {tpe},{align});",
+                    hash = encode(root.as_bimap_index().get() as u64),
+                    tpe = c_tpe(asm[tpe], asm),
+                )?;
+           }
         let mut block_iter = blocks.iter().peekable();
         while let Some(block) = block_iter.next() {
             writeln!(method_defs, "bb{}:", block.block_id())?;
@@ -1175,7 +1193,7 @@ impl CExporter {
 
         let mut cmd = std::process::Command::new(Self::c_compiler());
         if is_main {
-            cmd.args(["-D", "MAIN_FILE"]);
+            cmd.args(["-DMAIN_FILE"]);
         }
 
         cmd.arg("-fPIC");
@@ -1212,8 +1230,15 @@ impl CExporter {
         let stderr = String::from_utf8_lossy(&out.stderr);
         if !*LINKER_RECOVER {
             assert!(
-                !(stderr.contains("error:") || stderr.contains("fatal")),
+                !(stderr.contains("error:")
+                    || stderr.contains("fatal")
+                    || stderr.contains("failed")),
                 "stdout:{} stderr:{} cmd:{cmd:?}",
+                stdout,
+                String::from_utf8_lossy(&out.stderr)
+            );
+            println!(
+                "linker success. stdout:{} stderr:{} cmd:{cmd:?}",
                 stdout,
                 String::from_utf8_lossy(&out.stderr)
             );

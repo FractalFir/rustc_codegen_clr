@@ -392,7 +392,7 @@ impl MethodDef {
         }
         let mut preamble = vec![];
         for (local_id, (_, tpe_idx, align)) in to_map {
-            if align <= 8 {
+            if align <= asm.guaranted_align() as u64 {
                 // Aligement guanrateed by .NET, skip.
                 continue;
             }

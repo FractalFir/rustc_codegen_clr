@@ -6,11 +6,11 @@ extern "C" {
 }
 fn bench_for_each_chain_fold<const BIG:u32>() -> u32 {
     let mut acc = 0;
-    unsafe{printf(c"Prepari".as_ptr())};
-    unsafe{printf(c"ng to r".as_ptr())};
-    unsafe{printf(c"un fold".as_ptr())};
-    unsafe{printf(c" `%d` t".as_ptr(),BIG)};
-    unsafe{printf(c"imes!\n".as_ptr())};
+    unsafe{printf(c"Callin".as_ptr())};
+    unsafe{printf(c"g `fol".as_ptr())};
+    unsafe{printf(c"d` %d".as_ptr(),BIG)};
+    unsafe{printf(c" time".as_ptr())};
+    unsafe{printf(c"s\n".as_ptr())};
     let iter = (0..BIG).chain(0..BIG).map(black_box);
     for_each_fold(iter, |x| acc += x);
     unsafe{printf(c"DONE!\n".as_ptr())};

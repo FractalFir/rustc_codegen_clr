@@ -506,12 +506,7 @@ pub fn add_unsigned<'tcx>(
 
     result_tuple(
         tpe,
-        super::cmp::lt_unchecked(
-            ty,
-            res.clone(),
-            ops_a.clone(),
-            ctx,
-        ),
+        super::cmp::lt_unchecked(ty, res.clone(), ops_a.clone(), ctx),
         res,
         ctx,
     )

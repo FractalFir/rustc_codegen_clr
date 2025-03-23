@@ -251,7 +251,9 @@ pub fn handle_aggregate<'tcx>(
                 (place_get(target_location, ctx)),
             )
         }
-        AggregateKind::CoroutineClosure(..) => todo!("Unsuported aggregate kind {aggregate_kind:?}"),
+        AggregateKind::CoroutineClosure(..) => {
+            todo!("Unsuported aggregate kind {aggregate_kind:?}")
+        }
     }
 }
 /// Builds an Algebraic Data Type (struct,enum,union) at location `target_location`, with fields set using ops in `fields`.

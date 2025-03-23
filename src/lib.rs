@@ -118,9 +118,6 @@ pub mod native_pastrough;
 mod codegen_error;
 /// Test harnesses.
 pub mod compile_test;
-/// Code handling loading constant values in CIL.
-mod constant;
-
 /// Implementation of compiletime features neccessary for interop.
 mod comptime;
 /// Signature of a function (inputs)->output

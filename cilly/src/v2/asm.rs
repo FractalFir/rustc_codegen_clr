@@ -1320,7 +1320,17 @@ impl Assembly {
     pub(crate) fn get_section(&self, arg: &str) -> Option<&Vec<u8>> {
         self.sections.get(arg)
     }
+    
+    pub(crate) fn guaranted_align(&self) -> u8 {
+        *GUARANTED_ALIGN
+    }
+    
+    pub fn max_static_size(&self) -> usize {
+        *MAX_STATIC_SIZE
+    }
 }
+config!(GUARANTED_ALIGN, u8,8);
+config!(MAX_STATIC_SIZE, usize,16);
 /// An initializer, which runs before everything else. By convention, it is used to initialize static / const data. Should not execute any user code
 pub const CCTOR: &str = ".cctor";
 /// An thread-local initializer. Runs before each thread starts. By convention, it is used to initialize thread local data. Should not execute any user code.

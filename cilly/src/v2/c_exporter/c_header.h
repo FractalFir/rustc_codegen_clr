@@ -1,6 +1,12 @@
 #include <stdio.h>
 #include <stdint.h>
-
+/* Backup for targets that don't support i128 - TODO: replace this with software emulation!*/
+#if !defined(__SIZEOF_INT128__) || defined(__LCC__)
+#define __int128_t long long
+#define __int128 __int128_t
+#define __uint128_t unsigned long long
+#define uint128_t unsigned long long
+#endif
 #if !defined(__TINYC__) && !defined(__LCC__)
 #include <stdbool.h>
 #elif defined(__LCC__)
@@ -12,7 +18,9 @@
 #define false 0
 #define true 1
 #endif
-
+#ifdef __LCC__
+#define __func__ "unknown"
+#endif
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -39,18 +47,20 @@ inline void* _mm_malloc(size_t size, size_t align){
 inline void _mm_free (void *p){
     free(p);
 }
+#endif
+#if (defined(__TINYC__) || defined(__SDCC) || defined(__LCC__))
 inline uint16_t __builtin_bswap16(uint16_t val){
     uint16_t res;
-    uint8_t* ptr = &val;
-    uint8_t* rptr = &res;
+    uint8_t* ptr = (uint8_t*)&val;
+    uint8_t* rptr = (uint8_t*)&res;
     rptr[0] = ptr[1];
     rptr[1] = ptr[0];
     return res;
 }
 inline uint32_t __builtin_bswap32(uint32_t val){
     uint32_t res;
-    uint8_t* ptr = &val;
-    uint8_t* rptr = &res;
+    uint8_t* ptr = (uint8_t*)&val;
+    uint8_t* rptr = (uint8_t*)&res;
     rptr[0] = ptr[3];
     rptr[1] = ptr[2];
     rptr[2] = ptr[1];
@@ -59,8 +69,8 @@ inline uint32_t __builtin_bswap32(uint32_t val){
 }
 inline uint64_t __builtin_bswap64(uint64_t val){
     uint64_t res;
-    uint8_t* ptr = &val;
-    uint8_t* rptr = &res;
+    uint8_t* ptr = (uint8_t*)&val;
+    uint8_t* rptr = (uint8_t*)&res;
     rptr[0] = ptr[7];
     rptr[1] = ptr[6];
     rptr[2] = ptr[5];
@@ -69,6 +79,28 @@ inline uint64_t __builtin_bswap64(uint64_t val){
     rptr[5] = ptr[2];
     rptr[6] = ptr[1];
     rptr[7] = ptr[0];
+    return res;
+}
+inline uint128_t __builtin_bswap128(uint128_t val){
+    uint128_t res;
+    uint8_t* ptr = (uint8_t*)&val;
+    uint8_t* rptr = (uint8_t*)&res;
+    rptr[0] = ptr[15];
+    rptr[1] = ptr[14];
+    rptr[2] = ptr[13];
+    rptr[3] = ptr[12];
+    rptr[4] = ptr[11];
+    rptr[5] = ptr[10];
+    rptr[6] = ptr[9];
+    rptr[7] = ptr[8];
+    rptr[8] = ptr[7];
+    rptr[9] = ptr[6];
+    rptr[10] = ptr[5];
+    rptr[11] = ptr[4];
+    rptr[12] = ptr[3];
+    rptr[13] = ptr[2];
+    rptr[14] = ptr[1];
+    rptr[16] = ptr[0];
     return res;
 }
 #endif
@@ -115,41 +147,41 @@ __uint128_t __builtin_bswap128(__uint128_t val);
 #define FORCE_NOT_ZST char force_not_zst;
 #endif
 
-#if !(defined(__SDCC) || defined(_MSC_VER))
+#if !(defined(__SDCC) || defined(_MSC_VER) || defined(__LCC__))
 #include <alloca.h>
+#define register_alloca_aligned(type, align, hash)
+#define loc_alloc_aligned(name, type, align, hash) name = (void*)((((size_t)(alloca(sizeof(type) + align) + align - 1)) / align)*align);
 #elif defined(_MSC_VER)
 #define alloca _alloca
+#define register_alloca_aligned(type, align, hash)
+#define loc_alloc_aligned(name, type, align, hash) name = (void*)((((size_t)(alloca(sizeof(type) + align) + align - 1)) / align)*align);
 #else
-#define alloca(arg) ((void*)0)
+#define register_alloca_aligned(type, align, hash) char hash[sizeof(type) + align];  
+#define loc_alloc_aligned(name, type, align, hash) name = (void*)((((size_t)(&hash + align - 1)) / align)*align); 
 #endif
-/* Backup for targets that don't support i128 - TODO: replace this with software emulation!*/
-#if !defined(__SIZEOF_INT128__) || defined(__LCC__)
-#define __int128_t long long
-#define __int128 __int128_t
-#define __uint128_t unsigned long long
-#endif
+
 #ifdef __clang__
 #define __atomic_compare_exchange_4 __atomic_compare_exchange_n
 #define __atomic_compare_exchange_8 __atomic_compare_exchange_n
 #define _Float128 long double
-#elif defined(__SDCC)
+#elif (defined(__SDCC) || defined(__LCC__))
 // WARNING! Assumes a single-threaded, no-interrupt eviroment!
 bool __atomic_compare_exchange_4(uint32_t *ptr, uint32_t *expected, uint32_t desired, bool weak, int success_memorder, int failure_memorder){
-    if(*ptr == expected){
+    if(*ptr == *expected){
         *ptr = desired;
         return true;
     }
     return false;
 }
 bool __atomic_compare_exchange_8(uint64_t *ptr, uint64_t *expected, uint64_t desired, bool weak, int success_memorder, int failure_memorder){
-    if(*ptr == expected){
+    if(*ptr == *expected){
         *ptr = desired;
         return true;
     }
     return false;
 }
 bool __atomic_compare_exchange_n(uintptr_t *ptr, uintptr_t *expected, uintptr_t desired, bool weak, int success_memorder, int failure_memorder){
-    if(*ptr == expected){
+    if(*ptr == *expected){
         *ptr = desired;
         return true;
     }
@@ -195,7 +227,7 @@ static inline void *System_Runtime_InteropServices_NativeMemory_AlignedReallocpv
 #define eprintf(...) printf(__VA_ARGS__)
 #define BUILTIN_UNSUPORTED(NAME,OUTPUT, ARGLIST) static inline OUTPUT NAME ARGLIST { eprintf("Function " #NAME "is not yet supported!"); abort();}
 #endif
-#ifdef __SDCC
+#if defined(__SDCC) || defined(__LCC__)
 #define NAN (0.0 / 0.0)
 #endif
 #ifdef __SDCC
@@ -326,7 +358,7 @@ static inline __uint128_t System_UInt128_op_Explicitf64u128(double val) {
 /*Assumes a 64 bit OS.*/
 #define System_Buffers_Binary_BinaryPrimitives_ReverseEndiannessisizeisize(val) (intptr_t) __builtin_bswap64((uint64_t)val)
 #define System_Buffers_Binary_BinaryPrimitives_ReverseEndiannessusizeusize __builtin_bswap64
-#ifndef __SDCC
+#if !(defined(__SDCC) || defined(__LCC__))
 static inline int32_t System_Numerics_BitOperations_TrailingZeroCountusizei32(uintptr_t val) {if (val == 0) return sizeof(uintptr_t) * 8; return (int32_t) __builtin_ctzl((uint64_t)val);}
 static inline int32_t System_Numerics_BitOperations_TrailingZeroCountu32i32(uint32_t val) {if (val == 0) return sizeof(uint32_t) * 8; return (int32_t) __builtin_ctzl((uint32_t)val);}
 static inline int32_t System_Numerics_BitOperations_TrailingZeroCounti32i32(int32_t val) {if (val == 0) return sizeof(int32_t) * 8; return (int32_t) __builtin_ctzl((uint32_t)val);}
@@ -341,6 +373,7 @@ static inline int32_t System_Numerics_BitOperations_LeadingZeroCountusizei32(uin
 #define System_Numerics_BitOperations_PopCountu64i32(val) __builtin_popcountl((uint64_t)val)
 #define System_UInt128_PopCountu128u128(val) __builtin_popcountl((uint64_t)val)
 
+#define System_Console_WriteLinev() printf("\n")
 #define System_Console_WriteLinestv(msg) printf("%s\n", msg)
 #define System_Console_WriteLinef64v(val) printf("%f\n", val)
 
@@ -484,8 +517,12 @@ double fabsf64(double val);
 #define System_Double_Sinf64f64 sin
 #define System_Double_Absf64f64 fabsf64
 #define System_Single_Absf32f32 fabsf32
+#define System_Single_Sqrtf32f32(x) (float)sqrt((double)x)
 #define System_MathF_Sqrtf32f32(x) (float)sqrt((double)x)
+#define System_Double_Sqrtf64f64 sqrt
 #define System_MathF_Sqrtf64f64 sqrt
+#define System_Single_Floorf32f32(x) (float)floor((double)x)
+#define System_Single_Ceilingf32f32(x) (float)ceil((double)x)
 #define System_MathF_Roundf32f32(x) (float)round((double)x)
 #define System_Single_Powf32f32f32(a, b) (float)pow(a, b)
 #define System_Single_Powf64f64f64 pow
@@ -555,11 +592,14 @@ BUILTIN_UNSUPORTED(System_Double_Log2f64f64,double,(double input))
 #define System_Math_Floorf64f64(input) floor(input)
 #define System_Math_Sqrtf64f64(input) sqrt(input)
 #define System_Math_Ceilingf64f64(input) ceil(input)
+#define System_Double_Ceilingf64f64(input) ceil(input)
 #define System_MathF_Ceilingf32f32(input) (float)ceil((double)input)
 #define System_Math_Floorf64f64(input) floor(input)
+#define System_Double_Floorf64f64(input) floor(input)
 #define System_MathF_Floorf32f32(input) (float)floor((double)input)
 #define System_Math_Truncatef64f64(input) trunc(input)
-
+#define System_Double_Truncatef64f64(input) trunc(input)
+#define System_Single_Truncatef32f32(input) (float)trunc((double)input)
 static inline uint32_t System_Threading_Interlocked_CompareExchangeru32u32u32u32(uint32_t *addr, uint32_t value, uint32_t comparand)
 {
     uint32_t res = 0;
@@ -612,7 +652,7 @@ static inline intptr_t System_Threading_Interlocked_CompareExchangerisizeisizeis
         return comparand;
     }
 }
-#ifndef __SDCC
+#if !(defined(__SDCC) || defined(__LCC__))
 static inline uint32_t System_Threading_Interlocked_Exchangeru32u32u32(uint32_t *addr, uint32_t val)
 {
     uint32_t ret;
@@ -704,7 +744,7 @@ static inline uint8_t System_Byte_RotateLeftu8i32u8(uint8_t val, int32_t amount)
       if(amount == 0) return val;
     return ((val << amount) | (val >> ( (sizeof(uint8_t)*8) - amount)));
 }
-#ifndef __SDCC
+#if !(defined(__SDCC) || defined(__LCC__))
 static inline unsigned __int128 System_UInt128_LeadingZeroCountu128u128(unsigned __int128 val){ if (val == 0) return 128; return __builtin_clzl(val); }
 #endif
 static inline uint32_t System_Math_Minu32u32u32(uint32_t lhs, uint32_t rhs)

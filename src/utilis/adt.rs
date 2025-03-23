@@ -11,7 +11,6 @@ use rustc_middle::ty::Ty;
 
 use rustc_codegen_clr_ctx::MethodCompileCtx;
 
-
 #[derive(Clone, Debug)]
 pub(crate) enum FieldOffsetIterator {
     Explicit { offsets: Box<[u32]>, index: usize },
@@ -85,7 +84,6 @@ impl FieldOffsetIterator {
             }
         }
     }
-
 }
 /// Takes layout of an enum as input, and returns the type of its tag(Void if no tag) and the size of the tag(0 if no tag).
 pub fn enum_tag_info(r#enum: Layout<'_>, asm: &mut Assembly) -> (Type, u32) {

@@ -695,7 +695,7 @@ pub fn add_allocation(alloc_id: u64, asm: &mut cilly::v2::Assembly, tcx: TyCtxt<
     let byte_hash = calculate_hash(&bytes);
     match (align, bytes.len()) {
         // Assumes this constant is not a pointer.
-        (0..=1, 1) | (0..=2, 1..=2) | (0..=4, 1..=4) | (0..=8, 1..=16) => {
+        (0..=1, len @ 1) | (0..=2, len @ 1..=2) | (0..=4, len @ 1..=4) | (0..=8, len @ 1..=16) if len <= asm.max_static_size()=> {
             let alloc_name: IString = if let Some(krate) = krate {
                 format!(
                     "s_{}_{}_{}_{thread_local}_{}",
@@ -715,7 +715,10 @@ pub fn add_allocation(alloc_id: u64, asm: &mut cilly::v2::Assembly, tcx: TyCtxt<
                 .into()
             };
             let name = asm.alloc_string(alloc_name.clone());
-            let tpe: Int = Int::from_size_sign(u8::try_from(bytes.len()).unwrap().next_power_of_two(), false);
+            let tpe: Int = Int::from_size_sign(
+                u8::try_from(bytes.len()).unwrap().next_power_of_two(),
+                false,
+            );
             let field_desc = StaticFieldDesc::new(*asm.main_module(), name, cilly::Type::Int(tpe));
             // Currently, all static fields are in one module. Consider spliting them up.
             let main_module = asm.class_mut(main_module_id);

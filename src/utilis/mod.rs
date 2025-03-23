@@ -3,9 +3,7 @@ use rustc_codegen_clr_type::r#type::escape_field_name;
 use rustc_hir::def_id::DefId;
 use rustc_middle::{
     mir::interpret::AllocId,
-    ty::{
-        ConstKind, GenericArg, Instance, List, PseudoCanonicalInput, Ty, TyCtxt, TyKind,
-    },
+    ty::{ConstKind, GenericArg, Instance, List, PseudoCanonicalInput, Ty, TyCtxt, TyKind},
 };
 
 pub mod adt;
@@ -35,7 +33,6 @@ pub fn instance_try_resolve<'tcx>(
     .unwrap()
 }
 
-
 /// Gets the name of a field with index `idx`
 pub fn field_name(ty: Ty, idx: u32) -> crate::IString {
     match ty.kind() {
@@ -60,8 +57,6 @@ pub fn variant_name(ty: Ty, idx: u32) -> crate::IString {
         _ => todo!("Can't yet get fields of typr {ty:?}"),
     }
 }
-
-
 
 /// Converts a generic argument to a boolean, and panics if it could not.
 pub fn garag_to_bool<'tcx>(garg: GenericArg<'tcx>, _ctx: TyCtxt<'tcx>) -> bool {
@@ -137,4 +132,3 @@ pub fn align_of<'tcx>(ty: rustc_middle::ty::Ty<'tcx>, tcx: TyCtxt<'tcx>) -> u64 
     let align = layout.align.abi;
     align.bytes()
 }
-
