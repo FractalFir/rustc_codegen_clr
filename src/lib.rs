@@ -195,9 +195,9 @@ impl CodegenBackend for MyBackend {
             use std::io::Write;
             let mut packed_metadata = rustc_metadata::METADATA_HEADER.to_vec();
             packed_metadata
-                .write_all(&(metadata.raw_data().len() as u64).to_le_bytes())
+                .write_all(&(metadata.full().len() as u64).to_le_bytes())
                 .unwrap();
-            packed_metadata.extend(metadata.raw_data());
+            packed_metadata.extend(metadata.full());
             asm.add_section(".rustc", packed_metadata);
         }
         let _ = cilly::utilis::get_environ(&mut asm);
@@ -286,6 +286,7 @@ impl CodegenBackend for MyBackend {
                 dwarf_object: None,
                 llvm_ir: None,
                 assembly: None,
+                links_from_incr_cache: Vec::new(),
             }];
             let codegen_results = CodegenResults {
                 modules,
@@ -293,6 +294,7 @@ impl CodegenBackend for MyBackend {
                 metadata_module: None,
                 metadata,
                 crate_info,
+                
             };
             (codegen_results, FxIndexMap::default())
         }))
