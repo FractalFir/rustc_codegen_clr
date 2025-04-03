@@ -227,14 +227,6 @@ pub enum CILNode {
 
 impl CILNode {
     pub fn stack_addr(val: Self, tpe_idx: TypeIdx, _asm: &mut Assembly) -> Self {
-        /*let main_module = *asm.main_module();
-        let tpe = asm[tpe_idx];
-        let sig = asm.sig([tpe], Type::Ptr(tpe_idx));
-        let mref = asm.new_methodref(main_module, "stack_addr", sig, MethodKind::Static, vec![]);
-        CILNode::Call(Box::new(CallOpArgs {
-            args: Box::new([val]),
-            site: mref,
-        }))*/
         CILNode::TemporaryLocal(Box::new((
             tpe_idx,
             [CILRoot::SetTMPLocal { value: val }].into(),
@@ -274,32 +266,11 @@ impl CILNode {
         metadata: Self,
         ptr: Self,
     ) -> Self {
-        let metadata_name = asm.alloc_string(crate::METADATA);
-        let metadata_field = asm.alloc_field(crate::FieldDesc::new(
-            slice_tpe,
-            metadata_name,
-            Type::Int(Int::USize),
-        ));
-        let data_ptr_name = asm.alloc_string(crate::DATA_PTR);
         let void_ptr = asm.nptr(Type::Void);
-        let ptr_field = asm.alloc_field(crate::FieldDesc::new(slice_tpe, data_ptr_name, void_ptr));
-        CILNode::TemporaryLocal(Box::new((
-            asm.alloc_type(Type::ClassRef(slice_tpe)),
-            [
-                CILRoot::SetField {
-                    addr: Box::new(CILNode::LoadAddresOfTMPLocal),
-                    value: Box::new(metadata),
-                    desc: (metadata_field),
-                },
-                CILRoot::SetField {
-                    addr: Box::new(CILNode::LoadAddresOfTMPLocal),
-                    value: Box::new(ptr),
-                    desc: ptr_field,
-                },
-            ]
-            .into(),
-            CILNode::LoadTMPLocal,
-        )))
+        let main = asm.main_module();
+        let sig = asm.sig([void_ptr,Type::Int(Int::USize)],Type::ClassRef(slice_tpe));
+        let create_slice = asm.new_methodref(*main, "create_slice", sig, MethodKind::Static, []);
+        CILNode::Call(Box::new(CallOpArgs { args: vec![ptr, metadata].into(), site: create_slice, is_pure: IsPure::PURE }))  
     }
     pub fn const_u128(value: u128, asm: &mut Assembly) -> CILNode {
         CILNode::V2(asm.alloc_node(value))
@@ -327,33 +298,7 @@ impl CILNode {
         );
         call!(asm.alloc_methodref(mref), [gc_handle])
     }
-    pub fn gc_handle_to_obj(self, obj: ClassRefIdx, asm: &mut Assembly) -> Self {
-        let gc_handle_class = Type::ClassRef(ClassRef::gc_handle(asm));
-        let mref = MethodRef::new(
-            ClassRef::gc_handle(asm),
-            asm.alloc_string("FromIntPtr"),
-            asm.sig([Type::Int(Int::ISize)], gc_handle_class),
-            MethodKind::Static,
-            vec![].into(),
-        );
-        let gc_handle = call!(asm.alloc_methodref(mref), [self]);
-        let gc_handle = CILNode::TemporaryLocal(Box::new((
-            asm.alloc_type(gc_handle_class),
-            [CILRoot::SetTMPLocal { value: gc_handle }].into(),
-            CILNode::LoadAddresOfTMPLocal,
-        )));
-
-        let gc_handle_ref = asm.nref(gc_handle_class);
-        let mref = MethodRef::new(
-            ClassRef::gc_handle(asm),
-            asm.alloc_string("get_Target"),
-            asm.sig([gc_handle_ref], Type::PlatformObject),
-            MethodKind::Instance,
-            vec![].into(),
-        );
-        let object = call!(asm.alloc_methodref(mref), [gc_handle]);
-        CILNode::CheckedCast(Box::new((object, obj)))
-    }
+    
 
     #[must_use]
     pub fn select(tpe: Type, a: Self, b: Self, predictate: Self, asm: &mut Assembly) -> Self {
@@ -427,21 +372,7 @@ impl CILNode {
             site: mref,
             is_pure: crate::v2::cilnode::IsPure::NOT,
         }))
-        /*
-        let stack_addr = {
-            let tpe_idx = asm.alloc_type(src);
-            let asm: &mut Assembly = asm;
-            /**/
-            CILNode::TemporaryLocal(Box::new((
-                tpe_idx,
-                [CILRoot::SetTMPLocal { value: self }].into(),
-                CILNode::LoadAddresOfTMPLocal,
-            )))
-        };
-        Self::LdObj {
-            ptr: Box::new(stack_addr.cast_ptr(asm.nptr(target))),
-            obj: Box::new(target),
-        }*/
+       
     }
     pub fn cxchng_res_val(
         old_val: Self,

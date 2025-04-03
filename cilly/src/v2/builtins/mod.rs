@@ -3,11 +3,7 @@ use std::num::{NonZeroU32, NonZeroU8};
 use crate::{utilis::mstring_to_utf8ptr, IntoAsmIndex, StaticFieldDesc};
 
 use super::{
-    asm::MissingMethodPatcher,
-    cilnode::{MethodKind, PtrCastRes},
-    cilroot::BranchCond,
-    Access, Assembly, BasicBlock, CILNode, CILRoot, ClassDef, ClassRef, Const, FieldDesc, Int,
-    MethodDef, MethodImpl, MethodRef, MethodRefIdx, Type,
+    asm::MissingMethodPatcher, cilnode::{MethodKind, PtrCastRes}, cilroot::BranchCond, Access, Assembly, BasicBlock, CILNode, CILRoot, ClassDef, ClassRef, Const, FieldDesc, FieldIdx, Int, MethodDef, MethodImpl, MethodRef, MethodRefIdx, Type
 };
 
 pub mod atomics;
@@ -155,6 +151,30 @@ fn insert_rust_alloc_zeroed(asm: &mut Assembly, patcher: &mut MissingMethodPatch
             ],
             locals: vec![(None, asm.alloc_type(void_ptr))],
         }
+    };
+    patcher.insert(name, Box::new(generator));
+}
+pub fn create_slice(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
+    let name = asm.alloc_string("create_slice");
+    let generator = move |mref:MethodRefIdx, asm: &mut Assembly| {
+        let res = *asm[asm[mref].sig()].output();
+        let addr = asm.alloc_node(CILNode::LdLocA(0));
+        let arg0 = asm.alloc_node(CILNode::LdArg(0));
+        let arg1 = asm.alloc_node(CILNode::LdArg(1));
+        let ret = asm.alloc_node(CILNode::LdLoc(0));
+        let data_ptr = FieldIdx::data_ptr(asm,res.as_class_ref().unwrap());
+        let metadata = FieldIdx::metadata(asm,res.as_class_ref().unwrap());
+        MethodImpl::MethodBody {
+            blocks: vec![
+                BasicBlock::new(vec![
+                    asm.alloc_root(CILRoot::SetField(Box::new((data_ptr,addr,arg0)))),
+                    asm.alloc_root(CILRoot::SetField(Box::new((metadata,addr,arg1)))),
+                    asm.alloc_root(CILRoot::Ret(ret))
+                ], 0, None),
+            ],
+            locals: vec![(None, asm.alloc_type(res))],
+        }
+
     };
     patcher.insert(name, Box::new(generator));
 }
@@ -572,44 +592,6 @@ pub fn transmute(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
     };
     patcher.insert(name, Box::new(generator));
 }
-pub fn create_slice(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
-    let name = asm.alloc_string("create_slice");
-    let generator = move |mref: MethodRefIdx, asm: &mut Assembly| {
-        let slice_tpe = *asm[asm[mref].sig()].output();
-        let slice_idx = asm.alloc_type(slice_tpe);
-
-        let slice_tpe = slice_tpe
-            .as_class_ref()
-            .expect("create_slice passed a non-slice type");
-        let metadata_name = asm.alloc_string(crate::METADATA);
-        let metadata_field = asm.alloc_field(crate::FieldDesc::new(
-            slice_tpe,
-            metadata_name,
-            Type::Int(Int::USize),
-        ));
-        let data_ptr_name = asm.alloc_string(crate::DATA_PTR);
-        let void_ptr = asm.nptr(Type::Void);
-        let ptr_field = asm.alloc_field(crate::FieldDesc::new(slice_tpe, data_ptr_name, void_ptr));
-        let addr = asm.alloc_node(CILNode::LdLocA(0));
-        let metadata = asm.alloc_node(CILNode::LdArg(0));
-        let ptr = asm.alloc_node(CILNode::LdArg(1));
-        let set_metadata = asm.alloc_root(CILRoot::SetField(Box::new((
-            metadata_field,
-            addr,
-            metadata,
-        ))));
-        let set_ptr = asm.alloc_root(CILRoot::SetField(Box::new((ptr_field, addr, ptr))));
-        let slice = asm.alloc_node(CILNode::LdLoc(0));
-        let ret = asm.alloc_root(CILRoot::Ret(slice));
-
-        MethodImpl::MethodBody {
-            blocks: vec![BasicBlock::new(vec![set_metadata, set_ptr, ret], 0, None)],
-            locals: vec![(None, slice_idx)],
-        }
-    };
-    patcher.insert(name, Box::new(generator));
-}
-
 pub fn argc_argv_init(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
     let name = asm.alloc_string("argc_argv_init");
     let generator = move |_, asm: &mut Assembly| {
