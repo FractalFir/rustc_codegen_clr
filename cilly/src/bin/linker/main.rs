@@ -447,6 +447,9 @@ fn main() {
     cilly::v2::builtins::stack_addr(&mut final_assembly, &mut overrides);
     cilly::v2::builtins::transmute(&mut final_assembly, &mut overrides);
     cilly::v2::builtins::create_slice(&mut final_assembly, &mut overrides);
+    cilly::v2::builtins::ovf_check_tuple(&mut final_assembly, &mut overrides);
+    cilly::v2::builtins::uninit_val(&mut final_assembly, &mut overrides);
+
     cilly::v2::builtins::math::bitreverse(&mut final_assembly, &mut overrides);
 
     if *C_MODE {

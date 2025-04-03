@@ -240,7 +240,16 @@ impl CILNode {
         val: Self,
         tpe: Type,
     ) -> CILNode {
-        let item2 = asm.alloc_string("Item2");
+        let main = asm.main_module();
+        let sig = asm.sig([tpe, Type::Bool], Type::ClassRef(tuple));
+        let site = asm.new_methodref(*main, "ovf_check_tuple", sig, MethodKind::Static, []);
+        CILNode::Call(Box::new(CallOpArgs {
+            args: vec![val, out_of_range].into(),
+            site,
+            is_pure: IsPure::PURE,
+        }))
+        /*
+                let item2 = asm.alloc_string("Item2");
         let item1 = asm.alloc_string("Item1");
         CILNode::TemporaryLocal(Box::new((
             asm.alloc_type(tuple),
@@ -258,7 +267,7 @@ impl CILNode {
             ]
             .into(),
             CILNode::LoadTMPLocal,
-        )))
+        )))*/
     }
     pub fn create_slice(
         slice_tpe: ClassRefIdx,
@@ -268,9 +277,13 @@ impl CILNode {
     ) -> Self {
         let void_ptr = asm.nptr(Type::Void);
         let main = asm.main_module();
-        let sig = asm.sig([void_ptr,Type::Int(Int::USize)],Type::ClassRef(slice_tpe));
+        let sig = asm.sig([void_ptr, Type::Int(Int::USize)], Type::ClassRef(slice_tpe));
         let create_slice = asm.new_methodref(*main, "create_slice", sig, MethodKind::Static, []);
-        CILNode::Call(Box::new(CallOpArgs { args: vec![ptr, metadata].into(), site: create_slice, is_pure: IsPure::PURE }))  
+        CILNode::Call(Box::new(CallOpArgs {
+            args: vec![ptr, metadata].into(),
+            site: create_slice,
+            is_pure: IsPure::PURE,
+        }))
     }
     pub fn const_u128(value: u128, asm: &mut Assembly) -> CILNode {
         CILNode::V2(asm.alloc_node(value))
@@ -298,7 +311,6 @@ impl CILNode {
         );
         call!(asm.alloc_methodref(mref), [gc_handle])
     }
-    
 
     #[must_use]
     pub fn select(tpe: Type, a: Self, b: Self, predictate: Self, asm: &mut Assembly) -> Self {
@@ -356,11 +368,18 @@ impl CILNode {
 
     /// Creates an unintialized value of type *tpe*.
     pub fn uninit_val(tpe: Type, asm: &mut Assembly) -> Self {
-        CILNode::TemporaryLocal(Box::new((
-            asm.alloc_type(tpe),
-            [].into(),
-            CILNode::LoadTMPLocal,
-        )))
+        if tpe == Type::Void{
+            let gv = asm.global_void();
+            return CILNode::LDStaticField(Box::new(asm[gv]));
+        }
+        let main = asm.main_module();
+        let sig = asm.sig([], tpe);
+        let uninit_val = asm.new_methodref(*main, "uninit_val", sig, MethodKind::Static, []);
+        CILNode::Call(Box::new(CallOpArgs {
+            args: [].into(),
+            site: uninit_val,
+            is_pure: IsPure::PURE,
+        }))
     }
     pub fn transmute_on_stack(self, src: Type, target: Type, asm: &mut Assembly) -> Self {
         let main_module = *asm.main_module();
@@ -372,7 +391,6 @@ impl CILNode {
             site: mref,
             is_pure: crate::v2::cilnode::IsPure::NOT,
         }))
-       
     }
     pub fn cxchng_res_val(
         old_val: Self,

@@ -703,14 +703,14 @@ impl ILExporter {
                 let sfld = asm.get_static_field(sfld);
                 let owner = class_ref(sfld.owner(), asm);
                 let name = &asm[sfld.name()];
-                let tpe = type_il(&sfld.tpe(), asm);
+                let tpe = non_void_type_il(&sfld.tpe(), asm);
                 writeln!(out, "ldsfld {tpe} {owner}::{name}")
             }
             CILNode::LdStaticFieldAdress(sfld) => {
                 let sfld = asm.get_static_field(sfld);
                 let owner = class_ref(sfld.owner(), asm);
                 let name = &asm[sfld.name()];
-                let tpe = type_il(&sfld.tpe(), asm);
+                let tpe = non_void_type_il(&sfld.tpe(), asm);
                 writeln!(out, "ldsflda {tpe} {owner}::{name}")
             }
             CILNode::LdFtn(ftn) => {

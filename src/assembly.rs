@@ -695,7 +695,9 @@ pub fn add_allocation(alloc_id: u64, asm: &mut cilly::v2::Assembly, tcx: TyCtxt<
     let byte_hash = calculate_hash(&bytes);
     match (align, bytes.len()) {
         // Assumes this constant is not a pointer.
-        (0..=1, len @ 1) | (0..=2, len @ 1..=2) | (0..=4, len @ 1..=4) | (0..=8, len @ 1..=16) if len <= asm.max_static_size()=> {
+        (0..=1, len @ 1) | (0..=2, len @ 1..=2) | (0..=4, len @ 1..=4) | (0..=8, len @ 1..=16)
+            if len <= asm.max_static_size() =>
+        {
             let alloc_name: IString = if let Some(krate) = krate {
                 format!(
                     "s_{}_{}_{}_{thread_local}_{}",

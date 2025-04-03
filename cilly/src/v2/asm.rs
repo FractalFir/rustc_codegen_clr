@@ -405,7 +405,7 @@ impl Assembly {
         let cref = self.alloc_class_ref(cref);
 
         if self.class_defs.contains_key(&ClassDefIdx(cref)) {
-            if self[def.name()].contains("core.ffi.c_void") {
+            if self[def.name()].contains("core.ffi.c_void") || self[def.name()].contains("RustVoid") {
                 return ClassDefIdx(cref);
             }
             panic!()
@@ -695,12 +695,9 @@ impl Assembly {
     pub fn save_tmp<W: std::io::Write>(&self, w: &mut W) -> std::io::Result<()> {
         w.write_all(&postcard::to_stdvec(&self).unwrap())
     }
-    /// Converts the old assembly repr to the new one.
-    #[must_use]
-    pub fn from_v1(v1: &Assembly) -> Self {
-        let mut empty: Assembly = v1.clone();
-        let rust_void = empty.alloc_string("RustVoid");
-        empty.class_def(ClassDef::new(
+    pub(crate) fn rust_void(&mut self)->ClassDefIdx{
+        let rust_void = self.alloc_string("RustVoid");
+        self.class_def(ClassDef::new(
             rust_void,
             true,
             0,
@@ -711,7 +708,13 @@ impl Assembly {
             None,
             None,
             true,
-        ));
+        ))
+    }
+    /// Converts the old assembly repr to the new one.
+    #[must_use]
+    pub fn from_v1(v1: &Assembly) -> Self {
+        let mut empty: Assembly = v1.clone();
+        empty.rust_void();
 
         #[cfg(debug_assertions)]
         empty.sanity_check();
@@ -1320,17 +1323,22 @@ impl Assembly {
     pub(crate) fn get_section(&self, arg: &str) -> Option<&Vec<u8>> {
         self.sections.get(arg)
     }
-    
+
     pub(crate) fn guaranted_align(&self) -> u8 {
         *GUARANTED_ALIGN
     }
-    
+
     pub fn max_static_size(&self) -> usize {
         *MAX_STATIC_SIZE
     }
+    
+    pub(crate) fn global_void(&mut self) ->StaticFieldIdx {
+        let main = self.main_module();
+        self.add_static(Type::Void, "global_void", false, main)
+    }
 }
-config!(GUARANTED_ALIGN, u8,8);
-config!(MAX_STATIC_SIZE, usize,16);
+config!(GUARANTED_ALIGN, u8, 8);
+config!(MAX_STATIC_SIZE, usize, 16);
 /// An initializer, which runs before everything else. By convention, it is used to initialize static / const data. Should not execute any user code
 pub const CCTOR: &str = ".cctor";
 /// An thread-local initializer. Runs before each thread starts. By convention, it is used to initialize thread local data. Should not execute any user code.

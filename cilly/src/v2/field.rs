@@ -8,14 +8,22 @@ use super::{bimap::IntoBiMapIndex, ClassRefIdx, StringIdx, Type};
 pub struct FieldIdx(BiMapIndex);
 impl FieldIdx {
     pub(crate) fn data_ptr(asm: &mut super::Assembly, res: ClassRefIdx) -> FieldIdx {
-       let name = asm.alloc_string(crate::DATA_PTR);
-       let tpe = asm.nptr(Type::Void);
-        asm.alloc_field(FieldDesc { owner: res, name, tpe})
+        let name = asm.alloc_string(crate::DATA_PTR);
+        let tpe = asm.nptr(Type::Void);
+        asm.alloc_field(FieldDesc {
+            owner: res,
+            name,
+            tpe,
+        })
     }
-    
+
     pub(crate) fn metadata(asm: &mut super::Assembly, res: ClassRefIdx) -> FieldIdx {
         let name = asm.alloc_string(crate::METADATA);
-        asm.alloc_field(FieldDesc { owner: res, name, tpe:Type::Int(Int::USize)})
+        asm.alloc_field(FieldDesc {
+            owner: res,
+            name,
+            tpe: Type::Int(Int::USize),
+        })
     }
 }
 impl IntoBiMapIndex for FieldIdx {

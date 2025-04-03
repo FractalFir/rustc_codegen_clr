@@ -943,21 +943,21 @@ impl CExporter {
             )?;
         }
         let blocks = def.blocks(asm).unwrap().to_vec();
-           // Prepare allocas, if needed.
-           for root in blocks[0].roots(){
-                let CILRoot::StLoc(loc,node ) = asm[*root] else{
-                    continue;
-                };
-                let CILNode::LocAllocAlgined { tpe, align } = asm[node] else {
-                    continue;
-                };
-                writeln!(
-                    method_defs,
-                    "register_alloca_aligned(t{hash}, {tpe},{align});",
-                    hash = encode(root.as_bimap_index().get() as u64),
-                    tpe = c_tpe(asm[tpe], asm),
-                )?;
-           }
+        // Prepare allocas, if needed.
+        for root in blocks[0].roots() {
+            let CILRoot::StLoc(loc, node) = asm[*root] else {
+                continue;
+            };
+            let CILNode::LocAllocAlgined { tpe, align } = asm[node] else {
+                continue;
+            };
+            writeln!(
+                method_defs,
+                "register_alloca_aligned(t{hash}, {tpe},{align});",
+                hash = encode(root.as_bimap_index().get() as u64),
+                tpe = c_tpe(asm[tpe], asm),
+            )?;
+        }
         let mut block_iter = blocks.iter().peekable();
         while let Some(block) = block_iter.next() {
             writeln!(method_defs, "bb{}:", block.block_id())?;
@@ -1016,6 +1016,7 @@ impl CExporter {
             .fields()
             .iter()
             .filter_map(|(tpe, _, _)| tpe.as_class_ref())
+            .chain(class.static_fields().iter().filter_map(|fld|fld.tpe.as_class_ref()))
             .filter_map(|cref| asm.class_ref_to_def(cref))
             .all(|cdef| defined_types.contains(&cdef))
         {
@@ -1091,7 +1092,7 @@ impl CExporter {
         } in class.static_fields()
         {
             let fname = escape_nonfn_name(&asm[*sfname]);
-            let field_tpe = c_tpe(*sfield_tpe, asm);
+            let field_tpe = nonvoid_c_type(*sfield_tpe, asm);
             let fname = class_member_name(&class_name, &fname);
             let extrn = if extrn { "extern" } else { "" };
             if *is_thread_local {
@@ -1131,6 +1132,19 @@ impl CExporter {
         let mut defined_types: FxHashSet<ClassDefIdx> = FxHashSet::default();
         let mut delayed_defs: FxHashSet<ClassDefIdx> = asm.iter_class_def_ids().cloned().collect();
         let mut delayed_defs_copy: FxHashSet<ClassDefIdx> = FxHashSet::default();
+        // Ensure RustVoid present
+        let rust_void = asm.rust_void();
+        self.export_class(
+            &mut asm,
+            rust_void,
+            &mut method_decls,
+            &mut method_defs,
+            &mut type_defs,
+            &mut defined_types,
+            &mut delayed_defs,
+            extrn,
+        )?;
+        delayed_defs.remove(&rust_void);
         while !delayed_defs.is_empty() {
             std::mem::swap(&mut delayed_defs, &mut delayed_defs_copy);
             for class_def in &delayed_defs_copy {

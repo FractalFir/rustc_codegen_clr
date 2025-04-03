@@ -294,7 +294,6 @@ impl CodegenBackend for MyBackend {
                 metadata_module: None,
                 metadata,
                 crate_info,
-                
             };
             (codegen_results, FxIndexMap::default())
         }))

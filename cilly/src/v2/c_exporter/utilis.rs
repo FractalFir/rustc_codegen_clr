@@ -144,6 +144,7 @@ pub(super) fn mref_to_name(mref: &MethodRef, asm: &Assembly) -> String {
             .any(|tpe| matches!(tpe, Type::SIMDVector(_)))
         || mname == "transmute"
         || mname == "create_slice"
+        || mname == "ovf_check_tuple"
         || mname == "_Unwind_Backtrace"
     {
         let mangled = escape_ident(

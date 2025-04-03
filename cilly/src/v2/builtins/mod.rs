@@ -3,7 +3,11 @@ use std::num::{NonZeroU32, NonZeroU8};
 use crate::{utilis::mstring_to_utf8ptr, IntoAsmIndex, StaticFieldDesc};
 
 use super::{
-    asm::MissingMethodPatcher, cilnode::{MethodKind, PtrCastRes}, cilroot::BranchCond, Access, Assembly, BasicBlock, CILNode, CILRoot, ClassDef, ClassRef, Const, FieldDesc, FieldIdx, Int, MethodDef, MethodImpl, MethodRef, MethodRefIdx, Type
+    asm::MissingMethodPatcher,
+    cilnode::{MethodKind, PtrCastRes},
+    cilroot::BranchCond,
+    Access, Assembly, BasicBlock, CILNode, CILRoot, ClassDef, ClassRef, Const, FieldDesc, FieldIdx,
+    Int, MethodDef, MethodImpl, MethodRef, MethodRefIdx, Type,
 };
 
 pub mod atomics;
@@ -154,27 +158,78 @@ fn insert_rust_alloc_zeroed(asm: &mut Assembly, patcher: &mut MissingMethodPatch
     };
     patcher.insert(name, Box::new(generator));
 }
-pub fn create_slice(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
-    let name = asm.alloc_string("create_slice");
+
+pub fn uninit_val(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
+    let name = asm.alloc_string("uninit_val");
     let generator = move |mref:MethodRefIdx, asm: &mut Assembly| {
+        let ret = asm.alloc_node(CILNode::LdLoc(0));
+        let res = *asm[asm[mref].sig()].output();
+        MethodImpl::MethodBody {
+            blocks: vec![BasicBlock::new(
+                vec![asm.alloc_root(CILRoot::Ret(ret))],
+                0,
+                None,
+            )],
+            locals: vec![(None, asm.alloc_type(res))],
+        }
+    };
+
+    patcher.insert(name, Box::new(generator));
+}
+pub fn ovf_check_tuple(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
+    let name = asm.alloc_string("ovf_check_tuple");
+    let generator = move |mref: MethodRefIdx, asm: &mut Assembly| {
         let res = *asm[asm[mref].sig()].output();
         let addr = asm.alloc_node(CILNode::LdLocA(0));
         let arg0 = asm.alloc_node(CILNode::LdArg(0));
         let arg1 = asm.alloc_node(CILNode::LdArg(1));
         let ret = asm.alloc_node(CILNode::LdLoc(0));
-        let data_ptr = FieldIdx::data_ptr(asm,res.as_class_ref().unwrap());
-        let metadata = FieldIdx::metadata(asm,res.as_class_ref().unwrap());
+        let item1 = asm.alloc_string("Item1");
+        let item2 = asm.alloc_string("Item2");
+        let tpe = asm[asm[mref].sig()].inputs()[0];
+        let item1 = asm.alloc_field(FieldDesc::new(res.as_class_ref().unwrap(), item1, tpe));
+        let item2 = asm.alloc_field(FieldDesc::new(
+            res.as_class_ref().unwrap(),
+            item2,
+            Type::Bool,
+        ));
         MethodImpl::MethodBody {
-            blocks: vec![
-                BasicBlock::new(vec![
-                    asm.alloc_root(CILRoot::SetField(Box::new((data_ptr,addr,arg0)))),
-                    asm.alloc_root(CILRoot::SetField(Box::new((metadata,addr,arg1)))),
-                    asm.alloc_root(CILRoot::Ret(ret))
-                ], 0, None),
-            ],
+            blocks: vec![BasicBlock::new(
+                vec![
+                    asm.alloc_root(CILRoot::SetField(Box::new((item1, addr, arg0)))),
+                    asm.alloc_root(CILRoot::SetField(Box::new((item2, addr, arg1)))),
+                    asm.alloc_root(CILRoot::Ret(ret)),
+                ],
+                0,
+                None,
+            )],
             locals: vec![(None, asm.alloc_type(res))],
         }
-
+    };
+    patcher.insert(name, Box::new(generator));
+}
+pub fn create_slice(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
+    let name = asm.alloc_string("create_slice");
+    let generator = move |mref: MethodRefIdx, asm: &mut Assembly| {
+        let res = *asm[asm[mref].sig()].output();
+        let addr = asm.alloc_node(CILNode::LdLocA(0));
+        let arg0 = asm.alloc_node(CILNode::LdArg(0));
+        let arg1 = asm.alloc_node(CILNode::LdArg(1));
+        let ret = asm.alloc_node(CILNode::LdLoc(0));
+        let data_ptr = FieldIdx::data_ptr(asm, res.as_class_ref().unwrap());
+        let metadata = FieldIdx::metadata(asm, res.as_class_ref().unwrap());
+        MethodImpl::MethodBody {
+            blocks: vec![BasicBlock::new(
+                vec![
+                    asm.alloc_root(CILRoot::SetField(Box::new((data_ptr, addr, arg0)))),
+                    asm.alloc_root(CILRoot::SetField(Box::new((metadata, addr, arg1)))),
+                    asm.alloc_root(CILRoot::Ret(ret)),
+                ],
+                0,
+                None,
+            )],
+            locals: vec![(None, asm.alloc_type(res))],
+        }
     };
     patcher.insert(name, Box::new(generator));
 }
