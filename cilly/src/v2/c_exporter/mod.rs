@@ -1049,11 +1049,19 @@ impl CExporter {
                 writeln!(type_defs, "{field_tpe} {fname};")?;
             }
             if last_offset != class.explict_size().unwrap().get() {
-                writeln!(
-                    type_defs,
-                    "uint8_t pad_{pad_count}[{}];\n",
-                    class.explict_size().unwrap().get() - last_offset
-                )?;
+                let size = class.explict_size().unwrap().get();
+                if let Some((tpe,name,_)) = fields.last(){
+                    //assert!(size >= last_offset, "Type {class_name} has field offset {last_offset} larger than {size}. {} {}",tpe.mangle(asm),&asm[*name]);
+                    writeln!(
+                        type_defs,
+                        "uint8_t pad_{pad_count}[{}];\n",
+                        size.checked_sub(last_offset).unwrap_or_else(||{
+                            eprintln!("Type {class_name} has field offset {last_offset} larger than {size}. {} {}",tpe.mangle(asm),&asm[*name]);
+                            0
+                        })
+                    )?;
+                }
+                
             }
             writeln!(type_defs, "}} {class_name};")?;
         } else {

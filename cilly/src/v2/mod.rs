@@ -2,6 +2,7 @@
 #![allow(clippy::module_name_repetitions)]
 // This lint includes tests for some bizzare reason, so ignoring it seems like the best course of action
 #![allow(clippy::missing_panics_doc)]
+
 use std::path::Path;
 
 pub use access::Access;

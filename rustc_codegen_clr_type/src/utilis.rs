@@ -156,7 +156,6 @@ pub fn tuple_name(elements: &[Type], asm: &Assembly) -> String {
 /// Creates a tuple with no more than 8 elements.
 #[must_use]
 pub fn simple_tuple(elements: &[cilly::v2::Type], asm: &mut Assembly) -> ClassRefIdx {
-    // Since no intering can happen at this stage, we can pass an empty AsmStringContainer safely.
     let name = tuple_name(elements, asm);
     let name = asm.alloc_string(name);
     asm.alloc_class_ref(ClassRef::new(name, None, true, [].into()))

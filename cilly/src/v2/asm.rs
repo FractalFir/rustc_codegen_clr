@@ -938,7 +938,7 @@ impl Assembly {
             .collect();
         for index in 0..mref_count {
             // Get the full method refernce
-            let mref = &self.method_refs.0[index];
+            let mref = self.method_refs.0[index].clone();
             // Check if this method reference's class has an assembly. If it has, then the method is extern. If it has not, then it is defined in this assembly
             // and must have some kind of implementation
             let class = self.class_ref(mref.class());
@@ -993,13 +993,19 @@ impl Assembly {
             let arg_names = (0..(self[mref.sig()].inputs().len()))
                 .map(|_| None)
                 .collect();
+            let imp = if self[mref.name()].contains("__rust_alloc") && !self[mref.name()].contains("__rust_alloc_error_handler"){
+                let mref = MethodRef::aligned_alloc(self);
+                MethodImpl::wrapper(self.alloc_methodref(mref),self)
+            }else{
+                MethodImpl::Missing
+            };
             let method_def = MethodDef::new(
                 Access::Public,
                 ClassDefIdx(mref.class()),
                 mref.name(),
                 mref.sig(),
                 mref.kind(),
-                MethodImpl::Missing,
+                imp,
                 arg_names,
             );
             assert!(

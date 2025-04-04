@@ -3,11 +3,11 @@ use serde::{Deserialize, Serialize};
 
 use super::{
     bimap::{BiMapIndex, IntoBiMapIndex},
-    cilnode::MethodKind,
+    cilnode::{IsPure, MethodKind},
     Access, Assembly, BasicBlock, CILIterElem, CILNode, ClassDefIdx, ClassRef, ClassRefIdx, Int,
     SigIdx, StringIdx, Type, TypeIdx,
 };
-use crate::v2::iter::TpeIter;
+use crate::{cil_node::CallOpArgs, v2::iter::TpeIter};
 use crate::v2::CILRoot;
 pub type LocalId = u32;
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
@@ -721,6 +721,19 @@ impl MethodImpl {
         }
         // Swap new and locals
         std::mem::swap(locals, new_locals.get_mut().unwrap());
+    }
+    
+    pub(crate) fn wrapper(mref: MethodRefIdx, asm: &mut Assembly) -> MethodImpl {
+        let sig = asm[asm[mref].sig()].clone();
+        let args = sig.inputs().iter().enumerate().map(|(idx,_)|asm.alloc_node(CILNode::LdArg(idx.try_into().unwrap()))).collect();
+        let roots = if asm.sizeof_type(*sig.output()) == 0{
+            let call = asm.alloc_root(CILRoot::Call(Box::new((mref,args,  IsPure::NOT))));
+            vec![call,asm.alloc_root(CILRoot::VoidRet)]
+        } else{
+            let val = asm.alloc_node(CILNode::Call(Box::new((mref,args,  IsPure::NOT))));
+            vec![asm.alloc_root(CILRoot::Ret(val))]
+        };
+        MethodImpl::MethodBody { blocks: vec![BasicBlock::new(roots,0,None)], locals: vec![].into() }
     }
 }
 #[derive(Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize)]
