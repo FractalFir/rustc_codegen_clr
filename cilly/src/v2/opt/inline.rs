@@ -1,10 +1,10 @@
 use super::OptFuel;
-use crate::v2::{
+use crate::{
     cilnode::MethodKind, Assembly, CILIter, CILIterElem, CILNode, CILRoot, MethodDef, MethodImpl,
     MethodRefIdx, NodeIdx, RootIdx,
 };
 #[cfg(test)]
-use crate::v2::{BasicBlock, Type};
+use crate::{BasicBlock, Type};
 fn trivial_inline_block<'def, 'asm: 'def>(
     def: &'def MethodDef,
     asm: &'asm mut Assembly,
@@ -170,7 +170,7 @@ fn test_inline() {
     let ret = asm.alloc_root(CILRoot::Ret(val));
     assert!(trivial_inline_node(
         &MethodDef::new(
-            crate::v2::Access::Extern,
+            crate::Access::Extern,
             asm.main_module(),
             asm.alloc_string("Hi"),
             asm.sig([], Type::Void),
@@ -189,7 +189,7 @@ fn test_inline() {
     let mut fuel = OptFuel::new(1000);
     assert!(trivial_inline_node(
         &MethodDef::new(
-            crate::v2::Access::Extern,
+            crate::Access::Extern,
             asm.main_module(),
             asm.alloc_string("Hi"),
             asm.sig([], Type::Void),

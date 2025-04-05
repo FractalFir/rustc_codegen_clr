@@ -1,6 +1,6 @@
 use fxhash::FxHashSet;
 
-use crate::{v2::bimap::IntoBiMapIndex, IString};
+use crate::{bimap::IntoBiMapIndex, IString};
 
 use super::{
     cilnode::{PtrCastRes, UnOp},
@@ -8,35 +8,59 @@ use super::{
     Assembly, BinOp, CILNode, CILRoot, ClassRef, FieldIdx, Int, NodeIdx, SigIdx, Type,
 };
 #[derive(Debug)]
+/// Signals that a piece of CIL is not valid.
 pub enum TypeCheckError {
+    /// CIL contains a binop with incorrect arguments
     WrongBinopArgs {
+        /// The type of the left argument of this op
         lhs: Type,
+        /// The type of the right argument of this op
         rhs: Type,
+        /// The type of this op
         op: BinOp,
     },
+    /// A reference-to-pointer cast is not a reference
     RefToPtrArgNotRef {
+        /// The non-reference type encountered.
         arg: Type,
     },
+    /// Incorrect pointer cast
     InvalidPtrCast {
+        /// The result of this cast
         expected: PtrCastRes,
+        /// The source type
         got: Type,
     },
+    /// A non-pointer type was passed to an instruction expecting a pointer type
     TypeNotPtr {
+        /// The incorrect type
         tpe: Type,
     },
+    /// A load instruction was passed an incorrect type.
     DerfWrongPtr {
+        /// Expected type
         expected: Type,
+        /// Recived type
         got: Type,
     },
+    /// A call instruction was passed a wrong ammount of args.
     CallArgcWrong {
+        /// The signature-specifed ammount of args
         expected: usize,
+        /// The recived ammount of args.
         got: usize,
+        /// The name of this method
         mname: IString,
     },
+    /// A call instruction was passed a wrong argument type.
     CallArgTypeWrong {
+        /// The recived type
         got: Type,
+        /// The expected type
         expected: Type,
+        /// The inddex of this argument
         idx: usize,
+        /// The called method
         mname: IString,
     },
     IntCastInvalidInput {
@@ -46,12 +70,12 @@ pub enum TypeCheckError {
     /// Attempted to access the field of a type without fields.
     FieldAccessInvalidType {
         tpe: Type,
-        field: crate::v2::FieldDesc,
+        field: crate::FieldDesc,
     },
     FieldOwnerMismatch {
-        owner: crate::v2::ClassRefIdx,
-        expected_owner: crate::v2::ClassRefIdx,
-        field: crate::v2::FieldDesc,
+        owner: crate::ClassRefIdx,
+        expected_owner: crate::ClassRefIdx,
+        field: crate::FieldDesc,
     },
     ExpectedClassGotValuetype {
         cref: ClassRef,
@@ -67,70 +91,113 @@ pub enum TypeCheckError {
         tpe: Type,
         op: UnOp,
     },
+    /// Incorrect ammount of args to an indirect call
     IndirectCallArgcWrong {
         expected: usize,
         got: usize,
     },
+    /// An incorrect argument to an indirect call
     IndirectCallArgTypeWrong {
         got: Type,
         expected: Type,
         idx: usize,
     },
+    /// Attempted to get the length of a non-array type
     LdLenArgNotArray {
+        /// The non-array type
         got: Type,
     },
+    /// Attempted to get the length of a managed array with a more than one dimension.
     LdLenArrNot1D {
+        /// Array with dimension mismatch
         got: Type,
     },
+    /// Invalid index into a managed array
     ArrIndexInvalidType {
+        /// Recived index type
         index_tpe: Type,
     },
+    /// An indirect call with a non-fn-pointer type
     IndirectCallInvalidFnPtrType {
+        /// non-fn-pointer-type
         fn_ptr: Type,
     },
+    /// An indirect call with a mismatching signature
     IndirectCallInvalidFnPtrSig {
+        /// Expected signature
         expected: super::FnSig,
+        /// Signature of the pointer
         got: super::FnSig,
     },
+    /// Atempt to calculate the size of void.
     SizeOfVoid,
+    /// Asigned a wrong type to a local variable.
     LocalAssigementWrong {
+        /// Index of the local.
         loc: u32,
+        /// Recived type.
         got: Type,
+        /// Expected type
         expected: Type,
     },
+    /// A comparison of non-prmitive types.
     ValueTypeCompare {
+        /// Lhs side of the compare
         lhs: Type,
+        /// Rhs side of the compare
         rhs: Type,
     },
+    /// A write instruction was passed an adress of incorrect type.
     WriteWrongAddr {
+        /// Expected addr type
         addr: Type,
+        /// Recived type
         tpe: Type,
     },
+    /// A write instruction was passed a value of incorrect type.
     WriteWrongValue {
+        /// The expected type
         tpe: Type,
+        /// The recived type.
         value: Type,
     },
+    /// Incorrect argument to a branch instruction
     ConditionNotBool {
+        /// The wrong, not-bool type.
         cond: Type,
     },
+    /// A comparsion instruction was used on a pair of types that can't be compared.
     CantCompareTypes {
+        /// Lhs type
         lhs: Type,
+        /// Rhs type
         rhs: Type,
     },
+    /// A field assigement instruction was passed an icorrect type.
     FieldAssignWrongType {
+        /// The expected type
         field_tpe: Type,
+        /// The reference to the field.
         fld: FieldIdx,
+        /// The recived type.
         val: Type,
     },
+    /// An instruction attempted to access a field that does not exist.
     FieldNotPresent {
+        /// The type of the field.
         tpe: Type,
+        /// The name of the field.
         name: super::StringIdx,
+        /// The owner of this field.
         owner: super::ClassRefIdx,
     },
+    /// An operation was performed on a void pointer.
     VoidPointerOp {
+        /// The kind of operation that was done.
         op: BinOp,
     },
 }
+/// Converts a typecheck error to a graph representing the issue with the typecheck process.
 pub fn typecheck_err_to_string(
     root_idx: super::RootIdx,
     asm: &mut Assembly,
@@ -155,6 +222,7 @@ pub fn typecheck_err_to_string(
         Err(err)=> format!("digraph G{{edge [dir=\"back\"];\\n{nodes} r{root_idx}  [label = \"{root_string}\n{err:?}\" color = \"red\"] r{root_idx} ->{root_connections}}}",root_idx = root_idx.as_bimap_index()),
    }
 }
+/// Display an error during typechecking root `root_idx`.
 pub fn display_typecheck_err(
     root_idx: super::RootIdx,
     asm: &mut Assembly,

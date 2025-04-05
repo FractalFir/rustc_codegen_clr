@@ -1,7 +1,7 @@
 #![allow(clippy::module_name_repetitions)]
 #![feature(iter_intersperse, pattern)]
 
-pub use crate::v2::Type;
+pub use crate::v2::*;
 use fxhash::FxHasher;
 
 pub type IString = Box<str>;
@@ -16,7 +16,24 @@ pub fn calculate_hash<T: std::hash::Hash>(t: &T) -> u64 {
     s.finish()
 }
 
-pub mod access_modifier;
+use serde::{Deserialize, Serialize};
+
+#[derive(Hash, PartialEq, Eq, Copy, Clone, Debug, Serialize, Deserialize)]
+pub enum Access {
+    Extern,
+    Public,
+    Private,
+}
+
+impl Access {
+    /// Returns `true` if the access is [`Extern`].
+    ///
+    /// [`Extern`]: Access::Extern
+    #[must_use]
+    pub fn is_extern(&self) -> bool {
+        matches!(self, Self::Extern)
+    }
+}
 
 pub mod basic_block;
 
@@ -31,7 +48,6 @@ pub mod method;
 
 pub mod utilis;
 pub mod v2;
-pub use v2::*;
 /// The metadata of a slice
 pub const METADATA: &str = "m";
 /// The data pointer of a slice

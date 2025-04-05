@@ -1,10 +1,9 @@
-use crate::utilis::assert_unique;
-
 use super::{
-    access::Access,
     bimap::{BiMapIndex, IntoBiMapIndex},
     Assembly, MethodDefIdx, MethodRef, MethodRefIdx, StringIdx, Type,
 };
+use crate::utilis::assert_unique;
+use crate::Access;
 use serde::{Deserialize, Serialize};
 use std::num::NonZeroU32;
 

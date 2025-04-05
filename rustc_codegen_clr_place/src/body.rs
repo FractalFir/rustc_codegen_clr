@@ -3,8 +3,7 @@ use crate::{body_ty_is_by_adress, deref_op};
 use cilly::{
     Const, IntoAsmIndex, NodeIdx, Type, call,
     cil_node::CILNode,
-    conv_usize, ld_field,
-    v2::{FieldDesc, Int},
+    conv_usize, ld_field, {FieldDesc, Int},
 };
 use rustc_codegen_clr_ctx::MethodCompileCtx;
 use rustc_codegen_clr_type::{

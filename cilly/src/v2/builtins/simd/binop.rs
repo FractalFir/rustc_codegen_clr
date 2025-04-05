@@ -1,6 +1,6 @@
 use crate::{
-    v2::asm::MissingMethodPatcher, Assembly, BasicBlock, CILNode, CILRoot, MethodImpl,
-    MethodRefIdx, Type,
+    asm::MissingMethodPatcher, Assembly, BasicBlock, CILNode, CILRoot, MethodImpl, MethodRefIdx,
+    Type,
 };
 macro_rules! binop {
     ($op_name:ident,$op_dotnet:literal) => {

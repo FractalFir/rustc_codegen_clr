@@ -3,9 +3,8 @@ use cilly::{
     cil_node::CILNode,
     cil_root::CILRoot,
     cil_tree::CILTree,
-    ld_field,
-    v2::{cilnode::MethodKind, Assembly, FieldDesc, FnSig, Int, MethodRef},
-    Const, Type,
+    ld_field, Const, Type,
+    {cilnode::MethodKind, Assembly, FieldDesc, FnSig, Int, MethodRef},
 };
 use rustc_codegen_clr_ctx::function_name;
 use rustc_codegen_clr_place::{place_adress, place_set};
@@ -259,7 +258,7 @@ pub fn handle_terminator<'tcx>(
             let msg = ctx.alloc_string(format!("Unreachable reached at {loc:?}!"));
 
             vec![
-                rustc_middle::ty::print::with_no_trimmed_paths! {CILRoot::V2(ctx.alloc_root(cilly::v2::CILRoot::Unreachable(msg))).into()},
+                rustc_middle::ty::print::with_no_trimmed_paths! {CILRoot::V2(ctx.alloc_root(cilly::CILRoot::Unreachable(msg))).into()},
             ]
         }
         TerminatorKind::InlineAsm {

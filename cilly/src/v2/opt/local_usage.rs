@@ -25,7 +25,7 @@ impl LocalUsage {
     }
     /// Increments the interal direct byval access counter.
     /// ```
-    /// # use cilly::v2::opt::local_usage::LocalUsage;
+    /// # use cilly::opt::local_usage::LocalUsage;
     /// let mut access =
     /// ```
     pub fn byaddr_direct(&mut self) {

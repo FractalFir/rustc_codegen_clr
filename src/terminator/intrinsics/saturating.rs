@@ -4,9 +4,7 @@ use cilly::{
     cil_node::CILNode,
     cil_root::CILRoot,
     cilnode::MethodKind,
-    conv_i16, conv_i32, conv_i64, conv_i8,
-    v2::{ClassRef, Int},
-    MethodRef, Type,
+    conv_i16, conv_i32, conv_i64, conv_i8, MethodRef, Type, {ClassRef, Int},
 };
 use rustc_codegen_clr_place::place_set;
 use rustc_codegen_clr_type::{utilis::max_value, GetTypeExt};

@@ -1,15 +1,13 @@
 use crate::cilnode::IsPure;
-use crate::v2::cilnode::MethodKind;
+use crate::cilnode::MethodKind;
 use crate::v2::method::LocalDef;
-use crate::v2::{
-    Assembly, ClassRef, FieldIdx, FnSig, MethodRef, MethodRefIdx, StaticFieldDesc, Type,
-};
 use crate::TypeIdx;
 use crate::{
     call,
     cil_node::{CILNode, CallOpArgs},
     AsmString, IString,
 };
+use crate::{Assembly, ClassRef, FieldIdx, FnSig, MethodRef, MethodRefIdx, StaticFieldDesc, Type};
 use serde::{Deserialize, Serialize};
 #[derive(Clone, Eq, PartialEq, Hash, Serialize, Deserialize, Debug)]
 pub enum CILRoot {
@@ -153,7 +151,7 @@ pub enum CILRoot {
     /// Marks the inner pointer operation as volatile.
     Volatile(Box<Self>),
     InitObj(CILNode, TypeIdx),
-    V2(crate::v2::RootIdx),
+    V2(crate::RootIdx),
 }
 pub type SFI = Box<(std::ops::Range<u64>, std::ops::Range<u64>, IString)>;
 impl CILRoot {

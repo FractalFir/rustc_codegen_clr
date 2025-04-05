@@ -2,9 +2,8 @@ use cilly::{
     call,
     cil_node::CILNode,
     cil_root::CILRoot,
-    eq, gt_un,
-    v2::{cilnode::MethodKind, Assembly, ClassRef, ClassRefIdx, FieldDesc, Float, Int, MethodRef},
-    Const, Type,
+    eq, gt_un, Const, Type,
+    {cilnode::MethodKind, Assembly, ClassRef, ClassRefIdx, FieldDesc, Float, Int, MethodRef},
 };
 use rustc_abi::{FieldIdx, FieldsShape, Layout, LayoutData, TagEncoding, VariantIdx, Variants};
 use rustc_middle::ty::Ty;

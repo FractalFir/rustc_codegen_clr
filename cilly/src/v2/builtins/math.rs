@@ -1,4 +1,4 @@
-use crate::v2::{
+use crate::{
     asm::MissingMethodPatcher,
     cilnode::MethodKind,
     hashable::{HashableF32, HashableF64},

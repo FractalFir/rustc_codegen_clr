@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-use cilly::v2::ClassDef;
+use cilly::ClassDef;
 use rustc_codegen_clr_ctx::MethodCompileCtx;
 #[derive(Clone)]
 enum ComptimeLocalVar {
@@ -122,7 +122,7 @@ pub fn interpret<'tcx>(
                             ))
                         };
                         let tdef = ClassDef::new(
-                            cilly::access_modifier::AccessModifer::Public,
+                            cilly::access_modifier::Access::Public,
                             name.into(),
                             vec![],
                             vec![],
@@ -208,7 +208,7 @@ pub fn interpret<'tcx>(
                         );
 
                         let method = Method::alias_for(
-                            cilly::access_modifier::AccessModifer::Public,
+                            cilly::access_modifier::Access::Public,
                             // Only virtuals for now
                             cilly::method::MethodType::Virtual,
                             this_fname.into(),

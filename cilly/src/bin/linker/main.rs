@@ -4,18 +4,14 @@ use cilly::{
     cilnode::IsPure,
     config, conv_usize,
     libc_fns::{self, LIBC_FNS, LIBC_MODIFIES_ERRNO},
-    v2::{
+    MethodRef, DEAD_CODE_ELIMINATION,
+    {
         asm::{MissingMethodPatcher, ILASM_FLAVOUR},
         cilnode::MethodKind,
         Assembly, BasicBlock, CILNode, CILRoot, ClassDef, ClassRef, Const, IlasmFlavour, Int,
         MethodImpl, Type,
     },
-    MethodRef, DEAD_CODE_ELIMINATION,
 };
-//use assembly::Assembly;
-
-mod cmd;
-mod export;
 mod load;
 mod native_passtrough;
 mod patch;
@@ -29,16 +25,16 @@ use std::{
 };
 mod aot;
 
-fn add_mandatory_statics(asm: &mut cilly::v2::Assembly) {
+fn add_mandatory_statics(asm: &mut cilly::Assembly) {
     let main_module = asm.main_module();
     asm.add_static(
-        cilly::v2::Type::Int(cilly::v2::Int::U8),
+        cilly::Type::Int(cilly::Int::U8),
         "__rust_alloc_error_handler_should_panic",
         false,
         main_module,
     );
     asm.add_static(
-        cilly::v2::Type::Int(cilly::v2::Int::U8),
+        cilly::Type::Int(cilly::Int::U8),
         "__rust_no_alloc_shim_is_unstable",
         false,
         main_module,
@@ -340,7 +336,7 @@ fn main() {
                     vec![].into(),
                 );
                 MethodImpl::MethodBody {
-                    blocks: vec![cilly::v2::BasicBlock::from_v1(
+                    blocks: vec![cilly::BasicBlock::from_v1(
                         &cilly::basic_block::BasicBlock::new(
                             vec![cilly::cil_root::CILRoot::Throw(
                                 cilly::cil_node::CILNode::NewObj(Box::new(
@@ -435,25 +431,25 @@ fn main() {
             }
         }),
     );
-    cilly::v2::builtins::select::generate_int_selects(&mut final_assembly, &mut overrides);
-    cilly::v2::builtins::insert_swap_at_generic(&mut final_assembly, &mut overrides);
-    cilly::v2::builtins::insert_bounds_check(&mut final_assembly, &mut overrides);
-    cilly::v2::builtins::casts::insert_casts(&mut final_assembly, &mut overrides);
-    cilly::v2::builtins::insert_heap(&mut final_assembly, &mut overrides, *C_MODE);
-    cilly::v2::builtins::int128::generate_int128_ops(&mut final_assembly, &mut overrides, *C_MODE);
-    cilly::v2::builtins::int128::i128_mul_ovf_check(&mut final_assembly, &mut overrides);
-    cilly::v2::builtins::f16::generate_f16_ops(&mut final_assembly, &mut overrides, *C_MODE);
-    cilly::v2::builtins::atomics::generate_all_atomics(&mut final_assembly, &mut overrides);
-    cilly::v2::builtins::stack_addr(&mut final_assembly, &mut overrides);
-    cilly::v2::builtins::transmute(&mut final_assembly, &mut overrides);
-    cilly::v2::builtins::create_slice(&mut final_assembly, &mut overrides);
-    cilly::v2::builtins::ovf_check_tuple(&mut final_assembly, &mut overrides);
-    cilly::v2::builtins::uninit_val(&mut final_assembly, &mut overrides);
+    cilly::builtins::select::generate_int_selects(&mut final_assembly, &mut overrides);
+    cilly::builtins::insert_swap_at_generic(&mut final_assembly, &mut overrides);
+    cilly::builtins::insert_bounds_check(&mut final_assembly, &mut overrides);
+    cilly::builtins::casts::insert_casts(&mut final_assembly, &mut overrides);
+    cilly::builtins::insert_heap(&mut final_assembly, &mut overrides, *C_MODE);
+    cilly::builtins::int128::generate_int128_ops(&mut final_assembly, &mut overrides, *C_MODE);
+    cilly::builtins::int128::i128_mul_ovf_check(&mut final_assembly, &mut overrides);
+    cilly::builtins::f16::generate_f16_ops(&mut final_assembly, &mut overrides, *C_MODE);
+    cilly::builtins::atomics::generate_all_atomics(&mut final_assembly, &mut overrides);
+    cilly::builtins::stack_addr(&mut final_assembly, &mut overrides);
+    cilly::builtins::transmute(&mut final_assembly, &mut overrides);
+    cilly::builtins::create_slice(&mut final_assembly, &mut overrides);
+    cilly::builtins::ovf_check_tuple(&mut final_assembly, &mut overrides);
+    cilly::builtins::uninit_val(&mut final_assembly, &mut overrides);
 
-    cilly::v2::builtins::math::bitreverse(&mut final_assembly, &mut overrides);
+    cilly::builtins::math::bitreverse(&mut final_assembly, &mut overrides);
 
     if *C_MODE {
-        cilly::v2::builtins::insert_exeception_stub(&mut final_assembly, &mut overrides);
+        cilly::builtins::insert_exeception_stub(&mut final_assembly, &mut overrides);
         externs.insert("__dso_handle", LIBC.clone());
         externs.insert("_mm_malloc", LIBC.clone());
         externs.insert("_mm_free", LIBC.clone());
@@ -492,11 +488,11 @@ fn main() {
             }),
         );
     } else {
-        cilly::v2::builtins::instert_threading(&mut final_assembly, &mut overrides);
-        cilly::v2::builtins::math::math(&mut final_assembly, &mut overrides);
-        cilly::v2::builtins::simd::simd(&mut final_assembly, &mut overrides);
-        cilly::v2::builtins::insert_exception(&mut final_assembly, &mut overrides);
-        cilly::v2::builtins::argc_argv_init(&mut final_assembly, &mut overrides);
+        cilly::builtins::instert_threading(&mut final_assembly, &mut overrides);
+        cilly::builtins::math::math(&mut final_assembly, &mut overrides);
+        cilly::builtins::simd::simd(&mut final_assembly, &mut overrides);
+        cilly::builtins::insert_exception(&mut final_assembly, &mut overrides);
+        cilly::builtins::argc_argv_init(&mut final_assembly, &mut overrides);
     }
 
     // Ensure the cctor and tcctor exist!
@@ -510,7 +506,7 @@ fn main() {
         None,
         vec![],
         vec![],
-        cilly::v2::Access::Public,
+        cilly::Access::Public,
         NonZeroU32::new(16),
         NonZeroU32::new(16),
         true,
@@ -538,11 +534,11 @@ fn main() {
         panic!("FORCE_FAIL");
     }
     if *C_MODE {
-        let cexport = cilly::v2::c_exporter::CExporter::new(is_lib, libs, dirs);
+        let cexport = cilly::c_exporter::CExporter::new(is_lib, libs, dirs);
 
         final_assembly.export(&path, cexport);
     } else if *JAVA_MODE {
-        final_assembly.export(&path, cilly::v2::java_exporter::JavaExporter::new(is_lib));
+        final_assembly.export(&path, cilly::java_exporter::JavaExporter::new(is_lib));
         if cargo_support {
             let bootstrap =
                 bootstrap_source(&path.with_extension("jar"), path.to_str().unwrap(), "java");
@@ -568,7 +564,7 @@ fn main() {
     } else {
         final_assembly.export(
             &path,
-            cilly::v2::il_exporter::ILExporter::new(*ILASM_FLAVOUR, is_lib),
+            cilly::il_exporter::ILExporter::new(*ILASM_FLAVOUR, is_lib),
         );
         if cargo_support {
             let bootstrap = bootstrap_source(

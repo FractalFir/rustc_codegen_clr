@@ -9,7 +9,7 @@ use super::{
     TypeIdx,
 };
 use crate::{config, utilis::assert_unique, IString};
-use crate::{utilis::encode, v2::MethodImpl};
+use crate::{utilis::encode, MethodImpl};
 use fxhash::{hash64, FxHashMap, FxHashSet};
 
 use serde::{Deserialize, Serialize};
@@ -228,7 +228,9 @@ impl Assembly {
             .enumerate()
             .filter_map(move |(idx, str)| {
                 if str.contains(pat.clone()) {
-                    Some(StringIdx(BiMapIndex::new((idx + 1) as u32).unwrap()))
+                    Some(StringIdx::from_index(
+                        BiMapIndex::new((idx + 1) as u32).unwrap(),
+                    ))
                 } else {
                     None
                 }
@@ -405,7 +407,8 @@ impl Assembly {
         let cref = self.alloc_class_ref(cref);
 
         if self.class_defs.contains_key(&ClassDefIdx(cref)) {
-            if self[def.name()].contains("core.ffi.c_void") || self[def.name()].contains("RustVoid") {
+            if self[def.name()].contains("core.ffi.c_void") || self[def.name()].contains("RustVoid")
+            {
                 return ClassDefIdx(cref);
             }
             panic!()
@@ -695,7 +698,7 @@ impl Assembly {
     pub fn save_tmp<W: std::io::Write>(&self, w: &mut W) -> std::io::Result<()> {
         w.write_all(&postcard::to_stdvec(&self).unwrap())
     }
-    pub(crate) fn rust_void(&mut self)->ClassDefIdx{
+    pub(crate) fn rust_void(&mut self) -> ClassDefIdx {
         let rust_void = self.alloc_string("RustVoid");
         self.class_def(ClassDef::new(
             rust_void,
@@ -794,11 +797,11 @@ impl Assembly {
                 };
                 // Get all the ref ids of the methods used in the cil.
                 let refids = cil.filter_map(|elem| match elem {
-                    crate::v2::CILIterElem::Node(CILNode::Call(args)) => Some(args.0),
-                    crate::v2::CILIterElem::Node(CILNode::LdFtn(mref)) => Some(mref),
-                    crate::v2::CILIterElem::Node(_) => None,
-                    crate::v2::CILIterElem::Root(CILRoot::Call(args)) => Some(args.0),
-                    crate::v2::CILIterElem::Root(_) => None,
+                    crate::CILIterElem::Node(CILNode::Call(args)) => Some(args.0),
+                    crate::CILIterElem::Node(CILNode::LdFtn(mref)) => Some(mref),
+                    crate::CILIterElem::Node(_) => None,
+                    crate::CILIterElem::Root(CILRoot::Call(args)) => Some(args.0),
+                    crate::CILIterElem::Root(_) => None,
                 });
                 // Check if this method reference is also a def. If so, map it to a def
                 let defids = refids.filter_map(|refid| {
@@ -956,12 +959,15 @@ impl Assembly {
 
                 continue;
             }
-            if let Some(overrider) = override_methods.get(&mref.name()) {
+            let name = rustc_demangle::demangle(&self[mref.name()]).to_string();
+            let name = self.alloc_string(name.split("::").last().unwrap());
+            if let Some(overrider) = override_methods.get(&name) {
                 let mref = mref.clone();
                 let implementation = overrider(mref_idx, self);
                 self.new_method(mref.into_def(implementation, Access::Private, self));
                 continue;
             }
+            
             // Check if this method is in the extern list
             if let Some(lib) = externs.get(&mref.name()) {
                 let arg_names = (0..(self[mref.sig()].inputs().len()))
@@ -989,14 +995,16 @@ impl Assembly {
                 continue;
             }
             // Create a replacement method.
-
+         
             let arg_names = (0..(self[mref.sig()].inputs().len()))
                 .map(|_| None)
                 .collect();
-            let imp = if self[mref.name()].contains("__rust_alloc") && !self[mref.name()].contains("__rust_alloc_error_handler"){
-                let mref = MethodRef::aligned_alloc(self);
-                MethodImpl::wrapper(self.alloc_methodref(mref),self)
-            }else{
+            let imp = if self[mref.name()].contains("__rust_alloc")
+                && !self[mref.name()].contains("__rust_alloc_error_handler")
+            {
+                let alloc = MethodRef::aligned_alloc(self);
+                MethodImpl::wrapper(self.alloc_methodref(alloc), &mref, self)
+            } else {
                 MethodImpl::Missing
             };
             let method_def = MethodDef::new(
@@ -1067,9 +1075,11 @@ impl Assembly {
     ) {
         (&mut self.class_defs, &self.strings)
     }
+    /// Iteates trough *all the nodes* in this assembly
     pub fn iter_nodes(&self) -> impl Iterator<Item = &CILNode> {
         self.nodes.0.iter()
     }
+    /// Iterates trough *all the roots* in this assembly
     pub fn iter_roots(&self) -> impl Iterator<Item = &CILRoot> {
         self.roots.0.iter()
     }
@@ -1337,8 +1347,8 @@ impl Assembly {
     pub fn max_static_size(&self) -> usize {
         *MAX_STATIC_SIZE
     }
-    
-    pub(crate) fn global_void(&mut self) ->StaticFieldIdx {
+
+    pub(crate) fn global_void(&mut self) -> StaticFieldIdx {
         let main = self.main_module();
         self.add_static(Type::Void, "global_void", false, main)
     }

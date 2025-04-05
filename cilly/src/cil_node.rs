@@ -1,16 +1,16 @@
 use crate::cilnode::IsPure;
-use crate::v2::cilnode::MethodKind;
+use crate::cilnode::MethodKind;
 use crate::v2::method::LocalDef;
-use crate::v2::{
-    Assembly, ClassRef, ClassRefIdx, FieldIdx, FnSig, Int, MethodRef, MethodRefIdx,
-    StaticFieldDesc, Type,
-};
 use crate::TypeIdx;
 use crate::{
     call,
     cil_root::CILRoot,
-    v2::hashable::{HashableF32, HashableF64},
+    hashable::{HashableF32, HashableF64},
     IString,
+};
+use crate::{
+    Assembly, ClassRef, ClassRefIdx, FieldIdx, FnSig, Int, MethodRef, MethodRefIdx,
+    StaticFieldDesc, Type,
 };
 use serde::{Deserialize, Serialize};
 /// A container for the arguments of a call, callvirt, or newobj instruction.
@@ -339,7 +339,7 @@ impl CILNode {
                 CILNode::Call(Box::new(crate::cil_node::CallOpArgs {
                     args: [a, b, predictate].into(),
                     site: (asm.alloc_methodref(select)),
-                    is_pure: crate::v2::cilnode::IsPure::PURE,
+                    is_pure: crate::cilnode::IsPure::PURE,
                 }))
             }
             Type::Ptr(_) => {
@@ -359,7 +359,7 @@ impl CILNode {
                     ]
                     .into(),
                     site: (asm.alloc_methodref(select)),
-                    is_pure: crate::v2::cilnode::IsPure::PURE,
+                    is_pure: crate::cilnode::IsPure::PURE,
                 }))
             }
             _ => todo!(),
@@ -368,7 +368,7 @@ impl CILNode {
 
     /// Creates an unintialized value of type *tpe*.
     pub fn uninit_val(tpe: Type, asm: &mut Assembly) -> Self {
-        if tpe == Type::Void{
+        if tpe == Type::Void {
             let gv = asm.global_void();
             return CILNode::LDStaticField(Box::new(asm[gv]));
         }
@@ -389,7 +389,7 @@ impl CILNode {
         CILNode::Call(Box::new(CallOpArgs {
             args: Box::new([self]),
             site: mref,
-            is_pure: crate::v2::cilnode::IsPure::NOT,
+            is_pure: crate::cilnode::IsPure::NOT,
         }))
     }
     pub fn cxchng_res_val(
@@ -687,7 +687,7 @@ macro_rules! call {
         CILNode::Call(Box::new($crate::cil_node::CallOpArgs {
             args: $args.into(),
             site: $call_site.into(),
-            is_pure: $crate::v2::cilnode::IsPure::NOT,
+            is_pure: $crate::cilnode::IsPure::NOT,
         }))
     };
 }
@@ -698,7 +698,7 @@ macro_rules! call_virt {
         CILNode::CallVirt(Box::new($crate::cil_node::CallOpArgs {
             args: $args.into(),
             site: $call_site.into(),
-            is_pure: $crate::v2::cilnode::IsPure::NOT,
+            is_pure: $crate::cilnode::IsPure::NOT,
         }))
     };
 }

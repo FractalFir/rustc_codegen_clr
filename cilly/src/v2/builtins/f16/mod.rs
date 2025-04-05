@@ -1,8 +1,6 @@
 use crate::{
-    v2::{
-        asm::MissingMethodPatcher, Assembly, BasicBlock, BinOp, CILNode, CILRoot, Float, MethodImpl,
-    },
     Type,
+    {asm::MissingMethodPatcher, Assembly, BasicBlock, BinOp, CILNode, CILRoot, Float, MethodImpl},
 };
 /// Implements a given BinOp directly, as an operation on two floating-point args.
 fn op_direct(

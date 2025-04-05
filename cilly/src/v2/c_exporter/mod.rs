@@ -6,7 +6,7 @@ use std::{collections::HashSet, io::Write, path::Path};
 use crate::{
     config, typecheck,
     utilis::{assert_unique, encode},
-    v2::{asm::LINKER_RECOVER, BiMap, MethodImpl, StringIdx},
+    {asm::LINKER_RECOVER, BiMap, MethodImpl, StringIdx},
 };
 
 config!(NO_SFI, bool, false);
@@ -1016,7 +1016,12 @@ impl CExporter {
             .fields()
             .iter()
             .filter_map(|(tpe, _, _)| tpe.as_class_ref())
-            .chain(class.static_fields().iter().filter_map(|fld|fld.tpe.as_class_ref()))
+            .chain(
+                class
+                    .static_fields()
+                    .iter()
+                    .filter_map(|fld| fld.tpe.as_class_ref()),
+            )
             .filter_map(|cref| asm.class_ref_to_def(cref))
             .all(|cdef| defined_types.contains(&cdef))
         {
@@ -1050,7 +1055,7 @@ impl CExporter {
             }
             if last_offset != class.explict_size().unwrap().get() {
                 let size = class.explict_size().unwrap().get();
-                if let Some((tpe,name,_)) = fields.last(){
+                if let Some((tpe, name, _)) = fields.last() {
                     //assert!(size >= last_offset, "Type {class_name} has field offset {last_offset} larger than {size}. {} {}",tpe.mangle(asm),&asm[*name]);
                     writeln!(
                         type_defs,
@@ -1061,7 +1066,6 @@ impl CExporter {
                         })
                     )?;
                 }
-                
             }
             writeln!(type_defs, "}} {class_name};")?;
         } else {

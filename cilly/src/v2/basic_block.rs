@@ -4,6 +4,8 @@ use super::{opt, Assembly, CILNode, CILRoot, RootIdx};
 use crate::basic_block::BasicBlock as V1Block;
 pub type BlockId = u32;
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
+/// A basic block - sequence of roots, protected by a handler, identified by a unique, per-method id.
+/// The first block in a method ought to have the id 0, and ought not be jumped to.
 pub struct BasicBlock {
     roots: Vec<RootIdx>,
     block_id: BlockId,
@@ -11,6 +13,7 @@ pub struct BasicBlock {
 }
 
 impl BasicBlock {
+    /// Returns the list of blocks this block can potentially jump to.
     pub fn targets<'block, 'asm: 'block>(
         &'block self,
         asm: &'asm Assembly,
@@ -32,8 +35,37 @@ impl BasicBlock {
             }
         })
     }
+    /// Creates a new block with a given unique id, roots, and an optional list of handler blocks.
+    /// The handler ought not have a handler of its own, and the roots should end with a diverging root.
+    /// The handler will start executing at the first block in the handler, regardless of its id.
+    /// ```
+    /// # use cilly::BasicBlock;
+    /// # use cilly::RootIdx;
+    /// # let roots = vec![];
+    /// # let handler_roots = vec![];
+    /// // Create a block
+    /// let bb = BasicBlock::new(roots, 0, None);
+    /// // With a handler
+    /// # let roots = vec![];
+    /// let handler = BasicBlock::new(roots, 0, None);
+    /// let bb = BasicBlock::new(handler_roots, 0, Some(vec![handler]));
+    /// ```
+    /// ```should_panic
+    /// # use cilly::BasicBlock;
+    /// # use cilly::RootIdx;
+    /// # let roots = vec![];
+    /// # let handler_roots = vec![];
+    /// # let handlerer_roots = vec![];
+    /// // 2 layers of handlers - not supported.
+    /// let handlerer = BasicBlock::new(handlerer_roots, 1, None);
+    /// let handler = BasicBlock::new(handler_roots, 1, Some(vec![handlerer]));
+    /// let bb = BasicBlock::new(roots, 0, Some(vec![handler]));
+    /// ```
     #[must_use]
     pub fn new(roots: Vec<RootIdx>, block_id: BlockId, handler: Option<Vec<Self>>) -> Self {
+        debug_assert!(handler
+            .as_ref()
+            .is_none_or(|handler| handler.iter().all(|h| h.handler.is_none())));
         Self {
             roots,
             block_id,
@@ -42,14 +74,27 @@ impl BasicBlock {
     }
 
     #[must_use]
+    /// Retrives the list of all roots in this block.
     pub fn roots(&self) -> &[RootIdx] {
         &self.roots
     }
 
     #[must_use]
+    /// Retrives the id of this block.
+    /// ```
+    /// # use cilly::BasicBlock;
+    /// # use cilly::RootIdx;
+    /// # let roots = vec![];
+    /// let bb = BasicBlock::new(roots, 0, None);
+    /// assert_eq!(bb.block_id(), 0);
+    /// # let roots = vec![];
+    /// let bb = BasicBlock::new(roots, 12345, None);
+    /// assert_eq!(bb.block_id(), 12345);
+    /// ```
     pub fn block_id(&self) -> BlockId {
         self.block_id
     }
+    /// Goes trough all the roots in this block **and its handler**.
     pub fn iter_roots(&self) -> impl Iterator<Item = RootIdx> + '_ {
         let handler_iter: Box<dyn Iterator<Item = RootIdx>> = match self.handler() {
             Some(handler) => Box::new(handler.iter().flat_map(BasicBlock::iter_roots)),
@@ -57,8 +102,7 @@ impl BasicBlock {
         };
         self.roots().iter().copied().chain(handler_iter)
     }
-    /// Remaps all the roots in this block using `root_map` and `node_root`
-    /// Iterates trough the roots of this block and its handlers
+    /// Iterates trough all the roots of this block and its handlers - mutablu.
     pub fn iter_roots_mut(&mut self) -> impl Iterator<Item = &mut RootIdx> + '_ {
         let handler_iter: Box<dyn Iterator<Item = &mut RootIdx>> = match self.handler.as_mut() {
             Some(handler) => Box::new(handler.iter_mut().flat_map(BasicBlock::iter_roots_mut)),
@@ -82,7 +126,7 @@ impl BasicBlock {
     #[must_use]
     /// Returns an immutable reference to this blocks handler.
     /// ```
-    /// # use cilly::v2::BasicBlock;
+    /// # use cilly::BasicBlock;
     /// let block = BasicBlock::new(vec![],0,Some(vec![BasicBlock::new(vec![],1,None)]));
     /// assert_eq!(block.handler().unwrap().len(),1);
     /// ```
@@ -91,7 +135,7 @@ impl BasicBlock {
     }
     /// Returns a mutable reference to this blocks handler.
     /// ```
-    /// # use cilly::v2::BasicBlock;
+    /// # use cilly::BasicBlock;
     /// let mut block = BasicBlock::new(vec![],0,Some(vec![BasicBlock::new(vec![],1,None)]));
     /// assert_eq!(block.handler_mut().unwrap().len(),1);
     /// // Add another block to this handler
@@ -101,9 +145,11 @@ impl BasicBlock {
     pub fn handler_mut(&mut self) -> Option<&mut Vec<BasicBlock>> {
         self.handler.as_mut()
     }
+    /// Returns a mutable reference to the roots of this block - **excluding the handler**.
     pub fn roots_mut(&mut self) -> &mut Vec<RootIdx> {
         &mut self.roots
     }
+    /// Returns a mutable reference to the roots of this block and its handler - *separately*.
     pub fn handler_and_root_mut(&mut self) -> (Option<&mut [BasicBlock]>, &mut Vec<RootIdx>) {
         (
             self.handler.as_mut().map(std::convert::AsMut::as_mut),
@@ -113,7 +159,7 @@ impl BasicBlock {
     /// Checks if this basic block consists of nothing more than an unconditional jump to another block.
     /// ```
     /// # use cilly::*;
-    /// # use cilly::v2::BasicBlock;
+    /// # use cilly::BasicBlock;
     /// # let mut asm = Assembly::default();
     /// # let mut void_ret = asm.alloc_root(CILRoot::VoidRet);
     /// # let mut rethrow = asm.alloc_root(CILRoot::ReThrow);
@@ -142,7 +188,7 @@ impl BasicBlock {
     /// Checks if this basic block consists of nothing more thaan an uncondtional rethrow
     /// ```
     /// # use cilly::*;
-    /// # use cilly::v2::BasicBlock;
+    /// # use cilly::BasicBlock;
     /// # let mut asm = Assembly::default();
     /// # let mut void_ret = asm.alloc_root(CILRoot::VoidRet);
     /// # let mut rethrow = asm.alloc_root(CILRoot::ReThrow);
@@ -161,7 +207,7 @@ impl BasicBlock {
         };
         CILRoot::ReThrow == *asm.get_root(root) && meningfull_root.next().is_none()
     }
-
+    /// Returns a list of all roots, excluding NOPs and SFI.
     pub fn meaningfull_roots<'s, 'asm: 's>(
         &'s self,
         asm: &'asm Assembly,
@@ -175,8 +221,8 @@ impl BasicBlock {
     }
     /// Removes this blocks handler.
     /// ```
-    /// # use cilly::v2::BasicBlock;
-    /// # let mut asm = cilly::v2::Assembly::default();
+    /// # use cilly::BasicBlock;
+    /// # let mut asm = cilly::Assembly::default();
     /// let mut block = BasicBlock::new(vec![],0,Some(vec![BasicBlock::new(vec![],1,None)]));
     /// assert!(block.handler().is_some());
     /// // Add another block to this handler

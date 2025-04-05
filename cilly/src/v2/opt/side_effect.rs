@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::{
     cilnode::IsPure,
-    v2::{Assembly, CILNode, NodeIdx},
+    {Assembly, CILNode, NodeIdx},
 };
 #[derive(Default)]
 pub struct SideEffectInfoCache {
@@ -64,7 +64,7 @@ impl SideEffectInfoCache {
 }
 #[test]
 fn const_no_side_effect() {
-    use crate::v2::{
+    use crate::{
         hashable::{HashableF32, HashableF64},
         Const,
     };
@@ -89,13 +89,13 @@ fn const_no_side_effect() {
     for cst in consts {
         let node = asm.alloc_node(cst);
         assert!(!cache.has_side_effects(node, &asm));
-        let node = asm.biop(cst, cst, crate::v2::BinOp::Add);
+        let node = asm.biop(cst, cst, crate::BinOp::Add);
         let node = asm.alloc_node(node);
         assert!(!cache.has_side_effects(node, &asm));
-        let node = asm.biop(CILNode::LocAlloc { size: node }, cst, crate::v2::BinOp::Add);
+        let node = asm.biop(CILNode::LocAlloc { size: node }, cst, crate::BinOp::Add);
         let node = asm.alloc_node(node);
         assert!(cache.has_side_effects(node, &asm));
-        let node = asm.biop(cst, CILNode::LocAlloc { size: node }, crate::v2::BinOp::Add);
+        let node = asm.biop(cst, CILNode::LocAlloc { size: node }, crate::BinOp::Add);
         let node = asm.alloc_node(node);
         assert!(cache.has_side_effects(node, &asm));
     }

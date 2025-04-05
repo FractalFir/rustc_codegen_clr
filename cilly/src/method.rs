@@ -6,19 +6,18 @@ use std::{
 };
 
 use crate::{
-    access_modifier::AccessModifer,
     basic_block::BasicBlock,
     cil_iter::{CILIterElem, CILIterTrait},
     cil_node::CILNode,
     cil_tree::CILTree,
-    v2::{cilnode::MethodKind, method::LocalDef, Assembly, FnSig, MethodRef, MethodRefIdx},
-    IString, IntoAsmIndex, StringIdx, Type, TypeIdx,
+    Access, IString, IntoAsmIndex, StringIdx, Type, TypeIdx,
+    {cilnode::MethodKind, v2::method::LocalDef, Assembly, FnSig, MethodRef, MethodRefIdx},
 };
 
 /// Represenation of a CIL method.
 #[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
 pub struct Method {
-    access: AccessModifer,
+    access: Access,
     method_type: MethodType,
     sig: FnSig,
     name: IString,
@@ -75,7 +74,7 @@ impl Method {
     #[must_use]
     #[allow(clippy::too_many_arguments)]
     pub fn new(
-        access: AccessModifer,
+        access: Access,
         method_type: MethodType,
         sig: FnSig,
         name: &str,
@@ -162,7 +161,7 @@ impl Method {
     }
     /// Returns the access modifier of this function.
     #[must_use]
-    pub fn access(&self) -> AccessModifer {
+    pub fn access(&self) -> Access {
         self.access
     }
     /// Returns true if this function is static, else it returns false.
@@ -195,7 +194,7 @@ impl Method {
     }
 
     /// Returns a call site that describes this method.
-    pub fn call_site(&self, asm: &mut crate::v2::Assembly) -> MethodRefIdx {
+    pub fn call_site(&self, asm: &mut crate::Assembly) -> MethodRefIdx {
         let mref = MethodRef::new(
             *asm.main_module(),
             asm.alloc_string(self.name()),

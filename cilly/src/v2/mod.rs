@@ -2,10 +2,13 @@
 #![allow(clippy::module_name_repetitions)]
 // This lint includes tests for some bizzare reason, so ignoring it seems like the best course of action
 #![allow(clippy::missing_panics_doc)]
-
+#![warn(missing_docs)]
+use super::bimap::Interned;
 use std::path::Path;
 
-pub use access::Access;
+/// A reference to an interned string.
+pub type StringIdx = Interned<String>;
+pub use crate::Access;
 pub use asm::{Assembly, IlasmFlavour};
 pub use basic_block::BasicBlock;
 pub use bimap::BiMap;
@@ -17,21 +20,20 @@ pub use field::{FieldDesc, FieldIdx, StaticFieldDesc, StaticFieldIdx};
 pub use fnsig::{FnSig, SigIdx};
 pub use iter::{CILIter, CILIterElem};
 pub use method::{MethodDef, MethodDefIdx, MethodImpl, MethodRef, MethodRefIdx};
-pub use strings::StringIdx;
+
 pub use tpe::float::Float;
 pub use tpe::int::Int;
 pub use tpe::{Type, TypeIdx};
 
 use crate::IString;
 
-pub mod access;
 pub mod asm;
 pub mod asm_link;
 pub mod basic_block;
 pub mod bimap;
 pub mod builtins;
 pub mod c_exporter;
-pub mod cache;
+
 pub mod cillyir_exporter;
 pub mod cilnode;
 pub mod cilroot;
@@ -48,7 +50,6 @@ pub mod macros;
 pub mod method;
 pub mod method_builder;
 pub mod opt;
-pub mod strings;
 pub mod tpe;
 pub mod typecheck;
 #[test]

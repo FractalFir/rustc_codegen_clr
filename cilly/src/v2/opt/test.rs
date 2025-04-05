@@ -1,5 +1,5 @@
 #[cfg(test)]
-use crate::v2::{Assembly, BasicBlock, CILRoot};
+use crate::{Assembly, BasicBlock, CILRoot};
 
 #[test]
 fn sfi_dedup() {

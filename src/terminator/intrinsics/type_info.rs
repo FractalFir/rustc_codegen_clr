@@ -2,9 +2,7 @@ use crate::assembly::MethodCompileCtx;
 use cilly::{
     cil_node::CILNode,
     cil_root::CILRoot,
-    conv_usize, ld_field,
-    v2::{FieldDesc, Int},
-    Const, IntoAsmIndex, Type,
+    conv_usize, ld_field, Const, IntoAsmIndex, Type, {FieldDesc, Int},
 };
 use rustc_codegen_clr_place::place_set;
 use rustc_codegen_clr_type::{

@@ -6,7 +6,6 @@ use crate::{
     IString,
 };
 use cilly::{
-    access_modifier::AccessModifer,
     basic_block::BasicBlock,
     call,
     cil_node::CILNode,
@@ -15,11 +14,11 @@ use cilly::{
     cilnode::PtrCastRes,
     method::{Method, MethodType},
     utilis::{self, encode},
-    v2::{
-        cilnode::MethodKind, method::LocalDef, FnSig, Int, MethodDef, MethodRef, MethodRefIdx,
+    Access, Assembly, Const, IntoAsmIndex, StringIdx, Type,
+    {
+        cilnode::MethodKind, v2::method::LocalDef, FnSig, Int, MethodDef, MethodRef, MethodRefIdx,
         StaticFieldDesc,
     },
-    Assembly, Const, IntoAsmIndex, StringIdx, Type,
 };
 use rustc_codegen_clr_call::CallInfo;
 use rustc_codegen_clr_ctx::function_name;
@@ -34,10 +33,10 @@ use rustc_middle::{
     },
     ty::{TyCtxt, TyKind},
 };
-fn linkage_to_access(link: Option<Linkage>) -> AccessModifer {
+fn linkage_to_access(link: Option<Linkage>) -> Access {
     match link {
-        Some(Linkage::External) => AccessModifer::Extern,
-        _ => AccessModifer::Public,
+        Some(Linkage::External) => Access::Extern,
+        _ => Access::Public,
     }
 }
 type LocalDefList = Vec<LocalDef>;
@@ -93,14 +92,14 @@ fn locals_from_mir<'tcx>(
 fn allocation_initializer_method(
     const_allocation: &Allocation,
     name: &str,
-    asm: &mut cilly::v2::Assembly,
+    asm: &mut cilly::Assembly,
     tcx: TyCtxt<'_>,
 ) -> Method {
     let bytes: &[u8] =
         const_allocation.inspect_with_uninit_and_ptr_outside_interpreter(0..const_allocation.len());
     let ptrs = const_allocation.provenance().ptrs();
     let mut trees: Vec<CILTree> = Vec::new();
-    let align = const_allocation.align.bytes().max(1);
+    let align: u64 = const_allocation.align.bytes().max(1);
     //trees.push(CILRoot::debug(&format!("Preparing to initialize allocation with size {}",bytes.len())).into());
     if align > 8 {
         let aligned_alloc = MethodRef::aligned_alloc(asm);
@@ -257,7 +256,7 @@ fn allocation_initializer_method(
     let uint8_ptr = asm.nptr(Type::Int(Int::U8));
     let uint8_ptr_idx = asm.alloc_type(uint8_ptr);
     Method::new(
-        AccessModifer::Private,
+        Access::Private,
         MethodType::Static,
         FnSig::new([], uint8_ptr),
         &format!("init_{name}"),
@@ -370,7 +369,7 @@ pub fn add_fn<'tcx, 'asm, 'a: 'asm>(
     let timer = ctx.tcx().prof.generic_activity_with_arg("codegen fn", name);
     // Check if function is public or not.
     // FIXME: figure out the source of the bug causing visibility to not be read propely.
-    // let access_modifier = AccessModifer::from_visibility(tcx.visibility(instance.def_id()));
+    // let access_modifier = Access::from_visibility(tcx.visibility(instance.def_id()));
     let attrs = ctx.tcx().codegen_fn_attrs(ctx.instance().def_id());
     let access_modifier = linkage_to_access(attrs.linkage);
     // Handle the function signature
@@ -575,7 +574,7 @@ pub fn add_item<'tcx>(
             if let Some(section) = attrs.link_section {
                 if section.to_string().contains(".init_array") {
                     let argc = utilis::argc_argv_init_method(asm);
-                    let init_argc = asm.alloc_root(cilly::v2::CILRoot::call(argc, []));
+                    let init_argc = asm.alloc_root(cilly::CILRoot::call(argc, []));
 
                     asm.add_user_init(&[init_argc]);
                     let get_environ: MethodRefIdx = utilis::get_environ(asm);
@@ -611,18 +610,18 @@ pub fn add_item<'tcx>(
                         argc,
                         Type::Int(Int::I32),
                     ));
-                    let argv = asm.alloc_node(cilly::v2::CILNode::LdStaticField(argv));
+                    let argv = asm.alloc_node(cilly::CILNode::LdStaticField(argv));
                     let uint8_ptr = asm.nptr(Int::U8);
                     let uint8_ptr_idx = asm.alloc_type(uint8_ptr);
                     let args = [
-                        asm.alloc_node(cilly::v2::CILNode::LdStaticField(argc)),
-                        asm.alloc_node(cilly::v2::CILNode::PtrCast(
+                        asm.alloc_node(cilly::CILNode::LdStaticField(argc)),
+                        asm.alloc_node(cilly::CILNode::PtrCast(
                             argv,
                             Box::new(PtrCastRes::Ptr(uint8_ptr_idx)),
                         )),
-                        asm.alloc_node(cilly::v2::CILNode::call(get_environ, [])),
+                        asm.alloc_node(cilly::CILNode::call(get_environ, [])),
                     ];
-                    let root = asm.alloc_root(cilly::v2::CILRoot::call(mref, args));
+                    let root = asm.alloc_root(cilly::CILRoot::call(mref, args));
                     asm.add_user_init(&[root]);
                 } else {
                     panic!("Unsuported link section {section}.")
@@ -637,7 +636,7 @@ pub fn add_item<'tcx>(
     }
 }
 /// Adds a static field and initialized for allocation represented by `alloc_id`.
-pub fn add_allocation(alloc_id: u64, asm: &mut cilly::v2::Assembly, tcx: TyCtxt<'_>) -> CILNode {
+pub fn add_allocation(alloc_id: u64, asm: &mut cilly::Assembly, tcx: TyCtxt<'_>) -> CILNode {
     let uint8_ptr = asm.nptr(Type::Int(Int::U8));
     let main_module_id = asm.main_module();
     let (thread_local, const_allocation, krate) =
@@ -737,7 +736,7 @@ pub fn add_allocation(alloc_id: u64, asm: &mut cilly::v2::Assembly, tcx: TyCtxt<
             let field = asm.alloc_sfld(field_desc);
             let cst: Const = tpe.from_bytes(bytes);
             let val = asm.alloc_node(cst);
-            let mut roots = vec![asm.alloc_root(cilly::v2::CILRoot::SetStaticField { field, val })];
+            let mut roots = vec![asm.alloc_root(cilly::CILRoot::SetStaticField { field, val })];
             let addr = CILNode::AddressOfStaticField(Box::new(field_desc));
             for (offset, prov) in const_allocation.provenance().ptrs().iter() {
                 let offset = u32::try_from(offset.bytes_usize()).unwrap();
@@ -758,7 +757,7 @@ pub fn add_allocation(alloc_id: u64, asm: &mut cilly::v2::Assembly, tcx: TyCtxt<
                         MethodKind::Static,
                         vec![].into(),
                     );
-                    let root = cilly::v2::CILRoot::from_v1(
+                    let root = cilly::CILRoot::from_v1(
                         &CILRoot::STIndISize(
                             (addr.clone()
                                 + CILNode::V2(asm.alloc_node(Const::USize(offset.into()))))
@@ -771,7 +770,7 @@ pub fn add_allocation(alloc_id: u64, asm: &mut cilly::v2::Assembly, tcx: TyCtxt<
                     roots.push(asm.alloc_root(root));
                 } else {
                     let ptr_alloc = add_allocation(prov.alloc_id().0.into(), asm, tcx);
-                    let root = cilly::v2::CILRoot::from_v1(
+                    let root = cilly::CILRoot::from_v1(
                         &CILRoot::STIndISize(
                             (addr.clone()
                                 + CILNode::V2(asm.alloc_node(Const::USize(offset.into()))))
@@ -824,10 +823,10 @@ pub fn add_allocation(alloc_id: u64, asm: &mut cilly::v2::Assembly, tcx: TyCtxt<
             let init_method = MethodDef::from_v1(&init_method, asm, main_module_id);
             let initialzer = asm.new_method(init_method);
             // Calls the static initialzer, and sets the static field to the returned pointer.
-            let val = asm.alloc_node(cilly::v2::CILNode::call(*initialzer, []));
+            let val = asm.alloc_node(cilly::CILNode::call(*initialzer, []));
 
             let field = asm.alloc_sfld(field_desc);
-            let root = asm.alloc_root(cilly::v2::CILRoot::SetStaticField { field, val });
+            let root = asm.alloc_root(cilly::CILRoot::SetStaticField { field, val });
             if thread_local {
                 asm.add_tcctor(&[root]);
             } else {
@@ -838,7 +837,7 @@ pub fn add_allocation(alloc_id: u64, asm: &mut cilly::v2::Assembly, tcx: TyCtxt<
         }
     }
 }
-pub fn add_const_value(asm: &mut cilly::v2::Assembly, bytes: u128) -> StaticFieldDesc {
+pub fn add_const_value(asm: &mut cilly::Assembly, bytes: u128) -> StaticFieldDesc {
     let uint8_ptr = Type::Int(Int::U128);
     let main_module_id = asm.main_module();
     let alloc_fld: IString = format!("a_{bytes:x}").into();
@@ -854,9 +853,9 @@ pub fn add_const_value(asm: &mut cilly::v2::Assembly, bytes: u128) -> StaticFiel
     let cst = CILNode::const_u128(bytes, asm);
 
     let field = asm.alloc_sfld(field_desc);
-    let val = cilly::v2::CILNode::from_v1(&cst, asm);
+    let val = cilly::CILNode::from_v1(&cst, asm);
     let val = asm.alloc_node(val);
-    let set = asm.alloc_root(cilly::v2::CILRoot::SetStaticField { field, val });
+    let set = asm.alloc_root(cilly::CILRoot::SetStaticField { field, val });
 
     asm.add_cctor(&[set]);
 

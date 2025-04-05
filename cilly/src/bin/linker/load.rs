@@ -20,10 +20,8 @@ impl LinkableFile {
         &self.file
     }
 }
-fn load_ar(
-    r: &mut impl std::io::Read,
-) -> std::io::Result<(cilly::v2::Assembly, Vec<LinkableFile>)> {
-    let mut final_assembly = cilly::v2::Assembly::default();
+fn load_ar(r: &mut impl std::io::Read) -> std::io::Result<(cilly::Assembly, Vec<LinkableFile>)> {
+    let mut final_assembly = cilly::Assembly::default();
     let mut archive = Archive::new(r);
     let mut linkables = Vec::new();
     // Iterate over all entries in the archive:
@@ -58,9 +56,9 @@ fn load_ar(
 pub fn load_assemblies(
     raw_files: &[&String],
     archives: &[String],
-) -> (cilly::v2::Assembly, Vec<LinkableFile>) {
+) -> (cilly::Assembly, Vec<LinkableFile>) {
     println!("Preparing to load assmeblies");
-    let mut final_assembly = cilly::v2::Assembly::default();
+    let mut final_assembly = cilly::Assembly::default();
     let mut linkables = Vec::new();
     for asm_path in raw_files {
         let mut asm_file =
@@ -69,7 +67,7 @@ pub fn load_assemblies(
         asm_file
             .read_to_end(&mut asm_bytes)
             .expect("ERROR: Could not load the assembly file!");
-        let asm: cilly::v2::Assembly =
+        let asm: cilly::Assembly =
             postcard::from_bytes(&asm_bytes).expect("ERROR:Could not decode the assembly file!");
 
         final_assembly = final_assembly.link(asm);

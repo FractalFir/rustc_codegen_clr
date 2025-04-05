@@ -2,7 +2,7 @@
 extern crate rustc_abi;
 extern crate rustc_driver;
 extern crate rustc_middle;
-use cilly::v2::Assembly;
+use cilly::Assembly;
 use rustc_middle::ty::SymbolName;
 use rustc_middle::ty::layout::HasTypingEnv;
 use rustc_middle::ty::{Instance, PseudoCanonicalInput, TyCtxt};

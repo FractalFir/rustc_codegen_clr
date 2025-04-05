@@ -450,7 +450,7 @@ impl<'this, T: Iterator<Item = CILIterElem> + 'this> TpeIter<'this> for T {
         let this = self;
         this.filter_map(|cil_item| {
             let iter: Option<Box<dyn Iterator<Item = Type>>> = match cil_item {
-                crate::v2::CILIterElem::Node(node) => match node {
+                crate::CILIterElem::Node(node) => match node {
                     CILNode::Const(_)
                     | CILNode::BinOp(_, _, _)
                     | CILNode::UnOp(_, _)
@@ -468,17 +468,17 @@ impl<'this, T: Iterator<Item = CILIterElem> + 'this> TpeIter<'this> for T {
                     // Since this method is called, then if it uses an "internal" type, we must assume it is defined in this module. Thus, its types are already included, and we don't need to include them again.
                     CILNode::Call(_) | CILNode::LdFtn(_) => None,
                     CILNode::PtrCast(_, res) => match res.as_ref() {
-                        crate::v2::cilnode::PtrCastRes::Ptr(inner) => {
+                        crate::cilnode::PtrCastRes::Ptr(inner) => {
                             Some(Box::new(std::iter::once(asm[*inner])))
                         }
-                        crate::v2::cilnode::PtrCastRes::Ref(inner) => {
+                        crate::cilnode::PtrCastRes::Ref(inner) => {
                             Some(Box::new(std::iter::once(asm[*inner])))
                         }
-                        crate::v2::cilnode::PtrCastRes::FnPtr(sig) => {
+                        crate::cilnode::PtrCastRes::FnPtr(sig) => {
                             Some(Box::new(asm[*sig].iter_types()))
                         }
-                        crate::v2::cilnode::PtrCastRes::USize => None,
-                        crate::v2::cilnode::PtrCastRes::ISize => None,
+                        crate::cilnode::PtrCastRes::USize => None,
+                        crate::cilnode::PtrCastRes::ISize => None,
                     },
                     CILNode::LdFieldAdress { field, .. } | CILNode::LdField { field, .. } => {
                         let field = asm.get_field(field);
@@ -509,7 +509,7 @@ impl<'this, T: Iterator<Item = CILIterElem> + 'this> TpeIter<'this> for T {
                         Some(Box::new([class, tpe].into_iter()))
                     }
                 },
-                crate::v2::CILIterElem::Root(root) => match root {
+                crate::CILIterElem::Root(root) => match root {
                     CILRoot::StLoc(_, _)
                     | CILRoot::StArg(_, _)
                     | CILRoot::Ret(_)

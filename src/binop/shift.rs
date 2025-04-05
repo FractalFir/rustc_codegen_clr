@@ -2,9 +2,8 @@ use crate::{assembly::MethodCompileCtx, utilis::compiletime_sizeof};
 use cilly::{
     call,
     cil_node::CILNode,
-    conv_i32, conv_u32, rem_un, shl, shr, shr_un,
-    v2::{cilnode::MethodKind, ClassRef, Int, MethodRef},
-    Type,
+    conv_i32, conv_u32, rem_un, shl, shr, shr_un, Type,
+    {cilnode::MethodKind, ClassRef, Int, MethodRef},
 };
 
 use rustc_codegen_clr_type::GetTypeExt;

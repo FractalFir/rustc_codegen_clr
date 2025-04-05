@@ -8,7 +8,7 @@ use crate::{GetTypeExt, utilis::adt_name};
 use cilly::{
     Assembly, IntoAsmIndex, add, ld_arg, ptr_cast,
     tpe::simd::SIMDVector,
-    v2::{
+    {
         Access, BasicBlock, CILNode, CILRoot, ClassDef, ClassDefIdx, ClassRef, ClassRefIdx, Float,
         Int, MethodDef, MethodImpl, StringIdx, Type, cilnode::MethodKind,
     },
@@ -137,7 +137,7 @@ pub fn get_type<'tcx>(ty: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_>) -> Typ
                     None,
                     vec![],
                     vec![],
-                    cilly::v2::Access::Public,
+                    cilly::Access::Public,
                     None,
                     None,
                     false, // Two separate pointers.
@@ -479,7 +479,7 @@ pub fn fat_ptr_to<'tcx>(mut inner: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_
 pub fn closure_name(
     _def_id: DefId,
     fields: &[Type],
-    _sig: cilly::v2::SigIdx,
+    _sig: cilly::SigIdx,
     ctx: &mut MethodCompileCtx<'_, '_>,
 ) -> String {
     let mangled_fields: String = fields.iter().map(|tpe| tpe.mangle(ctx)).collect();

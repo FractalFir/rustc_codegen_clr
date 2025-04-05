@@ -6,7 +6,7 @@ use super::field::StaticFieldIdx;
 use super::{bimap::IntoBiMapIndex, Assembly, Const, Int, MethodRefIdx, SigIdx, TypeIdx};
 use super::{ClassRef, FieldIdx, Float};
 use crate::cil_node::CILNode as V1Node;
-use crate::v2::Type;
+use crate::Type;
 
 #[derive(Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct NodeIdx(pub BiMapIndex);
@@ -204,7 +204,7 @@ impl BinOp {
     /// Returns a short name descirbing this operation.
     /// WARNING: this function will return the same name for signed and unsinged variants!
     /// ```
-    /// # use cilly::v2::BinOp;
+    /// # use cilly::BinOp;
     /// assert_eq!(BinOp::Eq.name(),"eq");
     /// assert_eq!(BinOp::Add.name(),"add");
     /// // Signed and unsinged variant have the same name!
@@ -231,7 +231,7 @@ impl BinOp {
     }
     /// Returns the name of the .NET operation this binop corresponds to.
     /// ```
-    /// # use cilly::v2::BinOp;
+    /// # use cilly::BinOp;
     /// assert_eq!(BinOp::Eq.dotnet_name(),"op_Equality");
     /// assert_eq!(BinOp::Add.dotnet_name(),"op_Addition");
     /// // Signed and unsinged variant have the same name!
@@ -263,7 +263,7 @@ impl CILNode {
     }
     /// Returns all the nodes this node references.
     /// ```
-    /// # use cilly::v2::*;
+    /// # use cilly::*;
     /// # let mut asm = Assembly::default();
     /// let ldarg_0 = asm.alloc_node(CILNode::LdArg(0));
     /// let ldloc_1 = asm.alloc_node(CILNode::LdLoc(1));

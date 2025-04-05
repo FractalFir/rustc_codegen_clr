@@ -4,8 +4,8 @@ use cilly::{
     cil_node::CILNode,
     cil_root::CILRoot,
     conv_i16, conv_i32, conv_i8, conv_isize, conv_u16, conv_u32, conv_u64, conv_u8, rem_un,
-    v2::{cilnode::MethodKind, ClassRef, MethodRef},
     Assembly, Int, Type,
+    {cilnode::MethodKind, ClassRef, MethodRef},
 };
 use rustc_codegen_clr_place::place_set;
 use rustc_codegen_clr_type::GetTypeExt;
@@ -15,7 +15,7 @@ use rustc_middle::{
     ty::Instance,
 };
 use rustc_span::source_map::Spanned;
-fn ctpop_small_int(asm: &mut cilly::v2::Assembly, operand: CILNode, int: Int) -> CILNode {
+fn ctpop_small_int(asm: &mut cilly::Assembly, operand: CILNode, int: Int) -> CILNode {
     assert!(int.size().is_none_or(|size| size <= 8));
     let mref = MethodRef::new(
         ClassRef::bit_operations(asm),
@@ -416,7 +416,7 @@ pub fn rotate_left<'tcx>(
         _ => todo!("Can't ror {val_tpe:?}"),
     }
 }
-pub fn rol_int(val: CILNode, rot: CILNode, int: Int, asm: &mut cilly::v2::Assembly) -> CILNode {
+pub fn rol_int(val: CILNode, rot: CILNode, int: Int, asm: &mut cilly::Assembly) -> CILNode {
     let mref = MethodRef::new(
         int.class(asm),
         asm.alloc_string("RotateLeft"),
@@ -426,7 +426,7 @@ pub fn rol_int(val: CILNode, rot: CILNode, int: Int, asm: &mut cilly::v2::Assemb
     );
     call!(asm.alloc_methodref(mref), [val, rot])
 }
-pub fn ror_int(val: CILNode, rot: CILNode, int: Int, asm: &mut cilly::v2::Assembly) -> CILNode {
+pub fn ror_int(val: CILNode, rot: CILNode, int: Int, asm: &mut cilly::Assembly) -> CILNode {
     let mref = MethodRef::new(
         int.class(asm),
         asm.alloc_string("RotateRight"),
@@ -492,7 +492,7 @@ fn bitreverse_u16(ushort: CILNode, asm: &mut Assembly) -> CILNode {
             asm
         ))
 }
-pub fn bitreverse_int(val: CILNode, int: Int, asm: &mut cilly::v2::Assembly) -> CILNode {
+pub fn bitreverse_int(val: CILNode, int: Int, asm: &mut cilly::Assembly) -> CILNode {
     let mref = MethodRef::new(
         *asm.main_module(),
         asm.alloc_string(format!("bitreverse_{}", int.as_unsigned().name())),

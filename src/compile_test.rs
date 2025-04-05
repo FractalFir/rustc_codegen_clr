@@ -44,7 +44,7 @@ pub fn test_dotnet_executable(file_path: &str, test_dir: &str) -> String {
         let mut file = std::fs::File::create(&config_path).unwrap_or_else(|err| {
             panic!("Could not create runtime config file at {config_path:?} due to {err:?}")
         });
-        file.write_all(cilly::v2::il_exporter::get_runtime_config().as_bytes())
+        file.write_all(cilly::il_exporter::get_runtime_config().as_bytes())
             .expect("Could not write runtime config");
         //RUNTIME_CONFIG
         #[cfg(any(target_os = "linux", target_os = "macos"))]

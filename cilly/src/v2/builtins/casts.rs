@@ -1,4 +1,4 @@
-use crate::v2::{
+use crate::{
     asm::MissingMethodPatcher, cilnode::ExtendKind, Assembly, BasicBlock, CILNode, CILRoot, Float,
     Int, MethodImpl,
 };
@@ -73,20 +73,20 @@ fn float_to_int(asm: &mut Assembly, int: Int, float: Float, patcher: &mut Missin
         let overflow = asm.alloc_root(CILRoot::Branch(Box::new((
             1,
             0,
-            Some(crate::v2::cilroot::BranchCond::Ge(
+            Some(crate::cilroot::BranchCond::Ge(
                 ld_arg_0,
                 fmax,
-                crate::v2::cilroot::CmpKind::Unordered,
+                crate::cilroot::CmpKind::Unordered,
             )),
         ))));
         // If arg is bigger than min, pass. Else jump to block 2.
         let underflow = asm.alloc_root(CILRoot::Branch(Box::new((
             2,
             0,
-            Some(crate::v2::cilroot::BranchCond::Le(
+            Some(crate::cilroot::BranchCond::Le(
                 ld_arg_0,
                 fmin,
-                crate::v2::cilroot::CmpKind::Unordered,
+                crate::cilroot::CmpKind::Unordered,
             )),
         ))));
         // Return the cast if in range.

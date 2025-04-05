@@ -82,8 +82,8 @@ impl Type {
     /// Returns a mangled ASCI representation of this type.
     /// ```
     /// # use cilly::*;
-    /// # use cilly::v2::Int;
-    /// # let asm = cilly::v2::Assembly::default();
+    /// # use cilly::Int;
+    /// # let asm = cilly::Assembly::default();
     /// assert_eq!(Type::PlatformString.mangle(&asm),"st");
     /// assert_eq!(Type::Int(Int::I128).mangle(&asm),"i128");
     /// ```
@@ -136,8 +136,8 @@ impl Type {
     /// If this type is a class reference, returns that class reference.
     /// ```
     /// # use cilly::*;
-    /// # use cilly::v2::{ClassRef};
-    /// # let mut asm = cilly::v2::Assembly::default();
+    /// # use cilly::{ClassRef};
+    /// # let mut asm = cilly::Assembly::default();
     /// let uint_128 = ClassRef::uint_128(&mut asm);
     /// assert_eq!(Type::ClassRef(uint_128).as_class_ref(),Some(uint_128));
     /// assert_eq!(Type::Int(Int::U8).as_class_ref(),None);
@@ -152,7 +152,7 @@ impl Type {
     /// If this type is a pointer(*T) or a reference(&T), returns the pointed type(T).
     /// ```
     /// # use cilly::*;
-    /// # let mut asm = cilly::v2::Assembly::default();
+    /// # let mut asm = cilly::Assembly::default();
     /// # let u8_tpe = asm.alloc_type(Type::Int(Int::U8));
     /// assert_eq!(asm.nptr(u8_tpe).pointed_to(),Some(u8_tpe));
     /// assert_eq!(asm.nref(u8_tpe).pointed_to(),Some(u8_tpe));
@@ -167,8 +167,8 @@ impl Type {
     /// Checks if this can be assigned to another type.
     /// ```
     /// # use cilly::*;
-    /// # use cilly::v2::{ClassRef,Int};
-    /// # let mut asm = cilly::v2::Assembly::default();
+    /// # use cilly::{ClassRef,Int};
+    /// # let mut asm = cilly::Assembly::default();
     /// // You can assign a string to an object.
     /// let ps = Type::PlatformString;
     /// let obj = Type::PlatformObject;
@@ -243,7 +243,7 @@ impl Type {
     }
     /// If this type is an int, return that int.
     /// ```
-    /// # use cilly::v2::Int;
+    /// # use cilly::Int;
     /// # use cilly::*;
     /// let tpe = Type::PlatformString;
     /// // Not an int, so this returns none.
@@ -261,7 +261,7 @@ impl Type {
     }
     /// If this type is an [`SIMDVector`], return that SIMDVector.
     /// ```
-    /// # use cilly::v2::tpe::simd::{SIMDElem,SIMDVector};
+    /// # use cilly::tpe::simd::{SIMDElem,SIMDVector};
     /// # use cilly::*;
     /// let vec = SIMDVector::new(Int::U64.into(),4);
     /// assert_eq!(Type::SIMDVector(vec).as_simdvector(),Some(&vec));

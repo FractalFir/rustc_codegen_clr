@@ -2,8 +2,7 @@ use cilly::{
     call,
     cil_node::CILNode,
     cilnode::MethodKind,
-    v2::{Assembly, ClassRef, Int},
-    MethodRef, Type,
+    MethodRef, Type, {Assembly, ClassRef, Int},
 };
 
 pub fn atomic_add(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly) -> CILNode {

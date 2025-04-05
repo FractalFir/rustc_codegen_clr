@@ -1,7 +1,7 @@
 use cilly::{
     cilnode::PtrCastRes,
-    v2::{asm::MissingMethodPatcher, Assembly, CILNode, CILRoot, Int, MethodRef, Type},
     IString,
+    {asm::MissingMethodPatcher, Assembly, CILNode, CILRoot, Int, MethodRef, Type},
 };
 
 pub fn call_alias(
@@ -49,7 +49,7 @@ pub fn call_alias(
                                 asm.alloc_node(CILNode::IntCast {
                                     input: arg,
                                     target: Int::USize,
-                                    extend: cilly::v2::cilnode::ExtendKind::ZeroExtend,
+                                    extend: cilly::cilnode::ExtendKind::ZeroExtend,
                                 })
                             }
                             (
@@ -88,15 +88,15 @@ pub fn call_alias(
             if *asm[call.sig()].output() == Type::Void {
                 let call = asm.alloc_root(CILRoot::call(method_ref, args));
                 let ret = asm.alloc_root(CILRoot::VoidRet);
-                cilly::v2::MethodImpl::MethodBody {
-                    blocks: vec![cilly::v2::BasicBlock::new(vec![call, ret], 0, None)],
+                cilly::MethodImpl::MethodBody {
+                    blocks: vec![cilly::BasicBlock::new(vec![call, ret], 0, None)],
                     locals: vec![],
                 }
             } else {
                 let ret_value = asm.alloc_node(CILNode::call(method_ref, args));
                 let ret = asm.alloc_root(CILRoot::Ret(ret_value));
-                cilly::v2::MethodImpl::MethodBody {
-                    blocks: vec![cilly::v2::BasicBlock::new(vec![ret], 0, None)],
+                cilly::MethodImpl::MethodBody {
+                    blocks: vec![cilly::BasicBlock::new(vec![ret], 0, None)],
                     locals: vec![],
                 }
             }

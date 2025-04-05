@@ -12,7 +12,7 @@ use cilly::{
     cil_node::CILNode,
     cil_root::CILRoot,
     conv_usize, ld_field,
-    v2::{ClassRef, FieldDesc, Int, MethodRef, cilnode::MethodKind},
+    {ClassRef, FieldDesc, Int, MethodRef, cilnode::MethodKind},
 };
 use rustc_middle::{
     mir::PlaceElem,

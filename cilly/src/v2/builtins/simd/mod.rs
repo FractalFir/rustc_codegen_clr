@@ -1,5 +1,5 @@
 use crate::{
-    tpe::simd::SIMDVector, v2::asm::MissingMethodPatcher, Assembly, BasicBlock, CILNode, CILRoot,
+    asm::MissingMethodPatcher, tpe::simd::SIMDVector, Assembly, BasicBlock, CILNode, CILRoot,
     MethodImpl, MethodRefIdx, NodeIdx, Type,
 };
 mod eq;

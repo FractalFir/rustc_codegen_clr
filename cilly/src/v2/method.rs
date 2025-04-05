@@ -7,8 +7,8 @@ use super::{
     Access, Assembly, BasicBlock, CILIterElem, CILNode, ClassDefIdx, ClassRef, ClassRefIdx, Int,
     SigIdx, StringIdx, Type, TypeIdx,
 };
-use crate::{cil_node::CallOpArgs, v2::iter::TpeIter};
-use crate::v2::CILRoot;
+use crate::CILRoot;
+use crate::{cil_node::CallOpArgs, cilnode::PtrCastRes, iter::TpeIter};
 pub type LocalId = u32;
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub struct MethodRef {
@@ -103,7 +103,7 @@ impl MethodRef {
         }
     }
 
-    pub fn aligned_alloc(asm: &mut crate::v2::Assembly) -> MethodRef {
+    pub fn aligned_alloc(asm: &mut crate::Assembly) -> MethodRef {
         let void_ptr = asm.nptr(Type::Void);
         let sig = asm.sig([Type::Int(Int::USize), Type::Int(Int::USize)], void_ptr);
         MethodRef::new(
@@ -114,7 +114,7 @@ impl MethodRef {
             vec![].into(),
         )
     }
-    pub fn alloc(asm: &mut crate::v2::Assembly) -> MethodRef {
+    pub fn alloc(asm: &mut crate::Assembly) -> MethodRef {
         let sig = asm.sig([Type::Int(Int::ISize)], Type::Int(Int::ISize));
         MethodRef::new(
             ClassRef::marshal(asm),
@@ -123,6 +123,20 @@ impl MethodRef {
             MethodKind::Static,
             vec![].into(),
         )
+    }
+
+    pub(crate) fn aligned_free(asm: &mut Assembly) -> MethodRefIdx {
+        let void_ptr = asm.nptr(Type::Void);
+        let sig = asm.sig([void_ptr], Type::Void);
+        let aligned_free = asm.alloc_string("AlignedFree");
+        let native_mem = ClassRef::native_mem(asm);
+        asm.alloc_methodref(MethodRef::new(
+            native_mem,
+            aligned_free,
+            sig,
+            MethodKind::Static,
+            [].into(),
+        ))
     }
 }
 
@@ -267,9 +281,9 @@ impl MethodDef {
         let sig = v1.sig().clone();
         let sig_idx = asm.alloc_sig(v1.sig().clone());
         let acceess = match v1.access() {
-            crate::access_modifier::AccessModifer::Private => Access::Private,
-            crate::access_modifier::AccessModifer::Public => Access::Public,
-            crate::access_modifier::AccessModifer::Extern => Access::Extern,
+            crate::Access::Private => Access::Private,
+            crate::Access::Public => Access::Public,
+            crate::Access::Extern => Access::Extern,
         };
 
         let kind = if v1.is_static() {
@@ -283,7 +297,7 @@ impl MethodDef {
         let blocks = v1
             .blocks()
             .iter()
-            .map(|block| crate::v2::BasicBlock::from_v1(block, asm))
+            .map(|block| crate::BasicBlock::from_v1(block, asm))
             .collect();
         let locals = v1.locals().to_vec();
         let implementation = MethodImpl::MethodBody { blocks, locals };
@@ -722,18 +736,38 @@ impl MethodImpl {
         // Swap new and locals
         std::mem::swap(locals, new_locals.get_mut().unwrap());
     }
-    
-    pub(crate) fn wrapper(mref: MethodRefIdx, asm: &mut Assembly) -> MethodImpl {
-        let sig = asm[asm[mref].sig()].clone();
-        let args = sig.inputs().iter().enumerate().map(|(idx,_)|asm.alloc_node(CILNode::LdArg(idx.try_into().unwrap()))).collect();
-        let roots = if asm.sizeof_type(*sig.output()) == 0{
-            let call = asm.alloc_root(CILRoot::Call(Box::new((mref,args,  IsPure::NOT))));
-            vec![call,asm.alloc_root(CILRoot::VoidRet)]
-        } else{
-            let val = asm.alloc_node(CILNode::Call(Box::new((mref,args,  IsPure::NOT))));
-            vec![asm.alloc_root(CILRoot::Ret(val))]
+
+    pub(crate) fn wrapper(alloc: MethodRefIdx, mref: &MethodRef, asm: &mut Assembly) -> MethodImpl {
+        let sig = asm[asm[alloc].sig()].clone();
+        let args = sig
+            .inputs()
+            .iter()
+          
+            .enumerate()
+            .map(|(idx, _)| asm.alloc_node(CILNode::LdArg(idx.try_into().unwrap())))
+            .collect();
+        let roots = if asm.sizeof_type(*sig.output()) == 0 {
+            let call = asm.alloc_root(CILRoot::Call(Box::new((alloc, args, IsPure::NOT))));
+            vec![call, asm.alloc_root(CILRoot::VoidRet)]
+        } else {
+            let val = asm.alloc_node(CILNode::Call(Box::new((alloc, args, IsPure::NOT))));
+            if asm[mref.sig()].output() != sig.output() {
+                match (asm[mref.sig()].output(), sig.output()) {
+                    (Type::Ptr(a), Type::Ptr(b)) => {
+                        let val =
+                            asm.alloc_node(CILNode::PtrCast(val, Box::new(PtrCastRes::Ptr(*a))));
+                        vec![asm.alloc_root(CILRoot::Ret(val))]
+                    }
+                    _ => todo!(),
+                }
+            } else {
+                vec![asm.alloc_root(CILRoot::Ret(val))]
+            }
         };
-        MethodImpl::MethodBody { blocks: vec![BasicBlock::new(roots,0,None)], locals: vec![].into() }
+        MethodImpl::MethodBody {
+            blocks: vec![BasicBlock::new(roots, 0, None)],
+            locals: vec![].into(),
+        }
     }
 }
 #[derive(Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize)]
@@ -850,7 +884,7 @@ fn cil() {
             .map(|iter| iter.collect::<Vec<_>>()),
         Some(vec![CILIterElem::Root(CILRoot::VoidRet)])
     );
-    let const0 = asm.alloc_node(crate::v2::Const::I32(0));
+    let const0 = asm.alloc_node(crate::Const::I32(0));
     let const0_ret = asm.alloc_root(CILRoot::Ret(const0));
     assert_eq!(
         method(&[const0_ret], &mut asm)
@@ -858,7 +892,7 @@ fn cil() {
             .map(|iter| iter.collect::<Vec<_>>()),
         Some(vec![
             CILIterElem::Root(CILRoot::Ret(const0)),
-            CILIterElem::Node(crate::v2::Const::I32(0).into()),
+            CILIterElem::Node(crate::Const::I32(0).into()),
         ])
     );
     let name: StringIdx = asm.alloc_string("DoSomething");

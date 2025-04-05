@@ -1,6 +1,6 @@
 use crate::{
-    v2::asm::MissingMethodPatcher, Assembly, BasicBlock, CILNode, CILRoot, MethodImpl,
-    MethodRefIdx, Type,
+    asm::MissingMethodPatcher, Assembly, BasicBlock, CILNode, CILRoot, MethodImpl, MethodRefIdx,
+    Type,
 };
 
 use super::dotnet_vec_cast;

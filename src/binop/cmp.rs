@@ -1,9 +1,8 @@
 use cilly::{
     call,
     cil_node::CILNode,
-    eq, gt, gt_un, lt, lt_un,
-    v2::{cilnode::MethodKind, Assembly, ClassRef, Float, Int, MethodRef},
-    Type,
+    eq, gt, gt_un, lt, lt_un, Type,
+    {cilnode::MethodKind, Assembly, ClassRef, Float, Int, MethodRef},
 };
 use rustc_middle::ty::{FloatTy, IntTy, Ty, TyKind, UintTy};
 

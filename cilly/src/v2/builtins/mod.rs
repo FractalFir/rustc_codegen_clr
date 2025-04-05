@@ -161,7 +161,7 @@ fn insert_rust_alloc_zeroed(asm: &mut Assembly, patcher: &mut MissingMethodPatch
 
 pub fn uninit_val(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
     let name = asm.alloc_string("uninit_val");
-    let generator = move |mref:MethodRefIdx, asm: &mut Assembly| {
+    let generator = move |mref: MethodRefIdx, asm: &mut Assembly| {
         let ret = asm.alloc_node(CILNode::LdLoc(0));
         let res = *asm[asm[mref].sig()].output();
         MethodImpl::MethodBody {
@@ -656,7 +656,7 @@ pub fn argc_argv_init(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
         use crate::method::Method;
         use crate::FnSig;
         let mut init_method = Method::new(
-            crate::access_modifier::AccessModifer::Extern,
+            crate::Access::Extern,
             crate::method::MethodType::Static,
             FnSig::new([], Type::Void),
             "argc_argv_init",

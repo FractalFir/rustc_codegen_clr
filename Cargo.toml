@@ -31,7 +31,7 @@ crate-type = ["dylib"]
 members = [ "cilly", "dotnet_aot",
     "mycorrhiza", "rustc_codegen_clr_call", "rustc_codegen_clr_ctx", "rustc_codegen_clr_place", "rustc_codegen_clr_type", "rustc_codgen_clr_operand", 
 ]
-exclude = ["rust/src/bootstrap","backup_rust/src/bootstrap"]
+exclude = ["rust/src/bootstrap","backup_rust/src/bootstrap", "bin"]
 [profile.release]
 debug = true
 

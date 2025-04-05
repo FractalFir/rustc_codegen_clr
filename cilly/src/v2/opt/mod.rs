@@ -7,7 +7,7 @@ use super::{
     cilroot::BranchCond, method::LocalDef, typecheck::display_typecheck_err, BasicBlock, CILIter,
     CILIterElem, CILNode, CILRoot, Int, MethodImpl, NodeIdx, RootIdx, SigIdx, Type,
 };
-use crate::v2::{Assembly, MethodDef};
+use crate::{Assembly, MethodDef};
 pub use opt_fuel::OptFuel;
 pub use side_effect::*;
 mod inline;
@@ -888,7 +888,7 @@ fn blockid() {
 #[test]
 fn opt_mag() {
     use super::{BinOp, Float};
-    use crate::v2::{asm::ILASM_FLAVOUR, cilnode::MethodKind, il_exporter::ILExporter};
+    use crate::{asm::ILASM_FLAVOUR, cilnode::MethodKind, il_exporter::ILExporter};
     let mut asm = Assembly::default();
 
     // Arg gets
@@ -927,7 +927,7 @@ fn opt_mag() {
     );
     let name = asm.alloc_string("mag");
     asm.new_method(MethodDef::new(
-        crate::v2::Access::Extern,
+        crate::Access::Extern,
         main_module,
         name,
         sig,
@@ -937,7 +937,7 @@ fn opt_mag() {
     ));
     let name = asm.alloc_string("entrypoint");
     asm.new_method(MethodDef::new(
-        crate::v2::Access::Extern,
+        crate::Access::Extern,
         main_module,
         name,
         sig,
@@ -965,7 +965,7 @@ fn is_branch_unconditional_test() {
 }
 #[test]
 fn local_prop() {
-    use crate::v2::BinOp;
+    use crate::BinOp;
     let mut asm = Assembly::default();
     let arg0 = asm.alloc_node(CILNode::LdArg(0));
     let stloc_0 = asm.alloc_root(CILRoot::StLoc(0, arg0));
@@ -989,7 +989,7 @@ fn local_prop() {
 }
 #[test]
 fn remove_nops() {
-    use crate::v2::BinOp;
+    use crate::BinOp;
     let mut asm = Assembly::default();
     let arg0 = asm.alloc_node(CILNode::LdArg(0));
     let stloc_0 = asm.alloc_root(CILRoot::StLoc(0, arg0));

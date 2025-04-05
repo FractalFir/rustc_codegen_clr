@@ -1,7 +1,6 @@
 use crate::{GetTypeExt, utilis::simple_tuple};
 use cilly::{
-    FieldDesc, Type,
-    v2::{Assembly, Float, Int},
+    FieldDesc, Type, {Assembly, Float, Int},
 };
 use rustc_abi::{FieldIdx, FieldsShape, Layout, LayoutData, VariantIdx, Variants};
 use rustc_codegen_clr_ctx::MethodCompileCtx;

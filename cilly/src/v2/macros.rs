@@ -2,110 +2,110 @@
 macro_rules! binop {
     // |closure| + |closure|
     (|$asm1:ident|$lhs:expr,|$asm2:ident|$rhs:expr,$op:expr) => {
-        |asm: &mut $crate::v2::asm::Assembly| {
+        |asm: &mut $crate::asm::Assembly| {
             asm.biop(
-                |$asm1: &mut $crate::v2::asm::Assembly| $lhs.into_idx($asm1),
-                |$asm2: &mut $crate::v2::asm::Assembly| $rhs.into_idx($asm2),
+                |$asm1: &mut $crate::asm::Assembly| $lhs.into_idx($asm1),
+                |$asm2: &mut $crate::asm::Assembly| $rhs.into_idx($asm2),
                 $op,
             )
         }
     };
     (|$asm1:ident|$lhs:block,|$asm2:ident|$rhs:expr,$op:expr) => {
-        |asm: &mut $crate::v2::asm::Assembly| {
+        |asm: &mut $crate::asm::Assembly| {
             asm.biop(
-                |$asm1: &mut $crate::v2::asm::Assembly| $lhs.into_idx($asm1),
-                |$asm2: &mut $crate::v2::asm::Assembly| $rhs.into_idx($asm2),
+                |$asm1: &mut $crate::asm::Assembly| $lhs.into_idx($asm1),
+                |$asm2: &mut $crate::asm::Assembly| $rhs.into_idx($asm2),
                 $op,
             )
         }
     };
     (|$asm1:ident|$lhs:expr,|$asm2:ident|$rhs:block,$op:expr) => {
-        |asm: &mut $crate::v2::asm::Assembly| {
+        |asm: &mut $crate::asm::Assembly| {
             asm.biop(
-                |$asm1: &mut $crate::v2::asm::Assembly| $lhs.into_idx($asm1),
-                |$asm2: &mut $crate::v2::asm::Assembly| $rhs.into_idx($asm2),
+                |$asm1: &mut $crate::asm::Assembly| $lhs.into_idx($asm1),
+                |$asm2: &mut $crate::asm::Assembly| $rhs.into_idx($asm2),
                 $op,
             )
         }
     };
     (|$asm1:ident|$lhs:block,|$asm2:ident|$rhs:block,$op:expr) => {
-        |asm: &mut $crate::v2::asm::Assembly| {
+        |asm: &mut $crate::asm::Assembly| {
             asm.biop(
-                |$asm1: &mut $crate::v2::asm::Assembly| $lhs.into_idx($asm1),
-                |$asm2: &mut $crate::v2::asm::Assembly| $rhs.into_idx($asm2),
+                |$asm1: &mut $crate::asm::Assembly| $lhs.into_idx($asm1),
+                |$asm2: &mut $crate::asm::Assembly| $rhs.into_idx($asm2),
                 $op,
             )
         }
     };
     // block + |closure|
     ($lhs:expr,|$asm2:ident|$rhs:expr,$op:expr) => {
-        |asm: &mut $crate::v2::asm::Assembly| {
+        |asm: &mut $crate::asm::Assembly| {
             asm.biop(
                 $lhs,
-                |$asm2: &mut $crate::v2::asm::Assembly| $rhs.into_idx($asm2),
+                |$asm2: &mut $crate::asm::Assembly| $rhs.into_idx($asm2),
                 $op,
             )
         }
     };
     ($lhs:block,|$asm2:ident|$rhs:expr,$op:expr) => {
-        |asm: &mut $crate::v2::asm::Assembly| {
+        |asm: &mut $crate::asm::Assembly| {
             asm.biop(
                 $lhs,
-                |$asm2: &mut $crate::v2::asm::Assembly| $rhs.into_idx($asm2),
+                |$asm2: &mut $crate::asm::Assembly| $rhs.into_idx($asm2),
                 $op,
             )
         }
     };
     ($lhs:expr,|$asm2:ident|$rhs:block,$op:expr) => {
-        |asm: &mut $crate::v2::asm::Assembly| {
+        |asm: &mut $crate::asm::Assembly| {
             asm.biop(
                 $lhs,
-                |$asm2: &mut $crate::v2::asm::Assembly| $rhs.into_idx($asm2),
+                |$asm2: &mut $crate::asm::Assembly| $rhs.into_idx($asm2),
                 $op,
             )
         }
     };
     ($lhs:block,|$asm2:ident|$rhs:block,$op:expr) => {
-        |asm: &mut $crate::v2::asm::Assembly| {
+        |asm: &mut $crate::asm::Assembly| {
             asm.biop(
                 $lhs,
-                |$asm2: &mut $crate::v2::asm::Assembly| $rhs.into_idx($asm2),
+                |$asm2: &mut $crate::asm::Assembly| $rhs.into_idx($asm2),
                 $op,
             )
         }
     };
     // block + |closure|
     (|$asm1:ident|$lhs:expr,$rhs:expr,$op:expr) => {
-        |asm: &mut $crate::v2::asm::Assembly| {
+        |asm: &mut $crate::asm::Assembly| {
             asm.biop(
-                |$asm1: &mut $crate::v2::asm::Assembly| $lhs.into_idx($asm1),
+                |$asm1: &mut $crate::asm::Assembly| $lhs.into_idx($asm1),
                 rhs,
                 $op,
             )
         }
     };
     (|$asm1:ident|$lhs:expr,$rhs:block,$op:expr) => {
-        |asm: &mut $crate::v2::asm::Assembly| {
+        |asm: &mut $crate::asm::Assembly| {
             asm.biop(
-                |$asm1: &mut $crate::v2::asm::Assembly| $lhs.into_idx($asm1),
+                |$asm1: &mut $crate::asm::Assembly| $lhs.into_idx($asm1),
                 rhs,
                 $op,
             )
         }
     };
     (|$asm1:ident|$lhs:block,$rhs:expr,$op:expr) => {
-        |asm: &mut $crate::v2::asm::Assembly| {
+        |asm: &mut $crate::asm::Assembly| {
             asm.biop(
-                |$asm1: &mut $crate::v2::asm::Assembly| $lhs.into_idx($asm1),
+                |$asm1: &mut $crate::asm::Assembly| $lhs.into_idx($asm1),
                 rhs,
                 $op,
             )
         }
     };
     (|$asm1:ident|$lhs:block,$rhs:block,$op:expr) => {
-        |asm: &mut $crate::v2::asm::Assembly| {
+        |asm: &mut $crate::asm::Assembly| {
             asm.biop(
-                |$asm1: &mut $crate::v2::asm::Assembly| $lhs.into_idx($asm1),
+                |$asm1: &mut $crate::asm::Assembly| $lhs.into_idx($asm1),
                 rhs,
                 $op,
             )
@@ -113,16 +113,16 @@ macro_rules! binop {
     };
     // block + block
     ($lhs:expr,$rhs:expr,$op:expr) => {
-        |asm: &mut $crate::v2::asm::Assembly| asm.biop($lhs, $rhs, $op)
+        |asm: &mut $crate::asm::Assembly| asm.biop($lhs, $rhs, $op)
     };
     ($lhs:block,$rhs:expr,$op:expr) => {
-        |asm: &mut $crate::v2::asm::Assembly| asm.biop($lhs, $rhs, $op)
+        |asm: &mut $crate::asm::Assembly| asm.biop($lhs, $rhs, $op)
     };
     ($lhs:expr,$rhs:block,$op:expr) => {
-        |asm: &mut $crate::v2::asm::Assembly| asm.biop($lhs, $rhs, $op)
+        |asm: &mut $crate::asm::Assembly| asm.biop($lhs, $rhs, $op)
     };
     ($lhs:block,$rhs:block,$op:expr) => {
-        |asm: &mut $crate::v2::asm::Assembly| asm.biop($lhs, $rhs, $op)
+        |asm: &mut $crate::asm::Assembly| asm.biop($lhs, $rhs, $op)
     };
 }
 #[macro_export]
@@ -193,7 +193,7 @@ macro_rules! size_of {
     };
     (usize) => {{
         use $crate::IntoAsmIndex;
-        |asm: &mut $crate::v2::asm::Assembly| {
+        |asm: &mut $crate::asm::Assembly| {
             <$crate::CILNode as IntoAsmIndex<$crate::NodeIdx>>::into_idx(
                 $crate::CILNode::SizeOf(asm.alloc_type($crate::Type::Int($crate::Int::USize))),
                 asm,
@@ -201,14 +201,14 @@ macro_rules! size_of {
         }
     }};
     (|$asm:ident|$val:expr) => {
-        |asm: &mut $crate::v2::asm::Assembly| {
+        |asm: &mut $crate::asm::Assembly| {
             <$crate::CILNode as IntoAsmIndex<$crate::NodeIdx>>::into_idx($crate::CILNode::SizeOf(
                 |$asm| { $val }.into_idx(asm),
             ))
         }
     };
     (|$asm:ident|$val:block) => {
-        |asm: &mut $crate::v2::asm::Assembly| {
+        |asm: &mut $crate::asm::Assembly| {
             <$crate::CILNode as IntoAsmIndex<$crate::NodeIdx>>::into_idx($crate::CILNode::SizeOf(
                 |$asm| { $val }.into_idx(asm),
             ))
@@ -216,7 +216,7 @@ macro_rules! size_of {
     };
     ($val:expr) => {{
         use $crate::IntoAsmIndex;
-        |asm: &mut $crate::v2::asm::Assembly| {
+        |asm: &mut $crate::asm::Assembly| {
             <$crate::CILNode as IntoAsmIndex<$crate::NodeIdx>>::into_idx(
                 $crate::CILNode::SizeOf($val.into_idx(asm)),
                 asm,
@@ -224,7 +224,7 @@ macro_rules! size_of {
         }
     }};
     ($val:block) => {
-        |asm: &mut $crate::v2::asm::Assembly| {
+        |asm: &mut $crate::asm::Assembly| {
             <$crate::CILNode as IntoAsmIndex<$crate::NodeIdx>>::into_idx($crate::CILNode::SizeOf(
                 $val.into_idx(asm),
             ))
@@ -239,7 +239,7 @@ macro_rules! zero_extend {
     (|$asm:ident|$val:expr,$ty:ty) => {{
         #[allow(unused_must_use)]
         {
-            |asm: &mut $crate::v2::asm::Assembly| {
+            |asm: &mut $crate::asm::Assembly| {
                 use $crate::IntoAsmIndex;
                 <$crate::CILNode as IntoAsmIndex<$crate::NodeIdx>>::into_idx(
                     asm.int_cast(
@@ -255,7 +255,7 @@ macro_rules! zero_extend {
     (|$asm:ident|$val:block,$ty:ty) => {{
         #[allow(unused_must_use)]
         {
-            |asm: &mut $crate::v2::asm::Assembly| {
+            |asm: &mut $crate::asm::Assembly| {
                 use $crate::IntoAsmIndex;
                 <$crate::CILNode as IntoAsmIndex<$crate::NodeIdx>>::into_idx(
                     asm.int_cast(
@@ -271,7 +271,7 @@ macro_rules! zero_extend {
     ($val:expr,$ty:ty) => {{
         #[allow(unused_must_use)]
         {
-            |asm: &mut $crate::v2::asm::Assembly| {
+            |asm: &mut $crate::asm::Assembly| {
                 use $crate::IntoAsmIndex;
                 <$crate::CILNode as IntoAsmIndex<$crate::NodeIdx>>::into_idx(
                     asm.int_cast(
@@ -287,7 +287,7 @@ macro_rules! zero_extend {
     ($val:block,$ty:ty) => {{
         #[allow(unused_must_use)]
         {
-            |asm: &mut $crate::v2::asm::Assembly| {
+            |asm: &mut $crate::asm::Assembly| {
                 use $crate::IntoAsmIndex;
                 <$crate::CILNode as IntoAsmIndex<$crate::NodeIdx>>::into_idx(
                     asm.int_cast(
@@ -304,7 +304,7 @@ macro_rules! zero_extend {
 #[macro_export]
 macro_rules! ptr_cast {
     ($val:expr,*$ptr:expr) => {
-        |asm: &mut $crate::v2::asm::Assembly| {
+        |asm: &mut $crate::asm::Assembly| {
             use $crate::IntoAsmIndex;
             <$crate::CILNode as IntoAsmIndex<$crate::NodeIdx>>::into_idx(
                 asm.ptr_cast($val, $crate::cilnode::PtrCastRes::Ptr($ptr)),

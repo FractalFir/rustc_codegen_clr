@@ -51,7 +51,7 @@ impl SIMDVector {
     }
     /// Returns a short name descirbing this vector.
     /// ```
-    /// # use cilly::v2::tpe::simd::{SIMDElem,SIMDVector};
+    /// # use cilly::tpe::simd::{SIMDElem,SIMDVector};
     /// # use cilly::Int;
     /// assert_eq!(SIMDVector::new(Int::U64.into(),4).name(),"simdu64_4");
     /// assert_eq!(SIMDVector::new(Int::U8.into(),32).name(),"simdu8_32");
@@ -68,7 +68,7 @@ impl SIMDVector {
     }
     /// Returns the size of this SIMD vector in bits.
     /// ```
-    /// # use cilly::v2::tpe::simd::{SIMDElem,SIMDVector};
+    /// # use cilly::tpe::simd::{SIMDElem,SIMDVector};
     /// # use cilly::{Float,Int};
     /// assert_eq!(SIMDVector::new(Float::F64.into(),4).bits(), 4 * Float::F64.bits() as u16);
     /// assert_eq!(SIMDVector::new(Int::U64.into(),4).bits(), 4 * Int::U64.bits().unwrap() as u16);
@@ -94,7 +94,7 @@ impl SIMDVector {
     }
     /// Returns the ammount of elements in this [`SIMDVec`].
     /// ```
-    /// # use cilly::v2::tpe::simd::{SIMDElem,SIMDVector};
+    /// # use cilly::tpe::simd::{SIMDElem,SIMDVector};
     /// # use cilly::{Float,Int};
     /// assert_eq!(SIMDVector::new(Float::F64.into(),4).count(), 4);
     /// assert_eq!(SIMDVector::new(Float::F64.into(),2).count(), 2);

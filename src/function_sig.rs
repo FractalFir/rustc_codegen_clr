@@ -1,5 +1,5 @@
 use crate::codegen_error::CodegenError;
-use cilly::{v2::FnSig, Type};
+use cilly::{FnSig, Type};
 use rustc_abi::ExternAbi as TargetAbi;
 use rustc_codegen_clr_ctx::MethodCompileCtx;
 use rustc_codegen_clr_type::r#type::get_type;

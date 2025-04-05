@@ -1,8 +1,6 @@
 use crate::{
-    v2::{
-        asm::MissingMethodPatcher, Assembly, BasicBlock, BinOp, CILNode, CILRoot, Int, MethodImpl,
-    },
     BranchCond, ClassRef, Const, Type,
+    {asm::MissingMethodPatcher, Assembly, BasicBlock, BinOp, CILNode, CILRoot, Int, MethodImpl},
 };
 
 fn op_direct(

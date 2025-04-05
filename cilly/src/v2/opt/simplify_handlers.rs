@@ -1,7 +1,7 @@
 #![allow(dead_code, unused_variables)]
 use fxhash::{FxHashMap, FxHashSet};
 
-use crate::v2::{Assembly, BasicBlock, CILRoot};
+use crate::{Assembly, BasicBlock, CILRoot};
 
 use super::{block_with_id, blockid_from_jump, OptFuel, SideEffectInfoCache};
 

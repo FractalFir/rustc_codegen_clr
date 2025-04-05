@@ -2,9 +2,8 @@ use crate::assembly::MethodCompileCtx;
 use cilly::{
     and, call,
     cil_node::CILNode,
-    or,
-    v2::{cilnode::MethodKind, ClassRef, Int, MethodRef},
-    xor, Type,
+    or, xor, Type,
+    {cilnode::MethodKind, ClassRef, Int, MethodRef},
 };
 use rustc_codegen_clr_type::GetTypeExt;
 use rustc_middle::ty::{IntTy, Ty, TyKind, UintTy};

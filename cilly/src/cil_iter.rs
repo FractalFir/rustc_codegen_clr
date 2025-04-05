@@ -1,4 +1,4 @@
-use crate::{cil_node::CILNode, cil_root::CILRoot, v2::MethodRefIdx};
+use crate::{cil_node::CILNode, cil_root::CILRoot, MethodRefIdx};
 
 #[derive(Debug, Clone, Copy)]
 pub enum CILIterElem<'a> {

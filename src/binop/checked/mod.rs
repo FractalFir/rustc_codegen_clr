@@ -3,8 +3,8 @@ use cilly::{
     and, call,
     cil_node::CILNode,
     conv_i16, conv_i32, conv_i64, conv_i8, conv_u32, conv_u64, conv_u8, eq, gt, gt_un, lt, or,
-    v2::{cilnode::MethodKind, Assembly, ClassRef, Int, MethodRef},
     Type,
+    {cilnode::MethodKind, Assembly, ClassRef, Int, MethodRef},
 };
 use rustc_codegen_clr_type::utilis::simple_tuple;
 use rustc_codegen_clr_type::GetTypeExt;

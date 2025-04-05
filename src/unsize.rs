@@ -3,9 +3,9 @@ use crate::assembly::MethodCompileCtx;
 use cilly::cil_node::CILNode;
 use cilly::cil_root::CILRoot;
 
-use cilly::v2::{FieldDesc, Int};
 use cilly::{conv_u32, conv_usize, IntoAsmIndex};
 use cilly::{Const, Type};
+use cilly::{FieldDesc, Int};
 use rustc_abi::FieldIdx;
 use rustc_abi::FIRST_VARIANT;
 use rustc_codegen_clr_place::place_address_raw;
@@ -46,12 +46,12 @@ pub fn unsize2<'tcx>(
     let metadata_field = FieldDesc::new(
         fat_ptr_type,
         ctx.alloc_string(crate::METADATA),
-        cilly::v2::Type::Int(Int::USize),
+        cilly::Type::Int(Int::USize),
     );
     let ptr_field = FieldDesc::new(
         fat_ptr_type,
         ctx.alloc_string(crate::DATA_PTR),
-        ctx.nptr(cilly::v2::Type::Void),
+        ctx.nptr(cilly::Type::Void),
     );
     let dst = place_address_raw(&destination, ctx);
     let target_ptr = dst.clone();

@@ -5,9 +5,8 @@ use crate::{
 use cilly::{
     cil_node::CILNode,
     cil_root::CILRoot,
-    conv_usize, ld_field, size_of,
-    v2::{cilnode::MethodKind, FieldDesc, Float, Int, MethodRef},
-    Const, Type,
+    conv_usize, ld_field, size_of, Const, Type,
+    {cilnode::MethodKind, FieldDesc, Float, Int, MethodRef},
 };
 use rustc_codegen_clr_call::CallInfo;
 use rustc_codegen_clr_ctx::function_name;
@@ -71,7 +70,7 @@ pub fn handle_rvalue<'tcx>(
                     let descriptor = FieldDesc::new(
                         slice_tpe,
                         ctx.alloc_string(crate::METADATA),
-                        cilly::v2::Type::Int(Int::USize),
+                        cilly::Type::Int(Int::USize),
                     );
                     let addr = place_address_raw(operand, ctx);
                     assert!(
@@ -557,7 +556,7 @@ fn ptr_to_ptr<'tcx>(
             let field_desc = FieldDesc::new(
                 get_type(source, ctx).as_class_ref().unwrap(),
                 ctx.alloc_string(crate::DATA_PTR),
-                ctx.nptr(cilly::v2::Type::Void),
+                ctx.nptr(cilly::Type::Void),
             );
             ld_field!(operand_address(operand, ctx), ctx.alloc_field(field_desc))
                 .cast_ptr(target_type)

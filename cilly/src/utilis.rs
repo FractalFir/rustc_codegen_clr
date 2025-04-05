@@ -2,10 +2,10 @@ use std::fmt::Debug;
 
 use crate::method::Method;
 
-use crate::v2::cilnode::MethodKind;
-use crate::v2::{ClassRef, FnSig, Int, MethodRef, MethodRefIdx, StaticFieldDesc};
+use crate::cilnode::MethodKind;
 use crate::{call, call_virt, conv_usize, IntoAsmIndex, MethodDef, Type};
 use crate::{cil_node::CILNode, cil_root::CILRoot, Assembly};
+use crate::{ClassRef, FnSig, Int, MethodRef, MethodRefIdx, StaticFieldDesc};
 
 pub fn argc_argv_init_method(asm: &mut Assembly) -> MethodRefIdx {
     let init_cs = MethodRef::new(
@@ -46,7 +46,7 @@ pub fn get_environ(asm: &mut Assembly) -> MethodRefIdx {
     }
 
     let mut get_environ = Method::new(
-        crate::access_modifier::AccessModifer::Extern,
+        crate::Access::Extern,
         crate::method::MethodType::Static,
         FnSig::new([], uint8_ptr_ptr),
         "get_environ",

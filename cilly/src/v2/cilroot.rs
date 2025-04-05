@@ -76,7 +76,7 @@ pub enum BranchCond {
 impl BranchCond {
     /// Returns all the nodes used by this branch cond.
     /// ```
-    /// # use cilly::v2::*;
+    /// # use cilly::*;
     /// # let mut asm = Assembly::default();
     /// let ldarg_0 = asm.alloc_node(CILNode::LdArg(0));
     /// let ldloc_1 = asm.alloc_node(CILNode::LdLoc(1));
@@ -688,7 +688,7 @@ impl CILRoot {
     }
     /// Returns a debug string, representing this root. This debug repr contains additional info not included by std::fmt::Debug.
     /// ```
-    /// # use cilly::v2::cilroot::CILRoot;
+    /// # use cilly::cilroot::CILRoot;
     /// # let mut asm = cilly::Assembly::default();
     /// # let sig = asm.sig([],cilly::Type::Void);
     /// # let locals = [];

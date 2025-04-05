@@ -166,20 +166,21 @@ impl Assembly {
                 let input = self.translate_node(source, source.get_node(*input).clone());
                 let input = self.alloc_node(input);
                 let cast_res = match cast_res.as_ref() {
-                    crate::v2::cilnode::PtrCastRes::Ptr(inner) => {
+                    crate::cilnode::PtrCastRes::Ptr(inner) => {
                         let inner = self.translate_type(source, source[*inner]);
-                        crate::v2::cilnode::PtrCastRes::Ptr(self.alloc_type(inner))
+                        crate::cilnode::PtrCastRes::Ptr(self.alloc_type(inner))
                     }
-                    crate::v2::cilnode::PtrCastRes::Ref(inner) => {
+                    crate::cilnode::PtrCastRes::Ref(inner) => {
                         let inner = self.translate_type(source, source[*inner]);
-                        crate::v2::cilnode::PtrCastRes::Ref(self.alloc_type(inner))
+                        crate::cilnode::PtrCastRes::Ref(self.alloc_type(inner))
                     }
-                    crate::v2::cilnode::PtrCastRes::FnPtr(sig) => {
+                    crate::cilnode::PtrCastRes::FnPtr(sig) => {
                         let sig = self.translate_sig(source, &source[*sig]);
-                        crate::v2::cilnode::PtrCastRes::FnPtr(self.alloc_sig(sig))
+                        crate::cilnode::PtrCastRes::FnPtr(self.alloc_sig(sig))
                     }
-                    crate::v2::cilnode::PtrCastRes::USize
-                    | crate::v2::cilnode::PtrCastRes::ISize => *cast_res.clone(),
+                    crate::cilnode::PtrCastRes::USize | crate::cilnode::PtrCastRes::ISize => {
+                        *cast_res.clone()
+                    }
                 };
                 CILNode::PtrCast(input, Box::new(cast_res))
             }

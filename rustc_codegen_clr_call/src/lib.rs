@@ -3,7 +3,7 @@ extern crate rustc_abi;
 extern crate rustc_driver;
 extern crate rustc_middle;
 extern crate rustc_target;
-use cilly::v2::FnSig;
+use cilly::FnSig;
 use rustc_abi::ExternAbi as TargetAbi;
 use rustc_codegen_clr_ctx::MethodCompileCtx;
 use rustc_codegen_clr_type::r#type::get_type;

@@ -40,7 +40,7 @@ impl FnSig {
     }
     /// Itereates trough all the inputs of this sig.
     /// ```
-    /// # use cilly::v2::{Type,FnSig};
+    /// # use cilly::{Type,FnSig};
     /// let sig = FnSig::new([Type::PlatformString],Type::Void);
     /// assert_eq!(sig.iter_types().next(),Some(Type::PlatformString));
     /// ```
@@ -56,7 +56,7 @@ impl FnSig {
     }
     /// Changes the inputs of this function to *inputs*.
     /// ```
-    /// # use cilly::v2::{Type,FnSig};
+    /// # use cilly::{Type,FnSig};
     /// # let mut sig = FnSig::new([Type::PlatformString],Type::Void);
     /// assert_eq!(sig.inputs().len(),1);
     /// sig.set_inputs([Type::PlatformString,Type::PlatformChar]);

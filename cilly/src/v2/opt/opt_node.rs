@@ -1,6 +1,6 @@
 use crate::{
-    v2::{cilnode::ExtendKind, Assembly, CILNode, Const, Int, NodeIdx, Type},
     BinOp,
+    {cilnode::ExtendKind, Assembly, CILNode, Const, Int, NodeIdx, Type},
 };
 
 use super::{opt_if_fuel, OptFuel, SideEffectInfoCache};

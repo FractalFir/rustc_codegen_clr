@@ -1,4 +1,4 @@
-use crate::v2::{
+use crate::{
     asm::MissingMethodPatcher, cilnode::MethodKind, cilroot::BranchCond, BasicBlock, BinOp,
     CILNode, CILRoot, ClassRef, Const, Int, MethodImpl, MethodRef, Type,
 };
@@ -216,7 +216,7 @@ pub fn generate_all_atomics(asm: &mut Assembly, patcher: &mut MissingMethodPatch
     // NAND
     generate_atomic_for_ints(asm, patcher, "nand", |asm, lhs, rhs, _| {
         let and = asm.alloc_node(CILNode::BinOp(lhs, rhs, BinOp::And));
-        asm.alloc_node(CILNode::UnOp(and, crate::v2::cilnode::UnOp::Not))
+        asm.alloc_node(CILNode::UnOp(and, crate::cilnode::UnOp::Not))
     });
     // Max
     generate_atomic_for_ints(asm, patcher, "max", int_max);

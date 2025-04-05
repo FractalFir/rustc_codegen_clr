@@ -4,7 +4,7 @@ use cilly::{
     Const, NodeIdx, Type, call,
     cil_node::{CILNode, CallOpArgs},
     cilnode::IsPure,
-    v2::{
+    {
         Assembly, ClassRef, Float, Int, MethodRef, MethodRefIdx, StaticFieldDesc,
         cilnode::MethodKind,
         hashable::{HashableF32, HashableF64},

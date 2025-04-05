@@ -4,9 +4,7 @@ use cilly::{
     cil_node::CILNode,
     cil_root::CILRoot,
     cilnode::MethodKind,
-    conv_f32, conv_f64,
-    v2::{ClassRef, Float},
-    Int, MethodRef, Type,
+    conv_f32, conv_f64, Int, MethodRef, Type, {ClassRef, Float},
 };
 use rustc_codegen_clr_place::place_set;
 use rustc_codgen_clr_operand::handle_operand;

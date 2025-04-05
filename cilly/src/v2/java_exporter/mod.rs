@@ -2,7 +2,7 @@
 #![allow(dead_code, unused_imports)]
 use std::io::Write;
 
-use crate::v2::MethodImpl;
+use crate::MethodImpl;
 
 use super::{
     cilroot::BranchCond, Assembly, CILIter, CILIterElem, CILNode, ClassRefIdx, Exporter, NodeIdx,
@@ -35,8 +35,8 @@ impl JavaExporter {
         // Iterate trough all types
         for class_def in asm.iter_class_defs() {
             let vis = match class_def.access() {
-                crate::v2::Access::Extern | crate::v2::Access::Public => "public",
-                crate::v2::Access::Private => "private",
+                crate::Access::Extern | crate::Access::Public => "public",
+                crate::Access::Private => "private",
             };
             let sealed = if class_def.is_valuetype() {
                 "final"

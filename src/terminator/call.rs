@@ -12,11 +12,10 @@ use cilly::{
     cil_node::{CILNode, CallOpArgs},
     cil_root::CILRoot,
     cilnode::IsPure,
-    conv_usize, ld_field,
-    v2::{cilnode::MethodKind, ClassRef, FieldDesc, FnSig, Int},
-    IntoAsmIndex,
+    conv_usize, ld_field, IntoAsmIndex,
+    {cilnode::MethodKind, ClassRef, FieldDesc, FnSig, Int},
 };
-use cilly::{v2::MethodRef, Type};
+use cilly::{MethodRef, Type};
 use rustc_codegen_clr_call::CallInfo;
 use rustc_codegen_clr_ctx::function_name;
 use rustc_codegen_clr_place::place_set;

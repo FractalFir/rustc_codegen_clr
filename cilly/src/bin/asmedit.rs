@@ -8,13 +8,13 @@ use std::{
 
 use cilly::{
     c_exporter::CExporter,
-    v2::{
+    BasicBlock, CILNode, CILRoot, MethodDef,
+    {
         asm::{encoded_stats, Assembly},
         cillyir_exporter::CillyIRExpoter,
         il_exporter::ILExporter,
         Access, CILIter, MethodImpl, MethodRefIdx,
     },
-    BasicBlock, CILNode, CILRoot, MethodDef,
 };
 use fxhash::FxHashSet;
 
@@ -148,7 +148,7 @@ fn main() {
                 let start = Instant::now();
                 println!("Preparing to export the assembly");
                 #[cfg(not(miri))]
-                asm.export(path, ILExporter::new(cilly::v2::IlasmFlavour::Clasic, true));
+                asm.export(path, ILExporter::new(cilly::IlasmFlavour::Clasic, true));
                 println!(
                     "Exported the assembly in {} ms",
                     start.elapsed().as_millis()

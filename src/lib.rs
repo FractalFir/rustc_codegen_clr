@@ -148,8 +148,8 @@ mod unsize;
 // rustc functions used here.
 use crate::rustc_middle::dep_graph::DepContext;
 use cilly::{
-    v2::{cilnode::MethodKind, MethodRef},
     Assembly,
+    {cilnode::MethodKind, MethodRef},
 };
 use rustc_codegen_clr_ctx::MethodCompileCtx;
 use rustc_codegen_ssa::{
@@ -270,7 +270,7 @@ impl CodegenBackend for MyBackend {
             let mut asm_out = std::fs::File::create(&serialized_asm_path).expect(
                 "Could not create the temporary files necessary for building the assembly!",
             );
-            let mut v2 = cilly::v2::Assembly::from_v1(&asm);
+            let mut v2 = cilly::Assembly::from_v1(&asm);
             v2.opt(&mut v2.fuel_from_env());
             v2.typecheck();
             asm_out

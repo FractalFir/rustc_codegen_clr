@@ -1,4 +1,4 @@
-use crate::{utilis::assert_unique, v2::MethodImpl};
+use crate::{utilis::assert_unique, MethodImpl};
 
 use std::{io::Write, path::Path};
 
@@ -29,8 +29,8 @@ impl ILExporter {
         // Iterate trough all types
         for class_def in asm.iter_class_defs() {
             let vis = match class_def.access() {
-                crate::v2::Access::Extern | crate::v2::Access::Public => "public",
-                crate::v2::Access::Private => "private",
+                crate::Access::Extern | crate::Access::Public => "public",
+                crate::Access::Private => "private",
             };
             let sealed = if class_def.is_valuetype() {
                 "sealed"
@@ -96,14 +96,14 @@ impl ILExporter {
             for method_id in class_def.methods() {
                 let method = asm.method_def(*method_id);
                 let vis = match method.access() {
-                    crate::v2::Access::Extern | crate::v2::Access::Public => "public",
-                    crate::v2::Access::Private => "private",
+                    crate::Access::Extern | crate::Access::Public => "public",
+                    crate::Access::Private => "private",
                 };
                 let kind = match method.kind() {
-                    crate::v2::cilnode::MethodKind::Static => "static",
-                    crate::v2::cilnode::MethodKind::Instance => "instance",
-                    crate::v2::cilnode::MethodKind::Virtual => "virtual instance",
-                    crate::v2::cilnode::MethodKind::Constructor => "rtspecialname specialname",
+                    crate::cilnode::MethodKind::Static => "static",
+                    crate::cilnode::MethodKind::Instance => "instance",
+                    crate::cilnode::MethodKind::Virtual => "virtual instance",
+                    crate::cilnode::MethodKind::Constructor => "rtspecialname specialname",
                 };
                 let pinvoke = if let MethodImpl::Extern {
                     lib,
@@ -124,10 +124,10 @@ impl ILExporter {
                 let ret = type_il(sig.output(), asm);
                 assert_eq!(method.arg_names().len(), sig.inputs().len(), "{name:?}");
                 let inputs = match method.kind() {
-                    crate::v2::cilnode::MethodKind::Static => sig.inputs(),
-                    crate::v2::cilnode::MethodKind::Instance
-                    | crate::v2::cilnode::MethodKind::Virtual
-                    | crate::v2::cilnode::MethodKind::Constructor => &sig.inputs()[1..],
+                    crate::cilnode::MethodKind::Static => sig.inputs(),
+                    crate::cilnode::MethodKind::Instance
+                    | crate::cilnode::MethodKind::Virtual
+                    | crate::cilnode::MethodKind::Constructor => &sig.inputs()[1..],
                 };
 
                 let inputs: String = inputs
@@ -156,8 +156,7 @@ impl ILExporter {
                         .iter()
                         .flat_map(|block| block.roots().iter())
                         .map(|root| {
-                            crate::v2::CILIter::new(asm_mut.get_root(*root).clone(), asm_mut)
-                                .count()
+                            crate::CILIter::new(asm_mut.get_root(*root).clone(), asm_mut).count()
                                 + 10
                         })
                         .max()
@@ -431,18 +430,18 @@ impl ILExporter {
                 }
                 let mref = &asm[call.0];
                 let call_op = match mref.kind() {
-                    crate::v2::cilnode::MethodKind::Static => "call",
-                    crate::v2::cilnode::MethodKind::Instance => "call instance",
-                    crate::v2::cilnode::MethodKind::Virtual => " callvirt instance",
-                    crate::v2::cilnode::MethodKind::Constructor => "newobj instance",
+                    crate::cilnode::MethodKind::Static => "call",
+                    crate::cilnode::MethodKind::Instance => "call instance",
+                    crate::cilnode::MethodKind::Virtual => " callvirt instance",
+                    crate::cilnode::MethodKind::Constructor => "newobj instance",
                 };
                 let sig = &asm[mref.sig()];
                 let output = type_il(sig.output(), asm);
                 let inputs = match mref.kind() {
-                    crate::v2::cilnode::MethodKind::Static => sig.inputs(),
-                    crate::v2::cilnode::MethodKind::Instance
-                    | crate::v2::cilnode::MethodKind::Virtual
-                    | crate::v2::cilnode::MethodKind::Constructor => {
+                    crate::cilnode::MethodKind::Static => sig.inputs(),
+                    crate::cilnode::MethodKind::Instance
+                    | crate::cilnode::MethodKind::Virtual
+                    | crate::cilnode::MethodKind::Constructor => {
                         assert!(
                             !sig.inputs().is_empty(),
                             "invalid argc when calling {} of {}",
@@ -718,10 +717,10 @@ impl ILExporter {
                 let sig = &asm[mref.sig()];
                 let output = type_il(sig.output(), asm);
                 let inputs = match mref.kind() {
-                    crate::v2::cilnode::MethodKind::Static => sig.inputs(),
-                    crate::v2::cilnode::MethodKind::Instance
-                    | crate::v2::cilnode::MethodKind::Virtual
-                    | crate::v2::cilnode::MethodKind::Constructor => &sig.inputs()[1..],
+                    crate::cilnode::MethodKind::Static => sig.inputs(),
+                    crate::cilnode::MethodKind::Instance
+                    | crate::cilnode::MethodKind::Virtual
+                    | crate::cilnode::MethodKind::Constructor => &sig.inputs()[1..],
                 };
                 let inputs: String = inputs
                     .iter()
@@ -731,10 +730,10 @@ impl ILExporter {
                 let name = &asm[mref.name()];
                 let class = class_ref(mref.class(), asm);
                 let ldftn_op = match mref.kind() {
-                    crate::v2::cilnode::MethodKind::Static => "ldftn",
-                    crate::v2::cilnode::MethodKind::Instance => "ldftn instance",
-                    crate::v2::cilnode::MethodKind::Virtual => " ldftn instance",
-                    crate::v2::cilnode::MethodKind::Constructor => "ldftn instance",
+                    crate::cilnode::MethodKind::Static => "ldftn",
+                    crate::cilnode::MethodKind::Instance => "ldftn instance",
+                    crate::cilnode::MethodKind::Virtual => " ldftn instance",
+                    crate::cilnode::MethodKind::Constructor => "ldftn instance",
                 };
                 writeln!(
                     out,
@@ -1049,20 +1048,20 @@ impl ILExporter {
                 }
                 let mref = &asm[call.0];
                 let call_op = match mref.kind() {
-                    crate::v2::cilnode::MethodKind::Static => "call",
-                    crate::v2::cilnode::MethodKind::Instance => "call instance",
-                    crate::v2::cilnode::MethodKind::Virtual => " callvirt instance",
-                    crate::v2::cilnode::MethodKind::Constructor => {
+                    crate::cilnode::MethodKind::Static => "call",
+                    crate::cilnode::MethodKind::Instance => "call instance",
+                    crate::cilnode::MethodKind::Virtual => " callvirt instance",
+                    crate::cilnode::MethodKind::Constructor => {
                         panic!("A constructor can't be a CIL root")
                     }
                 };
                 let sig = &asm[mref.sig()];
                 let output = type_il(sig.output(), asm);
                 let inputs = match mref.kind() {
-                    crate::v2::cilnode::MethodKind::Static => sig.inputs(),
-                    crate::v2::cilnode::MethodKind::Instance
-                    | crate::v2::cilnode::MethodKind::Virtual
-                    | crate::v2::cilnode::MethodKind::Constructor => &sig.inputs()[1..],
+                    crate::cilnode::MethodKind::Static => sig.inputs(),
+                    crate::cilnode::MethodKind::Instance
+                    | crate::cilnode::MethodKind::Virtual
+                    | crate::cilnode::MethodKind::Constructor => &sig.inputs()[1..],
                 };
                 let inputs: String = inputs
                     .iter()

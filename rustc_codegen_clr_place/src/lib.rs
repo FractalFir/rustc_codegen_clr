@@ -6,7 +6,7 @@ extern crate rustc_hir;
 extern crate rustc_middle;
 use cilly::cil_node::CILNode;
 use cilly::cil_root::CILRoot;
-use cilly::v2::{ClassRef, Float};
+use cilly::{ClassRef, Float};
 use cilly::{Const, Type};
 use rustc_codegen_clr_ctx::MethodCompileCtx;
 use rustc_codegen_clr_type::GetTypeExt;

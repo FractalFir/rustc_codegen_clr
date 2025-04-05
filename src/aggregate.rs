@@ -5,8 +5,8 @@ use crate::{
 use cilly::{
     cil_node::CILNode,
     cil_root::CILRoot,
-    v2::{cilnode::MethodKind, ClassRef, FieldDesc, FnSig, Int, MethodRef},
     Const, Type,
+    {cilnode::MethodKind, ClassRef, FieldDesc, FnSig, Int, MethodRef},
 };
 use rustc_abi::FieldIdx;
 use rustc_codegen_clr_place::{place_adress, place_get, place_set};
@@ -110,7 +110,7 @@ pub fn handle_aggregate<'tcx>(
             let mut sub_trees = Vec::new();
             for field in &values {
                 // Assigining to a Void field is a NOP and must be skipped(since it can have wierd side-effects).
-                if types[field.0 as usize] == cilly::v2::Type::Void {
+                if types[field.0 as usize] == cilly::Type::Void {
                     continue;
                 }
                 let name = format!("Item{}", field.0 + 1);
@@ -139,7 +139,7 @@ pub fn handle_aggregate<'tcx>(
             for (index, value) in value_index.iter_enumerated() {
                 let field_ty = ctx.monomorphize(value.ty(ctx.body(), ctx.tcx()));
                 let field_type = get_type(field_ty, ctx);
-                if field_type == cilly::v2::Type::Void {
+                if field_type == cilly::Type::Void {
                     continue;
                 }
                 let field_name = ctx.alloc_string(format!("f_{}", index.as_u32()));
@@ -165,7 +165,7 @@ pub fn handle_aggregate<'tcx>(
             for (index, value) in value_index.iter_enumerated() {
                 let field_ty = ctx.monomorphize(value.ty(ctx.body(), ctx.tcx()));
                 let field_type = get_type(field_ty, ctx);
-                if field_type == cilly::v2::Type::Void {
+                if field_type == cilly::Type::Void {
                     continue;
                 }
                 let field_name = ctx.alloc_string(format!("f_{}", index.as_u32()));
@@ -225,7 +225,7 @@ pub fn handle_aggregate<'tcx>(
             let fat_ptr_type = get_type(fat_ptr, ctx);
             // Assign the components
             let data_ptr_name = ctx.alloc_string(crate::DATA_PTR);
-            let void_ptr = ctx.nptr(cilly::v2::Type::Void);
+            let void_ptr = ctx.nptr(cilly::Type::Void);
             let assign_ptr = CILRoot::SetField {
                 addr: Box::new(init_addr.clone()),
                 value: Box::new(values[0].1.clone().cast_ptr(ctx.nptr(Type::Void))),
@@ -242,7 +242,7 @@ pub fn handle_aggregate<'tcx>(
                 desc: ctx.alloc_field(FieldDesc::new(
                     fat_ptr_type.as_class_ref().unwrap(),
                     name,
-                    cilly::v2::Type::Int(Int::USize),
+                    cilly::Type::Int(Int::USize),
                 )),
             };
 
@@ -317,7 +317,7 @@ fn aggregate_adt<'tcx>(
                 ));
                 let field_type = get_type(field.ty(ctx.tcx(), subst), ctx);
                 // Seting a void field is a no-op.
-                if field_type == cilly::v2::Type::Void {
+                if field_type == cilly::Type::Void {
                     continue;
                 }
 
@@ -357,7 +357,7 @@ fn aggregate_adt<'tcx>(
             let field_ty = ctx.monomorphize(field_def.ty(ctx.tcx(), subst));
             let field_type = get_type(field_ty, ctx);
             // Seting a void field is a no-op.
-            if field_type == cilly::v2::Type::Void {
+            if field_type == cilly::Type::Void {
                 return (vec![], place_get(target_location, ctx));
             }
 

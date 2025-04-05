@@ -1,6 +1,6 @@
 use crate::assembly::MethodCompileCtx;
 use cilly::{
-    call, cil_node::CILNode, cil_root::CILRoot, cilnode::MethodKind, conv_usize, v2::ClassRef, Int,
+    call, cil_node::CILNode, cil_root::CILRoot, cilnode::MethodKind, conv_usize, ClassRef, Int,
     MethodRef, Type,
 };
 use rustc_codegen_clr_place::{place_adress, place_set};

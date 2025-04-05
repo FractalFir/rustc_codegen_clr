@@ -2,7 +2,7 @@ use cilly::{
     Assembly, Const, IntoAsmIndex, NodeIdx, Type, call,
     cil_node::CILNode,
     conv_usize, ld_field,
-    v2::{FieldDesc, Int, MethodRef, cilnode::MethodKind},
+    {FieldDesc, Int, MethodRef, cilnode::MethodKind},
 };
 use rustc_codegen_clr_ctx::MethodCompileCtx;
 use rustc_codegen_clr_type::{

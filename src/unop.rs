@@ -2,9 +2,9 @@ use crate::assembly::MethodCompileCtx;
 
 use cilly::cil_node::CILNode;
 
-use cilly::v2::cilnode::MethodKind;
-use cilly::v2::{ClassRef, FieldDesc, Int, MethodRef};
+use cilly::cilnode::MethodKind;
 use cilly::{call, ld_field, Type};
+use cilly::{ClassRef, FieldDesc, Int, MethodRef};
 
 use rustc_codegen_clr_type::r#type::get_type;
 
@@ -83,7 +83,7 @@ pub fn unop<'tcx>(
                 ctx.alloc_field(FieldDesc::new(
                     tpe,
                     metadata,
-                    cilly::v2::Type::Int(cilly::v2::Int::USize),
+                    cilly::Type::Int(cilly::Int::USize),
                 ))
             )
         }

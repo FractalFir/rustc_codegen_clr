@@ -5,9 +5,7 @@ use cilly::{
     cil_root::CILRoot,
     cilnode::MethodKind,
     conv_i16, conv_i32, conv_i64, conv_i8, conv_isize, conv_u16, conv_u32, conv_u64, conv_u8,
-    conv_usize,
-    v2::{ClassRef, Float, Int},
-    Const, FieldDesc, IntoAsmIndex, MethodRef, Type,
+    conv_usize, Const, FieldDesc, IntoAsmIndex, MethodRef, Type, {ClassRef, Float, Int},
 };
 use ints::{ctlz, rotate_left, rotate_right};
 use rustc_codegen_clr_place::{deref_op, place_adress, place_set, ptr_set_op};

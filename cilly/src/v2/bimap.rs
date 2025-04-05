@@ -1,6 +1,9 @@
 use fxhash::FxHashMap;
 use serde::{Deserialize, Serialize};
-use std::{collections::hash_map::Entry, fmt::Debug, hash::Hash, num::NonZeroU32, ops::Index};
+use std::{
+    collections::hash_map::Entry, fmt::Debug, hash::Hash, marker::PhantomData, num::NonZeroU32,
+    ops::Index,
+};
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct BiMap<Key, Value: Eq + Hash>(pub Vec<Value>, pub FxHashMap<Value, Key>);
@@ -100,4 +103,30 @@ fn bimap_alloc() {
     assert_eq!(**map.get(bob), *"Bob");
     assert_eq!(map.len(), 2);
     assert!(!map.is_empty());
+}
+#[derive(Hash, PartialEq, Eq, Debug, Serialize, Deserialize)]
+pub struct Interned<T> {
+    pd: PhantomData<T>,
+    idx: BiMapIndex,
+}
+impl<T> Copy for Interned<T> {}
+impl<T> Clone for Interned<T> {
+    fn clone(&self) -> Self {
+        Self {
+            pd: self.pd.clone(),
+            idx: self.idx.clone(),
+        }
+    }
+}
+impl<T> IntoBiMapIndex for Interned<T> {
+    fn from_index(idx: BiMapIndex) -> Self {
+        Self {
+            pd: PhantomData,
+            idx,
+        }
+    }
+
+    fn as_bimap_index(&self) -> BiMapIndex {
+        self.idx
+    }
 }

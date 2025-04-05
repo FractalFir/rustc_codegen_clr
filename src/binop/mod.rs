@@ -4,9 +4,9 @@ use bitop::{bit_and_unchecked, bit_or_unchecked, bit_xor_unchecked};
 use cilly::{
     call,
     cil_node::CILNode,
-    conv_i8, conv_u16, conv_u32, conv_u64, conv_u8, eq, gt_un, lt_un, rem, rem_un,
-    v2::{cilnode::MethodKind, Float, Int, MethodRef},
-    IntoAsmIndex, Type,
+    conv_i8, conv_u16, conv_u32, conv_u64, conv_u8, eq, gt_un, lt_un, rem, rem_un, IntoAsmIndex,
+    Type,
+    {cilnode::MethodKind, Float, Int, MethodRef},
 };
 use cmp::{eq_unchecked, gt_unchecked, lt_unchecked, ne_unchecked};
 use rustc_codegen_clr_type::{utilis::instance_try_resolve, GetTypeExt};

@@ -1,4 +1,4 @@
-use crate::v2::{
+use crate::{
     asm::MissingMethodPatcher, cilroot::BranchCond, Assembly, BasicBlock, CILNode, CILRoot, Int,
     MethodImpl,
 };

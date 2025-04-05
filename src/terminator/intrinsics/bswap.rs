@@ -3,7 +3,7 @@ use cilly::{
     call,
     cil_node::CILNode,
     cil_root::CILRoot,
-    v2::{cilnode::MethodKind, ClassRef, MethodRef},
+    {cilnode::MethodKind, ClassRef, MethodRef},
 };
 use rustc_codegen_clr_place::place_set;
 use rustc_codegen_clr_type::GetTypeExt;

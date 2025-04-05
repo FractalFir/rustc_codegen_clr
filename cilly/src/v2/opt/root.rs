@@ -7,7 +7,7 @@ pub use super::opt_fuel::OptFuel;
 use super::opt_if_fuel;
 pub use super::side_effect::*;
 use crate::cilroot::CmpKind;
-use crate::v2::Assembly;
+use crate::Assembly;
 use crate::TypeIdx;
 pub fn root_opt(
     root: CILRoot,

@@ -3,7 +3,7 @@ use cilly::{
     Type, call,
     cil_node::CILNode,
     utilis::escape_class_name,
-    v2::{Assembly, ClassRef, ClassRefIdx, Int, MethodRef, cilnode::MethodKind},
+    {Assembly, ClassRef, ClassRefIdx, Int, MethodRef, cilnode::MethodKind},
 };
 use rustc_codegen_clr_ctx::MethodCompileCtx;
 use rustc_middle::ty::Const;
@@ -155,7 +155,7 @@ pub fn tuple_name(elements: &[Type], asm: &Assembly) -> String {
 }
 /// Creates a tuple with no more than 8 elements.
 #[must_use]
-pub fn simple_tuple(elements: &[cilly::v2::Type], asm: &mut Assembly) -> ClassRefIdx {
+pub fn simple_tuple(elements: &[cilly::Type], asm: &mut Assembly) -> ClassRefIdx {
     let name = tuple_name(elements, asm);
     let name = asm.alloc_string(name);
     asm.alloc_class_ref(ClassRef::new(name, None, true, [].into()))

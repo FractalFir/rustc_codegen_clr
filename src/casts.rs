@@ -1,7 +1,7 @@
 use cilly::cil_node::CILNode;
-use cilly::v2::cilnode::MethodKind;
-use cilly::v2::{Assembly, ClassRef, Float, Int, MethodRef};
+use cilly::cilnode::MethodKind;
 use cilly::Type;
+use cilly::{Assembly, ClassRef, Float, Int, MethodRef};
 
 use cilly::{
     call, conv_f32, conv_f64, conv_f_un, conv_i16, conv_i32, conv_i64, conv_i8, conv_isize,

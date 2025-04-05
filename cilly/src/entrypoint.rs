@@ -1,8 +1,8 @@
 use std::num::NonZeroU8;
 
 use crate::{
-    v2::{cilnode::MethodKind, Assembly, Int, MethodRef},
     Access, BasicBlock, CILNode, CILRoot, Const, MethodDef, MethodDefIdx, MethodImpl, Type,
+    {cilnode::MethodKind, Assembly, Int, MethodRef},
 };
 
 /// Creates a wrapper method around entypoint represented by `MethodRefIdx`

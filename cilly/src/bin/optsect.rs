@@ -3,7 +3,7 @@ use std::{
     path::Path,
 };
 
-use cilly::v2::{asm::ILASM_FLAVOUR, il_exporter::ILExporter, opt::OptFuel, Assembly};
+use cilly::{asm::ILASM_FLAVOUR, il_exporter::ILExporter, opt::OptFuel, Assembly};
 fn asm_with_fuel(asm: &Assembly, path: &Path, fuel: u32) {
     let mut asm = asm.clone();
     let opt_time = std::time::Instant::now();
@@ -19,7 +19,7 @@ fn asm_with_fuel(asm: &Assembly, path: &Path, fuel: u32) {
     eprintln!("Exported in {} ms", export_time.elapsed().as_millis());
     let mut config_path = path.to_owned();
     config_path.set_extension("runtimeconfig.json");
-    let cfg = cilly::v2::il_exporter::get_runtime_config();
+    let cfg = cilly::il_exporter::get_runtime_config();
     std::fs::File::create(config_path)
         .unwrap()
         .write_all(cfg.as_bytes())

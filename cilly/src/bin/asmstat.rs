@@ -1,4 +1,4 @@
-use cilly::v2::asm::Assembly;
+use cilly::asm::Assembly;
 //use cilly::asm::Assembly;
 fn main() {
     let args: Vec<String> = std::env::args().collect();
