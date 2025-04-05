@@ -360,7 +360,7 @@ impl CILNode {
                     .into(),
                     site: (asm.alloc_methodref(select)),
                     is_pure: crate::cilnode::IsPure::PURE,
-                }))
+                })).cast_ptr(tpe)
             }
             _ => todo!(),
         }

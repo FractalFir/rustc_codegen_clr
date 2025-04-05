@@ -812,10 +812,13 @@ run_test! {std,format,unstable}
 run_test! {std,futex_test,stable}
 run_test! {std,futexrw_test,stable}
 run_test! {std,main,stable}
+run_test! {std,sort,stable}
 run_test! {std,mutithreading,stable}
 run_test! {std,once_lock_test,stable}
 run_test! {std,tlocal_key_test,stable}
 run_test! {std,uninit_fill,stable}
+
+run_test! {core,ascii_align,stable}
 
 run_test! {types,adt_enum,stable}
 run_test! {types,f128,stable}

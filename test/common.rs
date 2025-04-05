@@ -238,3 +238,26 @@ fn println(msg: &str) {
         free(tmp as *mut core::ffi::c_void);
     }
 }
+struct Vecy<T:Copy + 'static>{
+    backer:&'static mut [T],
+}
+impl<T:Copy + 'static> Vecy<T>{
+    fn new(t:T, size:usize)->Self{
+        let backer = unsafe{std::slice::from_raw_parts_mut(malloc(size * std::mem::size_of_val(&t)) as *mut T, size)};
+        for val in backer.iter_mut(){
+            *val = t;
+        }
+        Self{backer}
+    }
+    fn as_slice_mut<'a>(&'a mut self)->&'a mut [T]{
+        self.backer
+    }
+    fn as_slice<'a>(&'a  self)->&'a  [T]{
+        &self.backer[..]
+    }
+}
+impl<T:Copy + 'static> Drop for Vecy<T>{
+    fn drop(&mut self){
+        unsafe{free(self.backer.as_ptr() as *mut _)};
+    }
+}

@@ -228,9 +228,11 @@ pub fn place_elem_adress<'tcx>(
             }
         }
         PlaceElem::Subslice { from, to, from_end } => {
+      
             let curr_type = fat_ptr_to(curr_type.as_ty().expect("Can't index into an enum!"), ctx);
 
             if *from_end {
+                //assert!(from >= to, "from_end:{from_end} from:{from} to:{to}");
                 let metadata_name = ctx.alloc_string(cilly::METADATA);
                 let metadata_field = ctx.alloc_field(FieldDesc::new(
                     curr_type,
@@ -240,10 +242,13 @@ pub fn place_elem_adress<'tcx>(
                 let data_ptr_name = ctx.alloc_string(cilly::DATA_PTR);
                 let void_ptr = ctx.nptr(Type::Void);
                 let ptr_field = ctx.alloc_field(FieldDesc::new(curr_type, data_ptr_name, void_ptr));
+                // len = end - start
+                // [from..slice.len() - to] -> (slice.len() - to) - from -> (slice.len() - (to + from)
                 let metadata = CILNode::Sub(
                     Box::new(ld_field!(addr_calc.clone(), metadata_field)),
-                    Box::new(CILNode::V2(ctx.alloc_node(Const::USize(*to + 1)))),
+                    Box::new(CILNode::V2(ctx.alloc_node(Const::USize(*to + from)))),
                 );
+
                 let data_ptr = ld_field!(addr_calc, ptr_field)
                     + CILNode::V2(ctx.alloc_node(Const::USize(*from)));
                 CILNode::create_slice(curr_type, ctx, metadata, data_ptr)

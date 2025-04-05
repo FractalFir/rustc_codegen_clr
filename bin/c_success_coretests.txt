@@ -49,6 +49,7 @@ ascii::test_eq_ignore_ascii_case
 ascii::test_escape_ascii
 ascii::test_escape_ascii_iter
 ascii::test_is_ascii
+ascii::test_is_ascii_align_size_thoroughly
 ascii::test_is_ascii_alphabetic
 ascii::test_is_ascii_alphanumeric
 ascii::test_is_ascii_control
@@ -1469,6 +1470,8 @@ slice::split_off_in_bounds_range_to
 slice::split_off_in_bounds_range_to_inclusive
 slice::split_off_last_empty
 slice::split_off_last_mut_empty
+slice::split_off_last_mut_nonempty
+slice::split_off_last_nonempty
 slice::split_off_mut_in_bounds_range_from
 slice::split_off_mut_in_bounds_range_to
 slice::split_off_mut_in_bounds_range_to_inclusive
