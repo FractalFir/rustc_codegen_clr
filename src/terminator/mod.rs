@@ -327,28 +327,28 @@ pub fn handle_terminator<'tcx>(
     res
 }
 
-fn handle_switch(
-    ty: Ty,
+fn handle_switch<'tcx>(
+    ty: Ty<'tcx>,
     discr: &CILNode,
     switch: &SwitchTargets,
-    asm: &mut Assembly,
+    ctx:&mut MethodCompileCtx<'tcx,'_>,
 ) -> Vec<CILTree> {
     let mut trees = Vec::new();
     for (value, target) in switch.iter() {
         //ops.extend(CILOp::debug_msg("Switchin"));
 
         let const_val = CILNode::V2(match ty.kind() {
-            TyKind::Int(int) => load_const_int(value, *int, asm),
-            TyKind::Uint(uint) => load_const_uint(value, *uint, asm),
-            TyKind::Bool => asm.alloc_node(value != 0),
-            TyKind::Char => load_const_uint(value, rustc_middle::ty::UintTy::U32, asm),
+            TyKind::Int(int) => load_const_int(value, *int, ctx),
+            TyKind::Uint(uint) => load_const_uint(value, *uint, ctx),
+            TyKind::Bool => ctx.alloc_node(value != 0),
+            TyKind::Char => load_const_uint(value, rustc_middle::ty::UintTy::U32, ctx),
             _ => todo!("Unsuported switch discriminant type {ty:?}"),
         });
         //ops.push(CILOp::LdcI64(value as i64));
         trees.push(
             CILRoot::BTrue {
                 target: target.into(),
-                cond: crate::binop::cmp::eq_unchecked(ty, discr.clone(), const_val, asm),
+                cond: crate::binop::cmp::eq_unchecked(ty, discr.clone(), const_val, ctx),
                 sub_target: 0,
             }
             .into(),

@@ -802,7 +802,8 @@ impl MethodDef {
                         let curr = peekable.next().unwrap();
                         *curr = asm.alloc_root(CILRoot::Ret(tree));
                     }
-
+                    // FIXME: **why** does this cause issues?
+                    /* 
                     (CILRoot::Branch(info), CILRoot::Branch(info2))
                         if is_branch_unconditional(info2) =>
                     {
@@ -818,7 +819,7 @@ impl MethodDef {
                                 _ => (),
                             }
                         }
-                    }
+                    }*/
                     _ => (),
                 }
             }

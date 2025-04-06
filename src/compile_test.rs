@@ -819,6 +819,9 @@ run_test! {std,tlocal_key_test,stable}
 run_test! {std,uninit_fill,stable}
 
 run_test! {core,ascii_align,stable}
+run_test! {core,from_raw_parts,stable}
+run_test! {core,tuple_ord,stable}
+run_test! {core,zst_iter,stable}
 
 run_test! {types,adt_enum,stable}
 run_test! {types,f128,stable}

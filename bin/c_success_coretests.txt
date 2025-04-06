@@ -226,7 +226,6 @@ fmt::pad_integral_resets
 fmt::test_estimated_capacity
 fmt::test_format_flags
 fmt::test_maybe_uninit_short
-fmt::test_pointer_formats_data_pointer
 future::test_join
 future::test_join_function_like_value_arg_semantics::join_lets_control_flow_effects_such_as_try_flow_through
 hash::sip::test_hash_idempotent
@@ -486,6 +485,7 @@ iter::traits::iterator::test_count
 iter::traits::iterator::test_eq_by
 iter::traits::iterator::test_find
 iter::traits::iterator::test_find_map
+iter::traits::iterator::test_is_sorted
 iter::traits::iterator::test_iterator_advance_back_by
 iter::traits::iterator::test_iterator_advance_by
 iter::traits::iterator::test_iterator_last
@@ -497,11 +497,13 @@ iter::traits::iterator::test_iterator_nth_back
 iter::traits::iterator::test_iterator_rev_advance_back_by
 iter::traits::iterator::test_iterator_rev_advance_by
 iter::traits::iterator::test_iterator_size_hint
+iter::traits::iterator::test_lt
 iter::traits::iterator::test_max_by
 iter::traits::iterator::test_max_by_key
 iter::traits::iterator::test_min_by
 iter::traits::iterator::test_min_by_key
 iter::traits::iterator::test_next_chunk
+iter::traits::iterator::test_partial_cmp_by
 iter::traits::iterator::test_partition
 iter::traits::iterator::test_position
 iter::traits::iterator::test_try_collect
@@ -639,10 +641,15 @@ nonzero::test_nonzero_uint_div
 nonzero::test_nonzero_uint_rem
 nonzero::test_signed_nonzero_neg
 nonzero::test_size_nonzero_in_option
+num::bignum::test_add
+num::bignum::test_add_small
+num::bignum::test_bit_length
+num::bignum::test_bit_length_32x40
 num::bignum::test_div_rem
 num::bignum::test_div_rem_small
 num::bignum::test_fmt
 num::bignum::test_get_bit
+num::bignum::test_is_zero
 num::bignum::test_mul_digits
 num::bignum::test_mul_pow2
 num::bignum::test_mul_pow2_overflow_1
@@ -650,6 +657,9 @@ num::bignum::test_mul_pow5
 num::bignum::test_mul_pow5_overflow_1
 num::bignum::test_mul_small
 num::bignum::test_ord
+num::bignum::test_sub
+num::bignum::test_sub_underflow_1
+num::bignum::test_sub_underflow_2
 num::dec2flt::decimal::check_fast_path_f32
 num::dec2flt::decimal::check_fast_path_f64
 num::dec2flt::decimal_seq::test_parse
@@ -1115,6 +1125,8 @@ num::test_u8u64
 num::test_u8usize
 num::u128::test_be
 num::u128::test_bitwise_operators
+num::u128::test_borrowing_sub
+num::u128::test_carrying_add
 num::u128::test_checked_next_multiple_of
 num::u128::test_count_ones
 num::u128::test_div_ceil
@@ -1136,6 +1148,8 @@ num::u128::test_unbounded_shr
 num::u128::test_unsigned_checked_div
 num::u16::test_be
 num::u16::test_bitwise_operators
+num::u16::test_borrowing_sub
+num::u16::test_carrying_add
 num::u16::test_carrying_mul
 num::u16::test_carrying_mul_add
 num::u16::test_checked_next_multiple_of
@@ -1166,6 +1180,8 @@ num::u16::test_unsigned_checked_div
 num::u16::test_widening_mul
 num::u32::test_be
 num::u32::test_bitwise_operators
+num::u32::test_borrowing_sub
+num::u32::test_carrying_add
 num::u32::test_carrying_mul
 num::u32::test_carrying_mul_add
 num::u32::test_checked_next_multiple_of
@@ -1196,6 +1212,8 @@ num::u32::test_unsigned_checked_div
 num::u32::test_widening_mul
 num::u64::test_be
 num::u64::test_bitwise_operators
+num::u64::test_borrowing_sub
+num::u64::test_carrying_add
 num::u64::test_carrying_mul
 num::u64::test_carrying_mul_add
 num::u64::test_checked_next_multiple_of
@@ -1226,6 +1244,8 @@ num::u64::test_unsigned_checked_div
 num::u64::test_widening_mul
 num::u8::test_be
 num::u8::test_bitwise_operators
+num::u8::test_borrowing_sub
+num::u8::test_carrying_add
 num::u8::test_carrying_mul
 num::u8::test_carrying_mul_add
 num::u8::test_checked_next_multiple_of
@@ -1280,6 +1300,7 @@ ops::test_not_never
 ops::test_range
 ops::test_range_from
 ops::test_range_inclusive
+ops::test_range_is_empty
 ops::test_range_syntax
 ops::test_range_syntax_in_return_statement
 ops::test_range_to
@@ -1338,8 +1359,11 @@ ptr::align_offset_issue_103361
 ptr::align_offset_stride_one
 ptr::align_offset_various_strides
 ptr::align_offset_zst
+ptr::dyn_metadata
+ptr::from_raw_parts
 ptr::is_aligned
 ptr::nonnull_tagged_pointer_with_provenance
+ptr::pointee_metadata_debug
 ptr::ptr_metadata
 ptr::ptr_metadata_bounds
 ptr::swap_copy_untyped
@@ -1553,7 +1577,9 @@ slice::test_get_disjoint_mut_range_oob
 slice::test_get_disjoint_mut_range_overlapping
 slice::test_get_disjoint_mut_single_first
 slice::test_get_disjoint_mut_single_last
+slice::test_is_sorted
 slice::test_iter_folds
+slice::test_iter_ref_consistency
 slice::test_iterator_advance_back_by
 slice::test_iterator_advance_by
 slice::test_iterator_count
@@ -1654,6 +1680,7 @@ time::sub_bad2
 tuple::test_clone
 tuple::test_ord
 tuple::test_partial_eq
+tuple::test_partial_ord
 tuple::test_show
 unicode::version
 waker::nop_waker::test_const_waker

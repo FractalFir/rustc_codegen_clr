@@ -7,7 +7,7 @@ use super::{bimap::IntoBiMapIndex, ClassRefIdx, StringIdx, Type};
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Copy, Serialize, Deserialize)]
 pub struct FieldIdx(BiMapIndex);
 impl FieldIdx {
-    pub(crate) fn data_ptr(asm: &mut super::Assembly, res: ClassRefIdx) -> FieldIdx {
+    pub fn data_ptr(asm: &mut super::Assembly, res: ClassRefIdx) -> FieldIdx {
         let name = asm.alloc_string(crate::DATA_PTR);
         let tpe = asm.nptr(Type::Void);
         asm.alloc_field(FieldDesc {
@@ -17,7 +17,7 @@ impl FieldIdx {
         })
     }
 
-    pub(crate) fn metadata(asm: &mut super::Assembly, res: ClassRefIdx) -> FieldIdx {
+    pub fn metadata(asm: &mut super::Assembly, res: ClassRefIdx) -> FieldIdx {
         let name = asm.alloc_string(crate::METADATA);
         asm.alloc_field(FieldDesc {
             owner: res,

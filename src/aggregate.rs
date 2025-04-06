@@ -236,9 +236,10 @@ pub fn handle_aggregate<'tcx>(
                 )),
             };
             let name = ctx.alloc_string(crate::METADATA);
+            let meta_type = get_type(meta.ty(ctx.body(),ctx.tcx()), ctx);
             let assign_metadata = CILRoot::SetField {
                 addr: Box::new(init_addr),
-                value: Box::new(handle_operand(meta, ctx)),
+                value: Box::new(handle_operand(meta, ctx).transmute_on_stack(meta_type, cilly::Type::Int(Int::USize), ctx)),
                 desc: ctx.alloc_field(FieldDesc::new(
                     fat_ptr_type.as_class_ref().unwrap(),
                     name,

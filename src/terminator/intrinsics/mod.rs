@@ -152,6 +152,12 @@ pub fn handle_intrinsic<'tcx>(
                 ctx,
             )]
         }
+        "disjoint_bitor"=> {
+            let lhs = handle_operand(&args[0].node, ctx);
+            let rhs = handle_operand(&args[1].node, ctx);
+            let ty = args[0].node.ty(ctx.body(),ctx.tcx());
+            vec![place_set(destination, crate::binop::bitop::bit_or_unchecked(ty,ty, ctx, lhs, rhs), ctx)]
+        }
         "fmaf32" => vec![fmaf32(args, destination, ctx)],
         "fmaf64" => vec![fmaf64(args, destination, ctx)],
         "raw_eq" => vec![raw_eq(args, destination, call_instance, ctx)],
@@ -858,6 +864,7 @@ pub fn handle_intrinsic<'tcx>(
             let sub = main_module.static_mref(&[vec, vec], vec, name, ctx);
             vec![place_set(destination, call!(sub, [lhs, rhs]), ctx)]
         }
+       
         "simd_mul" => {
             let vec = ctx.type_from_cache(
                 call_instance.args[0]
@@ -1049,7 +1056,6 @@ fn intrinsic_slow<'tcx>(
     if demangled == fn_name {
         todo!("Unhandled intrinsic {fn_name}. demangled:{demangled}")
     } else {
-        eprintln!("Calling demangled intrinsics {demangled}");
         assert!(demangled.contains("::"));
         let striped = demangled_to_stem(&demangled);
         handle_intrinsic(striped, args, destination, call_instance, span, ctx)

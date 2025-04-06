@@ -382,6 +382,9 @@ impl CILNode {
         }))
     }
     pub fn transmute_on_stack(self, src: Type, target: Type, asm: &mut Assembly) -> Self {
+        if src == target {
+            return self;
+        }
         let main_module = *asm.main_module();
 
         let sig = asm.sig([src], target);

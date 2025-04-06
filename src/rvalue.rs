@@ -116,7 +116,7 @@ pub fn handle_rvalue<'tcx>(
             vec![],
             crate::binop::binop(*binop, &operands.0, &operands.1, ctx),
         ),
-        Rvalue::UnaryOp(binop, operand) => (vec![], crate::unop::unop(*binop, operand, ctx)),
+        Rvalue::UnaryOp(binop, operand) => (vec![], crate::unop::unop(*binop, operand, ctx,rvalue)),
         Rvalue::Cast(CastKind::IntToInt, operand, target) => (
             vec![],
             cast!(ctx, operand, target, crate::casts::int_to_int, ctx),

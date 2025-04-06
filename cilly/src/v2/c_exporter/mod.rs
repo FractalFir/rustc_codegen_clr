@@ -346,7 +346,7 @@ impl CExporter {
                 Const::Null(class_ref_idx) => todo!(),
             },
             CILNode::BinOp(lhs, rhs, bin_op) => {
-                let tpe = node.typecheck(sig, locals, asm)?;
+                let tpe = asm[lhs].clone().typecheck(sig, locals, asm)?;
                 Self::binop_to_string(
                     asm[lhs].clone(),
                     asm[rhs].clone(),

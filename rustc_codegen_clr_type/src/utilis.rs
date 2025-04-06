@@ -160,6 +160,7 @@ pub fn simple_tuple(elements: &[cilly::Type], asm: &mut Assembly) -> ClassRefIdx
     let name = asm.alloc_string(name);
     asm.alloc_class_ref(ClassRef::new(name, None, true, [].into()))
 }
+
 #[must_use]
 pub fn is_fat_ptr<'tcx>(
     ptr_type: Ty<'tcx>,
