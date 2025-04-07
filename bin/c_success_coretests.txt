@@ -585,10 +585,12 @@ net::ip_addr::ipv4_from_constructors
 net::ip_addr::ipv4_from_octets
 net::ip_addr::ipv4_properties
 net::ip_addr::ipv4_to_ipv6
+net::ip_addr::ipv6_addr_to_string
 net::ip_addr::ipv6_const
 net::ip_addr::ipv6_from_constructors
 net::ip_addr::ipv6_from_octets
 net::ip_addr::ipv6_from_segments
+net::ip_addr::ipv6_properties
 net::ip_addr::ipv6_to_ipv4
 net::ip_addr::ipv6_to_ipv4_mapped
 net::ip_addr::is_v4
@@ -612,6 +614,7 @@ net::parser::parse_socket_v4
 net::parser::parse_socket_v6
 net::socket_addr::compare
 net::socket_addr::ipv4_socket_addr_to_string
+net::socket_addr::ipv6_socket_addr_to_string
 net::socket_addr::is_v4
 net::socket_addr::is_v6
 net::socket_addr::set_flowinfo
@@ -619,6 +622,7 @@ net::socket_addr::set_ip
 net::socket_addr::set_port
 net::socket_addr::set_scope_id
 net::socket_addr::socket_v4_to_str
+net::socket_addr::socket_v6_to_str
 nonzero::nonzero_const
 nonzero::test_create_nonzero_instance
 nonzero::test_from_nonzero
@@ -1489,6 +1493,8 @@ slice::slice_split_once
 slice::split_as_slice
 slice::split_off_first_empty
 slice::split_off_first_mut_empty
+slice::split_off_first_mut_nonempty
+slice::split_off_first_nonempty
 slice::split_off_in_bounds_range_from
 slice::split_off_in_bounds_range_to
 slice::split_off_in_bounds_range_to_inclusive

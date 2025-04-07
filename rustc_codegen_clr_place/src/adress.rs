@@ -8,9 +8,7 @@ use cilly::{
 };
 use rustc_codegen_clr_ctx::MethodCompileCtx;
 use rustc_codegen_clr_type::{
-    GetTypeExt,
-    adt::{FieldOffsetIterator, enum_field_descriptor, field_descrptor},
-    r#type::fat_ptr_to,
+    adt::{enum_field_descriptor, field_descrptor, FieldOffsetIterator}, r#type::{fat_ptr_to, get_type}, GetTypeExt
 };
 use rustc_middle::{
     mir::PlaceElem,
@@ -228,9 +226,10 @@ pub fn place_elem_adress<'tcx>(
             }
         }
         PlaceElem::Subslice { from, to, from_end } => {
-      
+            let elem_type = curr_type.as_ty().expect("Can't index into an enum!").sequence_element_type(ctx.tcx());
+            let elem_type = get_type(elem_type,ctx);
             let curr_type = fat_ptr_to(curr_type.as_ty().expect("Can't index into an enum!"), ctx);
-
+            
             if *from_end {
                 //assert!(from >= to, "from_end:{from_end} from:{from} to:{to}");
                 let metadata_name = ctx.alloc_string(cilly::METADATA);
@@ -250,7 +249,7 @@ pub fn place_elem_adress<'tcx>(
                 );
 
                 let data_ptr = ld_field!(addr_calc, ptr_field)
-                    + CILNode::V2(ctx.alloc_node(Const::USize(*from)));
+                    + CILNode::V2(ctx.alloc_node(Const::USize(*from))) * conv_usize!(CILNode::V2(ctx.size_of(elem_type).into_idx(ctx)));
                 CILNode::create_slice(curr_type, ctx, metadata, data_ptr)
             } else {
                 let void_ptr = ctx.nptr(Type::Void);
@@ -259,7 +258,7 @@ pub fn place_elem_adress<'tcx>(
                 let ptr_field = ctx.alloc_field(FieldDesc::new(curr_type, data_ptr, void_ptr));
                 let metadata = CILNode::V2(ctx.alloc_node(Const::USize(to - from)));
                 let data_ptr = ld_field!(addr_calc, ptr_field)
-                    + CILNode::V2(ctx.alloc_node(Const::USize(*from)));
+                    + CILNode::V2(ctx.alloc_node(Const::USize(*from))) * conv_usize!(CILNode::V2(ctx.size_of(elem_type).into_idx(ctx)));
 
                 CILNode::create_slice(curr_type, ctx, metadata, data_ptr)
             }

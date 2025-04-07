@@ -835,6 +835,7 @@ impl MethodDef {
         if self.implementation().blocks().is_none() {
             return;
         }
+     
         // TODO: this is a hack, which makes root inlining optimizations not consume fuel.
         let fuel = std::sync::Mutex::new(&mut *fuel);
         let locals = self.locals().map(|locs| locs.to_vec()).unwrap();

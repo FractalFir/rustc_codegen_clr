@@ -9,6 +9,46 @@
 )]
 #![allow(internal_features, incomplete_features, unused_variables, dead_code)]
 include!("../common.rs");
+macro_rules! split_off_tests {
+    (slice: &[], $($tts:tt)*) => {
+        split_off_tests!(ty: &[()], slice: &[], $($tts)*);
+    };
+    (slice: &mut [], $($tts:tt)*) => {
+        split_off_tests!(ty: &mut [()], slice: &mut [], $($tts)*);
+    };
+    (slice: &$slice:expr, $($tts:tt)*) => {
+        split_off_tests!(ty: &[_], slice: &$slice, $($tts)*);
+    };
+    (slice: &mut $slice:expr, $($tts:tt)*) => {
+        split_off_tests!(ty: &mut [_], slice: &mut $slice, $($tts)*);
+    };
+    (ty: $ty:ty, slice: $slice:expr, method: $method:ident, $(($test_name:ident, ($($args:expr),*), $output:expr, $remaining:expr),)*) => {
+        $(
+            #[inline(never)]
+            #[no_mangle]
+            fn $test_name() {
+                let mut slice: $ty = $slice;
+                test_eq!($output, slice.$method($($args)*));
+                let remaining: $ty = $remaining;
+                test_eq!(remaining, slice);
+            }
+            $test_name();
+        )*
+    };
+}
+
+#[inline(never)]
+#[no_mangle]
+fn split_off_first_nonempty() {
+    let mut slice = &[1, 2][..];
+    let original = &slice[0] as *const _;
+    test_eq!(Some(&1), slice.split_off_first());
+    let remaining = &[2][..];
+    test_eq!(slice.len(), 1);
+    unsafe{printf(c"%p %p\n".as_ptr(), original, &slice[0] as *const _)};
+    test_eq!(remaining, slice);
+}
+
 // 7 bytes
 #[derive(Default, Clone, Copy)]
 struct SizeNotAligned {
@@ -60,6 +100,11 @@ fn main() {
     dump_var(0, 0, true, 1, 1, 2, 2, 3, false);
     test_index();
     test_mockrc();
+    split_off_first_nonempty();
+    /*split_off_tests! {
+        slice: &[1, 2], method: split_off_first,
+        (split_off_first_nonempty, (), Some(&1), &[2]),
+    }*/
 }
 #[must_use]
 pub fn memrchr(x: u8, text: &[u8]) -> Option<usize> {
@@ -201,3 +246,4 @@ fn test_mockrc() {
     let rc = &rc as &MockRc<[u8]>;
     test_eq!(rc.get_t().len(), 16);
 }
+

@@ -730,7 +730,7 @@ impl Assembly {
         });
     }
     #[cfg(not(miri))]
-    pub fn export(&self, out: impl AsRef<std::path::Path>, exporter: impl Exporter) {
+    pub fn export(&self, out: impl AsRef<std::path::Path>, mut exporter: impl Exporter) {
         if *LINKER_RECOVER {
             eprintln!("{:?}", exporter.export(self, out.as_ref()));
         } else {

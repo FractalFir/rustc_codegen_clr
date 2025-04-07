@@ -284,6 +284,8 @@ pub fn root_opt(
                 Some(_) | None => root,
             }
         }
+        CILRoot::StLoc(loc, val) if asm[val] == CILNode::LdLoc(loc) => CILRoot::Nop,
+        CILRoot::StArg(loc, val) if asm[val] == CILNode::LdArg(loc) => CILRoot::Nop,
         _ => root,
     }
 }

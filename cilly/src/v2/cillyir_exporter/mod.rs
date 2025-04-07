@@ -7,7 +7,7 @@ pub struct CillyIRExpoter {}
 impl Exporter for CillyIRExpoter {
     type Error = std::io::Error;
 
-    fn export(&self, asm: &super::Assembly, target: &std::path::Path) -> Result<(), Self::Error> {
+    fn export(&mut self, asm: &super::Assembly, target: &std::path::Path) -> Result<(), Self::Error> {
         let il_path = target.with_extension("rs");
 
         if let Err(err) = std::fs::remove_file(&il_path) {

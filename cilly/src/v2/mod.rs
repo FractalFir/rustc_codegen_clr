@@ -89,7 +89,7 @@ pub trait Exporter {
     type Error: std::fmt::Debug;
     /// # Errors
     /// Returns an error if the export process failed.
-    fn export(&self, asm: &Assembly, target: &Path) -> Result<(), Self::Error>;
+    fn export(&mut self, asm: &Assembly, target: &Path) -> Result<(), Self::Error>;
 }
 
 #[test]

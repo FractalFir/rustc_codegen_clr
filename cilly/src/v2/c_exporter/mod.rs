@@ -1,7 +1,7 @@
 // This exporter is WIP.
 #![allow(dead_code, unused_imports, unused_variables, clippy::let_unit_value)]
 use fxhash::{hash64, FxHashSet, FxHasher};
-use std::{collections::HashSet, io::Write, path::Path};
+use std::{collections::HashSet, io::Write, num::NonZero, path::Path};
 
 use crate::{
     config, typecheck,
@@ -22,7 +22,7 @@ mod utilis;
 use super::{
     asm::MAIN_MODULE,
     basic_block::BlockId,
-    bimap::IntoBiMapIndex,
+    bimap::{Interned, IntoBiMapIndex},
     cilnode::{ExtendKind, PtrCastRes},
     cilroot::BranchCond,
     class::StaticFieldDef,
@@ -39,6 +39,7 @@ pub struct CExporter {
     libs: Vec<String>,
     dirs: Vec<String>,
     metadata: Vec<u8>,
+    curr_fname:Interned<String>,
 }
 impl CExporter {
     pub fn c_compiler() -> String {
@@ -74,6 +75,7 @@ impl CExporter {
             libs,
             dirs,
             metadata: vec![],
+            curr_fname:Interned::from_index(NonZero::new(1).unwrap())
         }
     }
     fn export_method_decl(
@@ -292,6 +294,80 @@ impl CExporter {
             },
         })
     }
+    /// Equivalent to `node_to_string`, except prsent in an enviroment where types can be infered. 
+    /// Eg. In a function call like this `foo((uintptr_t)5)` the cast can be safely ommited. 
+    fn node_to_string_implict(
+        node: CILNode,
+        asm: &mut Assembly,
+        locals: &[LocalDef],
+        inputs: &[(Type, Option<StringIdx>)],
+        sig: SigIdx,
+    ) -> Result<String, TypeCheckError> {
+        match node{
+            CILNode::PtrCast(ref src_node,ref target ) if matches!(target.as_ref(),PtrCastRes::Ptr(_)) =>{
+                let Type::Ptr(ptr) = asm[*src_node].clone().typecheck(sig, locals, asm)? else {
+                    return Self::node_to_string(node, asm, locals, inputs, sig);
+                };
+                let Type::Void = asm[ptr] else{
+              
+                    return Self::node_to_string(node, asm, locals, inputs, sig);
+                };
+                Self::node_to_string(asm[*src_node].clone(), asm, locals, inputs, sig)
+            }
+            CILNode::Const(cst)=> Ok(match cst.as_ref() {
+                Const::I8(v) => format!("{v}"),
+                Const::I16(v) => format!("{v}"),
+                Const::I32(v) => format!("{v}"),
+                Const::I64(v) => format!("((int64_t)0x{v:x}L)"),
+                Const::I128(v) => {
+                    let low = *v as u128 as u64;
+                    let high = ((*v as u128) >> 64) as u64;
+                    format!("(__int128)((unsigned __int128)(0x{low:x}) | ((unsigned __int128)(0x{high:x}) << 64))")
+                }
+                Const::ISize(v) => format!("(intptr_t)0x{v:x}L"),
+                  // For u8 and u16, using hex makes no sense(uses more chars)
+                Const::U8(v) => format!("{v}"),
+                Const::U16(v) => format!("{v}"),
+                Const::U32(v) => format!("{v}"),
+                Const::U64(v) => format!("0x{v:x}uL"),
+                Const::U128(v) => {
+                    let low = *v as u64;
+                    let high = ({ *v } >> 64) as u64;
+                    format!("((unsigned __int128)(0x{low:x}) | ((unsigned __int128)(0x{high:x}) << 64))")
+                }
+                Const::USize(v) => if *v < u32::MAX as u64{
+                    format!("{v}")
+                }else{
+                    format!("0x{v:x}uL")
+                },
+                Const::PlatformString(string_idx) => format!("{:?}", &asm[*string_idx]),
+                Const::Bool(val) => {
+                    if *val {
+                        "true".into()
+                    } else {
+                        "false".into()
+                    }
+                }
+                Const::F32(hashable_f32) => {
+                    if !hashable_f32.0.is_nan() {
+                        format!("{:?}f", hashable_f32.0)
+                    } else {
+                        "NAN".into()
+                    }
+                }
+                Const::F64(hashable_f64) => {
+                    if !hashable_f64.0.is_nan() {
+                        format!("{:?}", hashable_f64.0)
+                    } else {
+                        "NAN".into()
+                    }
+                }
+                Const::Null(class_ref_idx) => todo!(),
+            }),
+            _=>Self::node_to_string(node, asm, locals, inputs, sig),
+        }
+
+    }
     fn node_to_string(
         node: CILNode,
         asm: &mut Assembly,
@@ -311,9 +387,10 @@ impl CExporter {
                     format!("(__int128)((unsigned __int128)(0x{low:x}) | ((unsigned __int128)(0x{high:x}) << 64))")
                 }
                 Const::ISize(v) => format!("(intptr_t)0x{v:x}L"),
-                Const::U8(v) => format!("(uint8_t)0x{v:x}"),
-                Const::U16(v) => format!("(uint16_t)0x{v:x}"),
-                Const::U32(v) => format!("0x{v:x}u"),
+                  // For u8 and u16, using hex makes no sense(uses more chars)
+                Const::U8(v) => format!("(uint8_t){v}"),
+                Const::U16(v) => format!("(uint16_t){v}"),
+                Const::U32(v) => format!("{v}u"),
                 Const::U64(v) => format!("0x{v:x}uL"),
                 Const::U128(v) => {
                     let low = *v as u64;
@@ -427,8 +504,8 @@ impl CExporter {
                     .iter()
                     .map(|arg| {
                         format!(
-                            "({})",
-                            Self::node_to_string(asm[*arg].clone(), asm, locals, inputs, sig)
+                            "{}",
+                            Self::node_to_string_implict(asm[*arg].clone(), asm, locals, inputs, sig)
                                 .unwrap()
                         )
                     })
@@ -513,15 +590,17 @@ impl CExporter {
                     .class_ref_to_def(field.owner())
                     .is_some_and(|tpe| asm[tpe].has_nonveralpping_layout())
                 {
-                    format!("&({addr})->{name}")
+                   
+                  format!("&({addr})->{name}")
+                   
                 } else {
                     format!("&({addr})->{name}.f")
                 }
             }
             CILNode::LdField { addr, field } => {
-                let addr = asm[addr].clone();
-                let addr_tpe = addr.typecheck(sig, locals, asm)?;
-                let addr = Self::node_to_string(addr, asm, locals, inputs, sig)?;
+                let addr_node = asm[addr].clone();
+                let addr_tpe = addr_node.typecheck(sig, locals, asm)?;
+                let addr_str = Self::node_to_string(addr_node, asm, locals, inputs, sig)?;
                 let field = asm[field];
                 let name = escape_nonfn_name(&asm[field.name()]);
                 match addr_tpe {
@@ -530,9 +609,10 @@ impl CExporter {
                             .class_ref_to_def(field.owner())
                             .is_some_and(|tpe| asm[tpe].has_nonveralpping_layout())
                         {
-                            format!("({addr})->{name}")
+                            format!("({addr_str})->{name}")
+                           
                         } else {
-                            format!("({addr})->{name}.f")
+                            format!("({addr_str})->{name}.f")
                         }
                     }
                     Type::ClassRef(_) => {
@@ -540,9 +620,13 @@ impl CExporter {
                             .class_ref_to_def(field.owner())
                             .is_some_and(|tpe| asm[tpe].has_nonveralpping_layout())
                         {
-                            format!("({addr}).{name}")
+                            match asm[addr]{
+                                CILNode::LdLoc(loc)=>format!("{loc}.{name}",loc = local_name(locals, asm, loc)),
+                                CILNode::LdField{..}=>format!("{addr_str}.{name}"),
+                                _=>  format!("({addr_str}).{name}"),
+                            }
                         } else {
-                            format!("({addr}).{name}.f")
+                            format!("({addr_str}).{name}.f")
                         }
                     }
                     _ => panic!(),
@@ -577,8 +661,8 @@ impl CExporter {
                     .iter()
                     .map(|arg| {
                         format!(
-                            "({})",
-                            Self::node_to_string(asm[*arg].clone(), asm, locals, inputs, sig)
+                            "{}",
+                            Self::node_to_string_implict(asm[*arg].clone(), asm, locals, inputs, sig)
                                 .unwrap()
                         )
                     })
@@ -638,6 +722,7 @@ impl CExporter {
         })
     }
     fn root_to_string(
+        &mut self,
         root: CILRoot,
         asm: &mut Assembly,
         locals: &[LocalDef],
@@ -737,22 +822,25 @@ impl CExporter {
             }
             CILRoot::SourceFileInfo { line_start, line_len, col_start, col_len, file  } =>{
                 if !*NO_SFI{
-                    format!("#line {line_start} {file:?}", file = &asm[file])
+                    self.set_sfi(line_start, file,asm)
                 }else{
                     "".into()
                 }
             },
             CILRoot::SetField(info) =>{
                 let (field,addr,value) = info.as_ref();
-                let addr = Self::node_to_string(asm[*addr].clone(), asm, locals, inputs, sig)?;
+                let addr_str = Self::node_to_string(asm[*addr].clone(), asm, locals, inputs, sig)?;
                 let value = Self::node_to_string(asm[*value].clone(), asm, locals, inputs, sig)?;
                 let field = asm[*field];
                 let name = escape_nonfn_name(&asm[field.name()]);
                 if asm.class_ref_to_def(field.owner()).is_some_and(|tpe|asm[tpe].has_nonveralpping_layout()){
-                    format!("({addr})->{name} = ({value});")
+                    match asm[*addr]{
+                        CILNode::LdLocA(loc)=>format!("{loc}.{name} = ({value});",loc = local_name(locals, asm, loc)),
+                        _=>format!("({addr_str})->{name} = ({value});"),
+                    }
                 }
                 else{
-                    format!("({addr})->{name}.f = ({value});")
+                    format!("({addr_str})->{name}.f = ({value});")
                 }
             }
             CILRoot::Call(info) => {
@@ -761,9 +849,10 @@ impl CExporter {
                 let call_args = args
                     .iter()
                     .map(|arg| {
+                     
                         format!(
-                            "({})",
-                            Self::node_to_string(asm[*arg].clone(), asm, locals, inputs, sig).unwrap()
+                            "{}",
+                            Self::node_to_string_implict(asm[*arg].clone(), asm, locals, inputs, sig).unwrap()
                         )
 })
                     .intersperse(",".into())
@@ -812,8 +901,8 @@ impl CExporter {
                     .iter()
                     .map(|arg| {
                         format!(
-                            "({})",
-                            Self::node_to_string(asm[*arg].clone(), asm, locals, inputs, sig).unwrap()
+                            "{}",
+                            Self::node_to_string_implict(asm[*arg].clone(), asm, locals, inputs, sig).unwrap()
                         )
                     })
                     .intersperse(",".into())
@@ -842,6 +931,7 @@ impl CExporter {
         })
     }
     fn export_method_def(
+        &mut self,
         asm: &mut Assembly,
         def: &MethodDef,
         method_defs: &mut impl Write,
@@ -969,7 +1059,8 @@ impl CExporter {
                     continue;
                 }
 
-                let root = Self::root_to_string(
+                let root = self.root_to_string(
+                  
                     asm[*root_idx].clone(),
                     asm,
                     &locals[..],
@@ -1000,7 +1091,7 @@ impl CExporter {
     }
     #[allow(clippy::too_many_arguments)]
     fn export_class(
-        &self,
+        &mut self,
         asm: &mut super::Assembly,
         defid: ClassDefIdx,
         method_decls: &mut impl Write,
@@ -1121,7 +1212,7 @@ impl CExporter {
             let mref = &asm[method.0].clone();
             let def = asm[*method].clone();
             let is_extern = def.resolved_implementation(asm).is_extern();
-            Self::export_method_def(asm, &def, method_defs, method_decls)?;
+            self.export_method_def(asm, &def, method_defs, method_decls)?;
             if !is_extern {
                 Self::export_method_decl(asm, mref, method_decls)?;
             }
@@ -1130,7 +1221,7 @@ impl CExporter {
         Ok(())
     }
     fn export_to_write(
-        &self,
+        &mut self,
         asm: &super::Assembly,
         out: &mut impl Write,
         lib: bool,
@@ -1191,6 +1282,16 @@ impl CExporter {
         }
         Ok(())
     }
+    
+    fn set_sfi(&mut self, line_start: u32, file: super::bimap::Interned<String>,asm:&Assembly) -> String {
+        if file == self.curr_fname{
+            format!("#line {line_start} ")
+        }else{
+            self.curr_fname = file;
+            format!("#line {line_start} {file:?}", file = &asm[file])
+        }
+       
+    }
 }
 fn call_entry(out: &mut impl Write, asm: &Assembly) -> Result<(), std::io::Error> {
     let cctor_call = if asm.has_cctor() { "_cctor();" } else { "" };
@@ -1200,7 +1301,7 @@ fn call_entry(out: &mut impl Write, asm: &Assembly) -> Result<(), std::io::Error
 }
 impl CExporter {
     fn export_to_file(
-        &self,
+        &mut self,
         c_path: &Path,
         asm: &Assembly,
         target: &Path,
@@ -1276,7 +1377,7 @@ impl CExporter {
 impl Exporter for CExporter {
     type Error = std::io::Error;
 
-    fn export(&self, asm: &super::Assembly, target: &std::path::Path) -> Result<(), Self::Error> {
+    fn export(&mut self, asm: &super::Assembly, target: &std::path::Path) -> Result<(), Self::Error> {
         if *PARTS == 1 {
             // The IL file should be next to the target
             let c_path = target.with_extension("c");

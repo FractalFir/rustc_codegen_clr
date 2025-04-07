@@ -83,7 +83,7 @@ impl JavaExporter {
 impl Exporter for JavaExporter {
     type Error = std::io::Error;
 
-    fn export(&self, asm: &super::Assembly, target: &std::path::Path) -> Result<(), Self::Error> {
+    fn export(&mut self, asm: &super::Assembly, target: &std::path::Path) -> Result<(), Self::Error> {
         // The IL file should be next to the target
         let il_path = target.with_extension("j");
         let mut il_out = std::io::BufWriter::new(std::fs::File::create(&il_path)?);
