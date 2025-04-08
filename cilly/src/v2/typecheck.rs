@@ -55,9 +55,9 @@ pub enum TypeCheckError {
     /// A call instruction was passed a wrong argument type.
     CallArgTypeWrong {
         /// The recived type
-        got: Type,
+        got: String,
         /// The expected type
-        expected: Type,
+        expected: String,
         /// The inddex of this argument
         idx: usize,
         /// The called method
@@ -675,10 +675,10 @@ impl CILNode {
                 for (idx, (arg, input_type)) in args.iter().zip(inputs.iter()).enumerate() {
                     let arg = asm.get_node(*arg).clone();
                     let arg_type = arg.typecheck(sig, locals, asm)?;
-                    if !arg_type.is_assignable_to(*input_type, asm) {
+                    if !arg_type.is_assignable_to(*input_type, asm)&& !arg_type.try_deref(asm).is_some_and(|t|Some(t) == input_type.try_deref(asm)){
                         return Err(TypeCheckError::CallArgTypeWrong {
-                            got: arg_type,
-                            expected: *input_type,
+                            got: arg_type.mangle(asm),
+                            expected: input_type.mangle(asm),
                             idx,
                             mname: asm[mref.name()].into(),
                         });

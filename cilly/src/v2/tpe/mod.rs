@@ -74,11 +74,17 @@ impl Type {
     }
     #[must_use]
     pub fn deref<'a, 'b: 'a>(&'a self, asm: &'b Assembly) -> &'a Self {
-        match self {
-            Type::Ptr(inner) | Type::Ref(inner) => &asm[*inner],
-            _ => panic!(),
-        }
+        self.try_deref(asm).unwrap()
     }
+    #[must_use]
+    pub fn try_deref<'a, 'b: 'a>(&'a self, asm: &'b Assembly) -> Option<&'a Self >{
+     match self {
+        Type::Ptr(inner) | Type::Ref(inner) => Some(&asm[*inner]),
+        _ => None,
+    }
+}
+
+
     /// Returns a mangled ASCI representation of this type.
     /// ```
     /// # use cilly::*;

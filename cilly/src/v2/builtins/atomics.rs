@@ -1,5 +1,5 @@
 use crate::{
-    asm::MissingMethodPatcher, cilnode::MethodKind, cilroot::BranchCond, BasicBlock, BinOp,
+    asm::MissingMethodPatcher, cilnode::{ExtendKind, MethodKind, PtrCastRes}, cilroot::BranchCond, BasicBlock, BinOp,
     CILNode, CILRoot, ClassRef, Const, Int, MethodImpl, MethodRef, Type,
 };
 
@@ -18,7 +18,7 @@ pub fn emulate_uint8_cmp_xchng(asm: &mut Assembly, patcher: &mut MissingMethodPa
             // 1st, mask the previous value
             let prev_mask = asm.alloc_node(Const::I32(0xFFFF_FF00_u32 as i32));
             let prev = asm.alloc_node(CILNode::BinOp(prev, prev_mask, BinOp::And));
-
+            let arg = asm.alloc_node(CILNode::IntCast { input:arg, target: Int::I32, extend:ExtendKind::ZeroExtend });
             asm.alloc_node(CILNode::BinOp(prev, arg, BinOp::Or))
         }),
         Int::I32,
@@ -31,7 +31,7 @@ pub fn emulate_uint8_cmp_xchng(asm: &mut Assembly, patcher: &mut MissingMethodPa
             // 1st, mask the previous value
             let prev_mask = asm.alloc_node(Const::I32(0xFFFF_0000_u32 as i32));
             let prev = asm.alloc_node(CILNode::BinOp(prev, prev_mask, BinOp::And));
-
+            let arg = asm.alloc_node(CILNode::IntCast { input:arg, target: Int::I32, extend:ExtendKind::ZeroExtend });
             asm.alloc_node(CILNode::BinOp(prev, arg, BinOp::Or))
         }),
         Int::I32,
@@ -74,10 +74,10 @@ pub fn compare_exchange(
     match int.size().unwrap_or(8) {
         // u16 is buggy :(. TODO: fix it.
         1 | 2 => {
-            let compare_exchange = asm.alloc_string("atomic_cmpxchng8_i32");
+            let compare_exchange = asm.alloc_string(format!("atomic_cmpxchng{}_i32",int.size().unwrap_or(8) * 8));
 
             let i32 = Type::Int(int);
-            let i32_ref = asm.nref(i32);
+            let i32_ref = asm.nref(Type::Int(Int::I32));
             let cmpxchng_sig = asm.sig([i32_ref, i32, i32], i32);
             let main_mod = asm.main_module();
             let mref = asm.alloc_methodref(MethodRef::new(
@@ -89,12 +89,12 @@ pub fn compare_exchange(
             ));
             let cast_value = asm.alloc_node(CILNode::IntCast {
                 input: value,
-                target: Int::I32,
+                target: int,
                 extend: crate::cilnode::ExtendKind::ZeroExtend,
             });
             let cast_comparand = asm.alloc_node(CILNode::IntCast {
                 input: comaprand,
-                target: Int::I32,
+                target: int,
                 extend: crate::cilnode::ExtendKind::ZeroExtend,
             });
             let addr = asm.alloc_node(CILNode::RefToPtr(addr));

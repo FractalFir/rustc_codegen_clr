@@ -320,7 +320,7 @@ pub fn handle_intrinsic<'tcx>(
                     );
                     vec![place_set(
                         destination,
-                        atomic_add(dst, add_ammount.clone(), Type::Int(Int::USize), ctx)
+                        atomic_add(dst, add_ammount.clone(),src_type, ctx)
                             .cast_ptr(src_type),
                         ctx,
                     )]

@@ -613,6 +613,9 @@ static inline uint32_t System_Threading_Interlocked_CompareExchangeru32u32u32u32
         return comparand;
     }
 }
+static inline int32_t System_Threading_Interlocked_CompareExchangeri32i32i32i32(int32_t* addr, int32_t value, int32_t comparand){
+    return System_Threading_Interlocked_CompareExchangeru32u32u32u32((uint32_t *) addr, value, comparand);
+}
 static inline uint64_t System_Threading_Interlocked_CompareExchangeru64u64u64u64(uint64_t *addr, uint64_t value, uint64_t comparand)
 {
     uint64_t res = 0;

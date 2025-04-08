@@ -75,11 +75,15 @@ asserting::capture_with_non_debuggable_elem_has_correct_params
 async_iter::into_async_iter
 atomic::atomic_alignment
 atomic::atomic_compare_exchange
+atomic::bool_
+atomic::bool_nand
 atomic::int_max
 atomic::int_min
 atomic::int_nand
 atomic::int_or
 atomic::int_xor
+atomic::ptr_add_data
+atomic::ptr_add_null
 atomic::ptr_bitops
 atomic::ptr_bitops_tagging
 atomic::static_init

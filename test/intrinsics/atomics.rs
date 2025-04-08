@@ -111,7 +111,7 @@ fn ptr_bitops_tagging() {
         ptr.map_addr(|a| a | 0b1001)
     );
     test_eq!(atom.load(SeqCst), ptr);
-    //add_data();
+    ptr_add_data();
 }
 fn add_data() {
     let atom = AtomicPtr::<i64>::new(core::ptr::null_mut());
@@ -126,4 +126,28 @@ fn add_data() {
 
     test_eq!(atom.fetch_byte_sub(1, SeqCst).addr(), 1);
     test_eq!(atom.load(SeqCst).addr(), 0);
+}
+#[no_mangle]
+fn ptr_add_data() {
+    let num = 0i64;
+    let n = &num as *const i64 as *mut _;
+    let atom = AtomicPtr::<i64>::new(n);
+    test_eq!(atom.fetch_ptr_add(1, SeqCst), n);
+    test_eq!(atom.load(SeqCst), n.wrapping_add(1));
+
+    test_eq!(atom.fetch_ptr_sub(1, SeqCst), n.wrapping_add(1));
+    test_eq!(atom.load(SeqCst), n);
+    let bytes_from_n = |b| n.wrapping_byte_add(b);
+
+    test_eq!(atom.fetch_byte_add(1, SeqCst), n);
+    test_eq!(atom.load(SeqCst), bytes_from_n(1));
+
+    test_eq!(atom.fetch_byte_add(5, SeqCst), bytes_from_n(1));
+    test_eq!(atom.load(SeqCst), bytes_from_n(6));
+
+    test_eq!(atom.fetch_byte_sub(1, SeqCst), bytes_from_n(6));
+    test_eq!(atom.load(SeqCst), bytes_from_n(5));
+
+    test_eq!(atom.fetch_byte_sub(5, SeqCst), bytes_from_n(5));
+    test_eq!(atom.load(SeqCst), n);
 }

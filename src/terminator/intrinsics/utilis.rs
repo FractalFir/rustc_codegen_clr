@@ -32,10 +32,10 @@ pub fn atomic_add(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly)
             call!(
                 asm.alloc_methodref(mref),
                 [
-                    addr.cast_ptr(asm.nptr(Type::Int(Int::USize))),
+                    addr.cast_ptr(usize_ref),
                     addend.cast_ptr(Type::Int(Int::USize))
                 ]
-            )
+            ).cast_ptr(tpe)
         }
 
         _ => todo!(),
@@ -95,7 +95,7 @@ pub fn atomic_or(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly) 
                     addend.cast_ptr(Type::Int(Int::USize))
                 ]
             );
-            cilnode.cast_ptr(Type::Ptr(inner))
+            cilnode.cast_ptr(Type::Ptr(inner)).cast_ptr(tpe)
         }
         _ => todo!("Can't atomic or {tpe:?}"),
     }
