@@ -363,7 +363,15 @@ static inline int32_t System_Numerics_BitOperations_TrailingZeroCountusizei32(ui
 static inline int32_t System_Numerics_BitOperations_TrailingZeroCountu32i32(uint32_t val) {if (val == 0) return sizeof(uint32_t) * 8; return (int32_t) __builtin_ctzl((uint32_t)val);}
 static inline int32_t System_Numerics_BitOperations_TrailingZeroCounti32i32(int32_t val) {if (val == 0) return sizeof(int32_t) * 8; return (int32_t) __builtin_ctzl((uint32_t)val);}
 static inline int32_t System_Numerics_BitOperations_TrailingZeroCountu64i32(uint64_t val) {if (val == 0) return sizeof(uint64_t) * 8; return (int32_t) __builtin_ctzl((uint64_t)val);}
-static inline int32_t System_UInt128_TrailingZeroCountu128u128(__uint128_t val) {if (val == 0) return sizeof(__uint128_t) * 8; return (int32_t) __builtin_ctzl((__uint128_t)val);}
+static inline int32_t System_UInt128_TrailingZeroCountu128u128(__uint128_t val) {
+    if (val == 0) return sizeof(__uint128_t) * 8; 
+    if (((uint64_t)val) == 0){
+        return (int32_t) System_Numerics_BitOperations_TrailingZeroCountu64i32((uint64_t)(val >> 64)) + 64;
+    }
+    else{
+        return (int32_t) System_Numerics_BitOperations_TrailingZeroCountu64i32((uint64_t)(val));
+    }
+}
 static inline int32_t System_Numerics_BitOperations_LeadingZeroCountu64i32(uint64_t val) { if (val == 0) return 64; return __builtin_clzl(val); }
 static inline int32_t System_Numerics_BitOperations_LeadingZeroCountusizei32(uintptr_t val) { if (val == 0) return sizeof(uintptr_t) * 8; return __builtin_clzl((uint64_t)val); }
 #endif
@@ -371,7 +379,9 @@ static inline int32_t System_Numerics_BitOperations_LeadingZeroCountusizei32(uin
 #define System_Numerics_BitOperations_PopCountusizei32(val) __builtin_popcountl((uint64_t)val)
 #define System_Numerics_BitOperations_PopCountu32i32(val) __builtin_popcountl((uint32_t)val)
 #define System_Numerics_BitOperations_PopCountu64i32(val) __builtin_popcountl((uint64_t)val)
-#define System_UInt128_PopCountu128u128(val) __builtin_popcountl((uint64_t)val)
+static inline __uint128_t System_UInt128_PopCountu128u128(__uint128_t val) {
+    return __builtin_popcountl((uint64_t)val) +  __builtin_popcountl((uint64_t)(val>>64)); 
+}
 
 #define System_Console_WriteLinev() printf("\n")
 #define System_Console_WriteLinestv(msg) printf("%s\n", msg)
@@ -582,12 +592,24 @@ static inline double System_Double_Expf64f64(double input){
     return exp(input);
 }
 #endif 
-BUILTIN_UNSUPORTED(System_Double_Log10f64f64,double,(double input))
-BUILTIN_UNSUPORTED(System_Single_Logf32f32,float,(float input))
-BUILTIN_UNSUPORTED(System_Single_Log2f32f32,float,(float input))
-BUILTIN_UNSUPORTED(System_Single_Log10f32f32,float,(float input))
-BUILTIN_UNSUPORTED(System_Double_Logf64f64,double,(double input))
-BUILTIN_UNSUPORTED(System_Double_Log2f64f64,double,(double input))
+static inline float System_Single_Log2f32f32(float input){
+    return log2f(input);
+}
+static inline float System_Double_Log2f64f64(float input){
+    return log2(input);
+}
+static inline float System_Single_Log10f32f32(float input){
+    return log10f(input);
+}
+static inline float System_Double_Log10f64f64(float input){
+    return log10(input);
+}
+static inline float System_Single_Logf32f32(float input){
+    return logf(input);
+}
+static inline float System_Double_Logf64f64(float input){
+    return log(input);
+}
 #define System_Math_Roundf64f64(input) round(input)
 #define System_Math_Floorf64f64(input) floor(input)
 #define System_Math_Sqrtf64f64(input) sqrt(input)
@@ -748,7 +770,15 @@ static inline uint8_t System_Byte_RotateLeftu8i32u8(uint8_t val, int32_t amount)
     return ((val << amount) | (val >> ( (sizeof(uint8_t)*8) - amount)));
 }
 #if !(defined(__SDCC) || defined(__LCC__))
-static inline unsigned __int128 System_UInt128_LeadingZeroCountu128u128(unsigned __int128 val){ if (val == 0) return 128; return __builtin_clzl(val); }
+static inline unsigned __int128 System_UInt128_LeadingZeroCountu128u128(__uint128_t val) {
+    if (val == 0) return sizeof(__uint128_t) * 8; 
+    if ((val>>64) == 0){
+        return (unsigned __int128) System_Numerics_BitOperations_LeadingZeroCountu64i32((uint64_t)(val)) + 64;
+    }
+    else{
+        return (unsigned __int128) System_Numerics_BitOperations_LeadingZeroCountu64i32((uint64_t)(val >> 64));
+    }
+}
 #endif
 static inline uint32_t System_Math_Minu32u32u32(uint32_t lhs, uint32_t rhs)
 {

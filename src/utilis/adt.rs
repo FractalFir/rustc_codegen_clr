@@ -329,7 +329,7 @@ pub fn get_discr<'tcx>(
                     Type::Int(Int::I128) => {
                         let mref = MethodRef::new(
                             main_module,
-                            ctx.alloc_string("in128_eq"),
+                            ctx.alloc_string("eq_i128"),
                             ctx.sig([Type::Int(Int::I128), Type::Int(Int::I128)], Type::Bool),
                             MethodKind::Static,
                             vec![].into(),

@@ -7,9 +7,6 @@
 )]
 #![allow(internal_features, incomplete_features, unused_variables, dead_code)]
 #[allow(dead_code)]
-struct Test<T> {
-    data: T,
-}
 include!("../common.rs");
 #[inline(never)]
 #[no_mangle]

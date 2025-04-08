@@ -140,6 +140,7 @@ fn body_field<'a>(
                 },
             )
         }
+        
     }
 }
 pub fn place_elem_body_index<'tcx>(
@@ -255,6 +256,13 @@ pub fn place_elem_body<'tcx>(
             parrent_node,
             *index,
         ),
+        PlaceElem::Subtype(tpe) => {
+            if body_ty_is_by_adress(curr_type.as_ty().unwrap(), ctx) {
+                (PlaceTy::Ty(*tpe),super::deref_op((*tpe).into(), ctx, parrent_node))
+            } else {
+                (PlaceTy::Ty(*tpe),parrent_node)
+            }
+        }
         PlaceElem::ConstantIndex {
             offset,
             min_length: _,

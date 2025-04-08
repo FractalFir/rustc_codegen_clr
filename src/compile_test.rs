@@ -757,6 +757,7 @@ run_test! {alloc,abox,stable}
 run_test! {alloc,raw_vec,stable}
 run_test! {alloc,slice_to_owned,stable}
 run_test! {arthm,add,stable}
+run_test! {arthm,ctlz,stable}
 run_test! {arthm,ptr,stable}
 run_test! {arthm,cmp,stable}
 run_test! {arthm,greater_than,stable}
@@ -819,6 +820,8 @@ run_test! {std,tlocal_key_test,stable}
 run_test! {std,uninit_fill,stable}
 
 run_test! {core,ascii_align,stable}
+run_test! {core,floatfmt,unstable}
+run_test! {core,flt2dec,unstable}
 run_test! {core,from_raw_parts,stable}
 run_test! {core,tuple_ord,stable}
 run_test! {core,zst_iter,stable}

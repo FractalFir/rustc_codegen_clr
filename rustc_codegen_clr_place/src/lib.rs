@@ -118,7 +118,7 @@ pub fn deref_op<'tcx>(
             | TyKind::Tuple(_)
             | TyKind::Array(_, _)
             | TyKind::FnPtr(_, _)
-            | TyKind::Closure(_, _) => {
+            | TyKind::Closure(_, _) | TyKind::Coroutine(_, _)=> {
                 let derefed_type = ctx.type_from_cache(derefed_type);
 
                 CILNode::LdObj {
@@ -154,7 +154,7 @@ pub fn deref_op<'tcx>(
                     }
                 }
             }
-
+            
             _ => todo!("TODO: can't deref type {derefed_type:?} yet"),
         }
     } else {

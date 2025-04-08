@@ -470,6 +470,7 @@ fn main() {
             "pthread_join",
             "pthread_setspecific",
             "ldexpf",
+            "ldexp",
         ] {
             externs.insert(fnc, LIBC.clone());
         }
