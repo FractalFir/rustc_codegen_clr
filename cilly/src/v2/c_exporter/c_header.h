@@ -538,6 +538,7 @@ double fabsf64(double val);
 #define System_Single_Powf64f64f64 pow
 #define System_Double_Powf64f64f64 pow
 #define System_Int128_get_Zeroi128(v) ((__int128_t)0)
+#define System_UInt128_get_Zerou128(v) ((__uint128_t)0)
 #define System_Math_Minisizeisizeisize(x, y) (((x) < (y)) ? (x) : (y))
 #define System_Math_Maxisizeisizeisize(x, y) (((x) > (y)) ? (x) : (y))
 #define System_Math_Minusizeusizeusize(x, y) (((x) < (y)) ? (x) : (y))

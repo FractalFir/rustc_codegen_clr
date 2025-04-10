@@ -2,9 +2,9 @@ use crate::{
     assembly::MethodCompileCtx,
     interop::AssemblyRef,
     utilis::{
-        garag_to_bool, is_fn_intrinsic, CTOR_FN_NAME, MANAGED_CALL_FN_NAME,
-        MANAGED_CALL_VIRT_FN_NAME, MANAGED_CHECKED_CAST, MANAGED_IS_INST, MANAGED_LD_ELEM_REF,
-        MANAGED_LD_LEN, MANAGED_LD_NULL,
+        garag_to_bool, CTOR_FN_NAME, MANAGED_CALL_FN_NAME, MANAGED_CALL_VIRT_FN_NAME,
+        MANAGED_CHECKED_CAST, MANAGED_IS_INST, MANAGED_LD_ELEM_REF, MANAGED_LD_LEN,
+        MANAGED_LD_NULL,
     },
 };
 use cilly::{
@@ -22,6 +22,7 @@ use rustc_codegen_clr_place::place_set;
 use rustc_codegen_clr_type::{utilis::garg_to_string, GetTypeExt};
 use rustc_codgen_clr_operand::{handle_operand, operand_address};
 use rustc_middle::ty::InstanceKind;
+use rustc_middle::ty::TypingEnv;
 use rustc_middle::{
     mir::{Operand, Place},
     ty::{GenericArg, Instance, Ty, TyKind},
@@ -329,28 +330,14 @@ pub fn call_closure<'tcx>(
         place_set(destination, call!(call, call_args), ctx)
     }
 }
-/// Calls `fn_type` with `args`, placing the return value in destination.
-pub fn call<'tcx>(
+pub fn call_inner<'tcx>(
     fn_type: Ty<'tcx>,
+    instance: Instance<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
     args: &[Spanned<Operand<'tcx>>],
     destination: &Place<'tcx>,
     span: rustc_span::Span,
 ) -> Vec<CILRoot> {
-    let fn_type = ctx.monomorphize(fn_type);
-    let (instance, subst_ref) = if let TyKind::FnDef(def_id, subst_ref) = fn_type.kind() {
-        let subst = ctx.monomorphize(*subst_ref);
-        let env = rustc_middle::ty::TypingEnv::fully_monomorphized();
-        let Some(instance) =
-            Instance::try_resolve(ctx.tcx(), env, *def_id, subst).expect("Invalid function def")
-        else {
-            panic!("ERROR: Could not get function instance. fn type:{fn_type:?}")
-        };
-
-        (instance, subst)
-    } else {
-        todo!("Trying to call a type which is not a function definition!");
-    };
     if let rustc_middle::ty::InstanceKind::Virtual(_def, fn_idx) = instance.def {
         assert!(!args.is_empty());
 
@@ -457,7 +444,8 @@ pub fn call<'tcx>(
     let call_info = CallInfo::sig_from_instance_(instance, ctx);
 
     let function_name = function_name(ctx.tcx().symbol_name(instance));
-    if is_fn_intrinsic(fn_type, ctx.tcx()) {
+    if matches!(instance.def, InstanceKind::Intrinsic(_)) {
+        eprintln!("{:?} {:?}", instance, instance.def);
         return super::intrinsics::handle_intrinsic(
             &function_name,
             args,
@@ -475,7 +463,13 @@ pub fn call<'tcx>(
             "Constructors may not use the `rust_call` calling convention!"
         );
         // Constructor
-        return vec![call_ctor(subst_ref, &function_name, args, destination, ctx)];
+        return vec![call_ctor(
+            instance.args,
+            &function_name,
+            args,
+            destination,
+            ctx,
+        )];
     } else if function_name.contains(MANAGED_CALL_VIRT_FN_NAME) {
         assert!(
             !call_info.split_last_tuple(),
@@ -483,7 +477,7 @@ pub fn call<'tcx>(
         );
         // Virtual (for interop)
         return vec![callvirt_managed(
-            subst_ref,
+            instance.args,
             &function_name,
             args,
             destination,
@@ -497,7 +491,7 @@ pub fn call<'tcx>(
         );
         // Not-Virtual (for interop)
         return vec![call_managed(
-            subst_ref,
+            instance.args,
             &function_name,
             args,
             destination,
@@ -523,7 +517,7 @@ pub fn call<'tcx>(
             "Managed calls may not use the `rust_call` calling convention!"
         );
         // Not-Virtual (for interop)
-        let tpe = ctx.type_from_cache(subst_ref[0].as_type().unwrap());
+        let tpe = ctx.type_from_cache(instance.args[0].as_type().unwrap());
 
         return vec![place_set(
             destination,
@@ -532,7 +526,7 @@ pub fn call<'tcx>(
         )];
     } else if function_name.contains(MANAGED_CHECKED_CAST) {
         let tpe = ctx
-            .type_from_cache(subst_ref[0].as_type().unwrap())
+            .type_from_cache(instance.args[0].as_type().unwrap())
             .as_class_ref()
             .unwrap();
         let input = handle_operand(&args[0].node, ctx);
@@ -544,7 +538,7 @@ pub fn call<'tcx>(
         )];
     } else if function_name.contains(MANAGED_IS_INST) {
         let tpe = ctx
-            .type_from_cache(subst_ref[0].as_type().unwrap())
+            .type_from_cache(instance.args[0].as_type().unwrap())
             .as_class_ref()
             .unwrap();
         let input = handle_operand(&args[0].node, ctx);
@@ -626,4 +620,28 @@ pub fn call<'tcx>(
         let res_calc = call!(site, call_args);
         vec![place_set(destination, res_calc, ctx)]
     }
+}
+/// Calls `fn_type` with `args`, placing the return value in destination.
+pub fn call<'tcx>(
+    fn_type: Ty<'tcx>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
+    args: &[Spanned<Operand<'tcx>>],
+    destination: &Place<'tcx>,
+    span: rustc_span::Span,
+) -> Vec<CILRoot> {
+    let fn_type = ctx.monomorphize(fn_type);
+    let instance = if let TyKind::FnDef(def_id, subst_ref) = fn_type.kind() {
+        let subst = ctx.monomorphize(*subst_ref);
+        let env = rustc_middle::ty::TypingEnv::fully_monomorphized();
+        let Some(instance) =
+            Instance::try_resolve(ctx.tcx(), env, *def_id, subst).expect("Invalid function def")
+        else {
+            panic!("ERROR: Could not get function instance. fn type:{fn_type:?}")
+        };
+
+        instance
+    } else {
+        todo!("Trying to call a type which is not a function definition!");
+    };
+    call_inner(fn_type, instance, ctx, args, destination, span)
 }

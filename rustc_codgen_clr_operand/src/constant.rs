@@ -232,7 +232,7 @@ fn load_const_scalar<'tcx>(
                 return load_scalar_ptr(ctx, ptr).cast_ptr(scalar_type);
             }
             return CILNode::transmute_on_stack(
-                load_scalar_ptr(ctx, ptr),
+                load_scalar_ptr(ctx, ptr).cast_ptr(Type::Ptr(ctx.alloc_type(Type::Int(Int::U8)))),
                 ctx.nptr(Type::Int(Int::U8)),
                 scalar_type,
                 ctx,

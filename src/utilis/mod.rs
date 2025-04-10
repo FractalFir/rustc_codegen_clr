@@ -113,13 +113,6 @@ macro_rules! assert_morphic {
 pub(crate) fn alloc_id_to_u64(alloc_id: AllocId) -> u64 {
     alloc_id.0.into()
 }
-pub fn is_fn_intrinsic<'tcx>(fn_ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> bool {
-    match fn_ty.kind() {
-        TyKind::FnDef(did, _) => tcx.is_intrinsic(*did, tcx.item_name(*did)),
-        TyKind::Closure(_, _) => false,
-        _ => todo!("Can't get signature of {fn_ty}"),
-    }
-}
 pub fn align_of<'tcx>(ty: rustc_middle::ty::Ty<'tcx>, tcx: TyCtxt<'tcx>) -> u64 {
     let layout = tcx
         .layout_of(PseudoCanonicalInput {

@@ -515,7 +515,7 @@ static RUNTIME_CONFIG: std::sync::LazyLock<String> = std::sync::LazyLock::new(||
     format!(
         "{{
         \"runtimeOptions\": {{
-          \"tfm\": \"net8.0\",
+          \"tfm\": \"net9.0\",
           \"framework\": {{
             \"name\": \"Microsoft.NETCore.App\",
             \"version\": \"{version}\"

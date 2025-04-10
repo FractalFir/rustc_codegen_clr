@@ -725,6 +725,8 @@ num::i128::test_be
 num::i128::test_bitwise_operators
 num::i128::test_borrowing_sub
 num::i128::test_carrying_add
+num::i128::test_carrying_mul
+num::i128::test_carrying_mul_add
 num::i128::test_checked_next_multiple_of
 num::i128::test_count_ones
 num::i128::test_count_zeros
@@ -748,6 +750,7 @@ num::i128::test_signum
 num::i128::test_swap_bytes
 num::i128::test_unbounded_shl
 num::i128::test_unbounded_shr
+num::i128::test_widening_mul
 num::i16::test_abs
 num::i16::test_be
 num::i16::test_bitwise_operators
@@ -917,6 +920,8 @@ num::int_sqrt::i64::isqrt
 num::int_sqrt::i64::isqrt_extended
 num::int_sqrt::i8::isqrt
 num::int_sqrt::i8::isqrt_extended
+num::int_sqrt::u128::isqrt
+num::int_sqrt::u128::isqrt_extended
 num::int_sqrt::u16::isqrt
 num::int_sqrt::u16::isqrt_extended
 num::int_sqrt::u32::isqrt
@@ -1147,6 +1152,8 @@ num::u128::test_be
 num::u128::test_bitwise_operators
 num::u128::test_borrowing_sub
 num::u128::test_carrying_add
+num::u128::test_carrying_mul
+num::u128::test_carrying_mul_add
 num::u128::test_checked_next_multiple_of
 num::u128::test_count_ones
 num::u128::test_count_zeros
@@ -1156,19 +1163,21 @@ num::u128::test_from_str
 num::u128::test_is_next_multiple_of
 num::u128::test_isolate_least_significant_one
 num::u128::test_isolate_most_significant_one
+num::u128::test_isqrt
 num::u128::test_le
 num::u128::test_leading_trailing_ones
+num::u128::test_lots_of_isqrt
 num::u128::test_midpoint
 num::u128::test_next_multiple_of
 num::u128::test_num
 num::u128::test_overflows
-num::u128::test_parse_bytes
 num::u128::test_reverse_bits
 num::u128::test_rotate
 num::u128::test_swap_bytes
 num::u128::test_unbounded_shl
 num::u128::test_unbounded_shr
 num::u128::test_unsigned_checked_div
+num::u128::test_widening_mul
 num::u16::test_be
 num::u16::test_bitwise_operators
 num::u16::test_borrowing_sub

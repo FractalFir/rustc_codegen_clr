@@ -1,6 +1,6 @@
 use crate::{
-    BranchCond, ClassRef, Const, Type,
-    {asm::MissingMethodPatcher, Assembly, BasicBlock, BinOp, CILNode, CILRoot, Int, MethodImpl},
+    asm::MissingMethodPatcher, cilnode::UnOp, Assembly, BasicBlock, BinOp, BranchCond, CILNode,
+    CILRoot, ClassRef, Const, Int, MethodImpl, Type,
 };
 
 fn op_direct(
@@ -141,6 +141,65 @@ pub fn i128_mul_ovf_check(asm: &mut Assembly, patcher: &mut MissingMethodPatcher
         let lhs_mul_rhs = asm.alloc_node(CILNode::call(i128_mul, [lhs, rhs]));
         let recomputed_rhs = asm.alloc_node(CILNode::call(i128_div, [lhs_mul_rhs, rhs]));
         let ovf = asm.alloc_node(CILNode::call(i128_eq, [recomputed_rhs, rhs]));
+        let ret_ovf = asm.alloc_root(CILRoot::Ret(ovf));
+
+        MethodImpl::MethodBody {
+            blocks: vec![
+                BasicBlock::new(vec![jmp_nz, ret_false], 0, None),
+                BasicBlock::new(vec![ret_ovf], 1, None),
+            ],
+            locals: vec![],
+        }
+    };
+    patcher.insert(name, Box::new(generator));
+}
+pub fn u128_mul_ovf_check(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
+    let name = asm.alloc_string("u128_mul_ovf_check");
+    let generator = move |_, asm: &mut Assembly| {
+        let lhs = asm.alloc_node(CILNode::LdArg(0));
+        let rhs = asm.alloc_node(CILNode::LdArg(1));
+        let u128_class = ClassRef::uint_128(asm);
+        let get_zero = asm.alloc_string("get_Zero");
+        let op_equality = asm.alloc_string("eq_u128");
+        let op_mul = asm.alloc_string("mul_u128");
+        let op_div = asm.alloc_string("div_u128");
+        let u128_classref = asm[u128_class].clone();
+        let main_module = *asm.main_module();
+        let main_module = asm[main_module].clone();
+        let const_zero = u128_classref.static_mref(&[], Type::Int(Int::U128), get_zero, asm);
+        let const_zero = asm.alloc_node(CILNode::call(const_zero, []));
+        let u128_eq = main_module.static_mref(
+            &[Type::Int(Int::U128), Type::Int(Int::U128)],
+            Type::Bool,
+            op_equality,
+            asm,
+        );
+        let u128_mul = main_module.static_mref(
+            &[Type::Int(Int::U128), Type::Int(Int::U128)],
+            Type::Int(Int::U128),
+            op_mul,
+            asm,
+        );
+        let u128_div = main_module.static_mref(
+            &[Type::Int(Int::U128), Type::Int(Int::U128)],
+            Type::Int(Int::U128),
+            op_div,
+            asm,
+        );
+        let rhs_zero = asm.alloc_node(CILNode::call(u128_eq, [rhs, const_zero]));
+        let jmp_nz = asm.alloc_root(CILRoot::Branch(Box::new((
+            0,
+            1,
+            Some(BranchCond::False(rhs_zero)),
+        ))));
+        let ret_false = asm.alloc_node(Const::Bool(false));
+        let ret_false = asm.alloc_root(CILRoot::Ret(ret_false));
+        let lhs_mul_rhs = asm.alloc_node(CILNode::call(u128_mul, [lhs, rhs]));
+        let recomputed_rhs = asm.alloc_node(CILNode::call(u128_div, [lhs_mul_rhs, rhs]));
+        let ovf = asm.alloc_node(CILNode::call(u128_eq, [recomputed_rhs, rhs]));
+        /*let ovf2 = asm.alloc_node(CILNode::BinOp(lhs, lhs_mul_rhs, BinOp::GtUn));
+        let ovf2 = asm.alloc_node(CILNode::UnOp(ovf2, UnOp::Neg));
+        let ovf = asm.alloc_node(CILNode::BinOp(ovf, ovf2, BinOp::Or));*/
         let ret_ovf = asm.alloc_root(CILRoot::Ret(ovf));
 
         MethodImpl::MethodBody {

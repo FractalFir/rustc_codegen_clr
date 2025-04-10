@@ -11,6 +11,7 @@ use ints::{ctlz, rotate_left, rotate_right};
 use rustc_codegen_clr_place::{deref_op, place_adress, place_set, ptr_set_op};
 use rustc_codegen_clr_type::GetTypeExt;
 use rustc_codgen_clr_operand::{constant::load_const_value, handle_operand};
+use rustc_middle::ty::TypingEnv;
 use rustc_middle::{
     mir::{Operand, Place},
     ty::{Instance, Ty, UintTy},
@@ -152,11 +153,15 @@ pub fn handle_intrinsic<'tcx>(
                 ctx,
             )]
         }
-        "disjoint_bitor"=> {
+        "disjoint_bitor" => {
             let lhs = handle_operand(&args[0].node, ctx);
             let rhs = handle_operand(&args[1].node, ctx);
-            let ty = args[0].node.ty(ctx.body(),ctx.tcx());
-            vec![place_set(destination, crate::binop::bitop::bit_or_unchecked(ty,ty, ctx, lhs, rhs), ctx)]
+            let ty = args[0].node.ty(ctx.body(), ctx.tcx());
+            vec![place_set(
+                destination,
+                crate::binop::bitop::bit_or_unchecked(ty, ty, ctx, lhs, rhs),
+                ctx,
+            )]
         }
         "fmaf32" => vec![fmaf32(args, destination, ctx)],
         "fmaf64" => vec![fmaf64(args, destination, ctx)],
@@ -320,8 +325,7 @@ pub fn handle_intrinsic<'tcx>(
                     );
                     vec![place_set(
                         destination,
-                        atomic_add(dst, add_ammount.clone(),src_type, ctx)
-                            .cast_ptr(src_type),
+                        atomic_add(dst, add_ammount.clone(), src_type, ctx).cast_ptr(src_type),
                         ctx,
                     )]
                 }
@@ -456,7 +460,18 @@ pub fn handle_intrinsic<'tcx>(
             vec![place_set(destination, ops, ctx)]
         }
         "sqrtf32" => float_unop(args, destination, ctx, Float::F32, "Sqrt"),
-        "carrying_mul_add" => {
+        "carrying_mul_add"
+            if !matches!(
+                ctx.type_from_cache(
+                    call_instance.args[1]
+                        .as_type()
+                        .expect("needs_drop works only on types!"),
+                )
+                .as_int()
+                .expect("carrying_mul_add with a non-int type"),
+                Int::U128 | Int::I128
+            ) =>
+        {
             let wrapping = ctx.type_from_cache(
                 call_instance.args[0]
                     .as_type()
@@ -474,7 +489,6 @@ pub fn handle_intrinsic<'tcx>(
             let oint = overflow
                 .as_int()
                 .expect("carrying_mul_add with a non-int type");
-            assert!(!matches!(oint, Int::U128 | Int::I128));
             let promoted = oint
                 .promoted()
                 .expect("Can't carrying_mul_add cause type is too large");
@@ -682,6 +696,30 @@ pub fn handle_intrinsic<'tcx>(
         "powf64" => vec![powf64(args, destination, ctx)],
         "copysignf32" => float_binop(args, destination, ctx, Float::F32, "CopySign"),
         "copysignf64" => float_binop(args, destination, ctx, Float::F64, "CopySign"),
+        "copysignf128" => {
+            let main_module = ctx.main_module();
+            let log = MethodRef::new(
+                *main_module,
+                ctx.alloc_string("copysignf128"),
+                ctx.sig(
+                    [Type::Float(Float::F128), Type::Float(Float::F128)],
+                    Float::F128,
+                ),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            vec![place_set(
+                destination,
+                call!(
+                    ctx.alloc_methodref(log),
+                    [
+                        handle_operand(&args[0].node, ctx),
+                        handle_operand(&args[1].node, ctx)
+                    ]
+                ),
+                ctx,
+            )]
+        }
         "sinf32" => float_unop(args, destination, ctx, Float::F32, "Sin"),
         "sinf64" => float_unop(args, destination, ctx, Float::F64, "Sin"),
         "cosf32" => float_unop(args, destination, ctx, Float::F32, "Cos"),
@@ -864,7 +902,7 @@ pub fn handle_intrinsic<'tcx>(
             let sub = main_module.static_mref(&[vec, vec], vec, name, ctx);
             vec![place_set(destination, call!(sub, [lhs, rhs]), ctx)]
         }
-       
+
         "simd_mul" => {
             let vec = ctx.type_from_cache(
                 call_instance.args[0]
@@ -1041,6 +1079,7 @@ pub fn handle_intrinsic<'tcx>(
         _ => intrinsic_slow(fn_name, args, destination, ctx, call_instance, span),
     }
 }
+use rustc_middle::span_bug;
 fn intrinsic_slow<'tcx>(
     fn_name: &str,
     args: &[Spanned<Operand<'tcx>>],
@@ -1054,7 +1093,24 @@ fn intrinsic_slow<'tcx>(
     // Using formating preserves the generic hash.
     let demangled = format!("{demangled:#}");
     if demangled == fn_name {
-        todo!("Unhandled intrinsic {fn_name}. demangled:{demangled}")
+        let intrinsic = ctx.tcx().intrinsic(call_instance.def_id()).unwrap();
+        if intrinsic.must_be_overridden {
+            span_bug!(
+                span,
+                "intrinsic {} must be overridden by rustc_codgen_clr, but isn't",
+                intrinsic.name,
+            );
+            todo!("ERROR: span bug did not diverge.");
+        }
+        super::call::call_inner(
+            Instance::new(call_instance.def_id(), call_instance.args)
+                .ty(ctx.tcx(), TypingEnv::fully_monomorphized()),
+            Instance::new(call_instance.def_id(), call_instance.args),
+            ctx,
+            args,
+            destination,
+            span,
+        )
     } else {
         assert!(demangled.contains("::"));
         let striped = demangled_to_stem(&demangled);

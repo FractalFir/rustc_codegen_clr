@@ -438,7 +438,19 @@ pub fn mul<'tcx>(
                 CILNode::V2(ctx.alloc_node(false))
             )
         }
-
+        TyKind::Uint(UintTy::U128) => {
+            let op_mul = MethodRef::new(
+                *ctx.main_module(),
+                ctx.alloc_string("u128_mul_ovf_check"),
+                ctx.sig([Type::Int(Int::U128), Type::Int(Int::U128)], Type::Bool),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            eq!(
+                call!(ctx.alloc_methodref(op_mul), [ops_a.clone(), ops_b.clone()]),
+                CILNode::V2(ctx.alloc_node(false))
+            )
+        }
         _ => {
             eprintln!("WARINING: can't checked mul type {ty:?}");
             CILNode::V2(ctx.alloc_node(false))
