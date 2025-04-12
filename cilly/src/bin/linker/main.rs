@@ -436,6 +436,7 @@ fn main() {
     cilly::builtins::insert_bounds_check(&mut final_assembly, &mut overrides);
     cilly::builtins::casts::insert_casts(&mut final_assembly, &mut overrides);
     cilly::builtins::insert_heap(&mut final_assembly, &mut overrides, *C_MODE);
+    cilly::builtins::rust_assert(&mut final_assembly, &mut overrides);
     cilly::builtins::int128::generate_int128_ops(&mut final_assembly, &mut overrides, *C_MODE);
     cilly::builtins::int128::i128_mul_ovf_check(&mut final_assembly, &mut overrides);
     cilly::builtins::int128::u128_mul_ovf_check(&mut final_assembly, &mut overrides);

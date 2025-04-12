@@ -1100,7 +1100,6 @@ fn intrinsic_slow<'tcx>(
                 "intrinsic {} must be overridden by rustc_codgen_clr, but isn't",
                 intrinsic.name,
             );
-            todo!("ERROR: span bug did not diverge.");
         }
         super::call::call_inner(
             Instance::new(call_instance.def_id(), call_instance.args)

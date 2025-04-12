@@ -806,6 +806,7 @@ run_test! {intrinsics,wrapping_ops,stable}
 run_test! {iter,fold,stable}
 run_test! {statics,thread_local,stable}
 run_test! {std,arg_test,stable}
+run_test! {std,getopt,stable}
 run_test! {std,const_error,stable}
 run_test! {std,cell_test,unstable}
 run_test! {std,cstr,unstable}

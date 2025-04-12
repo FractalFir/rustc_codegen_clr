@@ -376,11 +376,11 @@ static inline int32_t System_Numerics_BitOperations_LeadingZeroCountu64i32(uint6
 static inline int32_t System_Numerics_BitOperations_LeadingZeroCountusizei32(uintptr_t val) { if (val == 0) return sizeof(uintptr_t) * 8; return __builtin_clzl((uint64_t)val); }
 #endif
 
-#define System_Numerics_BitOperations_PopCountusizei32(val) __builtin_popcountl((uint64_t)val)
-#define System_Numerics_BitOperations_PopCountu32i32(val) __builtin_popcountl((uint32_t)val)
-#define System_Numerics_BitOperations_PopCountu64i32(val) __builtin_popcountl((uint64_t)val)
+#define System_Numerics_BitOperations_PopCountusizei32(val) __builtin_popcountll((uint64_t)val)
+#define System_Numerics_BitOperations_PopCountu32i32(val) __builtin_popcountll((uint32_t)val)
+#define System_Numerics_BitOperations_PopCountu64i32(val) __builtin_popcountll((uint64_t)val)
 static inline __uint128_t System_UInt128_PopCountu128u128(__uint128_t val) {
-    return __builtin_popcountl((uint64_t)val) +  __builtin_popcountl((uint64_t)(val>>64)); 
+    return __builtin_popcountll((uint64_t)val) +  __builtin_popcountll((uint64_t)(val>>64)); 
 }
 
 #define System_Console_WriteLinev() printf("\n")

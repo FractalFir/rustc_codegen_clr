@@ -132,17 +132,32 @@ pub fn handle_terminator<'tcx>(
             handle_switch(ty, &discr, targets, ctx)
         }
         TerminatorKind::Assert {
-            cond: _,
-            expected: _,
+            cond,
+            expected,
             msg: _,
             target,
             unwind: _,
         } => {
-            vec![CILRoot::GoTo {
-                target: target.as_u32(),
-                sub_target: 0,
-            }
-            .into()]
+            let cond = CILNode::Eq(
+                Box::new(handle_operand(cond, ctx)),
+                Box::new(CILNode::V2(ctx.alloc_node(*expected))),
+            );
+            // FIXME: propelrly handle *all* assertion messages.
+            let main = ctx.main_module();
+            let sig = ctx.sig([Type::Bool], Type::Void);
+            let site = ctx.new_methodref(*main, "rust_assert", sig, MethodKind::Static, vec![]);
+            vec![
+                CILRoot::Call {
+                    site,
+                    args: vec![cond].into(),
+                }
+                .into(),
+                CILRoot::GoTo {
+                    target: target.as_u32(),
+                    sub_target: 0,
+                }
+                .into(),
+            ]
         }
         TerminatorKind::Goto { target } => vec![CILRoot::GoTo {
             target: target.as_u32(),
@@ -331,7 +346,7 @@ fn handle_switch<'tcx>(
     ty: Ty<'tcx>,
     discr: &CILNode,
     switch: &SwitchTargets,
-    ctx:&mut MethodCompileCtx<'tcx,'_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> Vec<CILTree> {
     let mut trees = Vec::new();
     for (value, target) in switch.iter() {

@@ -131,7 +131,6 @@ cell::refcell_unsized
 cell::smoketest_cell
 cell::smoketest_unsafe_cell
 cell::unsafe_cell_raw_get
-cell::unsafe_cell_unsized
 char::ed_iterator_specializations
 char::eu_iterator_specializations
 char::test_convert
@@ -666,7 +665,6 @@ num::bignum::test_mul_digits
 num::bignum::test_mul_pow2
 num::bignum::test_mul_pow2_overflow_1
 num::bignum::test_mul_pow5
-num::bignum::test_mul_pow5_overflow_1
 num::bignum::test_mul_small
 num::bignum::test_ord
 num::bignum::test_sub
@@ -741,7 +739,6 @@ num::i128::test_le
 num::i128::test_leading_trailing_ones
 num::i128::test_midpoint
 num::i128::test_next_multiple_of
-num::i128::test_num
 num::i128::test_overflows
 num::i128::test_rem_euclid
 num::i128::test_rotate
@@ -902,7 +899,6 @@ num::int_log::checked_ilog10
 num::int_log::checked_ilog2
 num::int_log::ilog0_of_1_panic
 num::int_log::ilog10_of_0_panic
-num::int_log::ilog10_u128
 num::int_log::ilog10_u16
 num::int_log::ilog10_u32
 num::int_log::ilog10_u64
@@ -946,7 +942,6 @@ num::ops::test_bitxor_assign_defined
 num::ops::test_bitxor_defined
 num::ops::test_div_assign_defined
 num::ops::test_div_defined
-num::ops::test_mul_assign_defined
 num::ops::test_mul_defined
 num::ops::test_neg_defined
 num::ops::test_not_defined_bool
@@ -1166,10 +1161,8 @@ num::u128::test_isolate_most_significant_one
 num::u128::test_isqrt
 num::u128::test_le
 num::u128::test_leading_trailing_ones
-num::u128::test_lots_of_isqrt
 num::u128::test_midpoint
 num::u128::test_next_multiple_of
-num::u128::test_num
 num::u128::test_overflows
 num::u128::test_reverse_bits
 num::u128::test_rotate
@@ -1463,7 +1456,6 @@ slice::memchr::no_match
 slice::memchr::no_match_empty
 slice::memchr::no_match_empty_reversed
 slice::memchr::no_match_reversed
-slice::select_nth_unstable
 slice::select_nth_unstable_past_length
 slice::select_nth_unstable_zero_length
 slice::slice_index::assert_range_eq_can_fail_by_inequality

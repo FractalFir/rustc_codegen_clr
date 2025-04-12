@@ -4,9 +4,9 @@ use cilly::{
 };
 use rustc_abi::{FieldIdx, FieldsShape, Layout, LayoutData, VariantIdx, Variants};
 use rustc_codegen_clr_ctx::MethodCompileCtx;
+use rustc_middle::span_bug;
 use rustc_middle::ty::List;
 use rustc_middle::ty::{AdtDef, GenericArg, Ty, TyKind};
-
 pub fn enum_variant_offsets(_: AdtDef, layout: Layout, vidix: VariantIdx) -> FieldOffsetIterator {
     FieldOffsetIterator::fields(get_variant_at_index(vidix, (*layout.0).clone()))
 }
@@ -215,14 +215,20 @@ pub fn field_descrptor<'tcx>(
             field_type,
         ));
     } else if let TyKind::Coroutine(_, args) = owner_ty.kind() {
-        let coroutine = args.as_coroutine();
-        let field_type = coroutine
-            .upvar_tys()
+        let coroutine = args.as_coroutine().witness();
+        let TyKind::CoroutineWitness(_, fields) = coroutine.kind() else {
+            panic!("corutine witness is not CoroutineWitness.");
+        };
+        let field_type = fields
             .iter()
             .nth(field_idx as usize)
             .expect("Could not find coroutine fields!");
         let field_type = ctx.monomorphize(field_type);
-        let field_type = ctx.type_from_cache(field_type);
+        let field_type = ctx.type_from_cache(
+            field_type
+                .as_type()
+                .expect("Non type args in coroutine witness."),
+        );
         let owner_ty = ctx.monomorphize(owner_ty);
         let owner_type = ctx.type_from_cache(owner_ty);
         let field_name = ctx.alloc_string(format!("f_{field_idx}"));

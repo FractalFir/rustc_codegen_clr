@@ -742,7 +742,6 @@ impl MethodImpl {
         let args = sig
             .inputs()
             .iter()
-          
             .enumerate()
             .map(|(idx, _)| asm.alloc_node(CILNode::LdArg(idx.try_into().unwrap())))
             .collect();
@@ -786,6 +785,12 @@ impl MethodRefIdx {
     #[must_use]
     pub unsafe fn from_raw(raw: BiMapIndex) -> Self {
         Self(raw)
+    }
+
+    pub fn abort(asm: &mut Assembly) -> MethodRefIdx {
+        let main = asm.main_module();
+        let sig = asm.sig([], Type::Void);
+        asm.new_methodref(*main, "abort", sig, MethodKind::Static, vec![])
     }
 }
 #[test]

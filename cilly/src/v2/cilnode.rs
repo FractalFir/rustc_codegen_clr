@@ -26,18 +26,32 @@ impl IsPure {
 }
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub enum CILNode {
+    /// A constant IR value.
     Const(Box<Const>),
+    /// Binary operation performed on values `lhs` and `rhs`, of kind `op`.
     BinOp(NodeIdx, NodeIdx, BinOp),
+    /// A unary operation performed on value `val`, of kind `op`.
     UnOp(NodeIdx, UnOp),
+    /// Retrives the value of a local with a given index.
     LdLoc(u32),
+    /// Retrives a reference(not a pointer!) to a local with a given index.
+    /// See [crate::tpe::Type::Ref].
     LdLocA(u32),
+    /// Retrives the value of an argument with a given index.
     LdArg(u32),
+    /// Retrives a reference(not a pointer!) to an argument with a given index.
+    /// See [crate::tpe::Type::Ref].
     LdArgA(u32),
-    /// Method, args, pure
+    /// Calls `method` with, `args`, and a given `pure`-ness.
+    /// [`IsPure::PURE`] value marks a call as a pure, side-effect free call.
     Call(Box<(MethodRefIdx, Box<[NodeIdx]>, IsPure)>),
+    /// A cast to an intiger type.
     IntCast {
+        /// The input value.
         input: NodeIdx,
+        /// The resulting type
         target: Int,
+        /// Is this a signed or zero extension?
         extend: ExtendKind,
     },
     FloatCast {

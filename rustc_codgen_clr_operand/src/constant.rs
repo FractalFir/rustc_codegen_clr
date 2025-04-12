@@ -13,7 +13,7 @@ use cilly::{
 use rustc_codegen_clr_call::CallInfo;
 use rustc_codegen_clr_ctx::MethodCompileCtx;
 use rustc_codegen_clr_place::deref_op;
-use rustc_codegen_clr_type::GetTypeExt;
+use rustc_codegen_clr_type::{GetTypeExt, utilis::is_fat_ptr};
 use rustc_middle::ty::ExistentialTraitRef;
 use rustc_middle::{
     mir::{
@@ -245,10 +245,20 @@ fn load_const_scalar<'tcx>(
         TyKind::Uint(uint_type) => CILNode::V2(load_const_uint(scalar_u128, *uint_type, ctx)),
         TyKind::Float(ftype) => load_const_float(scalar_u128, *ftype, ctx),
         TyKind::Bool => CILNode::V2(ctx.alloc_node(scalar_u128 != 0)),
-        TyKind::RawPtr(_, _) => CILNode::V2(ctx.alloc_node(Const::USize(
-            u64::try_from(scalar_u128).expect("pointers must be smaller than 2^64"),
-        )))
-        .cast_ptr(scalar_type),
+        TyKind::RawPtr(..) | TyKind::Ref(..) => {
+            if is_fat_ptr(scalar_ty, ctx.tcx(), ctx.instance()) {
+                CILNode::V2(ctx.alloc_node(scalar_u128)).transmute_on_stack(
+                    Type::Int(Int::U128),
+                    scalar_type,
+                    ctx,
+                )
+            } else {
+                CILNode::V2(ctx.alloc_node(Const::USize(
+                    u64::try_from(scalar_u128).expect("pointers must be smaller than 2^64"),
+                )))
+                .cast_ptr(scalar_type)
+            }
+        }
         TyKind::Tuple(elements) => {
             if elements.is_empty() {
                 let scalar_ptr = ctx.nptr(scalar_type);

@@ -6,27 +6,47 @@ use super::{
 };
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug, Hash, Serialize, Deserialize)]
+/// A constant cillyIR value.
 pub enum Const {
+    /// Constant i8 value.
     I8(i8),
+    /// Constant i16 value.
     I16(i16),
+    /// Constant i32 value.
     I32(i32),
+    /// Constant i64 value.
     I64(i64),
+    /// Constant i128 value.
     I128(i128),
+    /// Constant isize value.
     ISize(i64),
+    /// Constant u8 value.
     U8(u8),
+    /// Constant u16 value.
     U16(u16),
+    /// Constant u32 value.
     U32(u32),
+    /// Constant u64 value.
     U64(u64),
+    /// Constant u128 value.
     U128(u128),
+    /// Constant usize value.
     USize(u64),
+    /// A reference to an immutable, platform-specific representation of a string.
+    /// There is no guarrantees about the encoding of this type.
     PlatformString(StringIdx),
+    /// A boolean value
     Bool(bool),
+    /// A representation of a single-precision floating-point value. No guarateess are given about the exact bitpattern of NaNs.  
     F32(HashableF32),
+    /// A representation of a double-precision floating-point value. No guarateess are given about the exact bitpattern of NaNs.
     F64(HashableF64),
+    /// A "null" reference to a platform-specifc managed object of type `class`.
     Null(ClassRefIdx),
 }
 impl Const {
-    pub(crate) fn get_type(&self) -> Type {
+    /// Retrives the type of this value.
+    pub fn get_type(&self) -> Type {
         match self {
             Const::I8(_) => Type::Int(Int::I8),
             Const::I16(_) => Type::Int(Int::I16),
@@ -47,8 +67,8 @@ impl Const {
             Const::Null(tpe) => Type::ClassRef(*tpe),
         }
     }
-
-    pub(crate) fn is_zero(&self) -> bool {
+    /// Checks if the value is zero.
+    pub fn is_zero(&self) -> bool {
         match self {
             Const::I8(val) => *val == 0,
             Const::I16(val) => *val == 0,
@@ -69,7 +89,8 @@ impl Const {
             Const::Null(_) => true,
         }
     }
-    pub(crate) fn is_one(&self) -> bool {
+    /// Checks if the value is exactly one.
+    pub fn is_one(&self) -> bool {
         match self {
             Const::I8(val) => *val == 1,
             Const::I16(val) => *val == 1,
@@ -85,8 +106,8 @@ impl Const {
             Const::USize(val) => *val == 1,
             Const::PlatformString(_) => false,
             Const::Bool(_) => false,
-            Const::F32(val) => **val == 1.1,
-            Const::F64(val) => **val == 1.1,
+            Const::F32(val) => **val == 1.0,
+            Const::F64(val) => **val == 1.0,
             Const::Null(_) => true,
         }
     }
