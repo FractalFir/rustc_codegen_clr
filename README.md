@@ -3,7 +3,7 @@
 > [!WARNING]
 > This project is still early in its developement. Bugs, crashes and miscompilations are expected. DO NOT USE IT FOR ANYTHING SERIOUS.
 
-`rustc_codegen_clr` is an experimental Rust compiler backend(plugin), which allows you to transpile Rust into .NET assebmlies, or C source files. 
+`rustc_codegen_clr` is an experimental Rust compiler backend(plugin), which allows you to transpile Rust into .NET assemblies, or C source files. 
 
 The end goal of the project is allowing Rust to be used in places where it could not be used before. 
 
@@ -41,7 +41,7 @@ With this approach, the classes and APIs exposed to .NET can be easily used from
 
 ## C support
 
-While .NET is the main focus of my work, this project can also be used to compile Rust to C, by setting the `C_MODE` enviroment flag to `1`.
+While .NET is the main focus of my work, this project can also be used to compile Rust to C, by setting the `C_MODE` environment flag to `1`.
 
 This may seem like a strange and unrelated feature, but the project was written in such a way that this is not only possible, but relatively easy.
 
@@ -75,7 +75,7 @@ However, if you have access to such a compiler, I can assist you in adding suppo
 
 .NET
 
-| Name | Pass	| Faliure	| Crash \ Timeout| OK precentage
+| Name | Pass	| Faliure	| Crash \ Timeout| OK percentage
 |--------------------|--------|-------|-------|------|
 | Core tests |	1662	| 39	| 12	| 97.02% |
 | Alloc tests | 	616	|8 |	40 |	92.77% |
@@ -86,7 +86,7 @@ However, if you have access to such a compiler, I can assist you in adding suppo
 
 C
 
-| Name | Pass	| Faliure	| OK precentage
+| Name | Pass	| Faliure	| OK percentage
 |--------------------|--------|-------|------|
 | Core tests |	1419	| 294	| 82.83% |
 
@@ -114,12 +114,13 @@ C
 
 ### Q: What about Mono?
 
-**A**: *The support for the Mono runtime is not as good as it could be. Due to not supported features and differences, 128-bit integers and checked 64-bit integer arithmetic are not supported on Mono.*
+**A**: *The support for the Mono runtime is not as good as it could be. Due to unsupported features and differences, 128-bit integers and checked 64-bit integer arithmetic are not supported on Mono.*
 *Aligned allocators(__rust_alloc) and certain intrinsics are also not supported. I plan to expand support for Mono, but my resources are limited.*
 
 ### Q: Are there any issues?
 
 **A**: *While the backend is extensively tested, it is still far from perfect, and there are still many edge cases that may break this backend.*
+
 **A**: *Currently, there are no .NET-specific versions of `std` or .NET specific target triples. This means that you will need separate .NET assemblies for each OS.*
 
 ## Licensing
