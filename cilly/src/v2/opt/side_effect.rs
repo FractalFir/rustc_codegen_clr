@@ -90,13 +90,10 @@ fn const_no_side_effect() {
         let node = asm.alloc_node(cst);
         assert!(!cache.has_side_effects(node, &asm));
         let node = asm.biop(cst, cst, crate::BinOp::Add);
-        let node = asm.alloc_node(node);
         assert!(!cache.has_side_effects(node, &asm));
         let node = asm.biop(CILNode::LocAlloc { size: node }, cst, crate::BinOp::Add);
-        let node = asm.alloc_node(node);
         assert!(cache.has_side_effects(node, &asm));
         let node = asm.biop(cst, CILNode::LocAlloc { size: node }, crate::BinOp::Add);
-        let node = asm.alloc_node(node);
         assert!(cache.has_side_effects(node, &asm));
     }
 }

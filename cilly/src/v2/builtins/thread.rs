@@ -64,7 +64,6 @@ fn insert_pthread_attr_setstacksize(asm: &mut Assembly, patcher: &mut MissingMet
         let usize_tpe = asm.alloc_type(Int::USize);
         let usize_size = asm.alloc_node(CILNode::SizeOf(usize_tpe));
         let offset = asm.alloc_node(CILNode::BinOp(usize_size, three, BinOp::Mul));
-
         let addr = asm.biop(
             CILNode::IntCast {
                 input: offset,
@@ -74,7 +73,6 @@ fn insert_pthread_attr_setstacksize(asm: &mut Assembly, patcher: &mut MissingMet
             CILNode::LdArg(0),
             BinOp::Add,
         );
-        let addr = asm.alloc_node(addr);
         let init = asm.alloc_root(CILRoot::StInd(Box::new((
             addr,
             ldarg_1,

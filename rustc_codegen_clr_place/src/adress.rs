@@ -216,7 +216,7 @@ pub fn place_elem_adress<'tcx>(
                     });
                     let offset = ctx.biop(index, size, cilly::BinOp::Mul);
                     (ld_field!(addr_calc.clone(), desc)).cast_ptr(ctx.nptr(inner_type))
-                        + CILNode::V2(ctx.alloc_node(offset))
+                        + CILNode::V2(offset)
                 }
                 TyKind::Array(element, _) => {
                     let mref = array_get_address(ctx, *element, curr_ty);

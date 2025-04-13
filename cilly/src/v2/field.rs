@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 
 use super::bimap::BiMapIndex;
-use super::Int;
 use super::{bimap::IntoBiMapIndex, ClassRefIdx, StringIdx, Type};
+use super::{Int, IntoAsmIndex};
 
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Copy, Serialize, Deserialize)]
 pub struct FieldIdx(BiMapIndex);
@@ -98,5 +98,10 @@ impl StaticFieldDesc {
     #[must_use]
     pub fn tpe(&self) -> Type {
         self.tpe
+    }
+}
+impl IntoAsmIndex<FieldIdx> for FieldDesc {
+    fn into_idx(self, asm: &mut super::Assembly) -> FieldIdx {
+        asm.alloc_field(self)
     }
 }

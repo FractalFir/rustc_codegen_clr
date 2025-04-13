@@ -803,7 +803,7 @@ impl MethodDef {
                         *curr = asm.alloc_root(CILRoot::Ret(tree));
                     }
                     // FIXME: **why** does this cause issues?
-                    /* 
+                    /*
                     (CILRoot::Branch(info), CILRoot::Branch(info2))
                         if is_branch_unconditional(info2) =>
                     {
@@ -835,7 +835,7 @@ impl MethodDef {
         if self.implementation().blocks().is_none() {
             return;
         }
-     
+
         // TODO: this is a hack, which makes root inlining optimizations not consume fuel.
         let fuel = std::sync::Mutex::new(&mut *fuel);
         let locals = self.locals().map(|locs| locs.to_vec()).unwrap();
@@ -973,7 +973,6 @@ fn local_prop() {
     let stloc_0 = asm.alloc_root(CILRoot::StLoc(0, arg0));
     let loc0 = CILNode::LdLoc(0);
     let sum = asm.biop(loc0.clone(), loc0, BinOp::Add);
-    let sum = asm.alloc_node(sum);
     let ret = asm.alloc_root(CILRoot::Ret(sum));
     let mut block = BasicBlock::new(vec![stloc_0, ret], 0, None);
     let mut cache = SideEffectInfoCache::default();
@@ -985,7 +984,6 @@ fn local_prop() {
     assert!(iter.next().is_some());
     let opt_ret = iter.next().unwrap();
     let sum_arg0 = asm.biop(CILNode::LdArg(0), CILNode::LdArg(0), BinOp::Add);
-    let sum_arg0 = asm.alloc_node(sum_arg0);
     let ret = asm.alloc_root(CILRoot::Ret(sum_arg0));
     assert_eq!(ret, *opt_ret);
 }
@@ -997,7 +995,6 @@ fn remove_nops() {
     let stloc_0 = asm.alloc_root(CILRoot::StLoc(0, arg0));
     let loc0 = CILNode::LdLoc(0);
     let sum = asm.biop(loc0.clone(), loc0, BinOp::Add);
-    let sum = asm.alloc_node(sum);
     let ret = asm.alloc_root(CILRoot::Ret(sum));
     let nop = asm.alloc_root(CILRoot::Nop);
     let block = BasicBlock::new(vec![nop, stloc_0, nop, ret, nop], 0, None);

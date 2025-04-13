@@ -1,8 +1,8 @@
 use cilly::{
-    Assembly, Const, IntoAsmIndex, NodeIdx, Type, call,
+    Assembly, BinOp, Const, FieldDesc, Int, IntoAsmIndex, MethodRef, NodeIdx, Type, call,
     cil_node::CILNode,
+    cilnode::{ExtendKind, MethodKind},
     conv_usize, ld_field,
-    {FieldDesc, Int, MethodRef, cilnode::MethodKind},
 };
 use rustc_codegen_clr_ctx::MethodCompileCtx;
 use rustc_codegen_clr_type::{
@@ -52,8 +52,8 @@ pub fn place_get<'tcx>(place: &Place<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_>
     if place.projection.is_empty() {
         CILNode::V2(local_get(place.local.as_usize(), ctx.body(), ctx))
     } else {
-        let (op, mut ty) = super::local_body(place.local.as_usize(), ctx);
-        let mut op = CILNode::V2(op);
+        let (mut op, mut ty) = super::local_body(place.local.as_usize(), ctx);
+
         ty = ctx.monomorphize(ty);
         let mut ty = ty.into();
 
@@ -64,16 +64,16 @@ pub fn place_get<'tcx>(place: &Place<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_>
             op = curr_ops;
         }
 
-        place_elem_get(head, ty, ctx, op)
+        CILNode::V2(place_elem_get(head, ty, ctx, op))
     }
 }
 fn get_field<'a>(
     curr_type: super::PlaceTy<'a>,
     ctx: &mut MethodCompileCtx<'a, '_>,
-    addr_calc: CILNode,
+    addr_calc: NodeIdx,
     field_index: u32,
     field_type: Ty<'a>,
-) -> CILNode {
+) -> NodeIdx {
     match curr_type {
         super::PlaceTy::Ty(curr_type) => {
             let curr_type = ctx.monomorphize(curr_type);
@@ -84,10 +84,7 @@ fn get_field<'a>(
             ) {
                 (false, false) => {
                     let field_desc = field_descrptor(curr_type, field_index, ctx);
-                    CILNode::LDField {
-                        addr: addr_calc.into(),
-                        field: field_desc,
-                    }
+                    ctx.ld_field(addr_calc, field_desc)
                 }
                 (false, true) => panic!(
                     "Sized type {curr_type:?} contains an unsized field of type {field_type}. This is a bug."
@@ -109,17 +106,12 @@ fn get_field<'a>(
                         ctx.nptr(Type::Void),
                     );
                     // Get the address of the unsized object.
-                    let obj_addr = ld_field!(addr_calc, ctx.alloc_field(addr_descr));
+                    let obj_addr = ctx.ld_field(addr_calc, addr_descr);
                     let obj = ctx.type_from_cache(field_type);
+                    let obj_addr = ctx.biop(obj_addr, Const::USize(u64::from(offset)), BinOp::Add);
+                    let obj_addr = ctx.cast_ptr(obj_addr, obj);
                     // Add the offset to the object.
-                    CILNode::LdObj {
-                        ptr: Box::new(
-                            (obj_addr
-                                + CILNode::V2(ctx.alloc_node(Const::USize(u64::from(offset)))))
-                            .cast_ptr(ctx.nptr(obj)),
-                        ),
-                        obj: Box::new(obj),
-                    }
+                    ctx.load(obj_addr, obj)
                 }
                 (true, true) => panic!(
                     "Nonsensical operation: attempted to get value of the unsized type {field_type}. Unsized types can only be accessed by address."
@@ -129,10 +121,7 @@ fn get_field<'a>(
         super::PlaceTy::EnumVariant(enm, var_idx) => {
             let owner = ctx.monomorphize(enm);
             let field_desc = enum_field_descriptor(owner, field_index, var_idx, ctx);
-            CILNode::LDField {
-                addr: addr_calc.into(),
-                field: field_desc,
-            }
+            ctx.ld_field(addr_calc, field_desc)
         }
     }
 }
@@ -140,8 +129,8 @@ fn place_elem_get<'a>(
     place_elem: &PlaceElem<'a>,
     curr_type: super::PlaceTy<'a>,
     ctx: &mut MethodCompileCtx<'a, '_>,
-    addr_calc: CILNode,
-) -> CILNode {
+    addr_calc: NodeIdx,
+) -> NodeIdx {
     match place_elem {
         PlaceElem::Deref => super::deref_op(super::pointed_type(curr_type).into(), ctx, addr_calc),
         PlaceElem::Field(field_index, field_type) => {
@@ -170,14 +159,17 @@ fn place_elem_get<'a>(
                         extend: cilly::cilnode::ExtendKind::ZeroExtend,
                     });
                     let offset = ctx.biop(index, size, cilly::BinOp::Mul);
-                    let addr = (ld_field!(addr_calc, ctx.alloc_field(desc))
-                        .cast_ptr(ctx.nptr(inner_type)))
-                        + CILNode::V2(ctx.alloc_node(offset));
+                    let addr = ctx.ld_field(addr_calc, desc);
+                    let addr = ctx.biop(addr, offset, BinOp::Add);
+                    let addr = ctx.cast_ptr(addr, inner_type);
+
                     super::deref_op(super::PlaceTy::Ty(inner), ctx, addr)
                 }
                 TyKind::Array(element, _) => {
-                    let mref = array_get_item(ctx, *element, curr_ty);
-                    call!(ctx.alloc_methodref(mref), [addr_calc, CILNode::V2(index)])
+                    let elemet_type = ctx.type_from_cache(*element);
+                    let addr_calc = ctx.cast_ptr(addr_calc, elemet_type);
+                    let addr = ctx.offset(addr_calc, index, elemet_type);
+                    ctx.load(addr, elemet_type)
                 }
                 _ => {
                     rustc_middle::ty::print::with_no_trimmed_paths! {todo!("Can't index into {curr_ty}!")}
@@ -209,36 +201,29 @@ fn place_elem_get<'a>(
                         ctx.alloc_string(cilly::METADATA),
                         Type::Int(Int::USize),
                     );
+
                     let index = if *from_end {
                         //eprintln!("Slice index from end is:{offset}");
-                        CILNode::Sub(
-                            Box::new(ld_field!(addr_calc.clone(), ctx.alloc_field(metadata))),
-                            Box::new(CILNode::V2(ctx.alloc_node(Const::USize(*offset)))),
-                        )
+                        let meta = ctx.ld_field(addr_calc, metadata);
+                        let stride = ctx.size_of(inner_type);
+                        ctx.biop(meta, Const::USize(*offset), BinOp::Sub)
                     } else {
-                        CILNode::V2(ctx.alloc_node(Const::USize(*offset)))
-                        //ops.extend(derf_op);
+                        ctx.alloc_node(Const::USize(*offset))
                     };
-                    let addr = ld_field!(addr_calc.clone(), ctx.alloc_field(data_pointer))
-                        .cast_ptr(ctx.nptr(inner_type))
-                        + (conv_usize!(index))
-                            * CILNode::ZeroExtendToUSize(
-                                CILNode::V2(ctx.size_of(inner_type).into_idx(ctx)).into(),
-                            );
+                    let addr = ctx.ld_field(addr_calc, data_pointer);
+                    let addr = ctx.cast_ptr(addr, inner_type);
+                    let addr = ctx.offset(addr, index, inner_type);
                     super::deref_op(super::PlaceTy::Ty(inner), ctx, addr)
                 }
                 TyKind::Array(element, _length) => {
                     if *from_end {
                         todo!("Can't index array from end!");
                     } else {
-                        let mref = array_get_item(ctx, *element, curr_ty);
-                        call!(
-                            ctx.alloc_methodref(mref),
-                            [
-                                addr_calc,
-                                CILNode::V2(ctx.alloc_node(cilly::Const::USize(*offset)))
-                            ]
-                        )
+                        let element_tpe = ctx.type_from_cache(*element);
+                        let addr_calc = ctx.cast_ptr(addr_calc, element_tpe);
+                        let addr_calc =
+                            ctx.offset(addr_calc, cilly::Const::USize(*offset), element_tpe);
+                        ctx.load(addr_calc, element_tpe)
                     }
                 }
                 _ => {

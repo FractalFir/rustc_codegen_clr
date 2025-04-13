@@ -675,7 +675,11 @@ impl CILNode {
                 for (idx, (arg, input_type)) in args.iter().zip(inputs.iter()).enumerate() {
                     let arg = asm.get_node(*arg).clone();
                     let arg_type = arg.typecheck(sig, locals, asm)?;
-                    if !arg_type.is_assignable_to(*input_type, asm)&& !arg_type.try_deref(asm).is_some_and(|t|Some(t) == input_type.try_deref(asm)){
+                    if !arg_type.is_assignable_to(*input_type, asm)
+                        && !arg_type
+                            .try_deref(asm)
+                            .is_some_and(|t| Some(t) == input_type.try_deref(asm))
+                    {
                         return Err(TypeCheckError::CallArgTypeWrong {
                             got: arg_type.mangle(asm),
                             expected: input_type.mangle(asm),
@@ -1135,7 +1139,6 @@ fn test() {
     let mut asm = Assembly::default();
     let lhs = super::Const::I64(0);
     let rhs = super::Const::F64(super::hashable::HashableF64(0.0));
-    let sum = asm.biop(lhs, rhs, BinOp::Add);
-    let _sum = asm.alloc_node(sum);
+    asm.biop(lhs, rhs, BinOp::Add);
     let _sig = asm.sig([], Type::Void);
 }

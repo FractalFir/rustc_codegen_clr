@@ -1,9 +1,14 @@
 use serde::{Deserialize, Serialize};
 
-use super::super::{
-    cilnode::MethodKind,
-    hashable::{HashableF32, HashableF64},
-    Assembly, CILNode, ClassRef, ClassRefIdx, Const, MethodRef, NodeIdx, Type,
+use crate::IntoAsmIndex;
+
+use super::{
+    super::{
+        cilnode::MethodKind,
+        hashable::{HashableF32, HashableF64},
+        Assembly, CILNode, ClassRef, ClassRefIdx, Const, MethodRef, NodeIdx, Type,
+    },
+    TypeIdx,
 };
 
 #[derive(Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize)]
@@ -171,6 +176,11 @@ impl Float {
 impl From<Float> for Type {
     fn from(value: Float) -> Self {
         Type::Float(value)
+    }
+}
+impl IntoAsmIndex<TypeIdx> for Float {
+    fn into_idx(self, asm: &mut Assembly) -> TypeIdx {
+        asm.alloc_type(Type::Float(self))
     }
 }
 #[test]

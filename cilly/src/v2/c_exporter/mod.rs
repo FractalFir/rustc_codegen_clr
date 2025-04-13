@@ -638,11 +638,20 @@ impl CExporter {
                 volatile,
             } => {
                 if volatile {
-                    format!(
-                        "*(volatile {tpe}*)({addr})",
-                        tpe = c_tpe(asm[tpe], asm),
-                        addr = Self::node_to_string(asm[addr].clone(), asm, locals, inputs, sig)?
-                    )
+                    if matches!(asm[tpe], Type::Ptr(_) | Type::Ref(_)){
+                        format!(
+                            "(({tpe})*(volatile size_t*)({addr}))",
+                            tpe = c_tpe(asm[tpe], asm),
+                            addr = Self::node_to_string(asm[addr].clone(), asm, locals, inputs, sig)?
+                        )
+                    }
+                    else{
+                        format!(
+                            "*(volatile {tpe}*)({addr})",
+                            tpe = c_tpe(asm[tpe], asm),
+                            addr = Self::node_to_string(asm[addr].clone(), asm, locals, inputs, sig)?
+                        )
+                    }
                 } else {
                     format!(
                         "*({addr})",

@@ -98,8 +98,7 @@ pub fn place_elem_set<'a>(
                         extend: cilly::cilnode::ExtendKind::ZeroExtend,
                     });
                     let offset = ctx.biop(index, size, BinOp::Mul);
-                    let addr_calc =
-                        field_val.cast_ptr(inner_ptr) + CILNode::V2(ctx.alloc_node(offset));
+                    let addr_calc = field_val.cast_ptr(inner_ptr) + CILNode::V2(offset);
                     ptr_set_op(super::PlaceTy::Ty(inner), ctx, addr_calc, value_calc)
                 }
                 TyKind::Array(element, _length) => {

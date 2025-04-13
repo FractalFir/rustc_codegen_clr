@@ -13,7 +13,6 @@ fn op_direct(
     let name = asm.alloc_string(format!("{op}_{lhs}", op = op.name(), lhs = lhs.name()));
     let generator = move |_, asm: &mut Assembly| {
         let op = asm.biop(CILNode::LdArg(0), CILNode::LdArg(1), op);
-        let op = asm.alloc_node(op);
         let ret = asm.alloc_root(CILRoot::Ret(op));
         MethodImpl::MethodBody {
             blocks: vec![BasicBlock::new(vec![ret], 0, None)],

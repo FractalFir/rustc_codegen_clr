@@ -117,6 +117,63 @@ impl Index<FieldIdx> for Assembly {
     }
 }
 impl Assembly {
+    /// Offsets `addr` by `index` * sizeof(`tpe`)
+    pub fn offset(
+        &mut self,
+        addr: impl IntoAsmIndex<NodeIdx>,
+        index: impl IntoAsmIndex<NodeIdx>,
+        tpe: impl IntoAsmIndex<TypeIdx>,
+    ) -> NodeIdx {
+        let index = index.into_idx(self);
+        let stride = self.size_of(tpe);
+        let stride = self.int_cast(stride, Int::USize, ExtendKind::ZeroExtend);
+        let offset = self.biop(index, stride, BinOp::Mul);
+        self.biop(addr, offset, BinOp::Add)
+    }
+    /// Dereferences `addr`, loading data of type `tpe`
+    pub fn load(
+        &mut self,
+        addr: impl IntoAsmIndex<NodeIdx>,
+        tpe: impl IntoAsmIndex<TypeIdx>,
+    ) -> NodeIdx {
+        let addr = addr.into_idx(self);
+        let tpe = tpe.into_idx(self);
+        self.alloc_node(CILNode::LdInd {
+            addr,
+            tpe,
+            volatile: false,
+        })
+    }
+    /// Gets the field of a valuetype / pointer `addr`.
+    pub fn ld_field(
+        &mut self,
+        addr: impl IntoAsmIndex<NodeIdx>,
+        field: impl IntoAsmIndex<FieldIdx>,
+    ) -> NodeIdx {
+        let addr = addr.into_idx(self);
+        let field = field.into_idx(self);
+        self.alloc_node(CILNode::LdField { addr, field })
+    }
+    /// Casts a pointer / usize / isize (`addr`) to a pointer to `tpe`.
+    pub fn cast_ptr(
+        &mut self,
+        addr: impl IntoAsmIndex<NodeIdx>,
+        tpe: impl IntoAsmIndex<TypeIdx>,
+    ) -> NodeIdx {
+        let addr = addr.into_idx(self);
+        let tpe = tpe.into_idx(self);
+        self.alloc_node(CILNode::PtrCast(addr, Box::new(PtrCastRes::Ptr(tpe))))
+    }
+    /// Gets the addres of a field of a pointer to valuetype `addr`.
+    pub fn ld_field_addr(
+        &mut self,
+        addr: impl IntoAsmIndex<NodeIdx>,
+        field: impl IntoAsmIndex<FieldIdx>,
+    ) -> NodeIdx {
+        let addr = addr.into_idx(self);
+        let field = field.into_idx(self);
+        self.alloc_node(CILNode::LdFieldAdress { addr, field })
+    }
     pub fn typecheck(&mut self) {
         let method_def_idxs: Box<[_]> = self.method_defs.keys().copied().collect();
         for method in method_def_idxs {
@@ -276,20 +333,20 @@ impl Assembly {
     pub fn get_root(&self, root: RootIdx) -> &CILRoot {
         self.roots.get(root)
     }
-    pub fn size_of(&mut self, tpe: impl IntoAsmIndex<TypeIdx>) -> CILNode {
+    pub fn size_of(&mut self, tpe: impl IntoAsmIndex<TypeIdx>) -> NodeIdx {
         let idx = tpe.into_idx(self);
         assert_ne!(self[idx], Type::Void);
-        CILNode::SizeOf(idx)
+        self.alloc_node(CILNode::SizeOf(idx))
     }
     pub fn biop(
         &mut self,
         lhs: impl IntoAsmIndex<NodeIdx>,
         rhs: impl IntoAsmIndex<NodeIdx>,
         op: BinOp,
-    ) -> CILNode {
+    ) -> NodeIdx {
         let lhs = lhs.into_idx(self);
         let rhs = rhs.into_idx(self);
-        CILNode::BinOp(lhs, rhs, op)
+        self.alloc_node(CILNode::BinOp(lhs, rhs, op))
     }
     pub fn unop(&mut self, val: impl Into<CILNode>, op: UnOp) -> CILNode {
         let val = self.nodes.alloc(val.into());
@@ -967,7 +1024,7 @@ impl Assembly {
                 self.new_method(mref.into_def(implementation, Access::Private, self));
                 continue;
             }
-            
+
             // Check if this method is in the extern list
             if let Some(lib) = externs.get(&mref.name()) {
                 let arg_names = (0..(self[mref.sig()].inputs().len()))
@@ -995,7 +1052,7 @@ impl Assembly {
                 continue;
             }
             // Create a replacement method.
-         
+
             let arg_names = (0..(self[mref.sig()].inputs().len()))
                 .map(|_| None)
                 .collect();

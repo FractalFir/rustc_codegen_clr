@@ -63,7 +63,7 @@ fn types() {
 pub fn nodes() {
     let mut asm = Assembly::default();
     let add = asm.biop(Const::I8(2), Const::I8(1), BinOp::Add);
-    let mut iter = CILIter::new(add, &asm);
+    let mut iter = CILIter::new(asm[add].clone(), &asm);
     assert!(matches!(
         iter.next(),
         Some(CILIterElem::Node(CILNode::BinOp(_, _, BinOp::Add)))

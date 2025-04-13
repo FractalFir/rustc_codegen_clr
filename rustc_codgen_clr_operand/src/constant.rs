@@ -70,7 +70,10 @@ fn create_const_from_data<'tcx>(
 
     let tpe = ctx.type_from_cache(ty);
     let tpe_ptr = ctx.nptr(tpe);
-    deref_op(ty.into(), ctx, ptr.cast_ptr(tpe_ptr))
+    CILNode::LdObj {
+        ptr: Box::new(ptr.cast_ptr(tpe_ptr)),
+        obj: Box::new(tpe),
+    }
 }
 
 pub fn load_const_value<'tcx>(

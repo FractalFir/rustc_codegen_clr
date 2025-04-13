@@ -554,7 +554,7 @@ impl<'this, T: Iterator<Item = CILIterElem> + 'this> TpeIter<'this> for T {
 pub fn nodes() {
     use super::{BinOp, Const};
     let mut asm = Assembly::default();
-    let mut add = asm.biop(Const::I8(2), Const::I8(1), BinOp::Add);
+    let mut add = asm[asm.biop(Const::I8(2), Const::I8(1), BinOp::Add)].clone();
     let mut iter = CILIterMut::new(&mut add, &mut asm);
     assert!(matches!(
         iter.next(),

@@ -190,7 +190,10 @@ pub fn handle_intrinsic<'tcx>(
             )]
         }
         "type_id" => vec![tpe::type_id(destination, call_instance, ctx)],
-        "volatile_load" => vec![volitale_load(args, destination, ctx)],
+        "atomic_load_acquire"
+        | "atomic_load_seqcst"
+        | "atomic_load_unordered"
+        | "volatile_load" => vec![volitale_load(args, destination, ctx)],
         "volatile_store" => {
             let pointed_type = ctx.monomorphize(
                 call_instance.args[0]
@@ -205,34 +208,6 @@ pub fn handle_intrinsic<'tcx>(
                 addr_calc,
                 value_calc,
             )))]
-        }
-        "atomic_load_unordered" => {
-            // This is already implemented by default in .NET when volatile is used. TODO: ensure this is 100% right.
-            //TODO:fix volitale prefix!
-            debug_assert_eq!(
-                args.len(),
-                1,
-                "The intrinsic `atomic_load_unordered` MUST take in exactly 1 argument!"
-            );
-            let arg = ctx.monomorphize(args[0].node.ty(ctx.body(), ctx.tcx()));
-            let arg_ty = arg.builtin_deref(true).unwrap();
-            let arg = handle_operand(&args[0].node, ctx);
-            let ops = deref_op(arg_ty.into(), ctx, arg);
-            vec![place_set(destination, ops, ctx)]
-        }
-        "atomic_load_acquire" | "atomic_load_seqcst" => {
-            //I am not sure this is implemented propely
-            debug_assert_eq!(
-                args.len(),
-                1,
-                "The intrinsic `atomic_load_acquire` MUST take in exactly 1 argument!"
-            );
-            let ops = handle_operand(&args[0].node, ctx);
-            let arg = ctx.monomorphize(args[0].node.ty(ctx.body(), ctx.tcx()));
-            let arg_ty = arg.builtin_deref(true).unwrap();
-
-            let ops = deref_op(arg_ty.into(), ctx, ops);
-            vec![place_set(destination, ops, ctx)]
         }
         "atomic_store_relaxed"
         | "atomic_store_seqcst"
@@ -455,8 +430,11 @@ pub fn handle_intrinsic<'tcx>(
             let ops = handle_operand(&args[0].node, ctx);
             let arg = ctx.monomorphize(args[0].node.ty(ctx.body(), ctx.tcx()));
             let arg_ty = arg.builtin_deref(true).unwrap();
-
-            let ops = deref_op(arg_ty.into(), ctx, ops);
+            let arg_type = ctx.type_from_cache(arg_ty);
+            let ops = CILNode::LdObj {
+                ptr: Box::new(ops),
+                obj: Box::new(arg_type),
+            }; //;deref_op(arg_ty.into(), ctx, ops);
             vec![place_set(destination, ops, ctx)]
         }
         "sqrtf32" => float_unop(args, destination, ctx, Float::F32, "Sqrt"),
@@ -1129,8 +1107,12 @@ fn volitale_load<'tcx>(
     );
     let arg = ctx.monomorphize(args[0].node.ty(ctx.body(), ctx.tcx()));
     let arg_ty = arg.builtin_deref(true).unwrap();
+    let arg_type = ctx.type_from_cache(arg_ty);
     let arg = handle_operand(&args[0].node, ctx);
-    let ops = CILNode::Volatile(Box::new(deref_op(arg_ty.into(), ctx, arg)));
+    let ops = CILNode::Volatile(Box::new(CILNode::LdObj {
+        ptr: Box::new(arg),
+        obj: Box::new(arg_type),
+    }));
     place_set(destination, ops, ctx)
 }
 fn caller_location<'tcx>(

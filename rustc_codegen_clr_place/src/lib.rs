@@ -6,7 +6,7 @@ extern crate rustc_hir;
 extern crate rustc_middle;
 use cilly::cil_node::CILNode;
 use cilly::cil_root::CILRoot;
-use cilly::{ClassRef, Float};
+use cilly::{ClassRef, Float, Int, NodeIdx};
 use cilly::{Const, Type};
 use rustc_codegen_clr_ctx::MethodCompileCtx;
 use rustc_codegen_clr_type::GetTypeExt;
@@ -70,95 +70,14 @@ fn body_ty_is_by_adress<'tcx>(last_ty: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx
 pub fn deref_op<'tcx>(
     derefed_type: PlaceTy<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-    ptr: CILNode,
-) -> CILNode {
+    ptr: NodeIdx,
+) -> NodeIdx {
     let ptr = Box::new(ptr);
     let res = if let PlaceTy::Ty(derefed_type) = derefed_type {
-        match derefed_type.kind() {
-            TyKind::Int(int_ty) => match int_ty {
-                IntTy::I8 => CILNode::LDIndI8 { ptr },
-                IntTy::I16 => CILNode::LDIndI16 { ptr },
-                IntTy::I32 => CILNode::LDIndI32 { ptr },
-                IntTy::I64 => CILNode::LDIndI64 { ptr },
-                IntTy::Isize => CILNode::LDIndISize { ptr },
-                IntTy::I128 => CILNode::LdObj {
-                    ptr,
-                    obj: Box::new(ClassRef::int_128(ctx).into()),
-                },
-                //_ => todo!("TODO: can't deref int type {int_ty:?} yet"),
-            },
-            TyKind::Uint(int_ty) => match int_ty {
-                UintTy::U8 => CILNode::LDIndU8 { ptr },
-                UintTy::U16 => CILNode::LDIndU16 { ptr },
-                UintTy::U32 => CILNode::LDIndU32 { ptr },
-                UintTy::U64 => CILNode::LDIndU64 { ptr },
-                UintTy::Usize => CILNode::LDIndUSize { ptr },
-                UintTy::U128 => CILNode::LdObj {
-                    ptr,
-                    obj: Box::new(ClassRef::uint_128(ctx).into()),
-                }, //vec![CILOp::LdObj(Box::new())],
-                   //_ => todo!("TODO: can't deref int type {int_ty:?} yet"),
-            },
-            TyKind::Float(float_ty) => match float_ty {
-                FloatTy::F16 => CILNode::LdObj {
-                    ptr,
-                    obj: Box::new(Type::Float(Float::F16)),
-                },
-                FloatTy::F32 => CILNode::LDIndF32 { ptr },
-                FloatTy::F64 => CILNode::LDIndF64 { ptr },
-                FloatTy::F128 => CILNode::LdObj {
-                    ptr,
-                    obj: Box::new(Type::Float(Float::F128)),
-                },
-            },
-            TyKind::Bool => CILNode::LDIndBool { ptr }, // Both Rust bool and a managed bool are 1 byte wide. .NET bools are 4 byte wide only in the context of Marshaling/PInvoke,
-            // due to historic reasons(BOOL was an alias for int in early Windows, and it stayed this way.) - FractalFir
-            TyKind::Char => CILNode::LDIndU32 { ptr }, // always 4 bytes wide: https://doc.rust-lang.org/std/primitive.char.html#representation
-            TyKind::Adt(_, _)
-            | TyKind::Tuple(_)
-            | TyKind::Array(_, _)
-            | TyKind::FnPtr(_, _)
-            | TyKind::Closure(_, _) | TyKind::Coroutine(_, _)=> {
-                let derefed_type = ctx.type_from_cache(derefed_type);
-
-                CILNode::LdObj {
-                    ptr,
-                    obj: Box::new(derefed_type),
-                }
-            }
-            TyKind::Ref(_, inner, _) => {
-                if pointer_to_is_fat(*inner, ctx.tcx(), ctx.instance()) {
-                    CILNode::LdObj {
-                        ptr,
-                        obj: Box::new(ctx.type_from_cache(derefed_type)),
-                    }
-                } else {
-                    let inner = ctx.type_from_cache(derefed_type);
-                    CILNode::LDIndPtr {
-                        ptr,
-                        loaded_ptr: Box::new(inner),
-                    }
-                }
-            }
-            TyKind::RawPtr(typ, _) => {
-                if pointer_to_is_fat(*typ, ctx.tcx(), ctx.instance()) {
-                    CILNode::LdObj {
-                        ptr,
-                        obj: Box::new(ctx.type_from_cache(derefed_type)),
-                    }
-                } else {
-                    let typ = ctx.type_from_cache(derefed_type);
-                    CILNode::LDIndPtr {
-                        ptr,
-                        loaded_ptr: Box::new(typ),
-                    }
-                }
-            }
-            
-            _ => todo!("TODO: can't deref type {derefed_type:?} yet"),
-        }
+        let derefed_type = ctx.type_from_cache(derefed_type);
+        ctx.load(*ptr, derefed_type)
     } else {
-        todo!("Can't dereference enum variants yet!")
+        todo!("Can't dereference enum variants!")
     };
     res
 }
@@ -182,8 +101,8 @@ pub fn place_adress<'a>(place: &Place<'a>, ctx: &mut MethodCompileCtx<'a, '_>) -
             CILNode::V2(local_adress(place.local.as_usize(), ctx.body(), ctx))
         }
     } else {
-        let (addr_calc, mut ty) = local_body(place.local.as_usize(), ctx);
-        let mut addr_calc = CILNode::V2(addr_calc);
+        let (mut addr_calc, mut ty) = local_body(place.local.as_usize(), ctx);
+
         ty = ctx.monomorphize(ty);
         let mut ty = ty.into();
 
@@ -193,7 +112,7 @@ pub fn place_adress<'a>(place: &Place<'a>, ctx: &mut MethodCompileCtx<'a, '_>) -
             ty = curr_ty.monomorphize(ctx);
             addr_calc = curr_ops;
         }
-
+        let addr_calc = CILNode::V2(addr_calc);
         adress::place_elem_adress(head, ty, ctx, place_ty, addr_calc)
     }
 }
@@ -216,8 +135,8 @@ pub fn place_address_raw<'a>(place: &Place<'a>, ctx: &mut MethodCompileCtx<'a, '
     {
         return CILNode::V2(local_adress(place.local.as_usize(), ctx.body(), ctx));
     } else {
-        let (addr_calc, mut ty) = local_body(place.local.as_usize(), ctx);
-        let mut addr_calc = CILNode::V2(addr_calc);
+        let (mut addr_calc, mut ty) = local_body(place.local.as_usize(), ctx);
+
         ty = ctx.monomorphize(ty);
         let mut ty = ty.into();
 
@@ -227,7 +146,7 @@ pub fn place_address_raw<'a>(place: &Place<'a>, ctx: &mut MethodCompileCtx<'a, '
             ty = curr_ty.monomorphize(ctx);
             addr_calc = curr_ops;
         }
-
+        let addr_calc = CILNode::V2(addr_calc);
         adress::place_elem_adress(head, ty, ctx, place_ty, addr_calc)
     }
 }
@@ -239,8 +158,8 @@ pub fn place_set<'tcx>(
     if place.projection.is_empty() {
         set::local_set(place.local.as_usize(), ctx.body(), value_calc)
     } else {
-        let (addr_calc, ty) = local_body(place.local.as_usize(), ctx);
-        let mut addr_calc = CILNode::V2(addr_calc);
+        let (mut addr_calc, ty) = local_body(place.local.as_usize(), ctx);
+
         let mut ty: PlaceTy = ty.into();
         ty = ty.monomorphize(ctx);
 
@@ -252,6 +171,7 @@ pub fn place_set<'tcx>(
         }
         //
         ty = ty.monomorphize(ctx);
+        let addr_calc = CILNode::V2(addr_calc);
         place_elem_set(head, ty, ctx, addr_calc, value_calc)
     }
 }
