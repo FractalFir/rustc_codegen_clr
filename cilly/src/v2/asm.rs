@@ -34,7 +34,7 @@ pub struct Assembly {
     method_defs: FxHashMap<MethodDefIdx, MethodDef>,
     sections: FxHashMap<String, Vec<u8>>,
     /// A list of all buffers within this assembly.
-    buffer: BiMap<Box<[u8]>>,
+    pub(crate) const_data: BiMap<Box<[u8]>>,
 }
 impl Index<Interned<IString>> for Assembly {
     type Output = str;
@@ -114,6 +114,16 @@ impl Index<Interned<FieldDesc>> for Assembly {
     }
 }
 impl Assembly {
+    /// Returns a pointer to an immutable(!) byte buffer of a given type.
+    pub fn bytebuffer(
+        &mut self,
+        buffer: &[u8],
+        tpe: impl IntoAsmIndex<Interned<Type>>,
+    ) -> Interned<CILNode> {
+        let data = self.const_data.alloc(buffer.into());
+        let tpe = tpe.into_idx(self);
+        self.alloc_node(Const::ByteBuffer { data, tpe })
+    }
     /// Offsets `addr` by `index` * sizeof(`tpe`)
     pub fn offset(
         &mut self,
@@ -1425,8 +1435,8 @@ impl Assembly {
         self.add_static(Type::Void, "global_void", false, main)
     }
 
-    pub(crate) fn translate_buffer(&self, data: Interned<Box<[u8]>>) -> Interned<Box<[u8]>> {
-        todo!()
+    pub(crate) fn alloc_const_data(&mut self, data: &[u8]) -> Interned<Box<[u8]>> {
+        self.const_data.alloc(data.into())
     }
 }
 config!(GUARANTED_ALIGN, u8, 8);
@@ -1631,7 +1641,11 @@ fn export2() {
     let main_module = asm.main_module();
     let name = asm.alloc_string("entrypoint");
     let sig = asm.sig([], Type::Void);
-    let body1 = vec![asm.alloc_root(CILRoot::VoidRet)];
+    let buff = asm.bytebuffer(b"Hewwo!", Int::U8);
+    let body1 = vec![
+        asm.alloc_root(CILRoot::VoidRet),
+        asm.alloc_root(CILRoot::Pop(buff)),
+    ];
     let hbody = vec![asm.alloc_root(CILRoot::ExitSpecialRegion {
         target: 2,
         source: 0,

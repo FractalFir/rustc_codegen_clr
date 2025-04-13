@@ -1456,6 +1456,7 @@ slice::memchr::no_match
 slice::memchr::no_match_empty
 slice::memchr::no_match_empty_reversed
 slice::memchr::no_match_reversed
+slice::select_nth_unstable
 slice::select_nth_unstable_past_length
 slice::select_nth_unstable_zero_length
 slice::slice_index::assert_range_eq_can_fail_by_inequality

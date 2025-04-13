@@ -83,7 +83,7 @@ struct RNG {
 }
 impl RNG {
     fn next_i16(&mut self) -> i16 {
-        self.state = 214013 * self.state + 2531011;
+        self.state = 214013_i32.wrapping_mul(self.state).wrapping_add(2531011);
         return ((self.state >> 16) & 0xFFFF) as i16;
     }
     fn next_f32(&mut self) -> f32 {

@@ -132,74 +132,17 @@ fn allocation_initializer_method(
         );
     }
 
-    if !bytes.iter().all(|byte| *byte != 0) {
-        trees.push(
-            CILRoot::InitBlk {
-                dst: Box::new(CILNode::LDLoc(0)),
-                val: Box::new(CILNode::V2(asm.alloc_node(0_u8))),
-                count: Box::new(CILNode::V2(
-                    asm.alloc_node(Const::USize(bytes.len() as u64)),
-                )),
-            }
-            .into(),
-        );
-    }
-    let mut offset = 0;
-    while offset < bytes.len() {
-        let reminder = bytes.len() - offset;
-        match reminder {
-            8.. => {
-                let long = u64::from_ne_bytes(bytes[offset..(offset + 8)].try_into().unwrap());
-                if long != 0 {
-                    trees.push(
-                        CILRoot::STIndI64(
-                            (CILNode::LDLoc(0)
-                                + CILNode::V2(
-                                    asm.alloc_node(Const::USize(offset.try_into().unwrap())),
-                                ))
-                            .cast_ptr(asm.nptr(Type::Int(Int::U64))),
-                            CILNode::V2(asm.alloc_node(long)),
-                        )
-                        .into(),
-                    );
-                }
-                offset += 8;
-            }
-            4.. => {
-                let long = u32::from_ne_bytes(bytes[offset..(offset + 4)].try_into().unwrap());
-                if long != 0 {
-                    trees.push(
-                        CILRoot::STIndI32(
-                            (CILNode::LDLoc(0)
-                                + CILNode::V2(
-                                    asm.alloc_node(Const::USize(offset.try_into().unwrap())),
-                                ))
-                            .cast_ptr(asm.nptr(Type::Int(Int::U32))),
-                            CILNode::V2(asm.alloc_node(long)),
-                        )
-                        .into(),
-                    );
-                }
-                offset += 4;
-            }
-            _ => {
-                let byte = bytes[offset];
-                if byte != 0 {
-                    trees.push(
-                        CILRoot::STIndI8(
-                            CILNode::LDLoc(0)
-                                + CILNode::V2(
-                                    asm.alloc_node(Const::USize(offset.try_into().unwrap())),
-                                ),
-                            CILNode::V2(asm.alloc_node(byte)),
-                        )
-                        .into(),
-                    );
-                }
-                offset += 1;
-            }
+    trees.push(
+        CILRoot::CpBlk {
+            dst: Box::new(CILNode::LDLoc(0)),
+            src: Box::new(CILNode::V2(asm.bytebuffer(bytes, Int::U8))),
+            len: Box::new(CILNode::V2(
+                asm.alloc_node(Const::USize(bytes.len() as u64)),
+            )),
         }
-    }
+        .into(),
+    );
+
     if !ptrs.is_empty() {
         for (offset, prov) in ptrs.iter() {
             let offset = u32::try_from(offset.bytes_usize()).unwrap();

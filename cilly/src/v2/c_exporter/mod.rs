@@ -1236,6 +1236,11 @@ impl CExporter {
         let mut defined_types: FxHashSet<ClassDefIdx> = FxHashSet::default();
         let mut delayed_defs: FxHashSet<ClassDefIdx> = asm.iter_class_def_ids().cloned().collect();
         let mut delayed_defs_copy: FxHashSet<ClassDefIdx> = FxHashSet::default();
+        for (const_data, idx) in asm.const_data.1.iter() {
+            let data: String = const_data.iter().map(|u| format!("{u}")).intersperse(",".into()).collect();
+            let encoded = encode(idx.inner() as u64);
+            writeln!(type_defs, "uint8_t c_{encoded}[] = {{{data}}};")?;
+        }
         // Ensure RustVoid present
         let rust_void = asm.rust_void();
         self.export_class(
@@ -1310,6 +1315,7 @@ impl CExporter {
         extrn: bool,
         is_main: bool,
     ) -> Result<(), std::io::Error> {
+     
         let mut c_out = std::io::BufWriter::new(std::fs::File::create(c_path)?);
         println!("Exporting {c_path:?}");
 

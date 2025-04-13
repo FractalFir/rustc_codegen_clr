@@ -114,7 +114,7 @@ impl Assembly {
                 super::Const::ByteBuffer { data, tpe } => {
                     let tpe = self.translate_type(source, source[*tpe]);
                     CILNode::Const(Box::new(super::Const::ByteBuffer {
-                        data: self.translate_buffer(*data),
+                        data: self.alloc_const_data(&source.const_data[*data]),
                         tpe: self.alloc_type(tpe),
                     }))
                 }

@@ -58,6 +58,15 @@ fn create_const_from_data<'tcx>(
                 Scalar::from_u128(u128::from_ne_bytes(bytes.as_slice().try_into().unwrap()));
             return load_const_scalar(scalar, ty, ctx);
         }
+        let ptr = alloc_ptr(alloc_id, &alloc, ctx);
+        let ty = ctx.monomorphize(ty);
+
+        let tpe = ctx.type_from_cache(ty);
+        let tpe_ptr = ctx.nptr(tpe);
+        return CILNode::LdObj {
+            ptr: Box::new(ptr.cast_ptr(tpe_ptr)),
+            obj: Box::new(tpe),
+        };
     }
     let ptr = CILNode::LoadGlobalAllocPtr {
         alloc_id: alloc_id.0.into(),
@@ -93,9 +102,9 @@ pub fn load_const_value<'tcx>(
             let slice_dotnet = slice_type.as_class_ref().expect("Slice type invalid!");
 
             let alloc_id = ctx.tcx().reserve_and_set_memory_alloc(data);
-            let alloc_id: u64 = alloc_id.0.into();
+
             let meta = CILNode::V2(ctx.alloc_node(Const::USize(meta)));
-            let ptr = CILNode::LoadGlobalAllocPtr { alloc_id }.cast_ptr(ctx.nptr(Type::Void));
+            let ptr = alloc_ptr(alloc_id, &data, ctx).cast_ptr(ctx.nptr(Type::Void));
             CILNode::create_slice(slice_dotnet, ctx, meta, ptr)
         }
         ConstValue::Indirect { alloc_id, offset } => {
@@ -172,21 +181,16 @@ fn load_scalar_ptr(
             let alloc_id = alloc_id.alloc_id().0.into();
             CILNode::LoadGlobalAllocPtr { alloc_id }
         }
-        GlobalAlloc::Memory(_const_allocation) => {
+        GlobalAlloc::Memory(const_allocation) => {
             if offset.bytes() != 0 {
                 CILNode::Add(
-                    CILNode::LoadGlobalAllocPtr {
-                        alloc_id: alloc_id.alloc_id().0.into(),
-                    }
-                    .into(),
+                    alloc_ptr(alloc_id.alloc_id(), &const_allocation, ctx).into(),
                     Box::new(CILNode::V2(
                         ctx.alloc_node(cilly::Const::USize(offset.bytes())),
                     )),
                 )
             } else {
-                CILNode::LoadGlobalAllocPtr {
-                    alloc_id: alloc_id.alloc_id().0.into(),
-                }
+                alloc_ptr(alloc_id.alloc_id(), &const_allocation, ctx)
             }
         }
         GlobalAlloc::Function {
@@ -216,6 +220,24 @@ fn load_scalar_ptr(
         }
     }
     //panic!("alloc_id:{alloc_id:?}")
+}
+fn alloc_ptr<'tcx>(
+    alloc_id: AllocId,
+    const_alloc: &rustc_middle::mir::interpret::ConstAllocation,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
+) -> CILNode {
+    let const_alloc = const_alloc.inner();
+    // If aligement is small enough to be *guaranteed*, and no pointers are present.
+    if const_alloc.align.bytes() <= 1 && const_alloc.provenance().ptrs().is_empty() {
+        CILNode::V2(ctx.bytebuffer(
+            const_alloc.inspect_with_uninit_and_ptr_outside_interpreter(0..const_alloc.len()),
+            Int::U8,
+        ))
+    } else {
+        CILNode::LoadGlobalAllocPtr {
+            alloc_id: alloc_id.0.into(),
+        }
+    }
 }
 fn load_const_scalar<'tcx>(
     scalar: Scalar,

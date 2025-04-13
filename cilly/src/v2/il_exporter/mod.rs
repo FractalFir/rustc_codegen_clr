@@ -1,4 +1,7 @@
-use crate::{utilis::assert_unique, MethodImpl};
+use crate::{
+    utilis::{assert_unique, encode},
+    MethodImpl,
+};
 
 use std::{io::Write, path::Path};
 
@@ -27,6 +30,11 @@ impl ILExporter {
     fn export_to_write(&self, asm: &super::Assembly, out: &mut impl Write) -> std::io::Result<()> {
         let asm_mut = &mut asm.clone();
         writeln!(out, ".assembly _{{}}")?;
+        for (const_data, idx) in asm.const_data.1.iter() {
+            let encoded = encode(idx.inner() as u64);
+            let data: String = const_data.iter().map(|u| format!("{u:x} ")).collect();
+            writeln!(out, " .data cil I_{encoded} = bytearray ({data})\n.field assembly static uint8 c_{encoded} at I_{encoded}")?;
+        }
         // Iterate trough all types
         for class_def in asm.iter_class_defs() {
             let vis = match class_def.access() {
@@ -251,8 +259,8 @@ impl ILExporter {
         let node = asm.get_node(node).clone();
         match node {
             CILNode::Const(cst) => match cst.as_ref() {
-                super::Const::ByteBuffer { data, tpe }=>{
-                    todo!("ByteBuffers not supported in IL yet.")
+                super::Const::ByteBuffer { data, tpe:_ }=>{
+                    writeln!(out,"ldsflda uint8 c_{}", encode(data.inner() as u64))
                 }
                 super::Const::Null(_) => writeln!(out, "ldnull"),
                 super::Const::I8(val) => match val {
