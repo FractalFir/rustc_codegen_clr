@@ -4,30 +4,20 @@ use serde::{Deserialize, Serialize};
 use simd::SIMDVector;
 
 use super::{
-    bimap::{BiMapIndex, IntoBiMapIndex},
-    Assembly, ClassRefIdx, Float, Int, SigIdx,
+    bimap::{BiMapIndex, Interned, IntoBiMapIndex},
+    Assembly, ClassRef, Float, FnSig, Int,
 };
 
 pub mod float;
 pub mod int;
 pub mod simd;
-#[derive(Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize)]
-pub struct TypeIdx(BiMapIndex);
-impl IntoBiMapIndex for TypeIdx {
-    fn from_index(val: BiMapIndex) -> Self {
-        Self(val)
-    }
 
-    fn as_bimap_index(&self) -> BiMapIndex {
-        self.0
-    }
-}
 #[derive(Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize)]
 pub enum Type {
-    Ptr(TypeIdx),
-    Ref(TypeIdx),
+    Ptr(Interned<Type>),
+    Ref(Interned<Type>),
     Int(Int),
-    ClassRef(ClassRefIdx),
+    ClassRef(Interned<ClassRef>),
     Float(Float),
     PlatformString,
     PlatformChar,
@@ -35,8 +25,11 @@ pub enum Type {
     PlatformObject,
     Bool,
     Void,
-    PlatformArray { elem: TypeIdx, dims: NonZeroU8 },
-    FnPtr(SigIdx),
+    PlatformArray {
+        elem: Interned<Type>,
+        dims: NonZeroU8,
+    },
+    FnPtr(Interned<FnSig>),
     SIMDVector(SIMDVector),
 }
 #[derive(Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize)]
@@ -49,8 +42,8 @@ impl Type {
     pub fn iter_class_refs<'a, 'asm: 'a>(
         &'a self,
         asm: &'asm Assembly,
-    ) -> impl Iterator<Item = ClassRefIdx> + 'a {
-        let tmp: Box<dyn Iterator<Item = ClassRefIdx>> = match self {
+    ) -> impl Iterator<Item = Interned<ClassRef>> + 'a {
+        let tmp: Box<dyn Iterator<Item = Interned<ClassRef>>> = match self {
             Type::PlatformArray { elem: inner, .. } | Type::Ptr(inner) | Type::Ref(inner) => {
                 asm[*inner].iter_class_refs::<'a, 'asm>(asm)
             }
@@ -77,13 +70,12 @@ impl Type {
         self.try_deref(asm).unwrap()
     }
     #[must_use]
-    pub fn try_deref<'a, 'b: 'a>(&'a self, asm: &'b Assembly) -> Option<&'a Self >{
-     match self {
-        Type::Ptr(inner) | Type::Ref(inner) => Some(&asm[*inner]),
-        _ => None,
+    pub fn try_deref<'a, 'b: 'a>(&'a self, asm: &'b Assembly) -> Option<&'a Self> {
+        match self {
+            Type::Ptr(inner) | Type::Ref(inner) => Some(&asm[*inner]),
+            _ => None,
+        }
     }
-}
-
 
     /// Returns a mangled ASCI representation of this type.
     /// ```
@@ -148,7 +140,7 @@ impl Type {
     /// assert_eq!(Type::ClassRef(uint_128).as_class_ref(),Some(uint_128));
     /// assert_eq!(Type::Int(Int::U8).as_class_ref(),None);
     /// ```
-    pub fn as_class_ref(&self) -> Option<ClassRefIdx> {
+    pub fn as_class_ref(&self) -> Option<Interned<ClassRef>> {
         if let Self::ClassRef(v) = self {
             Some(*v)
         } else {
@@ -164,7 +156,7 @@ impl Type {
     /// assert_eq!(asm.nref(u8_tpe).pointed_to(),Some(u8_tpe));
     /// assert_eq!(Type::Int(Int::U8).pointed_to(),None);
     /// ```
-    pub fn pointed_to(&self) -> Option<TypeIdx> {
+    pub fn pointed_to(&self) -> Option<Interned<Type>> {
         match self {
             Type::Ptr(type_idx) | Type::Ref(type_idx) => Some(*type_idx),
             _ => None,

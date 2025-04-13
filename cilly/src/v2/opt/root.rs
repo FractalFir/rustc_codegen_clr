@@ -1,14 +1,13 @@
 use super::inline::inline_trivial_call_root;
 
-use super::super::{
-    cilroot::BranchCond, method::LocalDef, BinOp, CILNode, CILRoot, Const, NodeIdx, Type,
-};
+use super::super::{cilroot::BranchCond, method::LocalDef, BinOp, CILNode, CILRoot, Const, Type};
 pub use super::opt_fuel::OptFuel;
 use super::opt_if_fuel;
 pub use super::side_effect::*;
+use crate::bimap::Interned;
 use crate::cilroot::CmpKind;
 use crate::Assembly;
-use crate::TypeIdx;
+
 pub fn root_opt(
     root: CILRoot,
     asm: &mut Assembly,
@@ -290,8 +289,8 @@ pub fn root_opt(
     }
 }
 fn opt_init_obj(
-    mut addr: NodeIdx,
-    tpe: TypeIdx,
+    mut addr: Interned<CILNode>,
+    tpe: Interned<Type>,
     asm: &mut Assembly,
     fuel: &mut OptFuel,
 ) -> CILRoot {

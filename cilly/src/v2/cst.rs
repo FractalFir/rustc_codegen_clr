@@ -1,8 +1,11 @@
 use serde::{Deserialize, Serialize};
 
+use crate::IString;
+
 use super::{
+    bimap::Interned,
     hashable::{HashableF32, HashableF64},
-    CILNode, ClassRefIdx, Float, Int, StringIdx, Type,
+    CILNode, ClassRef, Float, Int, Type,
 };
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug, Hash, Serialize, Deserialize)]
@@ -34,7 +37,7 @@ pub enum Const {
     USize(u64),
     /// A reference to an immutable, platform-specific representation of a string.
     /// There is no guarrantees about the encoding of this type.
-    PlatformString(StringIdx),
+    PlatformString(Interned<IString>),
     /// A boolean value
     Bool(bool),
     /// A representation of a single-precision floating-point value. No guarateess are given about the exact bitpattern of NaNs.  
@@ -42,12 +45,18 @@ pub enum Const {
     /// A representation of a double-precision floating-point value. No guarateess are given about the exact bitpattern of NaNs.
     F64(HashableF64),
     /// A "null" reference to a platform-specifc managed object of type `class`.
-    Null(ClassRefIdx),
+    Null(Interned<ClassRef>),
+    /// A pointer to an immutable `data` of some `type`.
+    ByteBuffer {
+        data: Interned<Box<[u8]>>,
+        tpe: Interned<Type>,
+    },
 }
 impl Const {
     /// Retrives the type of this value.
     pub fn get_type(&self) -> Type {
         match self {
+            Const::ByteBuffer { data: _, tpe } => Type::Ptr(*tpe),
             Const::I8(_) => Type::Int(Int::I8),
             Const::I16(_) => Type::Int(Int::I16),
             Const::I32(_) => Type::Int(Int::I32),
@@ -70,6 +79,7 @@ impl Const {
     /// Checks if the value is zero.
     pub fn is_zero(&self) -> bool {
         match self {
+            Const::ByteBuffer { .. } => false,
             Const::I8(val) => *val == 0,
             Const::I16(val) => *val == 0,
             Const::I32(val) => *val == 0,
@@ -92,6 +102,7 @@ impl Const {
     /// Checks if the value is exactly one.
     pub fn is_one(&self) -> bool {
         match self {
+            Const::ByteBuffer { .. } => false,
             Const::I8(val) => *val == 1,
             Const::I16(val) => *val == 1,
             Const::I32(val) => *val == 1,

@@ -1,14 +1,14 @@
 use super::OptFuel;
 use crate::{
-    cilnode::MethodKind, Assembly, CILIter, CILIterElem, CILNode, CILRoot, MethodDef, MethodImpl,
-    MethodRefIdx, NodeIdx, RootIdx,
+    bimap::Interned, cilnode::MethodKind, Assembly, CILIter, CILIterElem, CILNode, CILRoot,
+    MethodDef, MethodImpl, MethodRef,
 };
 #[cfg(test)]
 use crate::{BasicBlock, Type};
 fn trivial_inline_block<'def, 'asm: 'def>(
     def: &'def MethodDef,
     asm: &'asm mut Assembly,
-) -> Option<impl Iterator<Item = RootIdx> + 'def> {
+) -> Option<impl Iterator<Item = Interned<CILRoot>> + 'def> {
     let method = def.resolved_implementation(asm);
     // Can only inline methods which have a concreate implementation.
     let MethodImpl::MethodBody { blocks, locals } = method else {
@@ -34,7 +34,7 @@ fn trivial_inline_block<'def, 'asm: 'def>(
 /// If the calle is nothing more than a handlerless block with one root, returning a value, then we can trivialy inline it. This is almost free, and should be always done when possible(excluding recursion).
 fn trivial_inline_node(
     def: &MethodDef,
-    call_args: &[NodeIdx],
+    call_args: &[Interned<CILNode>],
     fuel: &mut OptFuel,
     asm: &mut Assembly,
 ) -> Option<CILNode> {
@@ -74,8 +74,8 @@ fn trivial_inline_node(
 }
 // _ZN4core3cmp5impls55_$LT$impl$u20$core..cmp..PartialOrd$u20$for$u20$i64$GT$2lt17hd237a643fb9fb9d1E
 pub fn trivial_inline_call(
-    calle: MethodRefIdx,
-    call_args: &[NodeIdx],
+    calle: Interned<MethodRef>,
+    call_args: &[Interned<CILNode>],
     fuel: &mut OptFuel,
     asm: &mut Assembly,
 ) -> CILNode {
@@ -95,7 +95,7 @@ pub fn trivial_inline_call(
 }
 fn trivial_inline_root(
     def: &MethodDef,
-    call_args: &[NodeIdx],
+    call_args: &[Interned<CILNode>],
     fuel: &mut OptFuel,
     asm: &mut Assembly,
 ) -> Option<CILRoot> {
@@ -144,8 +144,8 @@ fn trivial_inline_root(
     Some(root)
 }
 pub fn inline_trivial_call_root(
-    calle: MethodRefIdx,
-    call_args: &[NodeIdx],
+    calle: Interned<MethodRef>,
+    call_args: &[Interned<CILNode>],
     fuel: &mut OptFuel,
     asm: &mut Assembly,
 ) -> CILRoot {

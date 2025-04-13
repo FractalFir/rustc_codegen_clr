@@ -2,19 +2,19 @@ use fxhash::{FxHashMap, FxHashSet};
 use serde::{Deserialize, Serialize};
 
 use super::{
-    bimap::{BiMapIndex, IntoBiMapIndex},
+    bimap::{BiMapIndex, Interned, IntoBiMapIndex},
     cilnode::{IsPure, MethodKind},
-    Access, Assembly, BasicBlock, CILIterElem, CILNode, ClassDefIdx, ClassRef, ClassRefIdx, Int,
-    SigIdx, StringIdx, Type, TypeIdx,
+    class::ClassDefIdx,
+    Access, Assembly, BasicBlock, CILIterElem, CILNode, ClassDef, ClassRef, FnSig, Int, Type,
 };
-use crate::CILRoot;
 use crate::{cil_node::CallOpArgs, cilnode::PtrCastRes, iter::TpeIter};
+use crate::{CILRoot, IString};
 pub type LocalId = u32;
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub struct MethodRef {
-    class: ClassRefIdx,
-    name: StringIdx,
-    sig: SigIdx,
+    class: Interned<ClassRef>,
+    name: Interned<IString>,
+    sig: Interned<FnSig>,
     kind: MethodKind,
     generics: Box<[Type]>,
 }
@@ -43,9 +43,9 @@ impl MethodRef {
     }
     #[must_use]
     pub fn new(
-        class: ClassRefIdx,
-        name: StringIdx,
-        sig: SigIdx,
+        class: Interned<ClassRef>,
+        name: Interned<IString>,
+        sig: Interned<FnSig>,
         kind: MethodKind,
         generics: Box<[Type]>,
     ) -> Self {
@@ -59,17 +59,17 @@ impl MethodRef {
     }
 
     #[must_use]
-    pub fn class(&self) -> ClassRefIdx {
+    pub fn class(&self) -> Interned<ClassRef> {
         self.class
     }
 
     #[must_use]
-    pub fn name(&self) -> StringIdx {
+    pub fn name(&self) -> Interned<IString> {
         self.name
     }
 
     #[must_use]
-    pub fn sig(&self) -> SigIdx {
+    pub fn sig(&self) -> Interned<FnSig> {
         self.sig
     }
 
@@ -125,7 +125,7 @@ impl MethodRef {
         )
     }
 
-    pub(crate) fn aligned_free(asm: &mut Assembly) -> MethodRefIdx {
+    pub(crate) fn aligned_free(asm: &mut Assembly) -> Interned<MethodRef> {
         let void_ptr = asm.nptr(Type::Void);
         let sig = asm.sig([void_ptr], Type::Void);
         let aligned_free = asm.alloc_string("AlignedFree");
@@ -140,23 +140,13 @@ impl MethodRef {
     }
 }
 
-#[derive(Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize)]
-pub struct MethodRefIdx(BiMapIndex);
-impl IntoBiMapIndex for MethodRefIdx {
-    fn from_index(val: BiMapIndex) -> Self {
-        Self(val)
-    }
-    fn as_bimap_index(&self) -> BiMapIndex {
-        self.0
-    }
-}
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub struct MethodDef {
     access: Access,
     class: ClassDefIdx,
-    name: StringIdx,
-    sig: SigIdx,
-    arg_names: Vec<Option<StringIdx>>,
+    name: Interned<IString>,
+    sig: Interned<FnSig>,
+    arg_names: Vec<Option<Interned<IString>>>,
     kind: MethodKind,
     implementation: MethodImpl,
 }
@@ -213,11 +203,11 @@ impl MethodDef {
     pub fn new(
         access: Access,
         class: ClassDefIdx,
-        name: StringIdx,
-        sig: SigIdx,
+        name: Interned<IString>,
+        sig: Interned<FnSig>,
         kind: MethodKind,
         implementation: MethodImpl,
-        arg_names: Vec<Option<StringIdx>>,
+        arg_names: Vec<Option<Interned<IString>>>,
     ) -> Self {
         Self {
             access,
@@ -236,12 +226,12 @@ impl MethodDef {
     }
 
     #[must_use]
-    pub fn name(&self) -> StringIdx {
+    pub fn name(&self) -> Interned<IString> {
         self.name
     }
 
     #[must_use]
-    pub fn sig(&self) -> SigIdx {
+    pub fn sig(&self) -> Interned<FnSig> {
         self.sig
     }
 
@@ -346,14 +336,14 @@ impl MethodDef {
     }
 
     #[must_use]
-    pub fn arg_names(&self) -> &[Option<StringIdx>] {
+    pub fn arg_names(&self) -> &[Option<Interned<IString>>] {
         &self.arg_names
     }
 
     pub(crate) fn iter_locals<'a>(
         &'a self,
         asm: &'a Assembly,
-    ) -> impl Iterator<Item = &'a (Option<StringIdx>, TypeIdx)> {
+    ) -> impl Iterator<Item = &'a (Option<Interned<IString>>, Interned<Type>)> {
         match self.resolved_implementation(asm) {
             MethodImpl::MethodBody { blocks: _, locals } => locals.iter(),
             MethodImpl::Extern { .. } | MethodImpl::Missing => [].iter(),
@@ -366,7 +356,7 @@ impl MethodDef {
         self.access = access;
     }
 
-    pub fn stack_inputs(&self, asm: &mut Assembly) -> Vec<(Type, Option<StringIdx>)> {
+    pub fn stack_inputs(&self, asm: &mut Assembly) -> Vec<(Type, Option<Interned<IString>>)> {
         let mut arg_names = self.arg_names().to_vec();
         let sig = asm[self.sig()].clone();
         arg_names.extend((arg_names.len()..(sig.inputs().len())).map(|_| None));
@@ -522,7 +512,7 @@ impl MethodDef {
         })
     }
 }
-pub type LocalDef = (Option<StringIdx>, TypeIdx);
+pub type LocalDef = (Option<Interned<IString>>, Interned<Type>);
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub enum MethodImpl {
     MethodBody {
@@ -530,10 +520,10 @@ pub enum MethodImpl {
         locals: Vec<LocalDef>,
     },
     Extern {
-        lib: StringIdx,
+        lib: Interned<IString>,
         preserve_errno: bool,
     },
-    AliasFor(MethodRefIdx),
+    AliasFor(Interned<MethodRef>),
     Missing,
 }
 impl MethodImpl {
@@ -737,7 +727,11 @@ impl MethodImpl {
         std::mem::swap(locals, new_locals.get_mut().unwrap());
     }
 
-    pub(crate) fn wrapper(alloc: MethodRefIdx, mref: &MethodRef, asm: &mut Assembly) -> MethodImpl {
+    pub(crate) fn wrapper(
+        alloc: Interned<MethodRef>,
+        mref: &MethodRef,
+        asm: &mut Assembly,
+    ) -> MethodImpl {
         let sig = asm[asm[alloc].sig()].clone();
         let args = sig
             .inputs()
@@ -770,24 +764,22 @@ impl MethodImpl {
     }
 }
 #[derive(Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize)]
-pub struct MethodDefIdx(pub MethodRefIdx);
+pub struct MethodDefIdx(pub Interned<MethodRef>);
+impl MethodDefIdx {
+    pub(crate) fn from_raw(method: Interned<MethodRef>) -> MethodDefIdx {
+        Self(method)
+    }
+}
 
 impl std::ops::Deref for MethodDefIdx {
-    type Target = MethodRefIdx;
+    type Target = Interned<MethodRef>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
-impl MethodRefIdx {
-    /// # Safety
-    /// This function can't cause UB, but it can corrupt the internal assembly representation. Can only be used to rebuild a [`MethodRefIdx`] obtained in some other way.
-    #[must_use]
-    pub unsafe fn from_raw(raw: BiMapIndex) -> Self {
-        Self(raw)
-    }
-
-    pub fn abort(asm: &mut Assembly) -> MethodRefIdx {
+impl Interned<MethodRef> {
+    pub fn abort(asm: &mut Assembly) -> Interned<MethodRef> {
         let main = asm.main_module();
         let sig = asm.sig([], Type::Void);
         asm.new_methodref(*main, "abort", sig, MethodKind::Static, vec![])
@@ -796,7 +788,7 @@ impl MethodRefIdx {
 #[test]
 fn locals() {
     fn method(locals: &[LocalDef], asm: &mut Assembly) -> MethodDef {
-        let name: StringIdx = asm.alloc_string("DoSomething");
+        let name: Interned<IString> = asm.alloc_string("DoSomething");
         let mimpl = MethodImpl::MethodBody {
             blocks: vec![],
             locals: locals.into(),
@@ -825,7 +817,7 @@ fn locals() {
         method(&[(None, tpe), (None, tpe2)], &mut asm)
             .iter_locals(&asm)
             .cloned()
-            .collect::<Vec<(Option<StringIdx>, _)>>(),
+            .collect::<Vec<(Option<Interned<IString>>, _)>>(),
         vec![(None, tpe), (None, tpe2)]
     );
     let mut method = method(&[(None, tpe), (None, tpe2)], &mut asm);
@@ -833,7 +825,7 @@ fn locals() {
         method
             .iter_locals(&asm)
             .cloned()
-            .collect::<Vec<(Option<StringIdx>, _)>>(),
+            .collect::<Vec<(Option<Interned<IString>>, _)>>(),
         vec![(None, tpe), (None, tpe2)]
     );
     method.implementation.realloc_locals(&mut asm);
@@ -847,7 +839,7 @@ fn test_extern() {
     }
     .is_extern());
     let mut asm = Assembly::default();
-    let name: StringIdx = asm.alloc_string("libsomething.so");
+    let name: Interned<IString> = asm.alloc_string("libsomething.so");
     assert!(MethodImpl::Extern {
         lib: name,
         preserve_errno: false,
@@ -856,9 +848,8 @@ fn test_extern() {
 }
 #[test]
 fn cil() {
-    use super::RootIdx;
-    fn method(roots: &[RootIdx], asm: &mut Assembly) -> MethodDef {
-        let name: StringIdx = asm.alloc_string("DoSomething");
+    fn method(roots: &[Interned<CILRoot>], asm: &mut Assembly) -> MethodDef {
+        let name: Interned<IString> = asm.alloc_string("DoSomething");
         let mimpl = MethodImpl::MethodBody {
             blocks: vec![BasicBlock::new(roots.to_vec(), 0, None)],
             locals: vec![],
@@ -900,7 +891,7 @@ fn cil() {
             CILIterElem::Node(crate::Const::I32(0).into()),
         ])
     );
-    let name: StringIdx = asm.alloc_string("DoSomething");
+    let name: Interned<IString> = asm.alloc_string("DoSomething");
     let main_module = asm.main_module();
     let sig = asm.sig([], Type::Void);
     assert_eq!(

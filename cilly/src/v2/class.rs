@@ -1,31 +1,35 @@
 use super::{
-    bimap::{BiMapIndex, IntoBiMapIndex},
-    Assembly, MethodDefIdx, MethodRef, MethodRefIdx, StringIdx, Type,
+    bimap::{BiMapIndex, Interned, IntoBiMapIndex},
+    Assembly, IntoAsmIndex, MethodDefIdx, MethodRef, Type,
 };
-use crate::utilis::assert_unique;
 use crate::Access;
+use crate::{utilis::assert_unique, IString};
 use serde::{Deserialize, Serialize};
-use std::num::NonZeroU32;
+use std::{num::NonZeroU32, ops::Deref};
+#[derive(Hash, PartialEq, Eq, Copy, Clone, Debug, Serialize, Deserialize)]
+pub struct ClassDefIdx(pub Interned<ClassRef>);
+impl ClassDefIdx {
+    pub(crate) fn from_raw(class: Interned<ClassRef>) -> ClassDefIdx {
+        ClassDefIdx(class)
+    }
+}
+impl Deref for ClassDefIdx {
+    type Target = Interned<ClassRef>;
 
-impl From<ClassRefIdx> for Type {
-    fn from(val: ClassRefIdx) -> Self {
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+impl From<Interned<ClassRef>> for Type {
+    fn from(val: Interned<ClassRef>) -> Self {
         Type::ClassRef(val)
     }
 }
-#[derive(Hash, PartialEq, Eq, Clone, Debug, Copy, Serialize, Deserialize)]
-pub struct ClassRefIdx(BiMapIndex);
-impl IntoBiMapIndex for ClassRefIdx {
-    fn from_index(val: BiMapIndex) -> Self {
-        Self(val)
-    }
-    fn as_bimap_index(&self) -> BiMapIndex {
-        self.0
-    }
-}
+
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub struct ClassRef {
-    name: StringIdx,
-    asm: Option<StringIdx>,
+    name: Interned<IString>,
+    asm: Option<Interned<IString>>,
     is_valuetype: bool,
     generics: Box<[Type]>,
 }
@@ -43,8 +47,8 @@ impl ClassRef {
     }
     #[must_use]
     pub fn new(
-        name: StringIdx,
-        asm: Option<StringIdx>,
+        name: Interned<IString>,
+        asm: Option<Interned<IString>>,
         is_valuetype: bool,
         generics: Box<[Type]>,
     ) -> Self {
@@ -55,7 +59,7 @@ impl ClassRef {
             generics,
         }
     }
-    pub fn interlocked(asm: &mut super::Assembly) -> ClassRefIdx {
+    pub fn interlocked(asm: &mut super::Assembly) -> Interned<ClassRef> {
         let name = asm.alloc_string("System.Threading.Interlocked");
         let asm_name = Some(asm.alloc_string("System.Threading"));
         asm.alloc_class_ref(ClassRef::new(name, asm_name, false, vec![].into()))
@@ -63,12 +67,12 @@ impl ClassRef {
 
     /// Returns the assembly containing this typedef
     #[must_use]
-    pub fn asm(&self) -> Option<StringIdx> {
+    pub fn asm(&self) -> Option<Interned<IString>> {
         self.asm
     }
     /// The name of this class definition
     #[must_use]
-    pub fn name(&self) -> StringIdx {
+    pub fn name(&self) -> Interned<IString> {
         self.name
     }
 
@@ -82,248 +86,248 @@ impl ClassRef {
         &self.generics
     }
     /// The .NET math class
-    pub fn math(asm: &mut Assembly) -> ClassRefIdx {
+    pub fn math(asm: &mut Assembly) -> Interned<ClassRef> {
         let name = asm.alloc_string("System.Math");
         let asm_name = Some(asm.alloc_string("System.Runtime"));
         asm.alloc_class_ref(ClassRef::new(name, asm_name, false, vec![].into()))
     }
     /// Retusn a reference to the class `System.Double`
-    pub fn double(asm: &mut Assembly) -> ClassRefIdx {
+    pub fn double(asm: &mut Assembly) -> Interned<ClassRef> {
         let name = asm.alloc_string("System.Double");
         let asm_name = Some(asm.alloc_string("System.Runtime"));
         asm.alloc_class_ref(ClassRef::new(name, asm_name, false, vec![].into()))
     }
     /// Retusn a reference to the class `System.Single`
-    pub fn single(asm: &mut Assembly) -> ClassRefIdx {
+    pub fn single(asm: &mut Assembly) -> Interned<ClassRef> {
         let name = asm.alloc_string("System.Single");
         let asm_name = Some(asm.alloc_string("System.Runtime"));
         asm.alloc_class_ref(ClassRef::new(name, asm_name, false, vec![].into()))
     }
     /// Returns a reference to the class `System.MathF`
     #[must_use]
-    pub fn mathf(asm: &mut Assembly) -> ClassRefIdx {
-        let name: StringIdx = asm.alloc_string("System.MathF");
+    pub fn mathf(asm: &mut Assembly) -> Interned<ClassRef> {
+        let name: Interned<IString> = asm.alloc_string("System.MathF");
         let asm_name = Some(asm.alloc_string("System.Runtime"));
         asm.alloc_class_ref(ClassRef::new(name, asm_name, false, [].into()))
     }
     /// Returns a reference to the `System.UInt128` type.
-    pub fn uint_128(asm: &mut Assembly) -> ClassRefIdx {
+    pub fn uint_128(asm: &mut Assembly) -> Interned<ClassRef> {
         let name = asm.alloc_string("System.UInt128");
         let asm_name = Some(asm.alloc_string("System.Runtime"));
         asm.alloc_class_ref(ClassRef::new(name, asm_name, true, [].into()))
     }
     /// Returns a reference to the `System.Int128` type.
-    pub fn int_128(asm: &mut Assembly) -> ClassRefIdx {
+    pub fn int_128(asm: &mut Assembly) -> Interned<ClassRef> {
         let name = asm.alloc_string("System.Int128");
         let asm_name = Some(asm.alloc_string("System.Runtime"));
         asm.alloc_class_ref(ClassRef::new(name, asm_name, true, [].into()))
     }
     /// Returns a reference to the `System.UIntPtr` type.
-    pub fn usize_type(asm: &mut Assembly) -> ClassRefIdx {
+    pub fn usize_type(asm: &mut Assembly) -> Interned<ClassRef> {
         let name = asm.alloc_string("System.UIntPtr");
         let asm_name = Some(asm.alloc_string("System.Runtime"));
         asm.alloc_class_ref(ClassRef::new(name, asm_name, true, [].into()))
     }
     /// Returns a reference to the `System.UInt16` type.
-    pub fn uint16(asm: &mut Assembly) -> ClassRefIdx {
+    pub fn uint16(asm: &mut Assembly) -> Interned<ClassRef> {
         let name = asm.alloc_string("System.UInt16");
         let asm_name = Some(asm.alloc_string("System.Runtime"));
         asm.alloc_class_ref(ClassRef::new(name, asm_name, true, [].into()))
     }
     /// Returns a reference to the `System.Int16` type.
-    pub fn int16(asm: &mut Assembly) -> ClassRefIdx {
+    pub fn int16(asm: &mut Assembly) -> Interned<ClassRef> {
         let name = asm.alloc_string("System.Int16");
         let asm_name = Some(asm.alloc_string("System.Runtime"));
         asm.alloc_class_ref(ClassRef::new(name, asm_name, true, [].into()))
     }
     /// Returns a reference to the `System.UInt32` type.
-    pub fn uint32(asm: &mut Assembly) -> ClassRefIdx {
+    pub fn uint32(asm: &mut Assembly) -> Interned<ClassRef> {
         let name = asm.alloc_string("System.UInt32");
         let asm_name = Some(asm.alloc_string("System.Runtime"));
         asm.alloc_class_ref(ClassRef::new(name, asm_name, true, [].into()))
     }
     /// Returns a reference to the `System.Int32` type.
-    pub fn int32(asm: &mut Assembly) -> ClassRefIdx {
+    pub fn int32(asm: &mut Assembly) -> Interned<ClassRef> {
         let name = asm.alloc_string("System.Int32");
         let asm_name = Some(asm.alloc_string("System.Runtime"));
         asm.alloc_class_ref(ClassRef::new(name, asm_name, true, [].into()))
     }
     /// Returns a reference to the `System.UInt64` type.
-    pub fn uint64(asm: &mut Assembly) -> ClassRefIdx {
+    pub fn uint64(asm: &mut Assembly) -> Interned<ClassRef> {
         let name = asm.alloc_string("System.UInt64");
         let asm_name = Some(asm.alloc_string("System.Runtime"));
         asm.alloc_class_ref(ClassRef::new(name, asm_name, true, [].into()))
     }
     /// Returns a reference to the `System.Int64` type.
-    pub fn int64(asm: &mut Assembly) -> ClassRefIdx {
+    pub fn int64(asm: &mut Assembly) -> Interned<ClassRef> {
         let name = asm.alloc_string("System.Int64");
         let asm_name = Some(asm.alloc_string("System.Runtime"));
         asm.alloc_class_ref(ClassRef::new(name, asm_name, true, [].into()))
     }
     /// Returns a reference to the `System.IntPtr` type.
-    pub fn isize_type(asm: &mut Assembly) -> ClassRefIdx {
+    pub fn isize_type(asm: &mut Assembly) -> Interned<ClassRef> {
         let name = asm.alloc_string("System.IntPtr");
         let asm_name = Some(asm.alloc_string("System.Runtime"));
         asm.alloc_class_ref(ClassRef::new(name, asm_name, true, [].into()))
     }
     /// Returns a reference to the `System.Half` type.
-    pub fn half(asm: &mut Assembly) -> ClassRefIdx {
+    pub fn half(asm: &mut Assembly) -> Interned<ClassRef> {
         let name = asm.alloc_string("System.Half");
         let asm_name = Some(asm.alloc_string("System.Runtime"));
         asm.alloc_class_ref(ClassRef::new(name, asm_name, true, [].into()))
     }
     /// Returns a reference to the `System.Byte` type.
-    pub fn byte(asm: &mut Assembly) -> ClassRefIdx {
+    pub fn byte(asm: &mut Assembly) -> Interned<ClassRef> {
         let name = asm.alloc_string("System.Byte");
         let asm_name = Some(asm.alloc_string("System.Runtime"));
         asm.alloc_class_ref(ClassRef::new(name, asm_name, true, [].into()))
     }
     /// Returns a reference to the `System.SByte` type.
-    pub fn sbyte(asm: &mut Assembly) -> ClassRefIdx {
+    pub fn sbyte(asm: &mut Assembly) -> Interned<ClassRef> {
         let name = asm.alloc_string("System.SByte");
         let asm_name = Some(asm.alloc_string("System.Runtime"));
         asm.alloc_class_ref(ClassRef::new(name, asm_name, true, [].into()))
     }
     /// Returns a reference to the GC handle class.
-    pub fn gc_handle(asm: &mut Assembly) -> ClassRefIdx {
+    pub fn gc_handle(asm: &mut Assembly) -> Interned<ClassRef> {
         let name = asm.alloc_string("System.Runtime.InteropServices.GCHandle");
         let asm_name = Some(asm.alloc_string("System.Runtime"));
         asm.alloc_class_ref(ClassRef::new(name, asm_name, true, [].into()))
     }
     /// Returns a reference to the `System.String`
-    pub fn string(asm: &mut Assembly) -> ClassRefIdx {
+    pub fn string(asm: &mut Assembly) -> Interned<ClassRef> {
         let name = asm.alloc_string("System.String");
         let asm_name = Some(asm.alloc_string("System.Runtime"));
         asm.alloc_class_ref(ClassRef::new(name, asm_name, false, [].into()))
     }
     /// Returns a reference to the `System.Object`
-    pub fn object(asm: &mut Assembly) -> ClassRefIdx {
+    pub fn object(asm: &mut Assembly) -> Interned<ClassRef> {
         let name = asm.alloc_string("System.Object");
         let asm_name = Some(asm.alloc_string("System.Runtime"));
         asm.alloc_class_ref(ClassRef::new(name, asm_name, false, [].into()))
     }
     /// Returns a reference to the `System.Threading.Thread`
-    pub fn thread(asm: &mut Assembly) -> ClassRefIdx {
+    pub fn thread(asm: &mut Assembly) -> Interned<ClassRef> {
         let name = asm.alloc_string("System.Threading.Thread");
         let asm_name = Some(asm.alloc_string("System.Threading.Thread"));
         asm.alloc_class_ref(ClassRef::new(name, asm_name, false, [].into()))
     }
     /// Returns a reference to the `System.Threading.ThreadStart`
-    pub fn thread_start(asm: &mut Assembly) -> ClassRefIdx {
+    pub fn thread_start(asm: &mut Assembly) -> Interned<ClassRef> {
         let name = asm.alloc_string("System.Threading.ThreadStart");
         let asm_name = Some(asm.alloc_string("System.Threading.Thread"));
         asm.alloc_class_ref(ClassRef::new(name, asm_name, false, [].into()))
     }
     /// Returns a reference to the `System.Type`
-    pub fn type_type(asm: &mut Assembly) -> ClassRefIdx {
+    pub fn type_type(asm: &mut Assembly) -> Interned<ClassRef> {
         let name = asm.alloc_string("System.Type");
         let asm_name = Some(asm.alloc_string("System.Runtime"));
         asm.alloc_class_ref(ClassRef::new(name, asm_name, false, [].into()))
     }
     /// Returns a reference to the `System.RuntimeTypeHandle`
-    pub fn runtime_type_hadle(asm: &mut Assembly) -> ClassRefIdx {
+    pub fn runtime_type_hadle(asm: &mut Assembly) -> Interned<ClassRef> {
         let name = asm.alloc_string("System.RuntimeTypeHandle");
         let asm_name = Some(asm.alloc_string("System.Runtime"));
         asm.alloc_class_ref(ClassRef::new(name, asm_name, true, [].into()))
     }
     /// Returns a reference to the `System.String`
-    pub fn exception(asm: &mut Assembly) -> ClassRefIdx {
+    pub fn exception(asm: &mut Assembly) -> Interned<ClassRef> {
         let name = asm.alloc_string("System.Exception");
         let asm_name = Some(asm.alloc_string("System.Runtime"));
         asm.alloc_class_ref(ClassRef::new(name, asm_name, false, [].into()))
     }
     /// Returns a reference to the `System.Console`
-    pub fn console(asm: &mut Assembly) -> ClassRefIdx {
+    pub fn console(asm: &mut Assembly) -> Interned<ClassRef> {
         let name = asm.alloc_string("System.Console");
         let asm_name = Some(asm.alloc_string("System.Console"));
         asm.alloc_class_ref(ClassRef::new(name, asm_name, false, [].into()))
     }
     /// Returns a reference to the class `System.Collections.IDictionaryEnumerator`
     #[must_use]
-    pub fn dictionary_iterator(asm: &mut Assembly) -> ClassRefIdx {
+    pub fn dictionary_iterator(asm: &mut Assembly) -> Interned<ClassRef> {
         let name = asm.alloc_string("System.Collections.IDictionaryEnumerator");
         let asm_name = Some(asm.alloc_string("System.Runtime"));
         asm.alloc_class_ref(ClassRef::new(name, asm_name, false, [].into()))
     }
     /// Returns a reference to the class `System.Collections.IEnumerator`
     #[must_use]
-    pub fn i_enumerator(asm: &mut Assembly) -> ClassRefIdx {
+    pub fn i_enumerator(asm: &mut Assembly) -> Interned<ClassRef> {
         let name = asm.alloc_string("System.Collections.IEnumerator");
         let asm_name = Some(asm.alloc_string("System.Runtime"));
         asm.alloc_class_ref(ClassRef::new(name, asm_name, false, [].into()))
     }
     /// Returns a reference to the class `System.Collections.IDictionary`
     #[must_use]
-    pub fn i_dictionary(asm: &mut Assembly) -> ClassRefIdx {
+    pub fn i_dictionary(asm: &mut Assembly) -> Interned<ClassRef> {
         let name = asm.alloc_string("System.Collections.IDictionary");
         let asm_name = Some(asm.alloc_string("System.Runtime"));
         asm.alloc_class_ref(ClassRef::new(name, asm_name, false, [].into()))
     }
     /// Returns a reference to the class `System.Collections.ICollection`
     #[must_use]
-    pub fn i_collection(asm: &mut Assembly) -> ClassRefIdx {
+    pub fn i_collection(asm: &mut Assembly) -> Interned<ClassRef> {
         let name = asm.alloc_string("System.Collections.ICollection");
         let asm_name = Some(asm.alloc_string("System.Runtime"));
         asm.alloc_class_ref(ClassRef::new(name, asm_name, false, [].into()))
     }
     /// Returns a reference to the class `System.Environment`
     #[must_use]
-    pub fn enviroment(asm: &mut Assembly) -> ClassRefIdx {
+    pub fn enviroment(asm: &mut Assembly) -> Interned<ClassRef> {
         let name = asm.alloc_string("System.Environment");
         let asm_name = Some(asm.alloc_string("System.Runtime"));
         asm.alloc_class_ref(ClassRef::new(name, asm_name, false, [].into()))
     }
     /// Returns a reference to the class `System.Runtime.InteropServices.Marshal`
     #[must_use]
-    pub fn marshal(asm: &mut Assembly) -> ClassRefIdx {
+    pub fn marshal(asm: &mut Assembly) -> Interned<ClassRef> {
         let name = asm.alloc_string("System.Runtime.InteropServices.Marshal");
         let asm_name = Some(asm.alloc_string("System.Runtime.InteropServices"));
         asm.alloc_class_ref(ClassRef::new(name, asm_name, false, [].into()))
     }
     /// Returns a reference to the class `System.Collections.DictionaryEntry`
     #[must_use]
-    pub fn dictionary_entry(asm: &mut Assembly) -> ClassRefIdx {
+    pub fn dictionary_entry(asm: &mut Assembly) -> Interned<ClassRef> {
         let name = asm.alloc_string("System.Collections.DictionaryEntry");
         let asm_name = Some(asm.alloc_string("System.Runtime"));
         asm.alloc_class_ref(ClassRef::new(name, asm_name, true, [].into()))
     }
     /// Returns a reference to the class `System.Runtime.InteropServices.NativeMemory`
     #[must_use]
-    pub fn native_mem(asm: &mut Assembly) -> ClassRefIdx {
+    pub fn native_mem(asm: &mut Assembly) -> Interned<ClassRef> {
         let name = asm.alloc_string("System.Runtime.InteropServices.NativeMemory");
         let asm_name = Some(asm.alloc_string("System.Runtime.InteropServices"));
         asm.alloc_class_ref(ClassRef::new(name, asm_name, false, [].into()))
     }
     /// Returns a reference to the class `System.Numerics.BitOperations`
     #[must_use]
-    pub fn bit_operations(asm: &mut Assembly) -> ClassRefIdx {
-        let name: StringIdx = asm.alloc_string("System.Numerics.BitOperations");
+    pub fn bit_operations(asm: &mut Assembly) -> Interned<ClassRef> {
+        let name: Interned<IString> = asm.alloc_string("System.Numerics.BitOperations");
         let asm_name = Some(asm.alloc_string("System.Runtime"));
         asm.alloc_class_ref(ClassRef::new(name, asm_name, false, [].into()))
     }
     /// Returns a reference to the class `System.Buffers.Binary.BinaryPrimitives`
     #[must_use]
-    pub fn binary_primitives(asm: &mut Assembly) -> ClassRefIdx {
-        let name: StringIdx = asm.alloc_string("System.Buffers.Binary.BinaryPrimitives");
+    pub fn binary_primitives(asm: &mut Assembly) -> Interned<ClassRef> {
+        let name: Interned<IString> = asm.alloc_string("System.Buffers.Binary.BinaryPrimitives");
         let asm_name = Some(asm.alloc_string("System.Memory"));
         asm.alloc_class_ref(ClassRef::new(name, asm_name, false, [].into()))
     }
     /// Returns a reference to the class `System.MidpointRounding`
     #[must_use]
-    pub fn midpoint_rounding(asm: &mut Assembly) -> ClassRefIdx {
-        let name: StringIdx = asm.alloc_string("System.MidpointRounding");
+    pub fn midpoint_rounding(asm: &mut Assembly) -> Interned<ClassRef> {
+        let name: Interned<IString> = asm.alloc_string("System.MidpointRounding");
         let asm_name = Some(asm.alloc_string("System.Runtime"));
         asm.alloc_class_ref(ClassRef::new(name, asm_name, true, [].into()))
     }
     #[must_use]
-    pub fn fixed_array(element: Type, length: u64, asm: &mut Assembly) -> ClassRefIdx {
+    pub fn fixed_array(element: Type, length: u64, asm: &mut Assembly) -> Interned<ClassRef> {
         let name = format!("{element}_{length}", element = element.mangle(asm));
         let name = asm.alloc_string(name);
         let cref = ClassRef::new(name, None, true, [].into());
         asm.alloc_class_ref(cref)
     }
     /// Returns a reference to the constructor of this class  - `.ctor`. The explict inputs of the constructor should not include `this` - that parameter will be automaticaly provided.
-    pub fn ctor(&self, explict_inputs: &[Type], asm: &mut Assembly) -> MethodRefIdx {
+    pub fn ctor(&self, explict_inputs: &[Type], asm: &mut Assembly) -> Interned<MethodRef> {
         let this = asm.alloc_class_ref(self.clone());
         let mut inputs = vec![Type::ClassRef(this)];
         inputs.extend(explict_inputs);
@@ -342,9 +346,9 @@ impl ClassRef {
         &self,
         explict_inputs: &[Type],
         output: Type,
-        fn_name: StringIdx,
+        fn_name: Interned<IString>,
         asm: &mut Assembly,
-    ) -> MethodRefIdx {
+    ) -> Interned<MethodRef> {
         let this = asm.alloc_class_ref(self.clone());
         let mut inputs = if self.is_valuetype() {
             vec![asm.nref(Type::ClassRef(this))]
@@ -367,9 +371,9 @@ impl ClassRef {
         &self,
         explict_inputs: &[Type],
         output: Type,
-        fn_name: StringIdx,
+        fn_name: Interned<IString>,
         asm: &mut Assembly,
-    ) -> MethodRefIdx {
+    ) -> Interned<MethodRef> {
         let this = asm.alloc_class_ref(self.clone());
         let mut inputs = vec![Type::ClassRef(this)];
         inputs.extend(explict_inputs);
@@ -387,9 +391,9 @@ impl ClassRef {
         &self,
         inputs: &[Type],
         output: Type,
-        fn_name: StringIdx,
+        fn_name: Interned<IString>,
         asm: &mut Assembly,
-    ) -> MethodRefIdx {
+    ) -> Interned<MethodRef> {
         let this = asm.alloc_class_ref(self.clone());
         let sig = asm.sig(inputs, output);
         asm.alloc_methodref(MethodRef::new(
@@ -405,10 +409,10 @@ impl ClassRef {
         &self,
         inputs: &[Type],
         output: Type,
-        fn_name: StringIdx,
+        fn_name: Interned<IString>,
         asm: &mut Assembly,
         generics: Box<[Type]>,
-    ) -> MethodRefIdx {
+    ) -> Interned<MethodRef> {
         let this = asm.alloc_class_ref(self.clone());
         let sig = asm.sig(inputs, output);
         asm.alloc_methodref(MethodRef::new(
@@ -420,15 +424,15 @@ impl ClassRef {
         ))
     }
     // Returns a `System.Collections.Concurrent.ConcurrentDictionary` of key,value
-    pub fn concurent_dictionary(key: Type, value: Type, asm: &mut Assembly) -> ClassRefIdx {
-        let name: StringIdx =
+    pub fn concurent_dictionary(key: Type, value: Type, asm: &mut Assembly) -> Interned<ClassRef> {
+        let name: Interned<IString> =
             asm.alloc_string("System.Collections.Concurrent.ConcurrentDictionary");
         let asm_name = Some(asm.alloc_string("System.Collections.Concurrent"));
         asm.alloc_class_ref(ClassRef::new(name, asm_name, false, [key, value].into()))
     }
     // Returns a `System.Collections.Generic.Dictionary` of key,value
-    pub fn dictionary(key: Type, value: Type, asm: &mut Assembly) -> ClassRefIdx {
-        let name: StringIdx = asm.alloc_string("System.Collections.Generic.Dictionary");
+    pub fn dictionary(key: Type, value: Type, asm: &mut Assembly) -> Interned<ClassRef> {
+        let name: Interned<IString> = asm.alloc_string("System.Collections.Generic.Dictionary");
         let asm_name = Some(asm.alloc_string("System.Collections"));
         asm.alloc_class_ref(ClassRef::new(name, asm_name, false, [key, value].into()))
     }
@@ -440,16 +444,16 @@ impl ClassRef {
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub struct StaticFieldDef {
     pub tpe: Type,
-    pub name: StringIdx,
+    pub name: Interned<IString>,
     pub is_tls: bool,
 }
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub struct ClassDef {
-    name: StringIdx,
+    name: Interned<IString>,
     is_valuetype: bool,
     generics: u32,
-    extends: Option<ClassRefIdx>,
-    fields: Vec<(Type, StringIdx, Option<u32>)>,
+    extends: Option<Interned<ClassRef>>,
+    fields: Vec<(Type, Interned<IString>, Option<u32>)>,
     static_fields: Vec<StaticFieldDef>,
     methods: Vec<MethodDefIdx>,
     access: Access,
@@ -460,7 +464,7 @@ pub struct ClassDef {
 impl ClassDef {
     /// Checks if this class defition has a with the name and type.
     #[must_use]
-    pub fn has_static_field(&self, fld_name: StringIdx, fld_tpe: Type) -> bool {
+    pub fn has_static_field(&self, fld_name: Interned<IString>, fld_tpe: Type) -> bool {
         self.static_fields
             .iter()
             .any(|StaticFieldDef { tpe, name, .. }| *tpe == fld_tpe && *name == fld_name)
@@ -480,11 +484,11 @@ impl ClassDef {
     #[allow(clippy::too_many_arguments)]
     #[must_use]
     pub fn new(
-        name: StringIdx,
+        name: Interned<IString>,
         is_valuetype: bool,
         generics: u32,
-        extends: Option<ClassRefIdx>,
-        fields: Vec<(Type, StringIdx, Option<u32>)>,
+        extends: Option<Interned<ClassRef>>,
+        fields: Vec<(Type, Interned<IString>, Option<u32>)>,
         static_fields: Vec<StaticFieldDef>,
         access: Access,
         explict_size: Option<NonZeroU32>,
@@ -522,7 +526,7 @@ impl ClassDef {
     pub fn static_fields_mut(&mut self) -> &mut Vec<StaticFieldDef> {
         &mut self.static_fields
     }
-    pub fn fields_mut(&mut self) -> &mut Vec<(Type, StringIdx, Option<u32>)> {
+    pub fn fields_mut(&mut self) -> &mut Vec<(Type, Interned<IString>, Option<u32>)> {
         &mut self.fields
     }
     #[must_use]
@@ -536,7 +540,7 @@ impl ClassDef {
     }
 
     #[must_use]
-    pub fn extends(&self) -> Option<ClassRefIdx> {
+    pub fn extends(&self) -> Option<Interned<ClassRef>> {
         self.extends
     }
 
@@ -545,12 +549,12 @@ impl ClassDef {
     }
 
     #[must_use]
-    pub fn fields(&self) -> &[(Type, StringIdx, Option<u32>)] {
+    pub fn fields(&self) -> &[(Type, Interned<IString>, Option<u32>)] {
         &self.fields
     }
 
     #[must_use]
-    pub fn name(&self) -> StringIdx {
+    pub fn name(&self) -> Interned<IString> {
         self.name
     }
 
@@ -607,16 +611,6 @@ impl ClassDef {
     /// Optimizes this class definition, consuming fuel
     pub fn opt(&mut self, fuel: &mut OptFuel, asm: &mut Assembly, cache: &mut SideEffectInfoCache) {
     } */
-}
-#[derive(Hash, PartialEq, Eq, Clone, Debug, Copy, Serialize, Deserialize)]
-pub struct ClassDefIdx(pub ClassRefIdx);
-
-impl std::ops::Deref for ClassDefIdx {
-    type Target = ClassRefIdx;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
 }
 fn into_unique<T: Eq + std::hash::Hash>(input: Vec<T>) -> Vec<T> {
     let set: fxhash::FxHashSet<_> = input.into_iter().collect();
@@ -798,7 +792,7 @@ fn generics() {
 #[test]
 fn display_class_ref() {
     let mut asm = Assembly::default();
-    let name: StringIdx = asm.alloc_string("MyClass");
+    let name: Interned<IString> = asm.alloc_string("MyClass");
     let def = ClassDef::new(
         name,
         false,
@@ -819,7 +813,7 @@ fn display_class_ref() {
 #[test]
 fn type_gc() {
     let mut asm = Assembly::default();
-    let name: StringIdx = asm.alloc_string("Stay");
+    let name: Interned<IString> = asm.alloc_string("Stay");
     asm.class_def(ClassDef::new(
         name,
         false,
@@ -832,7 +826,7 @@ fn type_gc() {
         None,
         true,
     ));
-    let name: StringIdx = asm.alloc_string("Gone");
+    let name: Interned<IString> = asm.alloc_string("Gone");
     asm.class_def(ClassDef::new(
         name,
         false,
@@ -852,7 +846,7 @@ fn type_gc() {
 #[test]
 fn merge_defs() {
     let mut asm = Assembly::default();
-    let name: StringIdx = asm.alloc_string("Stay");
+    let name: Interned<IString> = asm.alloc_string("Stay");
     let def = ClassDef::new(
         name,
         false,
@@ -872,7 +866,7 @@ fn merge_defs() {
 #[should_panic]
 fn merge_defs_different() {
     let mut asm = Assembly::default();
-    let name: StringIdx = asm.alloc_string("Stay");
+    let name: Interned<IString> = asm.alloc_string("Stay");
     let mut stay = ClassDef::new(
         name,
         false,
@@ -885,7 +879,7 @@ fn merge_defs_different() {
         None,
         true,
     );
-    let name: StringIdx = asm.alloc_string("Gone");
+    let name: Interned<IString> = asm.alloc_string("Gone");
     let gone = ClassDef::new(
         name,
         false,
@@ -904,7 +898,7 @@ fn merge_defs_different() {
 #[test]
 fn extends() {
     let mut asm = Assembly::default();
-    let name: StringIdx = asm.alloc_string("Stay");
+    let name: Interned<IString> = asm.alloc_string("Stay");
     let exception = ClassRef::exception(&mut asm);
     let def = ClassDef::new(
         name,

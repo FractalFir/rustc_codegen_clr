@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{ClassRef, ClassRefIdx, Float, Int};
+use crate::{bimap::Interned, ClassRef, Float, Int};
 
 use super::Type;
 #[derive(Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize)]
@@ -81,13 +81,13 @@ impl SIMDVector {
         self.elem
     }
 
-    pub fn class(&self, asm: &mut crate::Assembly) -> ClassRefIdx {
+    pub fn class(&self, asm: &mut crate::Assembly) -> Interned<ClassRef> {
         let elem = self.elem().into();
         let asm_name = asm.alloc_string("System.Runtime.Intrinsics");
         let name = asm.alloc_string(format!("System.Runtime.Intrinsics.Vector{}", self.bits()));
         asm.alloc_class_ref(ClassRef::new(name, Some(asm_name), true, vec![elem].into()))
     }
-    pub fn extension_class(&self, asm: &mut crate::Assembly) -> ClassRefIdx {
+    pub fn extension_class(&self, asm: &mut crate::Assembly) -> Interned<ClassRef> {
         let asm_name = asm.alloc_string("System.Runtime.Intrinsics");
         let name = asm.alloc_string(format!("System.Runtime.Intrinsics.Vector{}", self.bits()));
         asm.alloc_class_ref(ClassRef::new(name, Some(asm_name), false, vec![].into()))

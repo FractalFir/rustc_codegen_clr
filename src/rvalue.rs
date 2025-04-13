@@ -116,7 +116,9 @@ pub fn handle_rvalue<'tcx>(
             vec![],
             crate::binop::binop(*binop, &operands.0, &operands.1, ctx),
         ),
-        Rvalue::UnaryOp(binop, operand) => (vec![], crate::unop::unop(*binop, operand, ctx,rvalue)),
+        Rvalue::UnaryOp(binop, operand) => {
+            (vec![], crate::unop::unop(*binop, operand, ctx, rvalue))
+        }
         Rvalue::Cast(CastKind::IntToInt, operand, target) => (
             vec![],
             cast!(ctx, operand, target, crate::casts::int_to_int, ctx),
@@ -481,7 +483,7 @@ fn repeat<'tcx>(
         while curr_len < times {
             // Copy curr_len elements if possible, otherwise this is the last iteration, so copy the reminder.
             let curr_copy_size = curr_len.min(times - curr_len);
-            let elem_size: cilly::NodeIdx = size_of!(element_type)(ctx);
+            let elem_size: cilly::Interned<cilly::v2::CILNode> = ctx.size_of(element_type);
             // Copy curr_copy_size elements from the start of the array, starting at curr_len(the ammount of already initialized buffers)
             branches.push(CILRoot::CpBlk {
                 dst: Box::new(

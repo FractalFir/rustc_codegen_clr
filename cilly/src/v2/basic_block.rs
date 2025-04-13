@@ -1,13 +1,13 @@
 use serde::{Deserialize, Serialize};
 
-use super::{opt, Assembly, CILNode, CILRoot, RootIdx};
+use super::{bimap::Interned, opt, Assembly, CILNode, CILRoot};
 use crate::basic_block::BasicBlock as V1Block;
 pub type BlockId = u32;
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 /// A basic block - sequence of roots, protected by a handler, identified by a unique, per-method id.
 /// The first block in a method ought to have the id 0, and ought not be jumped to.
 pub struct BasicBlock {
-    roots: Vec<RootIdx>,
+    roots: Vec<Interned<CILRoot>>,
     block_id: BlockId,
     handler: Option<Vec<Self>>,
 }
@@ -40,7 +40,7 @@ impl BasicBlock {
     /// The handler will start executing at the first block in the handler, regardless of its id.
     /// ```
     /// # use cilly::BasicBlock;
-    /// # use cilly::RootIdx;
+    /// # use cilly::Interned<CILRoot>;
     /// # let roots = vec![];
     /// # let handler_roots = vec![];
     /// // Create a block
@@ -52,7 +52,7 @@ impl BasicBlock {
     /// ```
     /// ```should_panic
     /// # use cilly::BasicBlock;
-    /// # use cilly::RootIdx;
+    /// # use cilly::Interned<CILRoot>;
     /// # let roots = vec![];
     /// # let handler_roots = vec![];
     /// # let handlerer_roots = vec![];
@@ -62,7 +62,11 @@ impl BasicBlock {
     /// let bb = BasicBlock::new(roots, 0, Some(vec![handler]));
     /// ```
     #[must_use]
-    pub fn new(roots: Vec<RootIdx>, block_id: BlockId, handler: Option<Vec<Self>>) -> Self {
+    pub fn new(
+        roots: Vec<Interned<CILRoot>>,
+        block_id: BlockId,
+        handler: Option<Vec<Self>>,
+    ) -> Self {
         debug_assert!(handler
             .as_ref()
             .is_none_or(|handler| handler.iter().all(|h| h.handler.is_none())));
@@ -75,7 +79,7 @@ impl BasicBlock {
 
     #[must_use]
     /// Retrives the list of all roots in this block.
-    pub fn roots(&self) -> &[RootIdx] {
+    pub fn roots(&self) -> &[Interned<CILRoot>] {
         &self.roots
     }
 
@@ -83,7 +87,7 @@ impl BasicBlock {
     /// Retrives the id of this block.
     /// ```
     /// # use cilly::BasicBlock;
-    /// # use cilly::RootIdx;
+    /// # use cilly::Interned<CILRoot>;
     /// # let roots = vec![];
     /// let bb = BasicBlock::new(roots, 0, None);
     /// assert_eq!(bb.block_id(), 0);
@@ -95,19 +99,20 @@ impl BasicBlock {
         self.block_id
     }
     /// Goes trough all the roots in this block **and its handler**.
-    pub fn iter_roots(&self) -> impl Iterator<Item = RootIdx> + '_ {
-        let handler_iter: Box<dyn Iterator<Item = RootIdx>> = match self.handler() {
+    pub fn iter_roots(&self) -> impl Iterator<Item = Interned<CILRoot>> + '_ {
+        let handler_iter: Box<dyn Iterator<Item = Interned<CILRoot>>> = match self.handler() {
             Some(handler) => Box::new(handler.iter().flat_map(BasicBlock::iter_roots)),
             None => Box::new(std::iter::empty()),
         };
         self.roots().iter().copied().chain(handler_iter)
     }
     /// Iterates trough all the roots of this block and its handlers - mutablu.
-    pub fn iter_roots_mut(&mut self) -> impl Iterator<Item = &mut RootIdx> + '_ {
-        let handler_iter: Box<dyn Iterator<Item = &mut RootIdx>> = match self.handler.as_mut() {
-            Some(handler) => Box::new(handler.iter_mut().flat_map(BasicBlock::iter_roots_mut)),
-            None => Box::new(std::iter::empty()),
-        };
+    pub fn iter_roots_mut(&mut self) -> impl Iterator<Item = &mut Interned<CILRoot>> + '_ {
+        let handler_iter: Box<dyn Iterator<Item = &mut Interned<CILRoot>>> =
+            match self.handler.as_mut() {
+                Some(handler) => Box::new(handler.iter_mut().flat_map(BasicBlock::iter_roots_mut)),
+                None => Box::new(std::iter::empty()),
+            };
         self.roots.iter_mut().chain(handler_iter)
     }
     /// Modifies all nodes and roots in this `BasicBlock`
@@ -146,11 +151,13 @@ impl BasicBlock {
         self.handler.as_mut()
     }
     /// Returns a mutable reference to the roots of this block - **excluding the handler**.
-    pub fn roots_mut(&mut self) -> &mut Vec<RootIdx> {
+    pub fn roots_mut(&mut self) -> &mut Vec<Interned<CILRoot>> {
         &mut self.roots
     }
     /// Returns a mutable reference to the roots of this block and its handler - *separately*.
-    pub fn handler_and_root_mut(&mut self) -> (Option<&mut [BasicBlock]>, &mut Vec<RootIdx>) {
+    pub fn handler_and_root_mut(
+        &mut self,
+    ) -> (Option<&mut [BasicBlock]>, &mut Vec<Interned<CILRoot>>) {
         (
             self.handler.as_mut().map(std::convert::AsMut::as_mut),
             &mut self.roots,
@@ -211,7 +218,7 @@ impl BasicBlock {
     pub fn meaningfull_roots<'s, 'asm: 's>(
         &'s self,
         asm: &'asm Assembly,
-    ) -> impl Iterator<Item = RootIdx> + 's {
+    ) -> impl Iterator<Item = Interned<CILRoot>> + 's {
         self.iter_roots().filter(move |root| {
             !matches!(
                 asm.get_root(*root),

@@ -11,14 +11,12 @@ use cilly::{
     cil_node::CILNode,
     cil_root::CILRoot,
     cil_tree::CILTree,
-    cilnode::PtrCastRes,
+    cilnode::{MethodKind, PtrCastRes},
     method::{Method, MethodType},
     utilis::{self, encode},
-    Access, Assembly, Const, IntoAsmIndex, StringIdx, Type,
-    {
-        cilnode::MethodKind, v2::method::LocalDef, FnSig, Int, MethodDef, MethodRef, MethodRefIdx,
-        StaticFieldDesc,
-    },
+    v2::method::LocalDef,
+    Access, Assembly, Const, FnSig, Int, Interned, IntoAsmIndex, MethodDef, MethodRef,
+    StaticFieldDesc, Type,
 };
 use rustc_codegen_clr_call::CallInfo;
 use rustc_codegen_clr_ctx::function_name;
@@ -40,7 +38,7 @@ fn linkage_to_access(link: Option<Linkage>) -> Access {
     }
 }
 type LocalDefList = Vec<LocalDef>;
-type ArgsDebugInfo = Vec<Option<StringIdx>>;
+type ArgsDebugInfo = Vec<Option<Interned<IString>>>;
 
 /// Returns the list of all local variables within MIR of a function, and converts them to the internal type represenation `Type`
 fn locals_from_mir<'tcx>(
@@ -66,7 +64,7 @@ fn locals_from_mir<'tcx>(
             local_types.push((name, tpe));
         }
     }
-    let mut arg_names: Vec<Option<StringIdx>> = (0..argc).map(|_| None).collect();
+    let mut arg_names: Vec<Option<Interned<IString>>> = (0..argc).map(|_| None).collect();
     for var in var_debuginfo {
         let mir_local = match var.value {
             VarDebugInfoContents::Place(place) => {
@@ -577,7 +575,7 @@ pub fn add_item<'tcx>(
                     let init_argc = asm.alloc_root(cilly::CILRoot::call(argc, []));
 
                     asm.add_user_init(&[init_argc]);
-                    let get_environ: MethodRefIdx = utilis::get_environ(asm);
+                    let get_environ: Interned<MethodRef> = utilis::get_environ(asm);
                     let fn_ptr = alloc.0.provenance().ptrs().iter().next().unwrap();
                     let fn_ptr = tcx.global_alloc(fn_ptr.1.alloc_id());
                     let init_call_site = if let GlobalAlloc::Function {

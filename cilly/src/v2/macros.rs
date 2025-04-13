@@ -194,7 +194,7 @@ macro_rules! size_of {
     (usize) => {{
         use $crate::IntoAsmIndex;
         |asm: &mut $crate::asm::Assembly| {
-            <$crate::CILNode as IntoAsmIndex<$crate::NodeIdx>>::into_idx(
+            <$crate::CILNode as IntoAsmIndex<$crate::v2::Interned<$crate::v2::CILNode>>>::into_idx(
                 $crate::CILNode::SizeOf(asm.alloc_type($crate::Type::Int($crate::Int::USize))),
                 asm,
             )
@@ -202,22 +202,22 @@ macro_rules! size_of {
     }};
     (|$asm:ident|$val:expr) => {
         |asm: &mut $crate::asm::Assembly| {
-            <$crate::CILNode as IntoAsmIndex<$crate::NodeIdx>>::into_idx($crate::CILNode::SizeOf(
-                |$asm| { $val }.into_idx(asm),
-            ))
+            <$crate::CILNode as IntoAsmIndex<$crate::Interned<CILNode>>>::into_idx(
+                $crate::CILNode::SizeOf(|$asm| { $val }.into_idx(asm)),
+            )
         }
     };
     (|$asm:ident|$val:block) => {
         |asm: &mut $crate::asm::Assembly| {
-            <$crate::CILNode as IntoAsmIndex<$crate::NodeIdx>>::into_idx($crate::CILNode::SizeOf(
-                |$asm| { $val }.into_idx(asm),
-            ))
+            <$crate::CILNode as IntoAsmIndex<$crate::Interned<CILNode>>>::into_idx(
+                $crate::CILNode::SizeOf(|$asm| { $val }.into_idx(asm)),
+            )
         }
     };
     ($val:expr) => {{
         use $crate::IntoAsmIndex;
         |asm: &mut $crate::asm::Assembly| {
-            <$crate::CILNode as IntoAsmIndex<$crate::NodeIdx>>::into_idx(
+            <$crate::CILNode as IntoAsmIndex<$crate::v2::Interned<$crate::v2::CILNode>>>::into_idx(
                 $crate::CILNode::SizeOf($val.into_idx(asm)),
                 asm,
             )
@@ -225,9 +225,9 @@ macro_rules! size_of {
     }};
     ($val:block) => {
         |asm: &mut $crate::asm::Assembly| {
-            <$crate::CILNode as IntoAsmIndex<$crate::NodeIdx>>::into_idx($crate::CILNode::SizeOf(
-                $val.into_idx(asm),
-            ))
+            <$crate::CILNode as IntoAsmIndex<$crate::Interned<CILNode>>>::into_idx(
+                $crate::CILNode::SizeOf($val.into_idx(asm)),
+            )
         }
     };
 }
@@ -241,7 +241,7 @@ macro_rules! zero_extend {
         {
             |asm: &mut $crate::asm::Assembly| {
                 use $crate::IntoAsmIndex;
-                <$crate::CILNode as IntoAsmIndex<$crate::NodeIdx>>::into_idx(
+                <$crate::CILNode as IntoAsmIndex<$crate::Interned<CILNode>>>::into_idx(
                     asm.int_cast(
                         |$asm| $val,
                         <$ty as $crate::IntoIntType>::int_type(),
@@ -257,7 +257,7 @@ macro_rules! zero_extend {
         {
             |asm: &mut $crate::asm::Assembly| {
                 use $crate::IntoAsmIndex;
-                <$crate::CILNode as IntoAsmIndex<$crate::NodeIdx>>::into_idx(
+                <$crate::CILNode as IntoAsmIndex<$crate::Interned<CILNode>>>::into_idx(
                     asm.int_cast(
                         |$asm| $val,
                         <$ty as $crate::IntoIntType>::int_type(),
@@ -273,7 +273,7 @@ macro_rules! zero_extend {
         {
             |asm: &mut $crate::asm::Assembly| {
                 use $crate::IntoAsmIndex;
-                <$crate::CILNode as IntoAsmIndex<$crate::NodeIdx>>::into_idx(
+                <$crate::CILNode as IntoAsmIndex<$crate::v2::Interned<$crate::v2::CILNode>>>::into_idx(
                     asm.int_cast(
                         $val,
                         <$ty as $crate::IntoIntType>::int_type(),
@@ -289,7 +289,7 @@ macro_rules! zero_extend {
         {
             |asm: &mut $crate::asm::Assembly| {
                 use $crate::IntoAsmIndex;
-                <$crate::CILNode as IntoAsmIndex<$crate::NodeIdx>>::into_idx(
+                <$crate::CILNode as IntoAsmIndex<$crate::Interned<CILNode>>>::into_idx(
                     asm.int_cast(
                         $val,
                         <$ty as $crate::IntoIntType>::int_type(),
@@ -306,7 +306,7 @@ macro_rules! ptr_cast {
     ($val:expr,*$ptr:expr) => {
         |asm: &mut $crate::asm::Assembly| {
             use $crate::IntoAsmIndex;
-            <$crate::CILNode as IntoAsmIndex<$crate::NodeIdx>>::into_idx(
+            <$crate::CILNode as IntoAsmIndex<$crate::Interned<CILNode>>>::into_idx(
                 asm.ptr_cast($val, $crate::cilnode::PtrCastRes::Ptr($ptr)),
                 asm,
             )

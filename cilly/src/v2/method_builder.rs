@@ -1,8 +1,10 @@
 use std::ops::{Deref, DerefMut};
 
+use crate::IString;
+
 use super::{
-    basic_block::BlockId, method::LocalId, Assembly, BasicBlock, IntoAsmIndex, MethodDef,
-    MethodImpl, StringIdx, TypeIdx,
+    basic_block::BlockId, bimap::Interned, method::LocalId, Assembly, BasicBlock, IntoAsmIndex,
+    MethodDef, MethodImpl, Type,
 };
 
 pub struct MethodBuilder<'asm> {
@@ -34,8 +36,8 @@ impl MethodBuilder<'_> {
     }
     pub fn tmp_local(
         &mut self,
-        name: Option<impl IntoAsmIndex<StringIdx>>,
-        tpe: impl IntoAsmIndex<TypeIdx>,
+        name: Option<impl IntoAsmIndex<Interned<IString>>>,
+        tpe: impl IntoAsmIndex<Interned<Type>>,
     ) -> LocalId {
         let name = name.map(|inner| inner.into_idx(self));
         let tpe = tpe.into_idx(self);

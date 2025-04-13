@@ -1,4 +1,4 @@
-use crate::{cil_node::CILNode, cil_root::CILRoot, MethodRefIdx};
+use crate::{bimap::Interned, cil_node::CILNode, cil_root::CILRoot, MethodRef};
 
 #[derive(Debug, Clone, Copy)]
 pub enum CILIterElem<'a> {
@@ -491,12 +491,12 @@ impl<'a> CILIter<'a> {
     }
 }
 pub trait CILIterTrait<'a> {
-    fn call_sites(self) -> impl Iterator<Item = MethodRefIdx>;
+    fn call_sites(self) -> impl Iterator<Item = Interned<MethodRef>>;
     fn nodes(self) -> impl Iterator<Item = &'a CILNode>;
     fn roots(self) -> impl Iterator<Item = &'a CILRoot>;
 }
 impl<'a, T: Iterator<Item = CILIterElem<'a>>> CILIterTrait<'a> for T {
-    fn call_sites(self) -> impl Iterator<Item = MethodRefIdx> {
+    fn call_sites(self) -> impl Iterator<Item = Interned<MethodRef>> {
         self.filter_map(|node| match node {
             CILIterElem::Node(
                 CILNode::Call(call_op_args)

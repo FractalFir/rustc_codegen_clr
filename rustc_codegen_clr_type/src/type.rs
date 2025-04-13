@@ -5,14 +5,17 @@ use crate::utilis::{
 };
 use crate::utilis::{garag_to_usize, garg_to_string, is_name_magic, pointer_to_is_fat, tuple_name};
 use crate::{GetTypeExt, utilis::adt_name};
+use cilly::bimap::Interned;
+use cilly::class::ClassDefIdx;
 use cilly::{
     Assembly, IntoAsmIndex, add, ld_arg, ptr_cast,
     tpe::simd::SIMDVector,
     {
-        Access, BasicBlock, CILNode, CILRoot, ClassDef, ClassDefIdx, ClassRef, ClassRefIdx, Float,
-        Int, MethodDef, MethodImpl, StringIdx, Type, cilnode::MethodKind,
+        Access, BasicBlock, CILNode, CILRoot, ClassDef, ClassRef, Float, Int, MethodDef,
+        MethodImpl, Type, cilnode::MethodKind,
     },
 };
+use cilly::{FnSig, IString};
 use rustc_codegen_clr_ctx::MethodCompileCtx;
 /// A representation of a primitve type or a reference.
 use std::{
@@ -64,9 +67,9 @@ fn get_adt<'tcx>(
     adt_ty: Ty<'tcx>,
     def: AdtDef<'tcx>,
     subst: &'tcx List<rustc_middle::ty::GenericArg<'tcx>>,
-    name: StringIdx,
+    name: Interned<IString>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-) -> ClassRefIdx {
+) -> Interned<ClassRef> {
     let cref = ClassRef::new(name, None, true, [].into());
     if ctx.contains_ref(&cref) {
         ctx.alloc_class_ref(cref)
@@ -330,7 +333,7 @@ fn fixed_array(
     length: u64,
     arr_size: u64,
     align: u64,
-) -> ClassRefIdx {
+) -> Interned<ClassRef> {
     // Get the reference to the array class
     let cref = ClassRef::fixed_array(element, length, asm);
 
@@ -441,7 +444,10 @@ fn fixed_array(
 }
 
 /// Returns a fat pointer to an inner type.
-pub fn fat_ptr_to<'tcx>(mut inner: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_>) -> ClassRefIdx {
+pub fn fat_ptr_to<'tcx>(
+    mut inner: Ty<'tcx>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
+) -> Interned<ClassRef> {
     inner = ctx.monomorphize(inner);
     let inner_tpe = get_type(inner, ctx);
     let name = format!("FatPtr{elem}", elem = inner_tpe.mangle(ctx));
@@ -479,7 +485,7 @@ pub fn fat_ptr_to<'tcx>(mut inner: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_
 pub fn closure_name(
     _def_id: DefId,
     fields: &[Type],
-    _sig: cilly::SigIdx,
+    _sig: Interned<FnSig>,
     ctx: &mut MethodCompileCtx<'_, '_>,
 ) -> String {
     let mangled_fields: String = fields.iter().map(|tpe| tpe.mangle(ctx)).collect();
@@ -506,7 +512,7 @@ pub fn closure_typedef(
     fields: &[Type],
     layout: Layout,
     ctx: &mut MethodCompileCtx<'_, '_>,
-    closure_name: StringIdx,
+    closure_name: Interned<IString>,
 ) -> ClassDef {
     // Collects all field types, offsets, and names
     let field_iter = fields
@@ -559,7 +565,7 @@ pub fn closure_typedef(
 }
 /// Turns an adt struct defintion into a [`ClassDef`]
 fn struct_<'tcx>(
-    name: StringIdx,
+    name: Interned<IString>,
     adt: AdtDef<'tcx>,
     adt_ty: Ty<'tcx>,
     subst: &'tcx List<rustc_middle::ty::GenericArg<'tcx>>,
@@ -627,7 +633,7 @@ fn handle_tag<'tcx>(
     layout: &Layout,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
     adt_ty: Ty<'tcx>,
-    fields: &mut Vec<(Type, StringIdx, Option<u32>)>,
+    fields: &mut Vec<(Type, Interned<IString>, Option<u32>)>,
 ) {
     match &layout.variants {
         rustc_abi::Variants::Single { index: _ } => {
@@ -673,14 +679,14 @@ fn handle_tag<'tcx>(
 }
 /// Turns an adt enum defintion into a [`ClassDef`]
 fn enum_<'tcx>(
-    enum_name: StringIdx,
+    enum_name: Interned<IString>,
     adt: AdtDef<'tcx>,
     adt_ty: Ty<'tcx>,
     subst: &'tcx List<rustc_middle::ty::GenericArg<'tcx>>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> ClassDef {
     let layout = ctx.layout_of(adt_ty);
-    let mut fields: Vec<(Type, StringIdx, Option<u32>)> = vec![];
+    let mut fields: Vec<(Type, Interned<IString>, Option<u32>)> = vec![];
     // Handle the enum tag.
     handle_tag(&layout.layout, ctx, adt_ty, &mut fields);
     // Handle enum variants
@@ -734,7 +740,7 @@ fn enum_<'tcx>(
 }
 /// Turns an adt union defintion into a [`ClassDef`]
 fn union_<'tcx>(
-    name: StringIdx,
+    name: Interned<IString>,
     adt: AdtDef<'tcx>,
     adt_ty: Ty<'tcx>,
     subst: &'tcx List<rustc_middle::ty::GenericArg<'tcx>>,
@@ -819,7 +825,7 @@ pub fn tuple_typedef(
     elements: &[Type],
     layout: Layout,
     ctx: &mut MethodCompileCtx<'_, '_>,
-    name: StringIdx,
+    name: Interned<IString>,
 ) -> ClassDefIdx {
     let field_iter = elements
         .iter()

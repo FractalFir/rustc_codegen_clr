@@ -1,12 +1,18 @@
 use crate::{
     asm::MissingMethodPatcher,
+    bimap::Interned,
     cilnode::MethodKind,
     hashable::{HashableF32, HashableF64},
     Assembly, BasicBlock, BinOp, CILNode, CILRoot, ClassRef, Const, Float, Int, MethodImpl,
-    MethodRef, NodeIdx, Type,
+    MethodRef, Type,
 };
 
-pub fn int_max(asm: &mut Assembly, lhs: NodeIdx, rhs: NodeIdx, int: Int) -> NodeIdx {
+pub fn int_max(
+    asm: &mut Assembly,
+    lhs: Interned<CILNode>,
+    rhs: Interned<CILNode>,
+    int: Int,
+) -> Interned<CILNode> {
     let math = ClassRef::math(asm);
     let max = asm.alloc_string("Max");
     let sig = asm.sig([Type::Int(int), Type::Int(int)], Type::Int(int));
@@ -20,7 +26,12 @@ pub fn int_max(asm: &mut Assembly, lhs: NodeIdx, rhs: NodeIdx, int: Int) -> Node
     asm.alloc_node(CILNode::call(mref, [lhs, rhs]))
 }
 
-pub fn int_min(asm: &mut Assembly, lhs: NodeIdx, rhs: NodeIdx, int: Int) -> NodeIdx {
+pub fn int_min(
+    asm: &mut Assembly,
+    lhs: Interned<CILNode>,
+    rhs: Interned<CILNode>,
+    int: Int,
+) -> Interned<CILNode> {
     let math = ClassRef::math(asm);
     let max = asm.alloc_string("Min");
     let sig = asm.sig([Type::Int(int), Type::Int(int)], Type::Int(int));

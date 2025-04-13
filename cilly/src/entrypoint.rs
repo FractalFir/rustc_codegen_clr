@@ -5,7 +5,7 @@ use crate::{
     {cilnode::MethodKind, Assembly, Int, MethodRef},
 };
 
-/// Creates a wrapper method around entypoint represented by `MethodRefIdx`
+/// Creates a wrapper method around entypoint represented by `Interned<MethodRef>`
 pub fn wrapper(entrypoint: MethodRef, asm: &mut Assembly) -> MethodDefIdx {
     let uint8_ptr = asm.nptr(Type::Int(Int::U8));
     let uint8_ptr_idx = asm.alloc_type(uint8_ptr);

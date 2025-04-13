@@ -3,10 +3,8 @@ use crate::{
     utilis::{adt::set_discr, field_name, instance_try_resolve, variant_name},
 };
 use cilly::{
-    cil_node::CILNode,
-    cil_root::CILRoot,
-    Const, Type,
-    {cilnode::MethodKind, ClassRef, FieldDesc, FnSig, Int, MethodRef},
+    cil_node::CILNode, cil_root::CILRoot, cilnode::MethodKind, ClassRef, Const, FieldDesc, FnSig,
+    Int, Interned, MethodRef, Type,
 };
 use rustc_abi::FieldIdx;
 use rustc_codegen_clr_place::{place_adress, place_get, place_set};
@@ -236,10 +234,14 @@ pub fn handle_aggregate<'tcx>(
                 )),
             };
             let name = ctx.alloc_string(crate::METADATA);
-            let meta_type = get_type(meta.ty(ctx.body(),ctx.tcx()), ctx);
+            let meta_type = get_type(meta.ty(ctx.body(), ctx.tcx()), ctx);
             let assign_metadata = CILRoot::SetField {
                 addr: Box::new(init_addr),
-                value: Box::new(handle_operand(meta, ctx).transmute_on_stack(meta_type, cilly::Type::Int(Int::USize), ctx)),
+                value: Box::new(handle_operand(meta, ctx).transmute_on_stack(
+                    meta_type,
+                    cilly::Type::Int(Int::USize),
+                    ctx,
+                )),
                 desc: ctx.alloc_field(FieldDesc::new(
                     fat_ptr_type.as_class_ref().unwrap(),
                     name,

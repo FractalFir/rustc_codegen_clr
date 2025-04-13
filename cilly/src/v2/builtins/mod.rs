@@ -4,10 +4,11 @@ use crate::{utilis::mstring_to_utf8ptr, IntoAsmIndex, StaticFieldDesc};
 
 use super::{
     asm::MissingMethodPatcher,
+    bimap::Interned,
     cilnode::{MethodKind, PtrCastRes},
     cilroot::BranchCond,
-    Access, Assembly, BasicBlock, CILNode, CILRoot, ClassDef, ClassRef, Const, FieldDesc, FieldIdx,
-    Int, MethodDef, MethodImpl, MethodRef, MethodRefIdx, Type,
+    Access, Assembly, BasicBlock, CILNode, CILRoot, ClassDef, ClassRef, Const, FieldDesc, Int,
+    MethodDef, MethodImpl, MethodRef, Type,
 };
 
 pub mod atomics;
@@ -161,7 +162,7 @@ fn insert_rust_alloc_zeroed(asm: &mut Assembly, patcher: &mut MissingMethodPatch
 
 pub fn uninit_val(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
     let name = asm.alloc_string("uninit_val");
-    let generator = move |mref: MethodRefIdx, asm: &mut Assembly| {
+    let generator = move |mref: Interned<MethodRef>, asm: &mut Assembly| {
         let ret = asm.alloc_node(CILNode::LdLoc(0));
         let res = *asm[asm[mref].sig()].output();
         MethodImpl::MethodBody {
@@ -178,7 +179,7 @@ pub fn uninit_val(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
 }
 pub fn ovf_check_tuple(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
     let name = asm.alloc_string("ovf_check_tuple");
-    let generator = move |mref: MethodRefIdx, asm: &mut Assembly| {
+    let generator = move |mref: Interned<MethodRef>, asm: &mut Assembly| {
         let res = *asm[asm[mref].sig()].output();
         let addr = asm.alloc_node(CILNode::LdLocA(0));
         let arg0 = asm.alloc_node(CILNode::LdArg(0));
@@ -210,14 +211,14 @@ pub fn ovf_check_tuple(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
 }
 pub fn create_slice(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
     let name = asm.alloc_string("create_slice");
-    let generator = move |mref: MethodRefIdx, asm: &mut Assembly| {
+    let generator = move |mref: Interned<MethodRef>, asm: &mut Assembly| {
         let res = *asm[asm[mref].sig()].output();
         let addr = asm.alloc_node(CILNode::LdLocA(0));
         let arg0 = asm.alloc_node(CILNode::LdArg(0));
         let arg1 = asm.alloc_node(CILNode::LdArg(1));
         let ret = asm.alloc_node(CILNode::LdLoc(0));
-        let data_ptr = FieldIdx::data_ptr(asm, res.as_class_ref().unwrap());
-        let metadata = FieldIdx::metadata(asm, res.as_class_ref().unwrap());
+        let data_ptr = Interned::data_ptr(asm, res.as_class_ref().unwrap());
+        let metadata = Interned::metadata(asm, res.as_class_ref().unwrap());
         MethodImpl::MethodBody {
             blocks: vec![BasicBlock::new(
                 vec![
@@ -486,7 +487,7 @@ pub fn rust_assert(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
             0,
             Some(BranchCond::False(assert)),
         ))));
-        let mref = MethodRefIdx::abort(asm);
+        let mref = Interned::abort(asm);
         let assert_failed = asm.alloc_root(CILRoot::call(mref, vec![]));
         MethodImpl::MethodBody {
             blocks: vec![
@@ -637,7 +638,7 @@ pub fn stack_addr(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
 }
 pub fn transmute(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
     let name = asm.alloc_string("transmute");
-    let generator = move |mref: MethodRefIdx, asm: &mut Assembly| {
+    let generator = move |mref: Interned<MethodRef>, asm: &mut Assembly| {
         let target = *asm[asm[mref].sig()].output();
         let source = asm[asm[mref].sig()].inputs()[0];
         let source = asm.alloc_type(source);

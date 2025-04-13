@@ -1,9 +1,6 @@
 use cilly::{
-    call,
-    cil_node::CILNode,
-    cil_root::CILRoot,
-    eq, gt_un, Const, Type,
-    {cilnode::MethodKind, Assembly, ClassRef, ClassRefIdx, FieldDesc, Float, Int, MethodRef},
+    bimap::IntoBiMapIndex, call, cil_node::CILNode, cil_root::CILRoot, cilnode::MethodKind, eq,
+    gt_un, Assembly, ClassRef, Const, FieldDesc, Float, Int, Interned, MethodRef, Type,
 };
 use rustc_abi::{FieldIdx, FieldsShape, Layout, LayoutData, TagEncoding, VariantIdx, Variants};
 use rustc_middle::ty::Ty;
@@ -49,7 +46,7 @@ impl FieldOffsetIterator {
                     .enumerate()
                     .map(|(index, _mem_idx)| {
                         u32::try_from(
-                            offsets[FieldIdx::from_u32(u32::try_from(index).unwrap())].bytes(),
+                            offsets[FieldIdx::from(u32::try_from(index).unwrap())].bytes(),
                         )
                         .unwrap()
                     })
@@ -145,7 +142,7 @@ pub fn set_discr<'tcx>(
     layout: Layout<'tcx>,
     variant_index: VariantIdx,
     enum_addr: CILNode,
-    enum_tpe: ClassRefIdx,
+    enum_tpe: Interned<ClassRef>,
     ty: Ty<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> CILRoot {
@@ -222,7 +219,7 @@ pub fn set_discr<'tcx>(
 pub fn get_discr<'tcx>(
     layout: Layout<'tcx>,
     enum_addr: CILNode,
-    enum_tpe: ClassRefIdx,
+    enum_tpe: Interned<ClassRef>,
     ty: Ty<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> CILNode {

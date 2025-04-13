@@ -3,9 +3,10 @@ use fxhash::FxHashSet;
 use crate::{bimap::IntoBiMapIndex, IString};
 
 use super::{
+    bimap::Interned,
     cilnode::{PtrCastRes, UnOp},
     method::LocalDef,
-    Assembly, BinOp, CILNode, CILRoot, ClassRef, FieldIdx, Int, NodeIdx, SigIdx, Type,
+    Assembly, BinOp, CILNode, CILRoot, ClassRef, FieldDesc, FnSig, Int, Type,
 };
 #[derive(Debug)]
 /// Signals that a piece of CIL is not valid.
@@ -73,8 +74,8 @@ pub enum TypeCheckError {
         field: crate::FieldDesc,
     },
     FieldOwnerMismatch {
-        owner: crate::ClassRefIdx,
-        expected_owner: crate::ClassRefIdx,
+        owner: Interned<ClassRef>,
+        expected_owner: Interned<ClassRef>,
         field: crate::FieldDesc,
     },
     ExpectedClassGotValuetype {
@@ -178,7 +179,7 @@ pub enum TypeCheckError {
         /// The expected type
         field_tpe: Type,
         /// The reference to the field.
-        fld: FieldIdx,
+        fld: Interned<FieldDesc>,
         /// The recived type.
         val: Type,
     },
@@ -187,9 +188,9 @@ pub enum TypeCheckError {
         /// The type of the field.
         tpe: Type,
         /// The name of the field.
-        name: super::StringIdx,
+        name: super::Interned<IString>,
         /// The owner of this field.
-        owner: super::ClassRefIdx,
+        owner: super::Interned<ClassRef>,
     },
     /// An operation was performed on a void pointer.
     VoidPointerOp {
@@ -199,9 +200,9 @@ pub enum TypeCheckError {
 }
 /// Converts a typecheck error to a graph representing the issue with the typecheck process.
 pub fn typecheck_err_to_string(
-    root_idx: super::RootIdx,
+    root_idx: super::Interned<CILRoot>,
     asm: &mut Assembly,
-    sig: SigIdx,
+    sig: Interned<FnSig>,
     locals: &[LocalDef],
 ) -> String {
     let root = asm[root_idx].clone();
@@ -224,19 +225,19 @@ pub fn typecheck_err_to_string(
 }
 /// Display an error during typechecking root `root_idx`.
 pub fn display_typecheck_err(
-    root_idx: super::RootIdx,
+    root_idx: super::Interned<CILRoot>,
     asm: &mut Assembly,
-    sig: SigIdx,
+    sig: Interned<FnSig>,
     locals: &[LocalDef],
 ) {
     eprintln!("{}", typecheck_err_to_string(root_idx, asm, sig, locals))
 }
 fn display_node(
-    nodeidx: NodeIdx,
+    nodeidx: Interned<CILNode>,
     asm: &mut Assembly,
-    sig: SigIdx,
+    sig: Interned<FnSig>,
     locals: &[LocalDef],
-    set: &mut FxHashSet<NodeIdx>,
+    set: &mut FxHashSet<Interned<CILNode>>,
 ) -> String {
     let node = asm.get_node(nodeidx).clone();
     set.insert(nodeidx);
@@ -631,7 +632,7 @@ impl CILNode {
     /// Returns an error if this node can't pass type checks.
     pub fn typecheck(
         &self,
-        sig: SigIdx,
+        sig: Interned<FnSig>,
         locals: &[LocalDef],
         asm: &mut Assembly,
     ) -> Result<Type, TypeCheckError> {
@@ -978,7 +979,7 @@ impl CILNode {
 impl CILRoot {
     pub fn typecheck(
         &self,
-        sig: SigIdx,
+        sig: Interned<FnSig>,
         locals: &[LocalDef],
         asm: &mut Assembly,
     ) -> Result<(), TypeCheckError> {

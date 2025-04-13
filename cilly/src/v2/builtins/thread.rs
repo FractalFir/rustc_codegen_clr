@@ -6,13 +6,11 @@ use super::{
     UNMANAGED_THREAD_START,
 };
 use crate::{
-    ClassRefIdx,
-    {
-        cilnode::{ExtendKind, PtrCastRes},
-        cilroot::BranchCond,
-        tpe::GenericKind,
-        BinOp, StaticFieldDesc,
-    },
+    bimap::Interned,
+    cilnode::{ExtendKind, PtrCastRes},
+    cilroot::BranchCond,
+    tpe::GenericKind,
+    BinOp, StaticFieldDesc,
 };
 fn handle_to_obj(asm: &mut Assembly, _: &mut MissingMethodPatcher) {
     let name = asm.alloc_string("handle_to_obj");
@@ -511,7 +509,7 @@ pub fn instert_threading(asm: &mut Assembly, patcher: &mut MissingMethodPatcher)
     });
     asm.add_cctor(&[init_thread_results]);
     // Get the thread result static
-    let thread_results: crate::NodeIdx = asm.alloc_node(CILNode::LdStaticField(thread_results));
+    let thread_results = asm.alloc_node(CILNode::LdStaticField(thread_results));
     let set_item = asm.alloc_string("set_Item");
     let set_dict = asm.class_ref(dict).clone().virtual_mref(
         &[
@@ -551,7 +549,7 @@ pub fn instert_threading(asm: &mut Assembly, patcher: &mut MissingMethodPatcher)
     );
 }
 const PTHREAD_KEY_T: Int = Int::I32;
-fn thread_key_dict(asm: &mut Assembly) -> ClassRefIdx {
+fn thread_key_dict(asm: &mut Assembly) -> Interned<ClassRef> {
     ClassRef::dictionary(Type::Int(PTHREAD_KEY_T), Type::Int(Int::ISize), asm)
 }
 fn insert_pthread_setspecific(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {

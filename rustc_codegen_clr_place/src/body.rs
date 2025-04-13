@@ -1,7 +1,7 @@
 use super::{PlaceTy, array_get_address, array_get_item, pointed_type};
 use crate::{body_ty_is_by_adress, deref_op};
 use cilly::{
-    BinOp, Const, FieldDesc, Int, IntoAsmIndex, NodeIdx, Type, call, conv_usize, ld_field,
+    BinOp, Const, FieldDesc, Int, Interned, IntoAsmIndex, Type, call, conv_usize, ld_field,
     v2::CILNode,
 };
 use rustc_codegen_clr_ctx::MethodCompileCtx;
@@ -13,7 +13,10 @@ use rustc_codegen_clr_type::{
 };
 use rustc_middle::mir::{Local, PlaceElem};
 use rustc_middle::ty::{Ty, TyKind};
-pub fn local_body<'tcx>(local: usize, ctx: &mut MethodCompileCtx<'tcx, '_>) -> (NodeIdx, Ty<'tcx>) {
+pub fn local_body<'tcx>(
+    local: usize,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
+) -> (Interned<cilly::v2::CILNode>, Ty<'tcx>) {
     let ty = ctx.body().local_decls[Local::from_usize(local)].ty;
     let ty = ctx.monomorphize(ty);
     if body_ty_is_by_adress(ty, ctx) {
@@ -27,8 +30,8 @@ fn body_field<'a>(
     ctx: &mut MethodCompileCtx<'a, '_>,
     field_index: u32,
     field_ty: Ty<'a>,
-    parrent_node: NodeIdx,
-) -> (PlaceTy<'a>, NodeIdx) {
+    parrent_node: Interned<cilly::v2::CILNode>,
+) -> (PlaceTy<'a>, Interned<cilly::v2::CILNode>) {
     match curr_type {
         super::PlaceTy::Ty(curr_type) => {
             let curr_type = ctx.monomorphize(curr_type);
@@ -101,9 +104,9 @@ fn body_field<'a>(
 pub fn place_elem_body_index<'tcx>(
     curr_ty: Ty<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-    parrent_node: NodeIdx,
+    parrent_node: Interned<cilly::v2::CILNode>,
     index: rustc_middle::mir::Local,
-) -> (PlaceTy<'tcx>, NodeIdx) {
+) -> (PlaceTy<'tcx>, Interned<cilly::v2::CILNode>) {
     let index = crate::local_get(index.as_usize(), ctx.body(), ctx);
     match curr_ty.kind() {
         TyKind::Slice(inner) => {
@@ -160,8 +163,8 @@ pub fn place_elem_body<'tcx>(
     place_elem: &PlaceElem<'tcx>,
     curr_type: PlaceTy<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-    parrent_node: NodeIdx,
-) -> (PlaceTy<'tcx>, NodeIdx) {
+    parrent_node: Interned<cilly::v2::CILNode>,
+) -> (PlaceTy<'tcx>, Interned<cilly::v2::CILNode>) {
     let curr_ty = match curr_type {
         PlaceTy::Ty(ty) => PlaceTy::Ty(ctx.monomorphize(ty)),
         PlaceTy::EnumVariant(enm, idx) => PlaceTy::EnumVariant(ctx.monomorphize(enm), idx),

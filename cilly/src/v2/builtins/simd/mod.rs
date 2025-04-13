@@ -1,17 +1,17 @@
 use crate::{
-    asm::MissingMethodPatcher, tpe::simd::SIMDVector, Assembly, BasicBlock, CILNode, CILRoot,
-    MethodImpl, MethodRefIdx, NodeIdx, Type,
+    asm::MissingMethodPatcher, bimap::Interned, tpe::simd::SIMDVector, Assembly, BasicBlock,
+    CILNode, CILRoot, MethodImpl, MethodRef, Type,
 };
 mod eq;
 use eq::*;
 mod binop;
 use binop::*;
 fn dotnet_vec_cast(
-    src: NodeIdx,
+    src: Interned<CILNode>,
     src_type: SIMDVector,
     target_type: SIMDVector,
     asm: &mut Assembly,
-) -> NodeIdx {
+) -> Interned<CILNode> {
     if src_type == target_type {
         return src;
     }
@@ -21,8 +21,8 @@ fn dotnet_vec_cast(
 }
 
 fn simd_ones_compliment(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
-    let name: crate::StringIdx = asm.alloc_string("simd_ones_compliment");
-    let generator = move |mref: MethodRefIdx, asm: &mut Assembly| {
+    let name = asm.alloc_string("simd_ones_compliment");
+    let generator = move |mref: Interned<MethodRef>, asm: &mut Assembly| {
         let sig = asm[asm[mref].sig()].clone();
 
         let Some(vec_type) = sig.inputs()[0].as_simdvector() else {
@@ -62,8 +62,8 @@ fn simd_ones_compliment(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) 
 }
 
 fn simd_neg(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
-    let name: crate::StringIdx = asm.alloc_string("simd_neg");
-    let generator = move |mref: MethodRefIdx, asm: &mut Assembly| {
+    let name = asm.alloc_string("simd_neg");
+    let generator = move |mref: Interned<MethodRef>, asm: &mut Assembly| {
         let sig = asm[asm[mref].sig()].clone();
 
         let Some(vec_type) = sig.inputs()[0].as_simdvector() else {
@@ -102,8 +102,8 @@ fn simd_neg(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
     patcher.insert(name, Box::new(generator));
 }
 fn simd_abs(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
-    let name: crate::StringIdx = asm.alloc_string("simd_abs");
-    let generator = move |mref: MethodRefIdx, asm: &mut Assembly| {
+    let name = asm.alloc_string("simd_abs");
+    let generator = move |mref: Interned<MethodRef>, asm: &mut Assembly| {
         let sig = asm[asm[mref].sig()].clone();
 
         let Some(vec_type) = sig.inputs()[0].as_simdvector() else {
@@ -143,8 +143,8 @@ fn simd_abs(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
 }
 #[allow(dead_code)]
 fn simd_shuffle(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
-    let name: crate::StringIdx = asm.alloc_string("simd_shuffle");
-    let generator = move |_mref: MethodRefIdx, _asm: &mut Assembly| {
+    let name = asm.alloc_string("simd_shuffle");
+    let generator = move |_mref: Interned<MethodRef>, _asm: &mut Assembly| {
         todo!("simd_shuffle not supported yet!");
         /*MethodImpl::MethodBody {
             blocks: vec![BasicBlock::new(vec![], 0, None)],
@@ -154,8 +154,8 @@ fn simd_shuffle(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
     patcher.insert(name, Box::new(generator));
 }
 fn simd_vec_from_val(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
-    let name: crate::StringIdx = asm.alloc_string("simd_vec_from_val");
-    let generator = move |mref: MethodRefIdx, asm: &mut Assembly| {
+    let name = asm.alloc_string("simd_vec_from_val");
+    let generator = move |mref: Interned<MethodRef>, asm: &mut Assembly| {
         let sig = asm[asm[mref].sig()].clone();
         let Some(vec_type) = sig.output().as_simdvector() else {
             todo!(
@@ -178,8 +178,8 @@ fn simd_vec_from_val(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
     patcher.insert(name, Box::new(generator));
 }
 fn simd_allset(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
-    let name: crate::StringIdx = asm.alloc_string("simd_allset");
-    let generator = move |mref: MethodRefIdx, asm: &mut Assembly| {
+    let name = asm.alloc_string("simd_allset");
+    let generator = move |mref: Interned<MethodRef>, asm: &mut Assembly| {
         let sig = asm[asm[mref].sig()].clone();
         let Some(vec_type) = sig.output().as_simdvector() else {
             todo!("Can't simd_allset {vec_type:?}", vec_type = sig.output())

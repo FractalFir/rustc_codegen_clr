@@ -1,7 +1,5 @@
 use crate::{GetTypeExt, utilis::simple_tuple};
-use cilly::{
-    FieldDesc, Type, {Assembly, Float, Int},
-};
+use cilly::{Assembly, FieldDesc, Float, Int, Type, bimap::Interned};
 use rustc_abi::{FieldIdx, FieldsShape, Layout, LayoutData, VariantIdx, Variants};
 use rustc_codegen_clr_ctx::MethodCompileCtx;
 use rustc_middle::span_bug;
@@ -151,7 +149,7 @@ pub fn enum_field_descriptor<'tcx>(
     field_idx: u32,
     variant_idx: u32,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-) -> cilly::FieldIdx {
+) -> Interned<FieldDesc> {
     let (adt, subst) = as_adt(owner_ty).expect("Tried to get a field of a non ADT type!");
     let variant = adt
         .variants()
@@ -182,7 +180,7 @@ pub fn field_descrptor<'tcx>(
     owner_ty: Ty<'tcx>,
     field_idx: u32,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-) -> cilly::FieldIdx {
+) -> Interned<FieldDesc> {
     if let TyKind::Tuple(elements) = owner_ty.kind() {
         let element = elements[field_idx as usize];
         let element = ctx.monomorphize(element);

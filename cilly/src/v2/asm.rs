@@ -1,12 +1,10 @@
 use super::{
-    bimap::{BiMap, BiMapIndex, IntoBiMapIndex},
+    bimap::{BiMap, BiMapIndex, Interned, IntoBiMapIndex},
     cilnode::{BinOp, ExtendKind, MethodKind, PtrCastRes, UnOp},
-    class::StaticFieldDef,
+    class::{ClassDefIdx, StaticFieldDef},
     opt::{OptFuel, SideEffectInfoCache},
-    Access, CILNode, CILRoot, ClassDef, ClassDefIdx, ClassRef, ClassRefIdx, Const, Exporter,
-    FieldDesc, FieldIdx, FnSig, Int, IntoAsmIndex, MethodDef, MethodDefIdx, MethodRef,
-    MethodRefIdx, NodeIdx, RootIdx, SigIdx, StaticFieldDesc, StaticFieldIdx, StringIdx, Type,
-    TypeIdx,
+    Access, CILNode, CILRoot, ClassDef, ClassRef, Const, Exporter, FieldDesc, FnSig, Int,
+    IntoAsmIndex, MethodDef, MethodDefIdx, MethodRef, StaticFieldDesc, Type,
 };
 use crate::{config, utilis::assert_unique, IString};
 use crate::{utilis::encode, MethodImpl};
@@ -16,33 +14,32 @@ use serde::{Deserialize, Serialize};
 use std::{any::type_name, ops::Index};
 
 pub type MissingMethodPatcher =
-    FxHashMap<StringIdx, Box<dyn Fn(MethodRefIdx, &mut Assembly) -> MethodImpl>>;
-type StringMap = BiMap<StringIdx, IString>;
-type TypeMap = BiMap<TypeIdx, Type>;
+    FxHashMap<Interned<IString>, Box<dyn Fn(Interned<MethodRef>, &mut Assembly) -> MethodImpl>>;
+type StringMap = BiMap<IString>;
+type TypeMap = BiMap<Type>;
 #[derive(Default, Serialize, Deserialize, Clone)]
 pub struct Assembly {
     /// A list of strings used in this assembly
     strings: StringMap,
     /// A list of all types in this assembly
     types: TypeMap,
-    class_refs: BiMap<ClassRefIdx, ClassRef>,
+    class_refs: BiMap<ClassRef>,
     class_defs: FxHashMap<ClassDefIdx, ClassDef>,
-    nodes: BiMap<NodeIdx, CILNode>,
-    roots: BiMap<RootIdx, CILRoot>,
-    sigs: BiMap<SigIdx, FnSig>,
-    method_refs: BiMap<MethodRefIdx, MethodRef>,
-    fields: BiMap<FieldIdx, FieldDesc>,
-    statics: BiMap<StaticFieldIdx, StaticFieldDesc>,
+    nodes: BiMap<CILNode>,
+    roots: BiMap<CILRoot>,
+    sigs: BiMap<FnSig>,
+    method_refs: BiMap<MethodRef>,
+    fields: BiMap<FieldDesc>,
+    statics: BiMap<StaticFieldDesc>,
     method_defs: FxHashMap<MethodDefIdx, MethodDef>,
     sections: FxHashMap<String, Vec<u8>>,
-    // Cache containing information about the stack usage of a CIL node.
-    //#[serde(skip)]
-    //cache: CachedAssemblyInfo<NodeIdx, NonMaxU32, StackUsage>,
+    /// A list of all buffers within this assembly.
+    buffer: BiMap<Box<[u8]>>,
 }
-impl Index<StringIdx> for Assembly {
+impl Index<Interned<IString>> for Assembly {
     type Output = str;
 
-    fn index(&self, index: StringIdx) -> &Self::Output {
+    fn index(&self, index: Interned<IString>) -> &Self::Output {
         &self.strings[index]
     }
 }
@@ -53,10 +50,10 @@ impl Index<ClassDefIdx> for Assembly {
         &self.class_defs[&index]
     }
 }
-impl Index<MethodRefIdx> for Assembly {
+impl Index<Interned<MethodRef>> for Assembly {
     type Output = MethodRef;
 
-    fn index(&self, index: MethodRefIdx) -> &Self::Output {
+    fn index(&self, index: Interned<MethodRef>) -> &Self::Output {
         &self.method_refs[index]
     }
 }
@@ -67,52 +64,52 @@ impl Index<MethodDefIdx> for Assembly {
         &self.method_defs[&index]
     }
 }
-impl Index<ClassRefIdx> for Assembly {
+impl Index<Interned<ClassRef>> for Assembly {
     type Output = ClassRef;
 
-    fn index(&self, index: ClassRefIdx) -> &Self::Output {
+    fn index(&self, index: Interned<ClassRef>) -> &Self::Output {
         &self.class_refs[index]
     }
 }
-impl Index<TypeIdx> for Assembly {
+impl Index<Interned<Type>> for Assembly {
     type Output = Type;
 
-    fn index(&self, index: TypeIdx) -> &Self::Output {
+    fn index(&self, index: Interned<Type>) -> &Self::Output {
         &self.types[index]
     }
 }
-impl Index<SigIdx> for Assembly {
+impl Index<Interned<FnSig>> for Assembly {
     type Output = FnSig;
 
-    fn index(&self, index: SigIdx) -> &Self::Output {
+    fn index(&self, index: Interned<FnSig>) -> &Self::Output {
         &self.sigs[index]
     }
 }
-impl Index<RootIdx> for Assembly {
+impl Index<Interned<CILRoot>> for Assembly {
     type Output = CILRoot;
 
-    fn index(&self, index: RootIdx) -> &Self::Output {
+    fn index(&self, index: Interned<CILRoot>) -> &Self::Output {
         &self.roots[index]
     }
 }
-impl Index<NodeIdx> for Assembly {
+impl Index<Interned<CILNode>> for Assembly {
     type Output = CILNode;
 
-    fn index(&self, index: NodeIdx) -> &Self::Output {
+    fn index(&self, index: Interned<CILNode>) -> &Self::Output {
         &self.nodes[index]
     }
 }
-impl Index<StaticFieldIdx> for Assembly {
+impl Index<Interned<StaticFieldDesc>> for Assembly {
     type Output = StaticFieldDesc;
 
-    fn index(&self, index: StaticFieldIdx) -> &Self::Output {
+    fn index(&self, index: Interned<StaticFieldDesc>) -> &Self::Output {
         &self.statics[index]
     }
 }
-impl Index<FieldIdx> for Assembly {
+impl Index<Interned<FieldDesc>> for Assembly {
     type Output = FieldDesc;
 
-    fn index(&self, index: FieldIdx) -> &Self::Output {
+    fn index(&self, index: Interned<FieldDesc>) -> &Self::Output {
         &self.fields[index]
     }
 }
@@ -120,10 +117,10 @@ impl Assembly {
     /// Offsets `addr` by `index` * sizeof(`tpe`)
     pub fn offset(
         &mut self,
-        addr: impl IntoAsmIndex<NodeIdx>,
-        index: impl IntoAsmIndex<NodeIdx>,
-        tpe: impl IntoAsmIndex<TypeIdx>,
-    ) -> NodeIdx {
+        addr: impl IntoAsmIndex<Interned<CILNode>>,
+        index: impl IntoAsmIndex<Interned<CILNode>>,
+        tpe: impl IntoAsmIndex<Interned<Type>>,
+    ) -> Interned<CILNode> {
         let index = index.into_idx(self);
         let stride = self.size_of(tpe);
         let stride = self.int_cast(stride, Int::USize, ExtendKind::ZeroExtend);
@@ -133,9 +130,9 @@ impl Assembly {
     /// Dereferences `addr`, loading data of type `tpe`
     pub fn load(
         &mut self,
-        addr: impl IntoAsmIndex<NodeIdx>,
-        tpe: impl IntoAsmIndex<TypeIdx>,
-    ) -> NodeIdx {
+        addr: impl IntoAsmIndex<Interned<CILNode>>,
+        tpe: impl IntoAsmIndex<Interned<Type>>,
+    ) -> Interned<CILNode> {
         let addr = addr.into_idx(self);
         let tpe = tpe.into_idx(self);
         self.alloc_node(CILNode::LdInd {
@@ -147,9 +144,9 @@ impl Assembly {
     /// Gets the field of a valuetype / pointer `addr`.
     pub fn ld_field(
         &mut self,
-        addr: impl IntoAsmIndex<NodeIdx>,
-        field: impl IntoAsmIndex<FieldIdx>,
-    ) -> NodeIdx {
+        addr: impl IntoAsmIndex<Interned<CILNode>>,
+        field: impl IntoAsmIndex<Interned<FieldDesc>>,
+    ) -> Interned<CILNode> {
         let addr = addr.into_idx(self);
         let field = field.into_idx(self);
         self.alloc_node(CILNode::LdField { addr, field })
@@ -157,9 +154,9 @@ impl Assembly {
     /// Casts a pointer / usize / isize (`addr`) to a pointer to `tpe`.
     pub fn cast_ptr(
         &mut self,
-        addr: impl IntoAsmIndex<NodeIdx>,
-        tpe: impl IntoAsmIndex<TypeIdx>,
-    ) -> NodeIdx {
+        addr: impl IntoAsmIndex<Interned<CILNode>>,
+        tpe: impl IntoAsmIndex<Interned<Type>>,
+    ) -> Interned<CILNode> {
         let addr = addr.into_idx(self);
         let tpe = tpe.into_idx(self);
         self.alloc_node(CILNode::PtrCast(addr, Box::new(PtrCastRes::Ptr(tpe))))
@@ -167,9 +164,9 @@ impl Assembly {
     /// Gets the addres of a field of a pointer to valuetype `addr`.
     pub fn ld_field_addr(
         &mut self,
-        addr: impl IntoAsmIndex<NodeIdx>,
-        field: impl IntoAsmIndex<FieldIdx>,
-    ) -> NodeIdx {
+        addr: impl IntoAsmIndex<Interned<CILNode>>,
+        field: impl IntoAsmIndex<Interned<FieldDesc>>,
+    ) -> Interned<CILNode> {
         let addr = addr.into_idx(self);
         let field = field.into_idx(self);
         self.alloc_node(CILNode::LdFieldAdress { addr, field })
@@ -187,9 +184,12 @@ impl Assembly {
     }
 
     #[must_use]
-    pub fn method_ref_to_def(&self, method: MethodRefIdx) -> Option<MethodDefIdx> {
-        if self.method_defs.contains_key(&MethodDefIdx(method)) {
-            Some(MethodDefIdx(method))
+    pub fn method_ref_to_def(&self, method: Interned<MethodRef>) -> Option<MethodDefIdx> {
+        if self
+            .method_defs
+            .contains_key(&MethodDefIdx::from_raw(method))
+        {
+            Some(MethodDefIdx::from_raw(method))
         } else {
             None
         }
@@ -266,7 +266,7 @@ impl Assembly {
         &self,
         pat: P,
     ) -> Option<impl Iterator<Item = MethodDefIdx> + '_> {
-        let names: Box<[StringIdx]> = self.find_strs_containing(pat).collect();
+        let names: Box<[Interned<IString>]> = self.find_strs_containing(pat).collect();
         Some(self.method_defs.iter().filter_map(move |(mdefidx, mdef)| {
             if names.iter().any(|name| *name == mdef.name()) {
                 Some(*mdefidx)
@@ -278,14 +278,14 @@ impl Assembly {
     pub fn find_strs_containing<'a, P: std::str::pattern::Pattern + Clone + 'a>(
         &'a self,
         pat: P,
-    ) -> impl Iterator<Item = StringIdx> + 'a {
+    ) -> impl Iterator<Item = Interned<IString>> + 'a {
         self.strings
             .0
             .iter()
             .enumerate()
             .filter_map(move |(idx, str)| {
                 if str.contains(pat.clone()) {
-                    Some(StringIdx::from_index(
+                    Some(Interned::from_index(
                         BiMapIndex::new((idx + 1) as u32).unwrap(),
                     ))
                 } else {
@@ -293,7 +293,10 @@ impl Assembly {
                 }
             })
     }
-    pub fn get_prealllocated_string(&self, string: impl Into<IString>) -> Option<StringIdx> {
+    pub fn get_prealllocated_string(
+        &self,
+        string: impl Into<IString>,
+    ) -> Option<Interned<IString>> {
         self.strings.1.get(&(string.into())).copied()
     }
     pub fn class_mut(&mut self, id: ClassDefIdx) -> &mut ClassDef {
@@ -304,46 +307,50 @@ impl Assembly {
         &self.class_defs[&id]
     }
     #[must_use]
-    pub fn class_ref(&self, cref: ClassRefIdx) -> &ClassRef {
+    pub fn class_ref(&self, cref: Interned<ClassRef>) -> &ClassRef {
         self.class_refs.get(cref)
     }
     #[must_use]
     pub fn method_def(&self, dref: MethodDefIdx) -> &MethodDef {
         self.method_defs.get(&dref).unwrap()
     }
-    pub fn alloc_string(&mut self, string: impl Into<IString>) -> StringIdx {
+    pub fn alloc_string(&mut self, string: impl Into<IString>) -> Interned<IString> {
         self.strings.alloc(string.into())
     }
 
-    pub fn sig(&mut self, input: impl Into<Box<[Type]>>, output: impl Into<Type>) -> SigIdx {
+    pub fn sig(
+        &mut self,
+        input: impl Into<Box<[Type]>>,
+        output: impl Into<Type>,
+    ) -> Interned<FnSig> {
         self.sigs.alloc(FnSig::new(input.into(), output.into()))
     }
     pub fn fn_ptr(&mut self, input: impl Into<Box<[Type]>>, output: impl Into<Type>) -> Type {
         let sig = self.sig(input, output);
         Type::FnPtr(sig)
     }
-    pub fn nptr(&mut self, inner: impl IntoAsmIndex<TypeIdx>) -> Type {
+    pub fn nptr(&mut self, inner: impl IntoAsmIndex<Interned<Type>>) -> Type {
         Type::Ptr(inner.into_idx(self))
     }
-    pub fn nref(&mut self, inner: impl IntoAsmIndex<TypeIdx>) -> Type {
+    pub fn nref(&mut self, inner: impl IntoAsmIndex<Interned<Type>>) -> Type {
         Type::Ref(inner.into_idx(self))
     }
 
     #[must_use]
-    pub fn get_root(&self, root: RootIdx) -> &CILRoot {
+    pub fn get_root(&self, root: Interned<CILRoot>) -> &CILRoot {
         self.roots.get(root)
     }
-    pub fn size_of(&mut self, tpe: impl IntoAsmIndex<TypeIdx>) -> NodeIdx {
+    pub fn size_of(&mut self, tpe: impl IntoAsmIndex<Interned<Type>>) -> Interned<CILNode> {
         let idx = tpe.into_idx(self);
         assert_ne!(self[idx], Type::Void);
         self.alloc_node(CILNode::SizeOf(idx))
     }
     pub fn biop(
         &mut self,
-        lhs: impl IntoAsmIndex<NodeIdx>,
-        rhs: impl IntoAsmIndex<NodeIdx>,
+        lhs: impl IntoAsmIndex<Interned<CILNode>>,
+        rhs: impl IntoAsmIndex<Interned<CILNode>>,
         op: BinOp,
-    ) -> NodeIdx {
+    ) -> Interned<CILNode> {
         let lhs = lhs.into_idx(self);
         let rhs = rhs.into_idx(self);
         self.alloc_node(CILNode::BinOp(lhs, rhs, op))
@@ -354,7 +361,7 @@ impl Assembly {
     }
     pub fn int_cast(
         &mut self,
-        input: impl IntoAsmIndex<NodeIdx>,
+        input: impl IntoAsmIndex<Interned<CILNode>>,
         target: Int,
         extend: ExtendKind,
     ) -> CILNode {
@@ -364,68 +371,72 @@ impl Assembly {
             extend,
         }
     }
-    pub fn ptr_cast(&mut self, input: impl IntoAsmIndex<NodeIdx>, res: PtrCastRes) -> CILNode {
+    pub fn ptr_cast(
+        &mut self,
+        input: impl IntoAsmIndex<Interned<CILNode>>,
+        res: PtrCastRes,
+    ) -> CILNode {
         CILNode::PtrCast(input.into_idx(self), Box::new(res))
     }
     pub fn ldstr(&mut self, msg: impl Into<IString>) -> CILNode {
         CILNode::Const(Box::new(Const::PlatformString(self.alloc_string(msg))))
     }
-    pub fn strct(&mut self, name: IString) -> ClassRefIdx {
+    pub fn strct(&mut self, name: IString) -> Interned<ClassRef> {
         let class = ClassRef::new(self.alloc_string(name), None, true, vec![].into());
         self.class_refs.alloc(class)
     }
 
-    pub fn alloc_node(&mut self, node: impl Into<CILNode>) -> NodeIdx {
+    pub fn alloc_node(&mut self, node: impl Into<CILNode>) -> Interned<CILNode> {
         self.nodes.alloc(node.into())
     }
 
-    pub fn alloc_class_ref(&mut self, cref: ClassRef) -> ClassRefIdx {
+    pub fn alloc_class_ref(&mut self, cref: ClassRef) -> Interned<ClassRef> {
         self.class_refs.alloc(cref)
     }
 
-    pub fn alloc_sig(&mut self, sig: FnSig) -> SigIdx {
+    pub fn alloc_sig(&mut self, sig: FnSig) -> Interned<FnSig> {
         self.sigs.alloc(sig)
     }
 
-    pub fn alloc_methodref(&mut self, method_ref: MethodRef) -> MethodRefIdx {
+    pub fn alloc_methodref(&mut self, method_ref: MethodRef) -> Interned<MethodRef> {
         self.method_refs.alloc(method_ref)
     }
     pub fn new_methodref(
         &mut self,
-        class: ClassRefIdx,
+        class: Interned<ClassRef>,
         name: impl Into<IString>,
-        sig: SigIdx,
+        sig: Interned<FnSig>,
         kind: MethodKind,
         generics: impl Into<Box<[Type]>>,
-    ) -> MethodRefIdx {
+    ) -> Interned<MethodRef> {
         let name = self.alloc_string(name);
 
         self.alloc_methodref(MethodRef::new(class, name, sig, kind, generics.into()))
     }
-    pub fn alloc_root(&mut self, val: CILRoot) -> RootIdx {
+    pub fn alloc_root(&mut self, val: CILRoot) -> Interned<CILRoot> {
         self.roots.alloc(val)
     }
 
-    pub fn alloc_type(&mut self, tpe: impl Into<Type>) -> TypeIdx {
+    pub fn alloc_type(&mut self, tpe: impl Into<Type>) -> Interned<Type> {
         self.types.alloc(tpe.into())
     }
 
-    pub(crate) fn get_node(&self, key: NodeIdx) -> &CILNode {
+    pub(crate) fn get_node(&self, key: Interned<CILNode>) -> &CILNode {
         self.nodes.get(key)
     }
 
-    pub fn alloc_field(&mut self, field: FieldDesc) -> FieldIdx {
+    pub fn alloc_field(&mut self, field: FieldDesc) -> Interned<FieldDesc> {
         self.fields.alloc(field)
     }
     #[must_use]
-    pub fn get_field(&self, key: FieldIdx) -> &FieldDesc {
+    pub fn get_field(&self, key: Interned<FieldDesc>) -> &FieldDesc {
         self.fields.get(key)
     }
-    pub fn alloc_sfld(&mut self, sfld: StaticFieldDesc) -> StaticFieldIdx {
+    pub fn alloc_sfld(&mut self, sfld: StaticFieldDesc) -> Interned<StaticFieldDesc> {
         self.statics.alloc(sfld)
     }
     #[must_use]
-    pub fn get_static_field(&self, key: StaticFieldIdx) -> &StaticFieldDesc {
+    pub fn get_static_field(&self, key: Interned<StaticFieldDesc>) -> &StaticFieldDesc {
         self.statics.get(key)
     }
     pub fn add_static(
@@ -434,7 +445,7 @@ impl Assembly {
         name: impl Into<IString>,
         thread_local: bool,
         in_class: ClassDefIdx,
-    ) -> StaticFieldIdx {
+    ) -> Interned<StaticFieldDesc> {
         let name = self.alloc_string(name);
         let sfld = StaticFieldDesc::new(*in_class, name, tpe);
         let idx = self.alloc_sfld(sfld);
@@ -503,16 +514,20 @@ impl Assembly {
         let def_class = def.class();
         let ref_idx = self.alloc_methodref(mref);
         // Check that this def is unique
-        if !self.method_defs.contains_key(&MethodDefIdx(ref_idx)) {
+        if !self
+            .method_defs
+            .contains_key(&MethodDefIdx::from_raw(ref_idx))
+        {
             self.class_defs
                 .get_mut(&def_class)
                 .expect("Method added without a class")
-                .add_def(MethodDefIdx(ref_idx));
+                .add_def(MethodDefIdx::from_raw(ref_idx));
         }
 
-        self.method_defs.insert(MethodDefIdx(ref_idx), def);
+        self.method_defs
+            .insert(MethodDefIdx::from_raw(ref_idx), def);
 
-        MethodDefIdx(ref_idx)
+        MethodDefIdx::from_raw(ref_idx)
     }
     pub fn user_init(&mut self) -> MethodDefIdx {
         let main_module = self.main_module();
@@ -526,8 +541,8 @@ impl Assembly {
             vec![].into(),
         );
         let mref = self.alloc_methodref(mref);
-        if self.method_defs.contains_key(&MethodDefIdx(mref)) {
-            MethodDefIdx(mref)
+        if self.method_defs.contains_key(&MethodDefIdx::from_raw(mref)) {
+            MethodDefIdx::from_raw(mref)
         } else {
             let mimpl = MethodImpl::MethodBody {
                 blocks: vec![super::BasicBlock::new(
@@ -562,8 +577,8 @@ impl Assembly {
             vec![].into(),
         );
         let mref = self.alloc_methodref(mref);
-        if self.method_defs.contains_key(&MethodDefIdx(mref)) {
-            MethodDefIdx(mref)
+        if self.method_defs.contains_key(&MethodDefIdx::from_raw(mref)) {
+            MethodDefIdx::from_raw(mref)
         } else {
             let mimpl = MethodImpl::MethodBody {
                 blocks: vec![super::BasicBlock::new(
@@ -585,7 +600,7 @@ impl Assembly {
             self.new_method(cctor_def)
         }
     }
-    fn cctor_mref(&mut self) -> MethodRefIdx {
+    fn cctor_mref(&mut self) -> Interned<MethodRef> {
         let main_module = self.main_module();
         let user_init = self.alloc_string(CCTOR);
         let ctor_sig = self.sig([], Type::Void);
@@ -649,20 +664,20 @@ impl Assembly {
     pub fn has_tcctor(&self) -> bool {
         self.has_builtin(TCCTOR, [], Type::Void)
     }
-    pub fn get_prealllocated_class_ref(&self, cref: ClassRef) -> Option<ClassRefIdx> {
+    pub fn get_prealllocated_class_ref(&self, cref: ClassRef) -> Option<Interned<ClassRef>> {
         self.class_refs.1.get(&cref).copied()
     }
-    pub fn get_prealllocated_sig(&self, sig: FnSig) -> Option<SigIdx> {
+    pub fn get_prealllocated_sig(&self, sig: FnSig) -> Option<Interned<FnSig>> {
         self.sigs.1.get(&sig).copied()
     }
-    pub fn get_prealllocated_methodref(&self, mref: MethodRef) -> Option<MethodRefIdx> {
+    pub fn get_prealllocated_methodref(&self, mref: MethodRef) -> Option<Interned<MethodRef>> {
         self.method_refs.1.get(&mref).copied()
     }
     /// Returns a reference to the static initializer
     pub fn cctor(&mut self) -> MethodDefIdx {
         let mref = self.cctor_mref();
-        if self.method_defs.contains_key(&MethodDefIdx(mref)) {
-            MethodDefIdx(mref)
+        if self.method_defs.contains_key(&MethodDefIdx::from_raw(mref)) {
+            MethodDefIdx::from_raw(mref)
         } else {
             let mimpl = MethodImpl::MethodBody {
                 blocks: vec![super::BasicBlock::new(
@@ -688,7 +703,7 @@ impl Assembly {
         }
     }
     /// Adds new rooots to the user init list.
-    pub fn add_user_init(&mut self, roots: &[RootIdx]) {
+    pub fn add_user_init(&mut self, roots: &[Interned<CILRoot>]) {
         let user_init = self.user_init();
         let user_init = self.method_defs.get_mut(&user_init).unwrap();
         let blocks = user_init
@@ -709,7 +724,7 @@ impl Assembly {
         }
     }
     /// Adds new rooots to the thread local intiailzer .
-    pub fn add_tcctor(&mut self, roots: &[RootIdx]) {
+    pub fn add_tcctor(&mut self, roots: &[Interned<CILRoot>]) {
         let user_init = self.tcctor();
         let user_init = self.method_defs.get_mut(&user_init).unwrap();
         let blocks = user_init
@@ -730,7 +745,7 @@ impl Assembly {
         }
     }
     /// Adds new rooots to the static initializer
-    pub fn add_cctor(&mut self, roots: &[RootIdx]) {
+    pub fn add_cctor(&mut self, roots: &[Interned<CILRoot>]) {
         let user_init = self.cctor();
         let user_init = self.method_defs.get_mut(&user_init).unwrap();
         let blocks = user_init
@@ -821,8 +836,8 @@ impl Assembly {
     pub(crate) fn iter_class_def_ids(&self) -> impl Iterator<Item = &ClassDefIdx> {
         self.class_defs.keys()
     }
-    pub(crate) fn method_def_from_ref(&self, mref: MethodRefIdx) -> Option<&MethodDef> {
-        self.method_defs.get(&MethodDefIdx(mref))
+    pub(crate) fn method_def_from_ref(&self, mref: Interned<MethodRef>) -> Option<&MethodDef> {
+        self.method_defs.get(&MethodDefIdx::from_raw(mref))
     }
     pub(crate) fn eliminate_dead_fns(&mut self, only_imports: bool) {
         // 1st. Collect all "extern" method definitons, since those are always alive.
@@ -863,8 +878,8 @@ impl Assembly {
                 // Check if this method reference is also a def. If so, map it to a def
                 let defids = refids.filter_map(|refid| {
                     self.method_defs
-                        .get(&MethodDefIdx(refid))
-                        .map(|_| MethodDefIdx(refid))
+                        .get(&MethodDefIdx::from_raw(refid))
+                        .map(|_| MethodDefIdx::from_raw(refid))
                         .and_then(|refid| {
                             if alive.contains(&refid) {
                                 None
@@ -1009,9 +1024,12 @@ impl Assembly {
                 continue;
             }
             let mref_idx =
-                MethodRefIdx::from_index(std::num::NonZeroU32::new(index as u32 + 1).unwrap());
+                Interned::from_index(std::num::NonZeroU32::new(index as u32 + 1).unwrap());
             // Check if this method already has an implementation.
-            if self.method_defs.contains_key(&MethodDefIdx(mref_idx)) {
+            if self
+                .method_defs
+                .contains_key(&MethodDefIdx::from_raw(mref_idx))
+            {
                 // A method defintion already present, so we don't need to do anyting, so skip.
 
                 continue;
@@ -1086,7 +1104,7 @@ impl Assembly {
     }
 
     #[must_use]
-    pub fn class_ref_to_def(&self, class: ClassRefIdx) -> Option<ClassDefIdx> {
+    pub fn class_ref_to_def(&self, class: Interned<ClassRef>) -> Option<ClassDefIdx> {
         if self.class_defs.contains_key(&ClassDefIdx(class)) {
             Some(ClassDefIdx(class))
         } else {
@@ -1126,10 +1144,7 @@ impl Assembly {
 
     pub(crate) fn class_defs_mut_strings(
         &mut self,
-    ) -> (
-        &mut FxHashMap<ClassDefIdx, ClassDef>,
-        &BiMap<StringIdx, IString>,
-    ) {
+    ) -> (&mut FxHashMap<ClassDefIdx, ClassDef>, &BiMap<IString>) {
         (&mut self.class_defs, &self.strings)
     }
     /// Iteates trough *all the nodes* in this assembly
@@ -1142,7 +1157,7 @@ impl Assembly {
     }
     pub fn remove_dead_statics(&mut self) {
         /*// Check which statics are referenced by real code.
-                let alive_statics: FxHashSet<StaticFieldIdx> = self
+                let alive_statics: FxHashSet<Interned<StaticFieldDesc>> = self
                     .iter_nodes()
                     .filter_map(|node| match node {
                         CILNode::LdStaticField(fld) | CILNode::LdStaticFieldAdress(fld) => Some(*fld),
@@ -1175,7 +1190,7 @@ impl Assembly {
     /// **WARNING**: This gc is highly conservative, and will often not collect some things.
     /// To improve its accuracy, first do `link_gc`.
     pub fn shallow_methodef_gc(&mut self) {
-        let live: FxHashSet<MethodRefIdx> = self
+        let live: FxHashSet<Interned<MethodRef>> = self
             .iter_nodes()
             .filter_map(|node| match node {
                 CILNode::Call(boxed) => Some(boxed.0),
@@ -1261,7 +1276,7 @@ impl Assembly {
         });
     }
     pub fn split_to_parts(&self, parts: u32) -> impl Iterator<Item = Self> + use<'_> {
-        let lib_name = StringIdx::from_index(std::num::NonZeroU32::new(1).unwrap());
+        let lib_name = Interned::from_index(std::num::NonZeroU32::new(1).unwrap());
         // Since 1st part is dedicated to methods which access statics, split the rest into n-1 parts.
         let div = (self.method_refs.len().div_ceil(parts as usize - 1)) as u32;
         // Into 1st. Only split out the methods where it is known, for sure, that they don't access any statics.
@@ -1295,7 +1310,7 @@ impl Assembly {
         })
     }
     pub fn only_statics(&self) -> Self {
-        let lib_name = StringIdx::from_index(std::num::NonZeroU32::new(1).unwrap());
+        let lib_name = Interned::from_index(std::num::NonZeroU32::new(1).unwrap());
         let mut empty = self.clone();
         empty.method_defs.iter_mut().for_each(|(_, def)| {
             *def.implementation_mut() = MethodImpl::Extern {
@@ -1315,7 +1330,7 @@ impl Assembly {
             self.return_methoddef(method, tmp_method);
         }
     }
-    pub fn alignof_type(&self, tpe: TypeIdx) -> u64 {
+    pub fn alignof_type(&self, tpe: Interned<Type>) -> u64 {
         match self[tpe] {
             Type::FnPtr(_) | Type::Ptr(_) | Type::Ref(_) => 8, // ASSUMES alignof<*T>() = 8.
             Type::Int(int) => int.size().unwrap_or(8) as u64,  // ASSUMES alignof<usize>() = 8.
@@ -1339,7 +1354,7 @@ impl Assembly {
         }
     }
 
-    pub fn method_refs(&self) -> &BiMap<MethodRefIdx, MethodRef> {
+    pub fn method_refs(&self) -> &BiMap<MethodRef> {
         &self.method_refs
     }
 
@@ -1405,9 +1420,13 @@ impl Assembly {
         *MAX_STATIC_SIZE
     }
 
-    pub(crate) fn global_void(&mut self) -> StaticFieldIdx {
+    pub(crate) fn global_void(&mut self) -> Interned<StaticFieldDesc> {
         let main = self.main_module();
         self.add_static(Type::Void, "global_void", false, main)
+    }
+
+    pub(crate) fn translate_buffer(&self, data: Interned<Box<[u8]>>) -> Interned<Box<[u8]>> {
+        todo!()
     }
 }
 config!(GUARANTED_ALIGN, u8, 8);

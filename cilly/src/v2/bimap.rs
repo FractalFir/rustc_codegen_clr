@@ -6,36 +6,30 @@ use std::{
 };
 
 #[derive(Serialize, Deserialize, Clone)]
-pub struct BiMap<Key, Value: Eq + Hash>(pub Vec<Value>, pub FxHashMap<Value, Key>);
-impl<Key: IntoBiMapIndex + Eq + Hash + Clone, Value: Eq + Hash + Clone> Default
-    for BiMap<Key, Value>
-{
+pub struct BiMap<Value: Eq + Hash>(pub Vec<Value>, pub FxHashMap<Value, Interned<Value>>);
+impl<Value: Eq + Hash + Clone> Default for BiMap<Value> {
     fn default() -> Self {
         Self(Vec::default(), FxHashMap::default())
     }
 }
-impl<Key: IntoBiMapIndex + Eq + Hash + Clone + Debug, Value: Eq + Hash + Clone + Debug> Index<Key>
-    for BiMap<Key, Value>
-{
+impl<Value: Eq + Hash + Clone + Debug> Index<Interned<Value>> for BiMap<Value> {
     type Output = Value;
 
-    fn index(&self, index: Key) -> &Self::Output {
+    fn index(&self, index: Interned<Value>) -> &Self::Output {
         self.get(index)
     }
 }
 
-impl<Key: IntoBiMapIndex + Eq + Hash + Clone + Debug, Value: Eq + Hash + Clone + Debug>
-    BiMap<Key, Value>
-{
-    /// Allocates a new Value and returns a Key.
-    pub fn alloc(&mut self, val: Value) -> Key {
+impl<Value: Eq + Hash + Clone + Debug> BiMap<Value> {
+    /// Allocates a new Value and returns a Interned<Value>.
+    pub fn alloc(&mut self, val: Value) -> Interned<Value> {
         match self.1.entry(val.clone()) {
             Entry::Occupied(key) => key.get().clone(),
             Entry::Vacant(empty) => {
-                let key = Key::from_index(
-                    NonZeroU32::new(u32::try_from(self.0.len()).expect("Key ID out of range") + 1)
+                let key = Interned::from_index(
+                    NonZeroU32::new(u32::try_from(self.0.len()).expect("Interned<Value> ID out of range") + 1)
                         .expect(
-                            "Key ID 0 when a non-zero value expected, this could be an overflow",
+                            "Interned<Value> ID 0 when a non-zero value expected, this could be an overflow",
                         ),
                 );
 
@@ -46,9 +40,9 @@ impl<Key: IntoBiMapIndex + Eq + Hash + Clone + Debug, Value: Eq + Hash + Clone +
         }
     }
     /// Gets an allocated value with id `key`
-    // Key is tiny(32 or 64 bit), so passing it by value makes sense
+    // Interned<Value> is tiny(32 or 64 bit), so passing it by value makes sense
     #[allow(clippy::needless_pass_by_value)]
-    pub fn get(&self, key: Key) -> &Value {
+    pub fn get(&self, key: Interned<Value>) -> &Value {
         self.0.get(key.as_bimap_index().get() as usize - 1).unwrap()
     }
 
@@ -65,8 +59,8 @@ impl<Key: IntoBiMapIndex + Eq + Hash + Clone + Debug, Value: Eq + Hash + Clone +
     pub fn contais_val(&self, def: Value) -> bool {
         self.1.contains_key(&def)
     }
-    pub fn iter_keys(&self) -> impl Iterator<Item = Key> {
-        (1..(self.0.len() as u32)).map(|key| Key::from_index(NonZeroU32::new(key).unwrap()))
+    pub fn iter_keys(&self) -> impl Iterator<Item = Interned<Value>> {
+        (1..(self.0.len() as u32)).map(|key| Interned::from_index(NonZeroU32::new(key).unwrap()))
     }
 
     pub fn map_values(&mut self, map: impl Fn(&mut Value)) {
@@ -89,9 +83,8 @@ pub trait IntoBiMapIndex {
 }
 #[test]
 fn bimap_alloc() {
-    use super::StringIdx;
     use crate::IString;
-    let mut map = BiMap::<StringIdx, IString>::default();
+    let mut map = BiMap::<IString>::default();
     assert!(map.is_empty());
     assert_eq!(map.len(), 0);
     let hi = map.alloc("Hi".into());
@@ -105,12 +98,18 @@ fn bimap_alloc() {
     assert!(!map.is_empty());
 }
 #[derive(Hash, PartialEq, Eq, Debug, Serialize, Deserialize)]
-pub struct Interned<T> {
+pub struct Interned<T: ?Sized> {
     pd: PhantomData<T>,
     idx: BiMapIndex,
 }
-impl<T> Copy for Interned<T> {}
-impl<T> Clone for Interned<T> {
+impl<T: ?Sized> Copy for Interned<T> {}
+
+impl<T> Interned<T> {
+    pub fn inner(&self) -> u32 {
+        self.idx.get()
+    }
+}
+impl<T: ?Sized> Clone for Interned<T> {
     fn clone(&self) -> Self {
         Self {
             pd: self.pd.clone(),

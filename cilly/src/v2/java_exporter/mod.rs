@@ -5,8 +5,8 @@ use std::io::Write;
 use crate::MethodImpl;
 
 use super::{
-    cilroot::BranchCond, Assembly, CILIter, CILIterElem, CILNode, ClassRefIdx, Exporter, NodeIdx,
-    RootIdx, Type,
+    bimap::Interned, cilroot::BranchCond, Assembly, CILIter, CILIterElem, CILNode, ClassRef,
+    Exporter, Type,
 };
 
 #[doc = "Specifies the path to the java bytecode assembler."]
@@ -83,7 +83,11 @@ impl JavaExporter {
 impl Exporter for JavaExporter {
     type Error = std::io::Error;
 
-    fn export(&mut self, asm: &super::Assembly, target: &std::path::Path) -> Result<(), Self::Error> {
+    fn export(
+        &mut self,
+        asm: &super::Assembly,
+        target: &std::path::Path,
+    ) -> Result<(), Self::Error> {
         // The IL file should be next to the target
         let il_path = target.with_extension("j");
         let mut il_out = std::io::BufWriter::new(std::fs::File::create(&il_path)?);
@@ -112,7 +116,7 @@ impl Exporter for JavaExporter {
         Ok(())
     }
 }
-fn simple_class_ref(cref: ClassRefIdx, asm: &Assembly) -> String {
+fn simple_class_ref(cref: Interned<ClassRef>, asm: &Assembly) -> String {
     let cref = asm.class_ref(cref);
     let name = asm[cref.name()].replace('.', "/");
     if let Some(assembly) = cref.asm() {
@@ -122,7 +126,7 @@ fn simple_class_ref(cref: ClassRefIdx, asm: &Assembly) -> String {
         name
     }
 }
-pub(crate) fn class_ref(cref: ClassRefIdx, asm: &Assembly) -> String {
+pub(crate) fn class_ref(cref: Interned<ClassRef>, asm: &Assembly) -> String {
     let cref = asm.class_ref(cref);
     let name = &asm[cref.name()];
     let prefix = if cref.is_valuetype() {

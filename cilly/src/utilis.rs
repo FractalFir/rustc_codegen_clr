@@ -1,13 +1,14 @@
 use std::fmt::Debug;
 
+use crate::bimap::Interned;
 use crate::method::Method;
 
-use crate::cilnode::MethodKind;
+use crate::cilnode::{ExtendKind, MethodKind};
 use crate::{call, call_virt, conv_usize, IntoAsmIndex, MethodDef, Type};
 use crate::{cil_node::CILNode, cil_root::CILRoot, Assembly};
-use crate::{ClassRef, FnSig, Int, MethodRef, MethodRefIdx, StaticFieldDesc};
+use crate::{ClassRef, FnSig, Int, MethodRef, StaticFieldDesc};
 
-pub fn argc_argv_init_method(asm: &mut Assembly) -> MethodRefIdx {
+pub fn argc_argv_init_method(asm: &mut Assembly) -> Interned<MethodRef> {
     let init_cs = MethodRef::new(
         *asm.main_module(),
         asm.alloc_string("argc_argv_init"),
@@ -29,7 +30,7 @@ pub fn mstring_to_utf8ptr(mstring: CILNode, asm: &mut Assembly) -> CILNode {
     call!(asm.alloc_methodref(mref), [mstring]).cast_ptr(asm.nptr(Type::Int(Int::U8)))
 }
 
-pub fn get_environ(asm: &mut Assembly) -> MethodRefIdx {
+pub fn get_environ(asm: &mut Assembly) -> Interned<MethodRef> {
     let main_module = asm.main_module();
     let uint8_ptr = asm.nptr(Type::Int(Int::U8));
     let uint8_ptr_ptr = asm.nptr(uint8_ptr);
@@ -136,8 +137,9 @@ pub fn get_environ(asm: &mut Assembly) -> MethodRefIdx {
         .into(),
     );
     let element_count = CILNode::LDLoc(envc) + CILNode::V2(asm.alloc_node(1_i32));
-    let arr_size = conv_usize!(element_count)
-        * conv_usize!(CILNode::V2(asm.size_of(uint8_ptr_ptr).into_idx(asm)));
+    let stride = asm.size_of(uint8_ptr_ptr);
+    let stride = asm.int_cast(stride, Int::USize, ExtendKind::ZeroExtend);
+    let arr_size = conv_usize!(element_count) * CILNode::V2(stride.into_idx(asm));
     let arr_align = conv_usize!(CILNode::V2(asm.size_of(uint8_ptr_ptr).into_idx(asm)));
     let aligned_alloc = MethodRef::aligned_alloc(asm);
     init.trees_mut().push(

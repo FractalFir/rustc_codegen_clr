@@ -1,17 +1,6 @@
 use crate::utilis::encode;
 
-use super::super::{
-    asm::MAIN_MODULE,
-    basic_block::BlockId,
-    bimap::IntoBiMapIndex,
-    cilnode::{ExtendKind, PtrCastRes},
-    cilroot::BranchCond,
-    method::LocalDef,
-    tpe::simd::SIMDVector,
-    typecheck::TypeCheckError,
-    Assembly, BinOp, CILIter, CILIterElem, CILNode, CILRoot, ClassDefIdx, ClassRef, ClassRefIdx,
-    Const, Exporter, Float, Int, MethodDef, MethodRef, NodeIdx, RootIdx, SigIdx, Type,
-};
+use super::super::{asm::MAIN_MODULE, method::LocalDef, Assembly, Float, Int, MethodRef, Type};
 
 use fxhash::{hash64, FxHashSet, FxHasher};
 /// Finds the name of this local

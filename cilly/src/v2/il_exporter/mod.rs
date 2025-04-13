@@ -4,13 +4,14 @@ use std::{io::Write, path::Path};
 
 use super::{
     asm::{IlasmFlavour, ILASM_FLAVOUR, ILASM_PATH},
+    bimap::Interned,
     cilnode::{ExtendKind, UnOp},
     cilroot::BranchCond,
     class::StaticFieldDef,
     method::LocalDef,
     tpe::simd::SIMDElem,
-    Assembly, BinOp, CILIter, CILIterElem, CILNode, ClassRefIdx, Exporter, Int, MethodDefIdx,
-    NodeIdx, RootIdx, SigIdx, Type,
+    Assembly, BinOp, CILIter, CILIterElem, CILNode, CILRoot, ClassRef, Exporter, FnSig, Int,
+    MethodDefIdx, Type,
 };
 
 pub struct ILExporter {
@@ -187,7 +188,7 @@ impl ILExporter {
         out: &mut impl Write,
         mimpl: &MethodImpl,
         name: &str,
-        sig: SigIdx,
+        sig: Interned<FnSig>,
     ) -> std::io::Result<()> {
         //assert_ne!(name,"stack_addr", "The builtin 'stack_addr' cilly function must always be inlined, and can't be exported otherwise.");
         match  mimpl{
@@ -243,13 +244,16 @@ impl ILExporter {
         &self,
         asm: &mut super::Assembly,
         out: &mut impl Write,
-        node: NodeIdx,
-        sig: SigIdx,
+        node: Interned<CILNode>,
+        sig: Interned<FnSig>,
         locals: &[LocalDef],
     ) -> std::io::Result<()> {
         let node = asm.get_node(node).clone();
         match node {
             CILNode::Const(cst) => match cst.as_ref() {
+                super::Const::ByteBuffer { data, tpe }=>{
+                    todo!("ByteBuffers not supported in IL yet.")
+                }
                 super::Const::Null(_) => writeln!(out, "ldnull"),
                 super::Const::I8(val) => match val {
                     -1 => writeln!(out, "ldc.i4.m1"),
@@ -766,10 +770,10 @@ impl ILExporter {
         &self,
         asm: &mut super::Assembly,
         out: &mut impl Write,
-        root: RootIdx,
+        root: Interned<CILRoot>,
         is_handler: bool,
         has_handler: bool,
-        sig: SigIdx,
+        sig: Interned<FnSig>,
         locals: &[LocalDef],
     ) -> std::io::Result<()> {
         let root = asm.get_root(root).clone();
@@ -1276,7 +1280,11 @@ fn assemble_file(exe_out: &Path, il_path: &Path, is_lib: bool) {
 impl Exporter for ILExporter {
     type Error = std::io::Error;
 
-    fn export(&mut self, asm: &super::Assembly, target: &std::path::Path) -> Result<(), Self::Error> {
+    fn export(
+        &mut self,
+        asm: &super::Assembly,
+        target: &std::path::Path,
+    ) -> Result<(), Self::Error> {
         // The IL file should be next to the target
         let il_path = target.with_extension("il");
 
@@ -1307,7 +1315,7 @@ impl Exporter for ILExporter {
         Ok(())
     }
 }
-fn simple_class_ref(cref: ClassRefIdx, asm: &Assembly) -> String {
+fn simple_class_ref(cref: Interned<ClassRef>, asm: &Assembly) -> String {
     let cref = asm.class_ref(cref);
     let name = &asm[cref.name()];
     if let Some(assembly) = cref.asm() {
@@ -1316,7 +1324,7 @@ fn simple_class_ref(cref: ClassRefIdx, asm: &Assembly) -> String {
         format!("'{name}'")
     }
 }
-pub(crate) fn class_ref(cref: ClassRefIdx, asm: &Assembly) -> String {
+pub(crate) fn class_ref(cref: Interned<ClassRef>, asm: &Assembly) -> String {
     let cref = asm.class_ref(cref);
     let name = &asm[cref.name()];
     let prefix = if cref.is_valuetype() {

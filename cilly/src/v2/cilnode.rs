@@ -1,23 +1,12 @@
 use serde::{Deserialize, Serialize};
 
-use super::bimap::BiMapIndex;
-use super::field::StaticFieldIdx;
+use super::bimap::Interned;
 
-use super::{bimap::IntoBiMapIndex, Assembly, Const, Int, MethodRefIdx, SigIdx, TypeIdx};
-use super::{ClassRef, FieldIdx, Float};
+use super::{Assembly, Const, Int};
+use super::{ClassRef, FieldDesc, Float, FnSig, MethodRef, StaticFieldDesc};
 use crate::cil_node::CILNode as V1Node;
 use crate::Type;
 
-#[derive(Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize)]
-pub struct NodeIdx(pub BiMapIndex);
-impl IntoBiMapIndex for NodeIdx {
-    fn from_index(val: BiMapIndex) -> Self {
-        Self(val)
-    }
-    fn as_bimap_index(&self) -> BiMapIndex {
-        self.0
-    }
-}
 #[derive(Hash, PartialEq, Eq, Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct IsPure(pub bool);
 impl IsPure {
@@ -29,9 +18,9 @@ pub enum CILNode {
     /// A constant IR value.
     Const(Box<Const>),
     /// Binary operation performed on values `lhs` and `rhs`, of kind `op`.
-    BinOp(NodeIdx, NodeIdx, BinOp),
+    BinOp(Interned<CILNode>, Interned<CILNode>, BinOp),
     /// A unary operation performed on value `val`, of kind `op`.
-    UnOp(NodeIdx, UnOp),
+    UnOp(Interned<CILNode>, UnOp),
     /// Retrives the value of a local with a given index.
     LdLoc(u32),
     /// Retrives a reference(not a pointer!) to a local with a given index.
@@ -44,85 +33,85 @@ pub enum CILNode {
     LdArgA(u32),
     /// Calls `method` with, `args`, and a given `pure`-ness.
     /// [`IsPure::PURE`] value marks a call as a pure, side-effect free call.
-    Call(Box<(MethodRefIdx, Box<[NodeIdx]>, IsPure)>),
+    Call(Box<(Interned<MethodRef>, Box<[Interned<CILNode>]>, IsPure)>),
     /// A cast to an intiger type.
     IntCast {
         /// The input value.
-        input: NodeIdx,
+        input: Interned<CILNode>,
         /// The resulting type
         target: Int,
         /// Is this a signed or zero extension?
         extend: ExtendKind,
     },
     FloatCast {
-        input: NodeIdx,
+        input: Interned<CILNode>,
         target: Float,
         is_signed: bool,
     },
-    RefToPtr(NodeIdx),
+    RefToPtr(Interned<CILNode>),
     /// Changes the type of a pointer to `PtrCastRes`
-    PtrCast(NodeIdx, Box<PtrCastRes>),
+    PtrCast(Interned<CILNode>, Box<PtrCastRes>),
     /// Loads the address of a field at `addr`
     LdFieldAdress {
-        addr: NodeIdx,
-        field: FieldIdx,
+        addr: Interned<CILNode>,
+        field: Interned<FieldDesc>,
     },
     /// Loads the value of a field at `addr`
     LdField {
-        addr: NodeIdx,
-        field: FieldIdx,
+        addr: Interned<CILNode>,
+        field: Interned<FieldDesc>,
     },
     /// Loads a value of `tpe` at `addr`
     LdInd {
-        addr: NodeIdx,
-        tpe: TypeIdx,
+        addr: Interned<CILNode>,
+        tpe: Interned<Type>,
         volatile: bool,
     },
     /// Calcualtes the size of a type.
-    SizeOf(TypeIdx),
+    SizeOf(Interned<Type>),
     /// Gets the currenrt exception, if it exisits. UB outside an exception handler.
     GetException,
     /// Checks if the object is an instace of a class.
-    IsInst(NodeIdx, TypeIdx),
+    IsInst(Interned<CILNode>, Interned<Type>),
     /// Casts  the object to instace of a clsass.
-    CheckedCast(NodeIdx, TypeIdx),
+    CheckedCast(Interned<CILNode>, Interned<Type>),
     /// Calls fn pointer with args
-    CallI(Box<(NodeIdx, SigIdx, Box<[NodeIdx]>)>),
+    CallI(Box<(Interned<CILNode>, Interned<FnSig>, Box<[Interned<CILNode>]>)>),
     /// Allocates memory from a local pool. It will get freed when this function return
     LocAlloc {
-        size: NodeIdx,
+        size: Interned<CILNode>,
     },
     /// Loads a static field at descr
-    LdStaticField(StaticFieldIdx),
+    LdStaticField(Interned<StaticFieldDesc>),
     /// Loads a static field at descr
-    LdStaticFieldAdress(StaticFieldIdx),
+    LdStaticFieldAdress(Interned<StaticFieldDesc>),
     /// Loads a pointer to a function
-    LdFtn(MethodRefIdx),
+    LdFtn(Interned<MethodRef>),
     /// Loads a "type token"
-    LdTypeToken(TypeIdx),
+    LdTypeToken(Interned<Type>),
     /// Gets the length of a platform array
-    LdLen(NodeIdx),
+    LdLen(Interned<CILNode>),
     /// Allocates a local buffer sizeof type, and aligned to algin.
     LocAllocAlgined {
-        tpe: TypeIdx,
+        tpe: Interned<Type>,
         align: u64,
     },
     /// Loads a reference to array element at index.
     LdElelemRef {
-        array: NodeIdx,
-        index: NodeIdx,
+        array: Interned<CILNode>,
+        index: Interned<CILNode>,
     },
     /// Turns a managed reference to object into type
     UnboxAny {
-        object: NodeIdx,
-        tpe: TypeIdx,
+        object: Interned<CILNode>,
+        tpe: Interned<Type>,
     },
 }
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub enum PtrCastRes {
-    Ptr(TypeIdx),
-    Ref(TypeIdx),
-    FnPtr(SigIdx),
+    Ptr(Interned<Type>),
+    Ref(Interned<Type>),
+    FnPtr(Interned<FnSig>),
     USize,
     ISize,
 }
@@ -272,7 +261,7 @@ impl BinOp {
     }
 }
 impl CILNode {
-    pub fn call(mref: MethodRefIdx, args: impl Into<Box<[NodeIdx]>>) -> Self {
+    pub fn call(mref: Interned<MethodRef>, args: impl Into<Box<[Interned<CILNode>]>>) -> Self {
         Self::Call(Box::new((mref, args.into(), IsPure::NOT)))
     }
     /// Returns all the nodes this node references.
@@ -285,7 +274,7 @@ impl CILNode {
     /// // Two child nodes - ldarg_0 and ldloc_1
     /// assert_eq!(binop.child_nodes(),vec![ldarg_0,ldloc_1]);
     /// ```
-    pub fn child_nodes(&self) -> Vec<NodeIdx> {
+    pub fn child_nodes(&self) -> Vec<Interned<CILNode>> {
         match self {
             CILNode::Const(_)
             | CILNode::LdLoc(_)

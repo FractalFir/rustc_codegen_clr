@@ -1,10 +1,13 @@
 use crate::{
-    asm::MissingMethodPatcher, cilnode::{ExtendKind, MethodKind, PtrCastRes}, cilroot::BranchCond, BasicBlock, BinOp,
-    CILNode, CILRoot, ClassRef, Const, Int, MethodImpl, MethodRef, Type,
+    asm::MissingMethodPatcher,
+    bimap::Interned,
+    cilnode::{ExtendKind, MethodKind, PtrCastRes},
+    cilroot::BranchCond,
+    BasicBlock, BinOp, CILNode, CILRoot, ClassRef, Const, Int, MethodImpl, MethodRef, Type,
 };
 
 use super::{
-    super::{Assembly, NodeIdx},
+    super::Assembly,
     math::{int_max, int_min},
 };
 /// Emulates operations on bytes using operations on int32s. Enidianess dependent, can cause segfuaults when used on a page boundary.
@@ -18,7 +21,11 @@ pub fn emulate_uint8_cmp_xchng(asm: &mut Assembly, patcher: &mut MissingMethodPa
             // 1st, mask the previous value
             let prev_mask = asm.alloc_node(Const::I32(0xFFFF_FF00_u32 as i32));
             let prev = asm.alloc_node(CILNode::BinOp(prev, prev_mask, BinOp::And));
-            let arg = asm.alloc_node(CILNode::IntCast { input:arg, target: Int::I32, extend:ExtendKind::ZeroExtend });
+            let arg = asm.alloc_node(CILNode::IntCast {
+                input: arg,
+                target: Int::I32,
+                extend: ExtendKind::ZeroExtend,
+            });
             asm.alloc_node(CILNode::BinOp(prev, arg, BinOp::Or))
         }),
         Int::I32,
@@ -31,7 +38,11 @@ pub fn emulate_uint8_cmp_xchng(asm: &mut Assembly, patcher: &mut MissingMethodPa
             // 1st, mask the previous value
             let prev_mask = asm.alloc_node(Const::I32(0xFFFF_0000_u32 as i32));
             let prev = asm.alloc_node(CILNode::BinOp(prev, prev_mask, BinOp::And));
-            let arg = asm.alloc_node(CILNode::IntCast { input:arg, target: Int::I32, extend:ExtendKind::ZeroExtend });
+            let arg = asm.alloc_node(CILNode::IntCast {
+                input: arg,
+                target: Int::I32,
+                extend: ExtendKind::ZeroExtend,
+            });
             asm.alloc_node(CILNode::BinOp(prev, arg, BinOp::Or))
         }),
         Int::I32,
@@ -67,14 +78,17 @@ pub fn emulate_uint8_cmp_xchng(asm: &mut Assembly, patcher: &mut MissingMethodPa
 pub fn compare_exchange(
     asm: &mut Assembly,
     int: Int,
-    addr: NodeIdx,
-    value: NodeIdx,
-    comaprand: NodeIdx,
-) -> NodeIdx {
+    addr: Interned<CILNode>,
+    value: Interned<CILNode>,
+    comaprand: Interned<CILNode>,
+) -> Interned<CILNode> {
     match int.size().unwrap_or(8) {
         // u16 is buggy :(. TODO: fix it.
         1 | 2 => {
-            let compare_exchange = asm.alloc_string(format!("atomic_cmpxchng{}_i32",int.size().unwrap_or(8) * 8));
+            let compare_exchange = asm.alloc_string(format!(
+                "atomic_cmpxchng{}_i32",
+                int.size().unwrap_or(8) * 8
+            ));
 
             let i32 = Type::Int(int);
             let i32_ref = asm.nref(Type::Int(Int::I32));
@@ -130,7 +144,8 @@ pub fn compare_exchange(
         _ => todo!("Can't cmpxchng {int:?}"),
     }
 }
-type AsmGen = (dyn Fn(&mut Assembly, NodeIdx, NodeIdx, Int) -> NodeIdx);
+type AsmGen =
+    (dyn Fn(&mut Assembly, Interned<CILNode>, Interned<CILNode>, Int) -> Interned<CILNode>);
 pub fn generate_atomic(
     asm: &mut Assembly,
     patcher: &mut MissingMethodPatcher,
@@ -183,7 +198,9 @@ pub fn generate_atomic_for_ints(
     asm: &mut Assembly,
     patcher: &mut MissingMethodPatcher,
     op_name: &str,
-    op: impl Fn(&mut Assembly, NodeIdx, NodeIdx, Int) -> NodeIdx + 'static + Clone,
+    op: impl Fn(&mut Assembly, Interned<CILNode>, Interned<CILNode>, Int) -> Interned<CILNode>
+        + 'static
+        + Clone,
 ) {
     const ATOMIC_INTS: [Int; 10] = [
         Int::U8,

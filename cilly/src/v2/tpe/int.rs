@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 
-use super::super::{
-    cilnode::MethodKind, Assembly, CILNode, ClassRef, ClassRefIdx, Const, MethodRef, Type,
-};
+use crate::bimap::Interned;
+
+use super::super::{cilnode::MethodKind, Assembly, CILNode, ClassRef, Const, MethodRef, Type};
 
 #[derive(Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize)]
 pub enum Int {
@@ -41,7 +41,7 @@ impl Int {
         }
     }
     /// Returns a reference to a class representing this type.
-    pub fn class(&self, asm: &mut Assembly) -> ClassRefIdx {
+    pub fn class(&self, asm: &mut Assembly) -> Interned<ClassRef> {
         match self {
             Int::U8 => ClassRef::byte(asm),
             Int::U16 => ClassRef::uint16(asm),

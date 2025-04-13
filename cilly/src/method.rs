@@ -7,11 +7,13 @@ use std::{
 
 use crate::{
     basic_block::BasicBlock,
+    bimap::Interned,
     cil_iter::{CILIterElem, CILIterTrait},
     cil_node::CILNode,
     cil_tree::CILTree,
-    Access, IString, IntoAsmIndex, StringIdx, Type, TypeIdx,
-    {cilnode::MethodKind, v2::method::LocalDef, Assembly, FnSig, MethodRef, MethodRefIdx},
+    cilnode::MethodKind,
+    v2::method::LocalDef,
+    Access, Assembly, FnSig, IString, IntoAsmIndex, MethodRef, Type,
 };
 
 /// Represenation of a CIL method.
@@ -24,7 +26,7 @@ pub struct Method {
     locals: Vec<LocalDef>,
     blocks: Vec<BasicBlock>,
     attributes: Vec<Attribute>,
-    arg_names: Vec<Option<StringIdx>>,
+    arg_names: Vec<Option<Interned<IString>>>,
 }
 
 impl Eq for Method {}
@@ -80,7 +82,7 @@ impl Method {
         name: &str,
         mut locals: Vec<LocalDef>,
         blocks: Vec<BasicBlock>,
-        mut arg_names: Vec<Option<StringIdx>>,
+        mut arg_names: Vec<Option<Interned<IString>>>,
         asm: &mut Assembly,
     ) -> Self {
         let mut used_names = FxHashSet::with_hasher(FxBuildHasher::default());
@@ -126,8 +128,8 @@ impl Method {
     /// Adds a local variable of type `local`
     pub fn add_local(
         &mut self,
-        local: impl IntoAsmIndex<TypeIdx>,
-        name: Option<impl IntoAsmIndex<StringIdx>>,
+        local: impl IntoAsmIndex<Interned<Type>>,
+        name: Option<impl IntoAsmIndex<Interned<IString>>>,
         asm: &mut Assembly,
     ) -> usize {
         let loc = self.locals.len();
@@ -136,7 +138,7 @@ impl Method {
         loc
     }
     /// Extends local variables by `iter`.
-    pub fn extend_locals<'a>(&mut self, iter: impl Iterator<Item = &'a TypeIdx>) {
+    pub fn extend_locals<'a>(&mut self, iter: impl Iterator<Item = &'a Interned<Type>>) {
         self.locals.extend(iter.map(|tpe| (None, *tpe)));
     }
     /// Checks if the method `self` is the entrypoint.
@@ -181,12 +183,12 @@ impl Method {
     }
     /// Returns the list of local types.
     #[must_use]
-    pub fn locals(&self) -> &[(Option<StringIdx>, TypeIdx)] {
+    pub fn locals(&self) -> &[(Option<Interned<IString>>, Interned<Type>)] {
         &self.locals
     }
     /// Returns the list of external calls this function preforms. Calls may repeat.
     // TODO: make this not call `into_ops`
-    pub fn calls(&self) -> impl Iterator<Item = MethodRefIdx> + '_ {
+    pub fn calls(&self) -> impl Iterator<Item = Interned<MethodRef>> + '_ {
         self.blocks
             .iter()
             .flat_map(|block| block.iter_cil())
@@ -194,7 +196,7 @@ impl Method {
     }
 
     /// Returns a call site that describes this method.
-    pub fn call_site(&self, asm: &mut crate::Assembly) -> MethodRefIdx {
+    pub fn call_site(&self, asm: &mut crate::Assembly) -> Interned<MethodRef> {
         let mref = MethodRef::new(
             *asm.main_module(),
             asm.alloc_string(self.name()),
@@ -222,7 +224,10 @@ impl Method {
         self.attributes.push(attr);
     }
     /// Sets the list of locals of self to `locals`.
-    pub fn set_locals(&mut self, locals: impl Into<Vec<(Option<StringIdx>, TypeIdx)>>) {
+    pub fn set_locals(
+        &mut self,
+        locals: impl Into<Vec<(Option<Interned<IString>>, Interned<Type>)>>,
+    ) {
         self.locals = locals.into();
     }
     /// Returns the type of this method(static, instance or virtual)
@@ -241,7 +246,7 @@ impl Method {
     }
 
     #[must_use]
-    pub fn arg_names(&self) -> &[Option<StringIdx>] {
+    pub fn arg_names(&self) -> &[Option<Interned<IString>>] {
         &self.arg_names
     }
 
@@ -256,8 +261,8 @@ impl Method {
     }
     pub fn alloc_local(
         &mut self,
-        tpe: impl IntoAsmIndex<TypeIdx>,
-        name: Option<impl IntoAsmIndex<StringIdx>>,
+        tpe: impl IntoAsmIndex<Interned<Type>>,
+        name: Option<impl IntoAsmIndex<Interned<IString>>>,
         asm: &mut Assembly,
     ) -> usize {
         let new_loc = self.locals.len();

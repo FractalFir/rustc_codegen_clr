@@ -1,8 +1,9 @@
 use super::{
     asm::{CCTOR, TCCTOR, USER_INIT},
-    class::StaticFieldDef,
-    Assembly, BasicBlock, CILNode, CILRoot, ClassDef, ClassDefIdx, ClassRef, ClassRefIdx,
-    FieldDesc, FnSig, MethodDef, MethodDefIdx, MethodRef, StaticFieldDesc, Type,
+    bimap::Interned,
+    class::{ClassDefIdx, StaticFieldDef},
+    Assembly, BasicBlock, CILNode, CILRoot, ClassDef, ClassRef, FieldDesc, FnSig, MethodDef,
+    MethodDefIdx, MethodRef, StaticFieldDesc, Type,
 };
 impl Assembly {
     pub(crate) fn translate_type(&mut self, source: &Self, tpe: Type) -> Type {
@@ -41,8 +42,8 @@ impl Assembly {
     pub(crate) fn translate_class_ref(
         &mut self,
         source: &Assembly,
-        class_ref: ClassRefIdx,
-    ) -> ClassRefIdx {
+        class_ref: Interned<ClassRef>,
+    ) -> Interned<ClassRef> {
         let cref = source.class_ref(class_ref);
 
         let name = self.alloc_string(&source[cref.name()]);
@@ -107,6 +108,16 @@ impl Assembly {
                 super::Const::PlatformString(pstr) => CILNode::Const(Box::new(
                     super::Const::PlatformString(self.alloc_string(source[*pstr].as_ref())),
                 )),
+                super::Const::Null(cref) => CILNode::Const(Box::new(super::Const::Null(
+                    self.translate_class_ref(source, *cref),
+                ))),
+                super::Const::ByteBuffer { data, tpe } => {
+                    let tpe = self.translate_type(source, source[*tpe]);
+                    CILNode::Const(Box::new(super::Const::ByteBuffer {
+                        data: self.translate_buffer(*data),
+                        tpe: self.alloc_type(tpe),
+                    }))
+                }
                 _ => node.clone(),
             },
             CILNode::BinOp(a, b, op) => {
@@ -526,7 +537,7 @@ impl Assembly {
         let class = self.translate_class_ref(source, *def.class());
 
         // OK, becuase our caller translates the parrent of this class too.
-        let class = ClassDefIdx(class);
+        let class = ClassDefIdx::from_raw(class);
         let name = self.alloc_string(source[def.name()].as_ref());
         let sig = self.translate_sig(source, &source[def.sig()]);
         let sig = self.alloc_sig(sig);

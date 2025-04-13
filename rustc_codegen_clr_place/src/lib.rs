@@ -6,7 +6,7 @@ extern crate rustc_hir;
 extern crate rustc_middle;
 use cilly::cil_node::CILNode;
 use cilly::cil_root::CILRoot;
-use cilly::{ClassRef, Float, Int, NodeIdx};
+use cilly::{ClassRef, Float, Int, Interned};
 use cilly::{Const, Type};
 use rustc_codegen_clr_ctx::MethodCompileCtx;
 use rustc_codegen_clr_type::GetTypeExt;
@@ -70,8 +70,8 @@ fn body_ty_is_by_adress<'tcx>(last_ty: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx
 pub fn deref_op<'tcx>(
     derefed_type: PlaceTy<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-    ptr: NodeIdx,
-) -> NodeIdx {
+    ptr: Interned<cilly::v2::CILNode>,
+) -> Interned<cilly::v2::CILNode> {
     let ptr = Box::new(ptr);
     let res = if let PlaceTy::Ty(derefed_type) = derefed_type {
         let derefed_type = ctx.type_from_cache(derefed_type);

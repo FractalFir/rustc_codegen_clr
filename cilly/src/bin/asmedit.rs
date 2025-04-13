@@ -7,14 +7,12 @@ use std::{
 };
 
 use cilly::{
+    asm::{encoded_stats, Assembly},
+    bimap::{Interned, IntoBiMapIndex},
     c_exporter::CExporter,
-    BasicBlock, CILNode, CILRoot, MethodDef,
-    {
-        asm::{encoded_stats, Assembly},
-        cillyir_exporter::CillyIRExpoter,
-        il_exporter::ILExporter,
-        Access, CILIter, MethodImpl, MethodRefIdx,
-    },
+    cillyir_exporter::CillyIRExpoter,
+    il_exporter::ILExporter,
+    Access, BasicBlock, CILIter, CILNode, CILRoot, MethodDef, MethodImpl, MethodRef,
 };
 use fxhash::FxHashSet;
 
@@ -323,7 +321,7 @@ fn is_valid_c(asm: &Assembly, id: u32) -> bool {
         true
     }
 }
-fn misolate(asm: &mut Assembly, isolate_id: MethodRefIdx) {
+fn misolate(asm: &mut Assembly, isolate_id: Interned<MethodRef>) {
     let externs: Vec<_> = asm
         .methods_with(|_, _, def| *def.access() == Access::Extern)
         .map(|(id, _)| id)
@@ -360,9 +358,9 @@ fn misolate(asm: &mut Assembly, isolate_id: MethodRefIdx) {
     *asm = asm.clone().link(Assembly::default());
     asm.remove_dead_statics();
 }
-fn parse_id(id: &str, asm: &Assembly) -> MethodRefIdx {
+fn parse_id(id: &str, asm: &Assembly) -> Interned<MethodRef> {
     if let Ok(id) = id.parse::<u32>() {
-        unsafe { MethodRefIdx::from_raw(NonZeroU32::new(id).unwrap()) }
+        unsafe { Interned::from_index(NonZeroU32::new(id).unwrap()) }
     } else {
         let Some(mut iter) = asm.find_methods_matching(id) else {
             panic!("{id:?} is neithier a method name nor a method id")

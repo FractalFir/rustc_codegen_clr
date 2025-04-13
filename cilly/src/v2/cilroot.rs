@@ -1,21 +1,19 @@
 use serde::{Deserialize, Serialize};
 
 use super::{
-    bimap::{BiMapIndex, IntoBiMapIndex},
+    bimap::{BiMapIndex, Interned, IntoBiMapIndex},
     cilnode::IsPure,
-    field::FieldIdx,
-    Assembly, CILNode, Float, Int, MethodRefIdx, NodeIdx, SigIdx, StaticFieldIdx, StringIdx, Type,
-    TypeIdx,
+    Assembly, CILNode, FieldDesc, Float, FnSig, Int, MethodRef, StaticFieldDesc, Type,
 };
-use crate::cil_root::CILRoot as V1Root;
+use crate::{cil_root::CILRoot as V1Root, IString};
 //use crate::cil_node::CILNode as V1Node;
 #[derive(PartialEq, Hash, Eq, Clone, Debug, Serialize, Deserialize)]
 pub enum CILRoot {
-    StLoc(u32, NodeIdx),
-    StArg(u32, NodeIdx),
-    Ret(NodeIdx),
-    Pop(NodeIdx),
-    Throw(NodeIdx),
+    StLoc(u32, Interned<CILNode>),
+    StArg(u32, Interned<CILNode>),
+    Ret(Interned<CILNode>),
+    Pop(Interned<CILNode>),
+    Throw(Interned<CILNode>),
     VoidRet,
     Break,
     Nop,
@@ -26,19 +24,19 @@ pub enum CILRoot {
         line_len: u16,
         col_start: u16,
         col_len: u16,
-        file: StringIdx,
+        file: Interned<IString>,
     },
     /// Field,  addr,value
-    SetField(Box<(FieldIdx, NodeIdx, NodeIdx)>),
-    Call(Box<(MethodRefIdx, Box<[NodeIdx]>, IsPure)>),
+    SetField(Box<(Interned<FieldDesc>, Interned<CILNode>, Interned<CILNode>)>),
+    Call(Box<(Interned<MethodRef>, Box<[Interned<CILNode>]>, IsPure)>),
     /// addr, value, type
-    StInd(Box<(NodeIdx, NodeIdx, Type, bool)>),
+    StInd(Box<(Interned<CILNode>, Interned<CILNode>, Type, bool)>),
     /// dst, val, count
-    InitBlk(Box<(NodeIdx, NodeIdx, NodeIdx)>),
+    InitBlk(Box<(Interned<CILNode>, Interned<CILNode>, Interned<CILNode>)>),
     /// dst src len
-    CpBlk(Box<(NodeIdx, NodeIdx, NodeIdx)>),
+    CpBlk(Box<(Interned<CILNode>, Interned<CILNode>, Interned<CILNode>)>),
     /// Calls fn pointer with args
-    CallI(Box<(NodeIdx, SigIdx, Box<[NodeIdx]>)>),
+    CallI(Box<(Interned<CILNode>, Interned<FnSig>, Box<[Interned<CILNode>]>)>),
     /// Exits a protected region of code.
     ExitSpecialRegion {
         target: u32,
@@ -48,30 +46,30 @@ pub enum CILRoot {
     ReThrow,
     /// Sets the static field to a value.
     SetStaticField {
-        field: StaticFieldIdx,
-        val: NodeIdx,
+        field: Interned<StaticFieldDesc>,
+        val: Interned<CILNode>,
     },
     CpObj {
-        src: NodeIdx,
-        dst: NodeIdx,
-        tpe: TypeIdx,
+        src: Interned<CILNode>,
+        dst: Interned<CILNode>,
+        tpe: Interned<Type>,
     },
     /// Executing this root is instant UB.
-    Unreachable(StringIdx),
+    Unreachable(Interned<IString>),
     /// Zero-initializes the value at *adress* of *type*.
-    InitObj(NodeIdx, TypeIdx),
+    InitObj(Interned<CILNode>, Interned<Type>),
 }
 
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub enum BranchCond {
-    True(NodeIdx),
-    False(NodeIdx),
-    Eq(NodeIdx, NodeIdx),
-    Ne(NodeIdx, NodeIdx),
-    Lt(NodeIdx, NodeIdx, CmpKind),
-    Gt(NodeIdx, NodeIdx, CmpKind),
-    Le(NodeIdx, NodeIdx, CmpKind),
-    Ge(NodeIdx, NodeIdx, CmpKind),
+    True(Interned<CILNode>),
+    False(Interned<CILNode>),
+    Eq(Interned<CILNode>, Interned<CILNode>),
+    Ne(Interned<CILNode>, Interned<CILNode>),
+    Lt(Interned<CILNode>, Interned<CILNode>, CmpKind),
+    Gt(Interned<CILNode>, Interned<CILNode>, CmpKind),
+    Le(Interned<CILNode>, Interned<CILNode>, CmpKind),
+    Ge(Interned<CILNode>, Interned<CILNode>, CmpKind),
 }
 impl BranchCond {
     /// Returns all the nodes used by this branch cond.
@@ -87,7 +85,7 @@ impl BranchCond {
     /// // One child node - ldarg_0
     /// assert_eq!(cond_true.nodes(),vec![ldarg_0]);
     /// ```
-    pub fn nodes(&self) -> Vec<NodeIdx> {
+    pub fn nodes(&self) -> Vec<Interned<CILNode>> {
         match self {
             BranchCond::True(cond) | BranchCond::False(cond) => vec![*cond],
             BranchCond::Eq(lhs, rhs)
@@ -106,19 +104,8 @@ pub enum CmpKind {
     Signed,
     Unsigned,
 }
-#[derive(Hash, PartialEq, Eq, Copy, Clone, Debug, Serialize, Deserialize)]
-
-pub struct RootIdx(BiMapIndex);
-impl IntoBiMapIndex for RootIdx {
-    fn from_index(val: BiMapIndex) -> Self {
-        Self(val)
-    }
-    fn as_bimap_index(&self) -> BiMapIndex {
-        self.0
-    }
-}
 impl CILRoot {
-    pub fn call(mref: MethodRefIdx, args: impl Into<Box<[NodeIdx]>>) -> Self {
+    pub fn call(mref: Interned<MethodRef>, args: impl Into<Box<[Interned<CILNode>]>>) -> Self {
         Self::Call(Box::new((mref, args.into(), IsPure::NOT)))
     }
     /// Checks if this root has any effect on the execution of this program.
@@ -126,7 +113,7 @@ impl CILRoot {
         !matches!(self, CILRoot::Nop | CILRoot::SourceFileInfo { .. })
     }
     /// Returns a mutable reference to all the arguments of this CIL root, in the order they are evaluated.
-    pub fn nodes_mut(&mut self) -> Box<[&mut NodeIdx]> {
+    pub fn nodes_mut(&mut self) -> Box<[&mut Interned<CILNode>]> {
         match self {
             CILRoot::Unreachable(_) => [].into(),
             CILRoot::StLoc(_, tree)
@@ -177,7 +164,7 @@ impl CILRoot {
             CILRoot::CpObj { src, dst, .. } => [src, dst].into(),
         }
     }
-    pub fn nodes(&self) -> Box<[&NodeIdx]> {
+    pub fn nodes(&self) -> Box<[&Interned<CILNode>]> {
         match self {
             CILRoot::Unreachable(_) => [].into(),
             CILRoot::StLoc(_, tree)
@@ -698,8 +685,8 @@ impl CILRoot {
     pub fn display(
         &self,
         asm: &mut Assembly,
-        _sig: SigIdx,
-        locals: &[(Option<StringIdx>, TypeIdx)],
+        _sig: Interned<FnSig>,
+        locals: &[(Option<Interned<IString>>, Interned<Type>)],
     ) -> String {
         match self {
             Self::StInd(boxed) => {

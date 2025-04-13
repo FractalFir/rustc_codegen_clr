@@ -1,10 +1,8 @@
 use super::PlaceTy;
 use crate::pointer_to_is_fat;
 use cilly::{
-    Assembly, Const, IntoAsmIndex, NodeIdx, Type, call,
-    cil_node::CILNode,
-    conv_usize, ld_field,
-    {FieldDesc, Int, MethodRef, cilnode::MethodKind},
+    Assembly, Const, FieldDesc, Int, Interned, IntoAsmIndex, MethodRef, Type, call,
+    cil_node::CILNode, cilnode::MethodKind, conv_usize, ld_field,
 };
 use rustc_codegen_clr_ctx::MethodCompileCtx;
 use rustc_codegen_clr_type::{
@@ -16,7 +14,11 @@ use rustc_middle::{
     mir::PlaceElem,
     ty::{Ty, TyKind},
 };
-pub fn local_adress(local: usize, method: &rustc_middle::mir::Body, asm: &mut Assembly) -> NodeIdx {
+pub fn local_adress(
+    local: usize,
+    method: &rustc_middle::mir::Body,
+    asm: &mut Assembly,
+) -> Interned<cilly::v2::CILNode> {
     let local = if let Some(spread_arg) = method.spread_arg
         && local == spread_arg.as_usize()
     {

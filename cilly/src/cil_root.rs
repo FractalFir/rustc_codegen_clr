@@ -1,13 +1,14 @@
+use crate::bimap::Interned;
 use crate::cilnode::IsPure;
 use crate::cilnode::MethodKind;
 use crate::v2::method::LocalDef;
-use crate::TypeIdx;
+use crate::FieldDesc;
 use crate::{
     call,
     cil_node::{CILNode, CallOpArgs},
     AsmString, IString,
 };
-use crate::{Assembly, ClassRef, FieldIdx, FnSig, MethodRef, MethodRefIdx, StaticFieldDesc, Type};
+use crate::{Assembly, ClassRef, FnSig, MethodRef, StaticFieldDesc, Type};
 use serde::{Deserialize, Serialize};
 #[derive(Clone, Eq, PartialEq, Hash, Serialize, Deserialize, Debug)]
 pub enum CILRoot {
@@ -79,13 +80,13 @@ pub enum CILRoot {
     },
 
     Call {
-        site: MethodRefIdx,
+        site: Interned<MethodRef>,
         args: Box<[CILNode]>,
     },
     SetField {
         addr: Box<CILNode>,
         value: Box<CILNode>,
-        desc: FieldIdx,
+        desc: Interned<FieldDesc>,
     },
     SetTMPLocal {
         value: CILNode,
@@ -121,7 +122,7 @@ pub enum CILRoot {
         count: Box<CILNode>,
     },
     CallVirt {
-        site: MethodRefIdx,
+        site: Interned<MethodRef>,
         args: Box<[CILNode]>,
     },
     Ret {
@@ -150,8 +151,8 @@ pub enum CILRoot {
     OptimizedSourceFileInfo(std::ops::Range<u64>, std::ops::Range<u64>, AsmString),
     /// Marks the inner pointer operation as volatile.
     Volatile(Box<Self>),
-    InitObj(CILNode, TypeIdx),
-    V2(crate::RootIdx),
+    InitObj(CILNode, Interned<Type>),
+    V2(Interned<crate::v2::CILRoot>),
 }
 pub type SFI = Box<(std::ops::Range<u64>, std::ops::Range<u64>, IString)>;
 impl CILRoot {
@@ -385,7 +386,7 @@ impl CILRoot {
         Self::SourceFileInfo(Box::new((line, column, file.to_owned().into())))
     }
     #[must_use]
-    pub fn set_field(addr: CILNode, value: CILNode, desc: FieldIdx) -> Self {
+    pub fn set_field(addr: CILNode, value: CILNode, desc: Interned<FieldDesc>) -> Self {
         Self::SetField {
             addr: Box::new(addr),
             value: Box::new(value),

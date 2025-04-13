@@ -1,5 +1,5 @@
 use cilly::{
-    Assembly, BinOp, Const, FieldDesc, Int, IntoAsmIndex, MethodRef, NodeIdx, Type, call,
+    Assembly, BinOp, Const, FieldDesc, Int, Interned, IntoAsmIndex, MethodRef, Type, call,
     cil_node::CILNode,
     cilnode::{ExtendKind, MethodKind},
     conv_usize, ld_field,
@@ -23,7 +23,7 @@ pub(super) fn local_get(
     local: usize,
     method: &rustc_middle::mir::Body,
     asm: &mut Assembly,
-) -> NodeIdx {
+) -> Interned<cilly::v2::CILNode> {
     asm.alloc_node(
         if let Some(spread_arg) = method.spread_arg
             && local == spread_arg.as_usize()
@@ -70,10 +70,10 @@ pub fn place_get<'tcx>(place: &Place<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_>
 fn get_field<'a>(
     curr_type: super::PlaceTy<'a>,
     ctx: &mut MethodCompileCtx<'a, '_>,
-    addr_calc: NodeIdx,
+    addr_calc: Interned<cilly::v2::CILNode>,
     field_index: u32,
     field_type: Ty<'a>,
-) -> NodeIdx {
+) -> Interned<cilly::v2::CILNode> {
     match curr_type {
         super::PlaceTy::Ty(curr_type) => {
             let curr_type = ctx.monomorphize(curr_type);
@@ -129,8 +129,8 @@ fn place_elem_get<'a>(
     place_elem: &PlaceElem<'a>,
     curr_type: super::PlaceTy<'a>,
     ctx: &mut MethodCompileCtx<'a, '_>,
-    addr_calc: NodeIdx,
-) -> NodeIdx {
+    addr_calc: Interned<cilly::v2::CILNode>,
+) -> Interned<cilly::v2::CILNode> {
     match place_elem {
         PlaceElem::Deref => super::deref_op(super::pointed_type(curr_type).into(), ctx, addr_calc),
         PlaceElem::Field(field_index, field_type) => {

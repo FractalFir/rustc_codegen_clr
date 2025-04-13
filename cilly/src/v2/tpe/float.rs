@@ -1,14 +1,11 @@
 use serde::{Deserialize, Serialize};
 
-use crate::IntoAsmIndex;
+use crate::{bimap::Interned, IntoAsmIndex};
 
-use super::{
-    super::{
-        cilnode::MethodKind,
-        hashable::{HashableF32, HashableF64},
-        Assembly, CILNode, ClassRef, ClassRefIdx, Const, MethodRef, NodeIdx, Type,
-    },
-    TypeIdx,
+use super::super::{
+    cilnode::MethodKind,
+    hashable::{HashableF32, HashableF64},
+    Assembly, CILNode, ClassRef, Const, MethodRef, Type,
 };
 
 #[derive(Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize)]
@@ -45,7 +42,7 @@ impl Float {
         }
     }
     /// Checks if this float is NaN
-    pub fn is_nan(&self, val: NodeIdx, asm: &mut Assembly) -> NodeIdx {
+    pub fn is_nan(&self, val: Interned<CILNode>, asm: &mut Assembly) -> Interned<CILNode> {
         let is_nan = asm.alloc_string("IsNaN");
         let sig = asm.sig([Type::Float(*self)], Type::Bool);
         match self {
@@ -96,7 +93,13 @@ impl Float {
         }
     }
     /// Clamps the float to a range <fmin,fmax>
-    pub fn clamp(&self, val: NodeIdx, fmin: NodeIdx, fmax: NodeIdx, asm: &mut Assembly) -> NodeIdx {
+    pub fn clamp(
+        &self,
+        val: Interned<CILNode>,
+        fmin: Interned<CILNode>,
+        fmax: Interned<CILNode>,
+        asm: &mut Assembly,
+    ) -> Interned<CILNode> {
         let class = self.class(asm);
         let clamp = asm.alloc_string("Clamp");
         let sig = asm.sig(
@@ -113,7 +116,7 @@ impl Float {
         asm.alloc_node(CILNode::call(mref, [val, fmin, fmax]))
     }
     /// Returns a class representing this flaoting-point type.
-    pub fn class(&self, asm: &mut Assembly) -> ClassRefIdx {
+    pub fn class(&self, asm: &mut Assembly) -> Interned<ClassRef> {
         match self {
             Float::F16 => ClassRef::half(asm),
             Float::F32 => ClassRef::single(asm),
@@ -122,7 +125,12 @@ impl Float {
         }
     }
     /// Raises base to power.
-    pub fn pow(&self, base: NodeIdx, exp: NodeIdx, asm: &mut Assembly) -> NodeIdx {
+    pub fn pow(
+        &self,
+        base: Interned<CILNode>,
+        exp: Interned<CILNode>,
+        asm: &mut Assembly,
+    ) -> Interned<CILNode> {
         let pow = asm.alloc_string("Pow");
         let class = self.class(asm);
         let sig = asm.sig([Type::Float(*self), Type::Float(*self)], *self);
@@ -136,7 +144,13 @@ impl Float {
         asm.alloc_node(CILNode::call(mref, [base, exp]))
     }
     /// Raises base to power.
-    pub fn math2(&self, base: NodeIdx, exp: NodeIdx, asm: &mut Assembly, name: &str) -> NodeIdx {
+    pub fn math2(
+        &self,
+        base: Interned<CILNode>,
+        exp: Interned<CILNode>,
+        asm: &mut Assembly,
+        name: &str,
+    ) -> Interned<CILNode> {
         let pow = asm.alloc_string(name);
         let class = self.class(asm);
         let sig = asm.sig([Type::Float(*self), Type::Float(*self)], *self);
@@ -150,7 +164,12 @@ impl Float {
         asm.alloc_node(CILNode::call(mref, [base, exp]))
     }
 
-    pub fn math1(&self, val: NodeIdx, asm: &mut Assembly, name: &str) -> NodeIdx {
+    pub fn math1(
+        &self,
+        val: Interned<CILNode>,
+        asm: &mut Assembly,
+        name: &str,
+    ) -> Interned<CILNode> {
         let name = asm.alloc_string(name);
         let class = self.class(asm);
         let sig = asm.sig([Type::Float(*self)], *self);
@@ -178,8 +197,8 @@ impl From<Float> for Type {
         Type::Float(value)
     }
 }
-impl IntoAsmIndex<TypeIdx> for Float {
-    fn into_idx(self, asm: &mut Assembly) -> TypeIdx {
+impl IntoAsmIndex<Interned<Type>> for Float {
+    fn into_idx(self, asm: &mut Assembly) -> Interned<Type> {
         asm.alloc_type(Type::Float(self))
     }
 }

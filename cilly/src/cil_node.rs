@@ -1,30 +1,29 @@
+use crate::bimap::Interned;
 use crate::cilnode::IsPure;
 use crate::cilnode::MethodKind;
 use crate::v2::method::LocalDef;
-use crate::TypeIdx;
+
+use crate::FieldDesc;
 use crate::{
     call,
     cil_root::CILRoot,
     hashable::{HashableF32, HashableF64},
     IString,
 };
-use crate::{
-    Assembly, ClassRef, ClassRefIdx, FieldIdx, FnSig, Int, MethodRef, MethodRefIdx,
-    StaticFieldDesc, Type,
-};
+use crate::{Assembly, ClassRef, FnSig, Int, MethodRef, StaticFieldDesc, Type};
 use serde::{Deserialize, Serialize};
 /// A container for the arguments of a call, callvirt, or newobj instruction.
 #[derive(Clone, Eq, PartialEq, Serialize, Deserialize, Hash, Debug)]
 pub struct CallOpArgs {
     pub args: Box<[CILNode]>,
-    pub site: MethodRefIdx,
+    pub site: Interned<MethodRef>,
     pub is_pure: IsPure,
 }
 
 #[derive(Clone, Eq, PartialEq, Serialize, Deserialize, Debug, Hash)]
 pub enum CILNode {
     /// A translated V2 node.
-    V2(crate::NodeIdx),
+    V2(Interned<crate::v2::CILNode>),
     /// Loads the value of local variable number `n`.
     LDLoc(u32),
     /// Loads the value of argument number `n`.
@@ -108,13 +107,13 @@ pub enum CILNode {
     LDFieldAdress {
         /// Address of the object
         addr: Box<Self>,
-        field: FieldIdx,
+        field: Interned<FieldDesc>,
     },
     /// Loads the value of `field` of the object `addr` points to
     LDField {
         /// Address of the object
         addr: Box<Self>,
-        field: FieldIdx,
+        field: Interned<FieldDesc>,
     },
     /// Adds 2 values together
     Add(Box<Self>, Box<Self>),
@@ -162,12 +161,12 @@ pub enum CILNode {
     Gt(Box<Self>, Box<Self>),
     /// Compares two operands, returning true if lhs < rhs. Unsigned for intigers, unordered(in respect to NaNs) for floats.
     GtUn(Box<Self>, Box<Self>),
-    TemporaryLocal(Box<(TypeIdx, Box<[CILRoot]>, Self)>),
+    TemporaryLocal(Box<(Interned<Type>, Box<[CILRoot]>, Self)>),
 
     SubTrees(Box<(Box<[CILRoot]>, Box<Self>)>),
     LoadAddresOfTMPLocal,
     LoadTMPLocal,
-    LDFtn(MethodRefIdx),
+    LDFtn(Interned<MethodRef>),
     LDTypeToken(Box<Type>),
     NewObj(Box<CallOpArgs>),
     // 24 bytes - too big!
@@ -215,18 +214,18 @@ pub enum CILNode {
     /// Gets the exception. Can only be used in handlers, only once per handler.
     GetException,
     /// Checks if `lhs` is of type `rhs`. If not, throws.
-    CheckedCast(Box<(CILNode, ClassRefIdx)>),
+    CheckedCast(Box<(CILNode, Interned<ClassRef>)>),
     // Checks if `lhs` is of type `rhs`.  Returns a boolean.
-    IsInst(Box<(CILNode, ClassRefIdx)>),
+    IsInst(Box<(CILNode, Interned<ClassRef>)>),
     /// Marks the inner pointer operation as volatile.
     Volatile(Box<Self>),
     UnboxAny(Box<Self>, Box<Type>),
     AddressOfStaticField(Box<StaticFieldDesc>),
-    LdNull(ClassRefIdx),
+    LdNull(Interned<ClassRef>),
 }
 
 impl CILNode {
-    pub fn stack_addr(val: Self, tpe_idx: TypeIdx, _asm: &mut Assembly) -> Self {
+    pub fn stack_addr(val: Self, tpe_idx: Interned<Type>, _asm: &mut Assembly) -> Self {
         CILNode::TemporaryLocal(Box::new((
             tpe_idx,
             [CILRoot::SetTMPLocal { value: val }].into(),
@@ -235,7 +234,7 @@ impl CILNode {
     }
     pub fn ovf_check_tuple(
         asm: &mut Assembly,
-        tuple: ClassRefIdx,
+        tuple: Interned<ClassRef>,
         out_of_range: Self,
         val: Self,
         tpe: Type,
@@ -270,7 +269,7 @@ impl CILNode {
         )))*/
     }
     pub fn create_slice(
-        slice_tpe: ClassRefIdx,
+        slice_tpe: Interned<ClassRef>,
         asm: &mut Assembly,
         metadata: Self,
         ptr: Self,
@@ -360,7 +359,8 @@ impl CILNode {
                     .into(),
                     site: (asm.alloc_methodref(select)),
                     is_pure: crate::cilnode::IsPure::PURE,
-                })).cast_ptr(tpe)
+                }))
+                .cast_ptr(tpe)
             }
             _ => todo!(),
         }
@@ -399,8 +399,8 @@ impl CILNode {
         old_val: Self,
         expected: Self,
         destination_addr: Self,
-        val_desc: FieldIdx,
-        flag_desc: FieldIdx,
+        val_desc: Interned<FieldDesc>,
+        flag_desc: Interned<FieldDesc>,
     ) -> CILRoot {
         // Set the value of the result.
         let set_val = CILRoot::SetField {

@@ -4,8 +4,8 @@ use root::root_opt;
 use super::Float;
 
 use super::{
-    cilroot::BranchCond, method::LocalDef, typecheck::display_typecheck_err, BasicBlock, CILIter,
-    CILIterElem, CILNode, CILRoot, Int, MethodImpl, NodeIdx, RootIdx, SigIdx, Type,
+    bimap::Interned, cilroot::BranchCond, method::LocalDef, typecheck::display_typecheck_err,
+    BasicBlock, CILIter, CILIterElem, CILNode, CILRoot, FieldDesc, FnSig, Int, MethodImpl, Type,
 };
 use crate::{Assembly, MethodDef};
 pub use opt_fuel::OptFuel;
@@ -28,7 +28,7 @@ pub fn opt_if_fuel<T>(new: T, original: T, fuel: &mut OptFuel) -> T {
 enum LocalPropagate {
     Local(u32),
     Arg(u32),
-    Field(super::FieldIdx, NodeIdx),
+    Field(super::Interned<FieldDesc>, Interned<CILNode>),
 }
 impl CILNode {
     // The complexity of this function is unavoidable.
@@ -39,7 +39,7 @@ impl CILNode {
         asm: &mut Assembly,
         idx: LocalPropagate,
         tpe: Type,
-        new_node: NodeIdx,
+        new_node: Interned<CILNode>,
         fuel: &mut OptFuel,
     ) -> Self {
         match self {
@@ -346,7 +346,7 @@ impl BasicBlock {
         locals: &[LocalDef],
         cache: &mut SideEffectInfoCache,
         fuel: &mut OptFuel,
-        sig: SigIdx,
+        sig: Interned<FnSig>,
     ) {
         let root_iter: Vec<_> = self
             .roots_mut()
@@ -366,11 +366,11 @@ impl BasicBlock {
 }
 fn propagate_roots(
     asm: &mut Assembly,
-    root: &mut RootIdx,
+    root: &mut Interned<CILRoot>,
     prev_root: CILRoot,
     cache: &mut SideEffectInfoCache,
     locals: &[LocalDef],
-    sig: SigIdx,
+    sig: Interned<FnSig>,
     fuel: &mut OptFuel,
 ) -> bool {
     match prev_root {
@@ -476,11 +476,11 @@ fn propagate_roots(
 }
 fn propagate_root(
     asm: &mut Assembly,
-    root: &mut RootIdx,
+    root: &mut Interned<CILRoot>,
     cache: &mut SideEffectInfoCache,
     idx: LocalPropagate,
     tpe: Type,
-    tree: NodeIdx,
+    tree: Interned<CILNode>,
     fuel: &mut OptFuel,
 ) -> bool {
     let mut tmp_root = asm.get_root(*root).clone();
@@ -520,7 +520,7 @@ impl MethodImpl {
         asm: &mut Assembly,
         cache: &mut SideEffectInfoCache,
         fuel: &mut OptFuel,
-        sig: SigIdx,
+        sig: Interned<FnSig>,
     ) {
         // Optimization only suported for methods with locals
         let MethodImpl::MethodBody { blocks, locals } = self else {
@@ -630,7 +630,7 @@ impl MethodImpl {
 }
 
 impl MethodDef {
-    pub fn iter_roots_mut(&mut self) -> Option<impl Iterator<Item = &mut RootIdx>> {
+    pub fn iter_roots_mut(&mut self) -> Option<impl Iterator<Item = &mut Interned<CILRoot>>> {
         self.implementation_mut().blocks_mut().map(|blocks| {
             blocks
                 .iter_mut()

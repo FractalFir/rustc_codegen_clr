@@ -1,14 +1,10 @@
 use core::f16;
 
 use cilly::{
-    Const, NodeIdx, Type, call,
+    Assembly, ClassRef, Const, Float, Int, Interned, MethodRef, StaticFieldDesc, Type, call,
     cil_node::{CILNode, CallOpArgs},
-    cilnode::IsPure,
-    {
-        Assembly, ClassRef, Float, Int, MethodRef, MethodRefIdx, StaticFieldDesc,
-        cilnode::MethodKind,
-        hashable::{HashableF32, HashableF64},
-    },
+    cilnode::{IsPure, MethodKind},
+    hashable::{HashableF32, HashableF64},
 };
 use rustc_codegen_clr_call::CallInfo;
 use rustc_codegen_clr_ctx::MethodCompileCtx;
@@ -323,7 +319,11 @@ fn load_const_float(value: u128, float_type: FloatTy, asm: &mut Assembly) -> CIL
         ),
     }
 }
-pub fn load_const_int(value: u128, int_type: IntTy, asm: &mut Assembly) -> NodeIdx {
+pub fn load_const_int(
+    value: u128,
+    int_type: IntTy,
+    asm: &mut Assembly,
+) -> Interned<cilly::v2::CILNode> {
     match int_type {
         IntTy::I8 => asm.alloc_node(i8::from_ne_bytes([u8::try_from(value).unwrap()])),
         IntTy::I16 => asm.alloc_node(i16::from_ne_bytes(
@@ -342,7 +342,11 @@ pub fn load_const_int(value: u128, int_type: IntTy, asm: &mut Assembly) -> NodeI
         IntTy::I128 => asm.alloc_node(value as i128),
     }
 }
-pub fn load_const_uint(value: u128, int_type: UintTy, asm: &mut Assembly) -> NodeIdx {
+pub fn load_const_uint(
+    value: u128,
+    int_type: UintTy,
+    asm: &mut Assembly,
+) -> Interned<cilly::v2::CILNode> {
     match int_type {
         UintTy::U8 => asm.alloc_node(u8::try_from(value).unwrap()),
         UintTy::U16 => asm.alloc_node(u16::try_from(value).unwrap()),
@@ -353,7 +357,7 @@ pub fn load_const_uint(value: u128, int_type: UintTy, asm: &mut Assembly) -> Nod
     }
 }
 
-fn get_fn_from_static_name(name: &str, ctx: &mut MethodCompileCtx<'_, '_>) -> MethodRefIdx {
+fn get_fn_from_static_name(name: &str, ctx: &mut MethodCompileCtx<'_, '_>) -> Interned<MethodRef> {
     let int8_ptr = ctx.nptr(Type::Int(Int::I8));
     let int64_ptr = ctx.nptr(Type::Int(Int::I64));
     let void_ptr = ctx.nptr(Type::Void);

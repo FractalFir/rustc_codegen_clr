@@ -1,7 +1,4 @@
-use crate::{
-    BinOp,
-    {cilnode::ExtendKind, Assembly, CILNode, Const, Int, NodeIdx, Type},
-};
+use crate::{bimap::Interned, cilnode::ExtendKind, Assembly, BinOp, CILNode, Const, Int, Type};
 
 use super::{opt_if_fuel, OptFuel, SideEffectInfoCache};
 /// Optimizes an intiger cast.
@@ -9,7 +6,7 @@ fn opt_int_cast(
     original: CILNode,
     asm: &mut Assembly,
     fuel: &mut OptFuel,
-    input: NodeIdx,
+    input: Interned<CILNode>,
     target: Int,
     extend: ExtendKind,
 ) -> CILNode {

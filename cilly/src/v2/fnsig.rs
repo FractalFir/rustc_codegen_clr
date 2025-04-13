@@ -4,16 +4,6 @@ use super::{
     bimap::{BiMapIndex, IntoBiMapIndex},
     Type,
 };
-#[derive(Hash, PartialEq, Eq, Clone, Debug, Copy, Serialize, Deserialize)]
-pub struct SigIdx(BiMapIndex);
-impl IntoBiMapIndex for SigIdx {
-    fn from_index(val: BiMapIndex) -> Self {
-        Self(val)
-    }
-    fn as_bimap_index(&self) -> BiMapIndex {
-        self.0
-    }
-}
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub struct FnSig {
     inputs: Box<[Type]>,

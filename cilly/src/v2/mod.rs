@@ -3,27 +3,25 @@
 // This lint includes tests for some bizzare reason, so ignoring it seems like the best course of action
 #![allow(clippy::missing_panics_doc)]
 #![warn(missing_docs)]
-use super::bimap::Interned;
+pub use super::bimap::Interned;
 use std::path::Path;
 
-/// A reference to an interned string.
-pub type StringIdx = Interned<String>;
 pub use crate::Access;
 pub use asm::{Assembly, IlasmFlavour};
 pub use basic_block::BasicBlock;
 pub use bimap::BiMap;
-pub use cilnode::{BinOp, CILNode, NodeIdx};
-pub use cilroot::{BranchCond, CILRoot, RootIdx};
-pub use class::{ClassDef, ClassDefIdx, ClassRef, ClassRefIdx};
+pub use cilnode::{BinOp, CILNode};
+pub use cilroot::{BranchCond, CILRoot};
+pub use class::{ClassDef, ClassRef};
 pub use cst::Const;
-pub use field::{FieldDesc, FieldIdx, StaticFieldDesc, StaticFieldIdx};
-pub use fnsig::{FnSig, SigIdx};
+pub use field::{FieldDesc, StaticFieldDesc};
+pub use fnsig::FnSig;
 pub use iter::{CILIter, CILIterElem};
-pub use method::{MethodDef, MethodDefIdx, MethodImpl, MethodRef, MethodRefIdx};
+pub use method::{MethodDef, MethodDefIdx, MethodImpl, MethodRef};
 
 pub use tpe::float::Float;
 pub use tpe::int::Int;
-pub use tpe::{Type, TypeIdx};
+pub use tpe::Type;
 
 use crate::IString;
 
@@ -95,7 +93,7 @@ pub trait Exporter {
 #[test]
 fn test_binops() {
     fn test_binop(asm: &mut Assembly, op: BinOp) -> CILNode {
-        let mut curr: NodeIdx = IntoAsmIndex::into_idx(Const::I8(1), asm);
+        let mut curr: Interned<CILNode> = IntoAsmIndex::into_idx(Const::I8(1), asm);
         for _ in 0..10 {
             curr = IntoAsmIndex::into_idx(asm.biop(curr, curr, op), asm);
         }
@@ -119,43 +117,43 @@ impl<T> IntoAsmIndex<T> for T {
         self
     }
 }
-impl IntoAsmIndex<StringIdx> for &str {
-    fn into_idx(self, asm: &mut Assembly) -> StringIdx {
+impl IntoAsmIndex<Interned<IString>> for &str {
+    fn into_idx(self, asm: &mut Assembly) -> Interned<IString> {
         asm.alloc_string(self)
     }
 }
-impl IntoAsmIndex<StringIdx> for IString {
-    fn into_idx(self, asm: &mut Assembly) -> StringIdx {
+impl IntoAsmIndex<Interned<IString>> for IString {
+    fn into_idx(self, asm: &mut Assembly) -> Interned<IString> {
         asm.alloc_string(self)
     }
 }
-impl IntoAsmIndex<StringIdx> for String {
-    fn into_idx(self, asm: &mut Assembly) -> StringIdx {
+impl IntoAsmIndex<Interned<IString>> for String {
+    fn into_idx(self, asm: &mut Assembly) -> Interned<IString> {
         asm.alloc_string(self)
     }
 }
-impl IntoAsmIndex<TypeIdx> for Type {
-    fn into_idx(self, asm: &mut Assembly) -> TypeIdx {
+impl IntoAsmIndex<Interned<Type>> for Type {
+    fn into_idx(self, asm: &mut Assembly) -> Interned<Type> {
         asm.alloc_type(self)
     }
 }
-impl IntoAsmIndex<TypeIdx> for Int {
-    fn into_idx(self, asm: &mut Assembly) -> TypeIdx {
+impl IntoAsmIndex<Interned<Type>> for Int {
+    fn into_idx(self, asm: &mut Assembly) -> Interned<Type> {
         asm.alloc_type(self)
     }
 }
-impl IntoAsmIndex<TypeIdx> for ClassRefIdx {
-    fn into_idx(self, asm: &mut Assembly) -> TypeIdx {
+impl IntoAsmIndex<Interned<Type>> for Interned<ClassRef> {
+    fn into_idx(self, asm: &mut Assembly) -> Interned<Type> {
         asm.alloc_type(Type::ClassRef(self))
     }
 }
-impl IntoAsmIndex<NodeIdx> for CILNode {
-    fn into_idx(self, asm: &mut Assembly) -> NodeIdx {
+impl IntoAsmIndex<Interned<CILNode>> for CILNode {
+    fn into_idx(self, asm: &mut Assembly) -> Interned<CILNode> {
         asm.alloc_node(self)
     }
 }
-impl IntoAsmIndex<NodeIdx> for Const {
-    fn into_idx(self, asm: &mut Assembly) -> NodeIdx {
+impl IntoAsmIndex<Interned<CILNode>> for Const {
+    fn into_idx(self, asm: &mut Assembly) -> Interned<CILNode> {
         asm.alloc_node(self)
     }
 }
@@ -176,7 +174,7 @@ impl IntoIntType for usize {
     }
 }
 macro_rules! into_asm_index_closure {
-    ($Target:ident) => {
+    ($Target:ty) => {
         impl<'a, N: 'static + IntoAsmIndex<$Target>, F: FnOnce(&mut Assembly) -> N>
             IntoAsmIndex<$Target> for F
         {
@@ -186,9 +184,9 @@ macro_rules! into_asm_index_closure {
         }
     };
 }
-into_asm_index_closure! {NodeIdx}
-into_asm_index_closure! {RootIdx}
-into_asm_index_closure! {StringIdx}
+into_asm_index_closure! {Interned<CILNode>}
+into_asm_index_closure! {Interned<CILRoot>}
+into_asm_index_closure! {Interned<IString>}
 
 #[test]
 fn add_macro() {

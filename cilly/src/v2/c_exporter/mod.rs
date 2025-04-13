@@ -4,9 +4,7 @@ use fxhash::{hash64, FxHashSet, FxHasher};
 use std::{collections::HashSet, io::Write, num::NonZero, path::Path};
 
 use crate::{
-    config, typecheck,
-    utilis::{assert_unique, encode},
-    {asm::LINKER_RECOVER, BiMap, MethodImpl, StringIdx},
+    asm::LINKER_RECOVER, config, typecheck, utilis::{assert_unique, encode}, BiMap, IString, MethodImpl
 };
 
 config!(NO_SFI, bool, false);
@@ -20,17 +18,7 @@ config!(PARTS, u32, 1);
 config!(ASCII_IDENTS, bool, false);
 mod utilis;
 use super::{
-    asm::MAIN_MODULE,
-    basic_block::BlockId,
-    bimap::{Interned, IntoBiMapIndex},
-    cilnode::{ExtendKind, PtrCastRes},
-    cilroot::BranchCond,
-    class::StaticFieldDef,
-    method::LocalDef,
-    tpe::simd::SIMDVector,
-    typecheck::TypeCheckError,
-    Assembly, BinOp, CILIter, CILIterElem, CILNode, CILRoot, ClassDefIdx, ClassRef, ClassRefIdx,
-    Const, Exporter, Int, MethodDef, MethodRef, NodeIdx, RootIdx, SigIdx, Type,
+    basic_block::BlockId, bimap::{Interned, IntoBiMapIndex}, cilnode::{ExtendKind, PtrCastRes}, cilroot::BranchCond, class::{ClassDefIdx, StaticFieldDef}, method::LocalDef, typecheck::TypeCheckError, Assembly, BinOp, CILNode, CILRoot, ClassRef, Const, Exporter, FnSig, Int, MethodDef, MethodRef, Type
 };
 use utilis::*;
 
@@ -39,7 +27,7 @@ pub struct CExporter {
     libs: Vec<String>,
     dirs: Vec<String>,
     metadata: Vec<u8>,
-    curr_fname:Interned<String>,
+    curr_fname:Interned<IString>,
 }
 impl CExporter {
     pub fn c_compiler() -> String {
@@ -105,8 +93,8 @@ impl CExporter {
         tpe: Type,
         asm: &mut Assembly,
         locals: &[LocalDef],
-        inputs: &[(Type, Option<StringIdx>)],
-        sig: SigIdx,
+        inputs: &[(Type, Option<Interned<IString>>)],
+        sig: Interned<FnSig>,
     ) -> Result<String, TypeCheckError> {
         let lhs = Self::node_to_string(lhs, asm, locals, inputs, sig)?;
         let rhs = Self::node_to_string(rhs, asm, locals, inputs, sig)?;
@@ -300,8 +288,8 @@ impl CExporter {
         node: CILNode,
         asm: &mut Assembly,
         locals: &[LocalDef],
-        inputs: &[(Type, Option<StringIdx>)],
-        sig: SigIdx,
+        inputs: &[(Type, Option<Interned<IString>>)],
+        sig: Interned<FnSig>,
     ) -> Result<String, TypeCheckError> {
         match node{
             CILNode::PtrCast(ref src_node,ref target ) if matches!(target.as_ref(),PtrCastRes::Ptr(_)) =>{
@@ -315,6 +303,9 @@ impl CExporter {
                 Self::node_to_string(asm[*src_node].clone(), asm, locals, inputs, sig)
             }
             CILNode::Const(cst)=> Ok(match cst.as_ref() {
+                Const::ByteBuffer { data, tpe:_ }=>{
+                    format!("c_{}",encode(data.inner() as u64))
+                }
                 Const::I8(v) => format!("{v}"),
                 Const::I16(v) => format!("{v}"),
                 Const::I32(v) => format!("{v}"),
@@ -372,11 +363,12 @@ impl CExporter {
         node: CILNode,
         asm: &mut Assembly,
         locals: &[LocalDef],
-        inputs: &[(Type, Option<StringIdx>)],
-        sig: SigIdx,
+        inputs: &[(Type, Option<Interned<IString>>)],
+        sig: Interned<FnSig>,
     ) -> Result<String, TypeCheckError> {
         Ok(match node {
             CILNode::Const(cst) => match cst.as_ref() {
+                Const::ByteBuffer { data, tpe }=>format!("(({tpe}*)c_{})",encode(data.inner() as u64),tpe = c_tpe(asm[*tpe], asm)),
                 Const::I8(v) => format!("(int8_t)0x{v:x}"),
                 Const::I16(v) => format!("(int16_t)0x{v:x}"),
                 Const::I32(v) => format!("((int32_t)0x{v:x})"),
@@ -735,8 +727,8 @@ impl CExporter {
         root: CILRoot,
         asm: &mut Assembly,
         locals: &[LocalDef],
-        inputs: &[(Type, Option<StringIdx>)],
-        sig: SigIdx,
+        inputs: &[(Type, Option<Interned<IString>>)],
+        sig: Interned<FnSig>,
         next: Option<BlockId>,
     ) -> Result<String, TypeCheckError> {
         Ok(match root {
@@ -1292,7 +1284,7 @@ impl CExporter {
         Ok(())
     }
     
-    fn set_sfi(&mut self, line_start: u32, file: super::bimap::Interned<String>,asm:&Assembly) -> String {
+    fn set_sfi(&mut self, line_start: u32, file: super::bimap::Interned<IString>,asm:&Assembly) -> String {
         if file == self.curr_fname{
             format!("#line {line_start} ")
         }else{
@@ -1478,8 +1470,8 @@ pub fn class_to_mangled(class: &super::ClassRef, asm: &Assembly) -> String {
 #[must_use]
 pub fn name_sig_class_to_mangled(
     name: &str,
-    sig: super::SigIdx,
-    class: Option<ClassRefIdx>,
+    sig: super::Interned<FnSig>,
+    class: Option<Interned<ClassRef>>,
     asm: &Assembly,
 ) -> String {
     let class = match class {
