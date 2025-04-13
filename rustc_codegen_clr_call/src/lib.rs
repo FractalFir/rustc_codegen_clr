@@ -57,7 +57,6 @@ impl CallInfo {
         let split_last_tuple = match internal_abi {
             TargetAbi::C { unwind: _ }
             | TargetAbi::Cdecl { unwind: _ }
-            | TargetAbi::RustIntrinsic
             | TargetAbi::Rust
             | TargetAbi::RustCold
             | TargetAbi::Unadjusted

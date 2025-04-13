@@ -264,7 +264,8 @@ impl CodegenBackend for MyBackend {
                 .downcast::<(IString, Assembly, EncodedMetadata, CrateInfo)>()
                 .expect("in join_codegen: ongoing_codegen is not an Assembly");
             let asm_name = "";
-            let serialized_asm_path = outputs.temp_path(OutputType::Bitcode, Some(asm_name));
+            let serialized_asm_path =
+                outputs.temp_path_for_cgu(OutputType::Bitcode, asm_name, None);
             //std::fs::create_dir_all(&serialized_asm_path).expect("Could not create the directory temporary files are supposed to be in.");
 
             let mut asm_out = std::fs::File::create(&serialized_asm_path).expect(

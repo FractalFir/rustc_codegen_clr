@@ -63,7 +63,6 @@ pub fn sig_from_instance_<'tcx>(
     match internal_abi {
         TargetAbi::C { unwind: _ }
         | TargetAbi::Cdecl { unwind: _ }
-        | TargetAbi::RustIntrinsic
         | TargetAbi::Rust
         | TargetAbi::RustCold
         | TargetAbi::RustCall => (), /*Err(CodegenError::FunctionABIUnsuported(
