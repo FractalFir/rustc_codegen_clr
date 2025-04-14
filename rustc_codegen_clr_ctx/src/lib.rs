@@ -107,6 +107,10 @@ impl<'tcx, 'asm> MethodCompileCtx<'tcx, 'asm> {
     pub fn asm<'s: 'a, 'a>(&'s self) -> &'a Assembly {
         self.asm
     }
+
+    pub fn const_align(&self) -> u64 {
+        1
+    }
 }
 impl<'tcx> rustc_middle::ty::layout::HasTyCtxt<'tcx> for MethodCompileCtx<'tcx, '_> {
     fn tcx(&self) -> TyCtxt<'tcx> {

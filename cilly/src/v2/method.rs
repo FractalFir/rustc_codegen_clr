@@ -5,7 +5,8 @@ use super::{
     bimap::{BiMapIndex, Interned, IntoBiMapIndex},
     cilnode::{IsPure, MethodKind},
     class::ClassDefIdx,
-    Access, Assembly, BasicBlock, CILIterElem, CILNode, ClassDef, ClassRef, FnSig, Int, Type,
+    Access, Assembly, BasicBlock, CILIterElem, CILNode, ClassDef, ClassRef, FnSig, Int,
+    IntoAsmIndex, Type,
 };
 use crate::{cil_node::CallOpArgs, cilnode::PtrCastRes, iter::TpeIter};
 use crate::{CILRoot, IString};
@@ -18,7 +19,24 @@ pub struct MethodRef {
     kind: MethodKind,
     generics: Box<[Type]>,
 }
-
+impl Interned<MethodRef> {
+    pub fn builtin(
+        asm: &mut Assembly,
+        name: &str,
+        inputs: &[Type],
+        output: impl IntoAsmIndex<Type>,
+    ) -> Self {
+        let main_module = asm.main_module();
+        let inputs: Box<_> = inputs.to_vec().into();
+        let output = output.into_idx(asm);
+        let sig = asm.alloc_sig(FnSig::new(inputs, output));
+        asm.new_methodref(*main_module, name, sig, MethodKind::Static, [])
+    }
+    pub fn unaligned_read(asm: &mut Assembly, tpe: Type) -> Self {
+        let tpe_ptr = asm.alloc_type(tpe);
+        Self::builtin(asm, "unaligned_read", &[Type::Ptr(tpe_ptr)], tpe)
+    }
+}
 impl MethodRef {
     #[must_use]
     pub fn into_def(

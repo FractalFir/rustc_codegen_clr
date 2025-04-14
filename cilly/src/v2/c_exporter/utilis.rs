@@ -133,6 +133,7 @@ pub(super) fn mref_to_name(mref: &MethodRef, asm: &Assembly) -> String {
             .any(|tpe| matches!(tpe, Type::SIMDVector(_)))
         || mname == "transmute"
         || mname == "create_slice"
+        || mname == "unaligned_read"
         || mname == "ovf_check_tuple"
         || mname == "_Unwind_Backtrace"
     {

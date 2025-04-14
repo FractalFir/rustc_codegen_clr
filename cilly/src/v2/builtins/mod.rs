@@ -65,6 +65,26 @@ pub fn insert_bounds_check(asm: &mut Assembly, patcher: &mut MissingMethodPatche
     };
     patcher.insert(name, Box::new(generator));
 }
+pub fn unaligned_read(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
+    let name = asm.alloc_string("unaligned_read");
+    let generator = move |mref: Interned<MethodRef>, asm: &mut Assembly| {
+        let tpe = asm[asm[mref].sig()].output();
+        let tpe = asm.alloc_type(*tpe);
+        // Copy to a local
+        let ptr = asm.alloc_node(CILNode::LdArg(0));
+        let local = asm.alloc_node(CILNode::LdLocA(0));
+        let size = asm.size_of(tpe);
+        let copy = asm.alloc_root(CILRoot::CpBlk(Box::new((local, ptr, size))));
+        // Ret
+        let local = asm.alloc_node(CILNode::LdLoc(0));
+        let ret = asm.alloc_root(CILRoot::Ret(local));
+        MethodImpl::MethodBody {
+            blocks: vec![BasicBlock::new(vec![copy, ret], 0, None)],
+            locals: vec![(None, tpe)],
+        }
+    };
+    patcher.insert(name, Box::new(generator));
+}
 
 fn insert_rust_alloc(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
     let name = asm.alloc_string("__rust_alloc");

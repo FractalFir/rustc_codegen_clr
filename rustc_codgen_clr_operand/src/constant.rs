@@ -58,15 +58,25 @@ fn create_const_from_data<'tcx>(
                 Scalar::from_u128(u128::from_ne_bytes(bytes.as_slice().try_into().unwrap()));
             return load_const_scalar(scalar, ty, ctx);
         }
-        let ptr = alloc_ptr(alloc_id, &alloc, ctx);
-        let ty = ctx.monomorphize(ty);
+        let (ptr, align) = alloc_ptr_unaligned(alloc_id, &alloc, ctx);
+        if align == u64::MAX {
+            let ty = ctx.monomorphize(ty);
 
-        let tpe = ctx.type_from_cache(ty);
-        let tpe_ptr = ctx.nptr(tpe);
-        return CILNode::LdObj {
-            ptr: Box::new(ptr.cast_ptr(tpe_ptr)),
-            obj: Box::new(tpe),
-        };
+            let tpe = ctx.type_from_cache(ty);
+            let tpe_ptr = ctx.nptr(tpe);
+            return CILNode::LdObj {
+                ptr: Box::new(ptr.cast_ptr(tpe_ptr)),
+                obj: Box::new(tpe),
+            };
+        } else {
+            let ty = ctx.monomorphize(ty);
+
+            let tpe = ctx.type_from_cache(ty);
+            let tpe_ptr = ctx.nptr(tpe);
+
+            let unaligned_read = Interned::unaligned_read(ctx, tpe);
+            return call!(unaligned_read, [ptr.cast_ptr(tpe_ptr)]);
+        }
     }
     let ptr = CILNode::LoadGlobalAllocPtr {
         alloc_id: alloc_id.0.into(),
@@ -221,22 +231,64 @@ fn load_scalar_ptr(
     }
     //panic!("alloc_id:{alloc_id:?}")
 }
+/// Returns a pointer to an immutable buffer, representing a given allocation.
 fn alloc_ptr<'tcx>(
     alloc_id: AllocId,
     const_alloc: &rustc_middle::mir::interpret::ConstAllocation,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> CILNode {
-    let const_alloc = const_alloc.inner();
+    let (ptr, align) = alloc_ptr_unaligned(alloc_id, const_alloc, ctx);
     // If aligement is small enough to be *guaranteed*, and no pointers are present.
-    if const_alloc.align.bytes() <= 1 && const_alloc.provenance().ptrs().is_empty() {
-        CILNode::V2(ctx.bytebuffer(
-            const_alloc.inspect_with_uninit_and_ptr_outside_interpreter(0..const_alloc.len()),
-            Int::U8,
-        ))
-    } else {
+    if align == u64::MAX || align <= ctx.const_align() {
         CILNode::LoadGlobalAllocPtr {
             alloc_id: alloc_id.0.into(),
         }
+    } else {
+        ptr
+    }
+}
+/// Returns a pointer to an immutable buffer, representing a given allocation. Pointer may be underaligned, aligement of `u64::MAX` signals that the pointer
+/// will be sufficently aligned for `const_alloc`.
+fn alloc_ptr_unaligned<'tcx>(
+    alloc_id: AllocId,
+    const_alloc: &rustc_middle::mir::interpret::ConstAllocation,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
+) -> (CILNode, u64) {
+    let const_alloc = const_alloc.inner();
+    // If aligement is small enough to be *guaranteed*, and no pointers are present.
+    if const_alloc.provenance().ptrs().is_empty() {
+        if const_alloc.align.bytes() <= ctx.const_align() {
+            //unaligned_read
+            (
+                CILNode::V2(
+                    ctx.bytebuffer(
+                        const_alloc
+                            .inspect_with_uninit_and_ptr_outside_interpreter(0..const_alloc.len()),
+                        Int::U8,
+                    ),
+                ),
+                u64::MAX,
+            )
+        } else {
+            //unaligned_read
+            (
+                CILNode::V2(
+                    ctx.bytebuffer(
+                        const_alloc
+                            .inspect_with_uninit_and_ptr_outside_interpreter(0..const_alloc.len()),
+                        Int::U8,
+                    ),
+                ),
+                ctx.const_align(),
+            )
+        }
+    } else {
+        (
+            CILNode::LoadGlobalAllocPtr {
+                alloc_id: alloc_id.0.into(),
+            },
+            u64::MAX,
+        )
     }
 }
 fn load_const_scalar<'tcx>(

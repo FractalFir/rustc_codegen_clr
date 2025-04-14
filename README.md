@@ -77,7 +77,7 @@ However, if you have access to such a compiler, I can assist you in adding suppo
 
 | Name | Pass	| Faliure	| Crash \ Timeout| OK precentage
 |--------------------|--------|-------|-------|------|
-| Core tests |	1662	| 39	| 12	| 97.02% |
+| Core tests |	1764	| 48	| 20	| 96.29% |
 | Alloc tests | 	616	|8 |	40 |	92.77% |
 | Alloc benches	| 464	| 0	| 0 |	100.00% |
 | Test Harness tests |	57 |	0	| 100.00% |
@@ -86,9 +86,9 @@ However, if you have access to such a compiler, I can assist you in adding suppo
 
 C
 
-| Name | Pass	| Faliure	| OK precentage
-|--------------------|--------|-------|------|
-| Core tests |	1419	| 294	| 82.83% |
+| Name | Pass	| Faliure| Crash \ Timeout | OK precentage
+|--------------------|--------|------|-------|------|
+| Core tests |	1712	| 71 | 8 | 95.59%|
 
 ## FAQ
 

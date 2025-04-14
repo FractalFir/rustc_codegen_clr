@@ -434,6 +434,8 @@ fn main() {
     cilly::builtins::select::generate_int_selects(&mut final_assembly, &mut overrides);
     cilly::builtins::insert_swap_at_generic(&mut final_assembly, &mut overrides);
     cilly::builtins::insert_bounds_check(&mut final_assembly, &mut overrides);
+    cilly::builtins::unaligned_read(&mut final_assembly, &mut overrides);
+
     cilly::builtins::casts::insert_casts(&mut final_assembly, &mut overrides);
     cilly::builtins::insert_heap(&mut final_assembly, &mut overrides, *C_MODE);
     cilly::builtins::rust_assert(&mut final_assembly, &mut overrides);
