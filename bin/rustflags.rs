@@ -19,8 +19,11 @@ fn main() {
     println!("Welcome to the `rustc_codegen_clr` environment setup helper!");
     println!("This tool will help you use the codegen to compile Rust projects.");
     println!();
+    println!("NOTE: if you are only interested in the C side of the project, set the enviroment variable C_MODE to 1, and run this tool again.");
     println!("Doing dependency checks...");
-    ilasm_check();
+    if !std::env::var("C_MODE").is_ok() {
+        ilasm_check();
+    }
     println!("Dependency checks succeeded.");
     println!();
     println!("WARNING: Please note, the project is currently in the early stages of development.  Bugs, crashes and miscompilations will occur.");
@@ -31,6 +34,9 @@ fn main() {
     println!();
     println!("\"{build_env}\"");
     println!();
+    if std::env::var("C_MODE").is_ok() {
+        println!("Additonally, set `C_MODE` to 1");
+    }
     println!();
     #[cfg(target_family = "unix")]
     {
@@ -40,6 +46,9 @@ fn main() {
         println!();
         println!();
         println!("export RUSTFLAGS=\"{build_env}\"");
+        if std::env::var("C_MODE").is_ok() {
+            println!("export C_MODE=1");
+        }
         println!();
         println!();
     }
@@ -78,5 +87,19 @@ fn main() {
         "  In 99.999% of the cases, the bug is within this project and not the Rust compiler."
     );
     println!();
-    // std::env::set_var("RUSTFLAGS", build_env);
+    #[cfg(target_family = "unix")]
+    {
+        println!("############# Testing with the Rust compiler #####################");
+        println!("Testing with the Rust compiler requires:");
+        println!("1. running `cargo test ::stable`(builds & tests the backend)");
+        println!("2. running ./setup_rustc_fork.sh to download rustc.");
+        println!("3. Setting the following environment variables:");
+        println!("# For .NET");
+        println!("export RUSTFLAGS_NOT_BOOTSTRAP=\"{build_env} -C link-args=--cargo-support\"");
+        println!("# For C");
+        println!("export C_MODE=1");
+        println!("export RUSTFLAGS_NOT_BOOTSTRAP=\"{build_env} -Cpanic=abort -Zpanic_abort_tests -C link-args=--cargo-support\"");
+        println!("Go to the `rustc` directory, run `./configure` to setup the compiler.");
+        println!("./x test core --stage 0 -j 10");
+    }
 }

@@ -731,9 +731,10 @@ pub fn add_allocation(alloc_id: u64, asm: &mut cilly::Assembly, tcx: TyCtxt<'_>)
             CILNode::AddressOfStaticField(Box::new(field_desc))
         }
         _ => {
+            let tl = if thread_local { "t" } else { "g" };
             let alloc_name: IString = if let Some(krate) = krate {
                 format!(
-                    "al_{}_{}_{}_{thread_local}_{}",
+                    "al_{}_{}_{}_{tl}_{}",
                     encode(alloc_id),
                     encode(byte_hash),
                     const_allocation.len(),
@@ -742,7 +743,7 @@ pub fn add_allocation(alloc_id: u64, asm: &mut cilly::Assembly, tcx: TyCtxt<'_>)
                 .into()
             } else {
                 format!(
-                    "al_{}_{}_{}_{thread_local}",
+                    "al_{}_{}_{}_{tl}",
                     encode(alloc_id),
                     encode(byte_hash),
                     const_allocation.len()
