@@ -3,7 +3,7 @@
 > [!WARNING]
 > This project is still early in its developement. Bugs, crashes and miscompilations are expected. DO NOT USE IT FOR ANYTHING SERIOUS.
 
-`rustc_codegen_clr` is an experimental Rust compiler backend(plugin), which allows you to transpile Rust into .NET assebmlies, or C source files. 
+`rustc_codegen_clr` is an experimental Rust compiler backend(plugin), which allows you to transpile Rust into .NET assemblies, or C source files. 
 
 The end goal of the project is allowing Rust to be used in places where it could not be used before. 
 
@@ -14,7 +14,7 @@ The project aims to provide a way to easily use Rust libraries in .NET. It comes
 ```
 use mychorizza::*;
 fn main(){
-    // Alocate a new GC-managed string builder
+    // Allocate a new GC-managed string builder
     let stringBuilder = StringBuilder::empty();
     // You can easily operate on GC-managed types
     mstring.AppendChar('H');
@@ -49,11 +49,11 @@ My representation of .NETs IR maps nicely to C, which means that I was able to a
 present in the very last stage of compilation.
 
 This means that, instead of having to maintain 2 separate projects, I can maintain one project. Bug fixes to the .NET side of things also fix C bugs. 
-Because of that, the support for C in the project is almost as good as support for .NET
+Because of that, the support for C in the project is almost as good as support for .NET.
 
 ## Current state of the project
 
-The project currently supports most Rust features (except proc macros), but it is not bug-free. It can compile a mostly working version of Rust std, but there are many minor bugs make such `std` not 100% functional.
+The project currently supports most Rust features (except proc macros), but it is not bug-free. It can compile a mostly working version of Rust std, but there are many minor bugs that make such `std` not 100% functional.
 
 Most components of `std` are about 95% working in .NET, and 80% working in C.
 So, you *can* compile a lot of existing Rust code, but it may not necessarily *work*.
