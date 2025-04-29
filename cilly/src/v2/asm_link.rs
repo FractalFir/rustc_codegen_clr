@@ -2,7 +2,7 @@ use super::{
     asm::{CCTOR, TCCTOR, USER_INIT},
     bimap::Interned,
     class::{ClassDefIdx, StaticFieldDef},
-    Assembly, BasicBlock, CILNode, CILRoot, ClassDef, ClassRef, FieldDesc, FnSig, MethodDef,
+    Assembly, BasicBlock, CILNode, CILRoot, ClassDef, ClassRef, Const, FieldDesc, FnSig, MethodDef,
     MethodDefIdx, MethodRef, StaticFieldDesc, Type,
 };
 impl Assembly {
@@ -99,27 +99,29 @@ impl Assembly {
             .collect();
         MethodRef::new(class, name, sig, method_ref.kind(), generics)
     }
+    pub(crate) fn translate_const(&mut self, source: &Assembly, cst: &Const) -> Const {
+        match cst {
+            super::Const::PlatformString(pstr) => {
+                super::Const::PlatformString(self.alloc_string(source[*pstr].as_ref()))
+            }
+
+            super::Const::Null(cref) => super::Const::Null(self.translate_class_ref(source, *cref)),
+            super::Const::ByteBuffer { data, tpe } => {
+                let tpe = self.translate_type(source, source[*tpe]);
+                (super::Const::ByteBuffer {
+                    data: self.alloc_const_data(&source.const_data[*data]),
+                    tpe: self.alloc_type(tpe),
+                })
+            }
+            _ => cst.clone(),
+        }
+    }
     // The complexity of this function is unavoidable.
     #[allow(clippy::too_many_lines)]
     pub(crate) fn translate_node(&mut self, source: &Assembly, node: CILNode) -> CILNode {
         match &node {
             CILNode::LdLoc(_) | CILNode::LdLocA(_) | CILNode::LdArg(_) | CILNode::LdArgA(_) => node,
-            CILNode::Const(cst) => match cst.as_ref() {
-                super::Const::PlatformString(pstr) => CILNode::Const(Box::new(
-                    super::Const::PlatformString(self.alloc_string(source[*pstr].as_ref())),
-                )),
-                super::Const::Null(cref) => CILNode::Const(Box::new(super::Const::Null(
-                    self.translate_class_ref(source, *cref),
-                ))),
-                super::Const::ByteBuffer { data, tpe } => {
-                    let tpe = self.translate_type(source, source[*tpe]);
-                    CILNode::Const(Box::new(super::Const::ByteBuffer {
-                        data: self.alloc_const_data(&source.const_data[*data]),
-                        tpe: self.alloc_type(tpe),
-                    }))
-                }
-                _ => node.clone(),
-            },
+            CILNode::Const(cst) => CILNode::Const(Box::new(self.translate_const(source, cst))),
             CILNode::BinOp(a, b, op) => {
                 let a = self.translate_node(source, source.get_node(*a).clone());
                 let b = self.translate_node(source, source.get_node(*b).clone());
@@ -608,15 +610,25 @@ impl Assembly {
         let static_fields = def
             .static_fields()
             .iter()
-            .map(|StaticFieldDef { tpe, name, is_tls }| {
-                let tpe = self.translate_type(source, *tpe);
-                let name = self.alloc_string(source[*name].as_ref());
-                StaticFieldDef {
-                    tpe,
-                    name,
-                    is_tls: *is_tls,
-                }
-            })
+            .map(
+                |StaticFieldDef {
+                     tpe,
+                     name,
+                     is_tls,
+                     default_value,
+                     is_const,
+                 }| {
+                    let tpe = self.translate_type(source, *tpe);
+                    let name = self.alloc_string(source[*name].as_ref());
+                    StaticFieldDef {
+                        tpe,
+                        name,
+                        is_tls: *is_tls,
+                        default_value: default_value.map(|cst| self.translate_const(source, &cst)),
+                        is_const: *is_const,
+                    }
+                },
+            )
             .collect();
         let translated = ClassDef::new(
             name,

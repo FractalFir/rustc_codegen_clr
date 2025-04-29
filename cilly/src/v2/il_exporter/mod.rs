@@ -13,7 +13,7 @@ use super::{
     class::StaticFieldDef,
     method::LocalDef,
     tpe::simd::SIMDElem,
-    Assembly, BinOp, CILIter, CILIterElem, CILNode, CILRoot, ClassRef, Exporter, FnSig, Int,
+    Assembly, BinOp, CILIter, CILIterElem, CILNode, CILRoot, ClassRef, Const, Exporter, FnSig, Int,
     MethodDefIdx, Type,
 };
 
@@ -35,6 +35,7 @@ impl ILExporter {
             let data: String = const_data.iter().map(|u| format!("{u:x} ")).collect();
             writeln!(out, " .data cil I_{encoded} = bytearray ({data})\n.field assembly static uint8 c_{encoded} at I_{encoded}")?;
         }
+        let mut c = 0;
         // Iterate trough all types
         for class_def in asm.iter_class_defs() {
             let vis = match class_def.access() {
@@ -88,11 +89,65 @@ impl ILExporter {
                 ),
             );
             // Export all static fields
-            for StaticFieldDef { tpe, name, is_tls } in class_def.static_fields() {
+            for StaticFieldDef {
+                tpe,
+                name,
+                is_tls,
+                is_const,
+                default_value,
+            } in class_def.static_fields()
+            {
                 let name = &asm[*name];
                 let tpe = non_void_type_il(tpe, asm);
-
-                writeln!(out, ".field static {tpe} '{name}'")?;
+                let is_const = if *is_const { "initonly" } else { "" };
+                let default_value = if let Some(default_value) = default_value {
+                    match default_value {
+                        Const::Bool(b) => {
+                            c += 1;
+                            writeln!(out, ".data cil C_{c} = int8({})", *b as u8)?;
+                            format!(" at C_{c}")
+                        }
+                        Const::U64(b) => {
+                            c += 1;
+                            writeln!(out, ".data cil C_{c} = int64({})", *b)?;
+                            format!(" at C_{c}")
+                        }
+                        Const::U32(b) => {
+                            c += 1;
+                            writeln!(out, ".data cil C_{c} = int32({})", *b)?;
+                            format!(" at C_{c}")
+                        }
+                        Const::U16(b) => {
+                            c += 1;
+                            writeln!(out, ".data cil C_{c} = int16({})", *b)?;
+                            format!(" at C_{c}")
+                        }
+                        Const::U8(b) => {
+                            c += 1;
+                            writeln!(out, ".data cil C_{c} = int8({})", *b)?;
+                            format!(" at C_{c}")
+                        }
+                        Const::U128(b) => {
+                            c += 1;
+                            writeln!(
+                                out,
+                                ".data cil C_{c} = bytearray({})",
+                                b.to_le_bytes()
+                                    .iter()
+                                    .map(|v| format!(" {v}"))
+                                    .collect::<String>()
+                            )?;
+                            format!(" at C_{c}")
+                        }
+                        _ => todo!("unhandled const {default_value:?}"),
+                    }
+                } else {
+                    "".into()
+                };
+                writeln!(
+                    out,
+                    ".field static {is_const} {tpe} '{name}'{default_value}"
+                )?;
                 if *is_tls {
                     writeln!(out,".custom instance void [System.Runtime]System.ThreadStaticAttribute::.ctor() = (01 00 00 00)")?;
                 };

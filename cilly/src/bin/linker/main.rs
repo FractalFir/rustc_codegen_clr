@@ -32,12 +32,16 @@ fn add_mandatory_statics(asm: &mut cilly::Assembly) {
         "__rust_alloc_error_handler_should_panic",
         false,
         main_module,
+        None,
+        false,
     );
     asm.add_static(
         cilly::Type::Int(cilly::Int::U8),
         "__rust_no_alloc_shim_is_unstable",
         false,
         main_module,
+        None,
+        false,
     );
 }
 static FORCE_FAIL: std::sync::LazyLock<bool> =

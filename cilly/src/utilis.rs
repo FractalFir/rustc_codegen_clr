@@ -327,7 +327,7 @@ pub fn get_environ(asm: &mut Assembly) -> Interned<MethodRef> {
 
     let def = MethodDef::from_v1(&get_environ, asm, main_module);
     asm.new_method(def);
-    asm.add_static(uint8_ptr_ptr, "environ", true, main_module);
+    asm.add_static(uint8_ptr_ptr, "environ", true, main_module, None, false);
     init_cs
 }
 static CHARS: &[char] = &[

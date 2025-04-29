@@ -372,13 +372,22 @@ pub fn instert_threading(asm: &mut Assembly, patcher: &mut MissingMethodPatcher)
     insert_pthread_setname_np(asm, patcher);
     insert_pthread_key_delete(asm, patcher);
     let main_mod = asm.main_module();
-    asm.add_static(Type::Int(PTHREAD_KEY_T), "last_val", false, main_mod);
+    asm.add_static(
+        Type::Int(PTHREAD_KEY_T),
+        "last_val",
+        false,
+        main_mod,
+        None,
+        false,
+    );
     let thread_key_dict = thread_key_dict(asm);
     asm.add_static(
         Type::ClassRef(thread_key_dict),
         "pthread_keys",
         true,
         main_mod,
+        None,
+        false,
     );
     let pthread_keys = asm.alloc_string("pthread_keys");
     let pthread_keys_static = asm.alloc_sfld(StaticFieldDesc::new(
@@ -497,7 +506,14 @@ pub fn instert_threading(asm: &mut Assembly, patcher: &mut MissingMethodPatcher)
     let main_module = asm.main_module();
     let thread_results = asm.alloc_string("thread_results");
     let dict = ClassRef::concurent_dictionary(Type::Int(Int::I32), Type::Int(Int::ISize), asm);
-    asm.add_static(Type::ClassRef(dict), "thread_results", false, main_module);
+    asm.add_static(
+        Type::ClassRef(dict),
+        "thread_results",
+        false,
+        main_module,
+        None,
+        false,
+    );
     let thread_results = asm.alloc_sfld(StaticFieldDesc::new(
         *main_module,
         thread_results,

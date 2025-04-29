@@ -610,7 +610,7 @@ pub fn add_allocation(alloc_id: u64, asm: &mut cilly::Assembly, tcx: TyCtxt<'_>)
                     asm.alloc_string(alloc_fld.clone()),
                     uint8_ptr,
                 );
-                asm.add_static(uint8_ptr, alloc_fld, false, main_module_id);
+                asm.add_static(uint8_ptr, alloc_fld, false, main_module_id, None, false);
                 return CILNode::LDStaticField(Box::new(field_desc));
             }
             GlobalAlloc::Function { .. } => {
@@ -621,7 +621,7 @@ pub fn add_allocation(alloc_id: u64, asm: &mut cilly::Assembly, tcx: TyCtxt<'_>)
                     asm.alloc_string(alloc_fld.clone()),
                     uint8_ptr,
                 );
-                asm.add_static(uint8_ptr, alloc_fld, false, main_module_id);
+                asm.add_static(uint8_ptr, alloc_fld, false, main_module_id, None, false);
 
                 return CILNode::LDStaticField(Box::new(field_desc));
                 //todo!("Function/Vtable allocation.");
@@ -673,17 +673,32 @@ pub fn add_allocation(alloc_id: u64, asm: &mut cilly::Assembly, tcx: TyCtxt<'_>)
             if main_module.has_static_field(name, field_desc.tpe()) {
                 return CILNode::AddressOfStaticField(Box::new(field_desc));
             }
-
-            asm.add_static(
-                cilly::Type::Int(tpe),
-                &*alloc_name,
-                thread_local,
-                main_module_id,
-            );
-            let field = asm.alloc_sfld(field_desc);
             let cst: Const = tpe.from_bytes(bytes);
+            let field = asm.alloc_sfld(field_desc);
+
             let val = asm.alloc_node(cst);
-            let mut roots = vec![asm.alloc_root(cilly::CILRoot::SetStaticField { field, val })];
+            let mut roots = if thread_local || len > 8 {
+                asm.add_static(
+                    cilly::Type::Int(tpe),
+                    &*alloc_name,
+                    thread_local,
+                    main_module_id,
+                    None,
+                    false,
+                );
+                vec![asm.alloc_root(cilly::CILRoot::SetStaticField { field, val })]
+            } else {
+                asm.add_static(
+                    cilly::Type::Int(tpe),
+                    &*alloc_name,
+                    thread_local,
+                    main_module_id,
+                    Some(cst),
+                    false,
+                );
+                vec![]
+            };
+
             let addr = CILNode::AddressOfStaticField(Box::new(field_desc));
             for (offset, prov) in const_allocation.provenance().ptrs().iter() {
                 let offset = u32::try_from(offset.bytes_usize()).unwrap();
@@ -764,7 +779,14 @@ pub fn add_allocation(alloc_id: u64, asm: &mut cilly::Assembly, tcx: TyCtxt<'_>)
             if main_module.has_static_field(name, field_desc.tpe()) {
                 return CILNode::LDStaticField(Box::new(field_desc));
             }
-            asm.add_static(uint8_ptr, &*alloc_name, thread_local, main_module_id);
+            asm.add_static(
+                uint8_ptr,
+                &*alloc_name,
+                thread_local,
+                main_module_id,
+                None,
+                false,
+            );
 
             let init_method =
                 allocation_initializer_method(const_allocation, &alloc_name, asm, tcx);
@@ -797,7 +819,7 @@ pub fn add_const_value(asm: &mut cilly::Assembly, bytes: u128) -> StaticFieldDes
     if main_module.has_static_field(alloc_fld_name, field_desc.tpe()) {
         return field_desc;
     }
-    asm.add_static(uint8_ptr, alloc_fld, false, main_module_id);
+    asm.add_static(uint8_ptr, alloc_fld, false, main_module_id, None, false);
     let cst = CILNode::const_u128(bytes, asm);
 
     let field = asm.alloc_sfld(field_desc);

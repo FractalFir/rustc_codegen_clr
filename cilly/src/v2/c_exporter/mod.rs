@@ -4,7 +4,10 @@ use fxhash::{hash64, FxHashSet, FxHasher};
 use std::{collections::HashSet, io::Write, num::NonZero, path::Path};
 
 use crate::{
-    asm::LINKER_RECOVER, config, typecheck, utilis::{assert_unique, encode}, BiMap, IString, MethodImpl
+    asm::LINKER_RECOVER,
+    config, typecheck,
+    utilis::{assert_unique, encode},
+    BiMap, IString, MethodImpl,
 };
 
 config!(NO_SFI, bool, false);
@@ -18,7 +21,15 @@ config!(PARTS, u32, 1);
 config!(ASCII_IDENTS, bool, false);
 mod utilis;
 use super::{
-    basic_block::BlockId, bimap::{Interned, IntoBiMapIndex}, cilnode::{ExtendKind, PtrCastRes}, cilroot::BranchCond, class::{ClassDefIdx, StaticFieldDef}, method::LocalDef, typecheck::TypeCheckError, Assembly, BinOp, CILNode, CILRoot, ClassRef, Const, Exporter, FnSig, Int, MethodDef, MethodRef, Type
+    basic_block::BlockId,
+    bimap::{Interned, IntoBiMapIndex},
+    cilnode::{ExtendKind, PtrCastRes},
+    cilroot::BranchCond,
+    class::{ClassDefIdx, StaticFieldDef},
+    method::LocalDef,
+    typecheck::TypeCheckError,
+    Assembly, BinOp, CILNode, CILRoot, ClassRef, Const, Exporter, FnSig, Int, MethodDef, MethodRef,
+    Type,
 };
 use utilis::*;
 
@@ -27,7 +38,7 @@ pub struct CExporter {
     libs: Vec<String>,
     dirs: Vec<String>,
     metadata: Vec<u8>,
-    curr_fname:Interned<IString>,
+    curr_fname: Interned<IString>,
 }
 impl CExporter {
     pub fn c_compiler() -> String {
@@ -63,7 +74,7 @@ impl CExporter {
             libs,
             dirs,
             metadata: vec![],
-            curr_fname:Interned::from_index(NonZero::new(1).unwrap())
+            curr_fname: Interned::from_index(NonZero::new(1).unwrap()),
         }
     }
     fn export_method_decl(
@@ -282,8 +293,8 @@ impl CExporter {
             },
         })
     }
-    /// Equivalent to `node_to_string`, except prsent in an enviroment where types can be infered. 
-    /// Eg. In a function call like this `foo((uintptr_t)5)` the cast can be safely ommited. 
+    /// Equivalent to `node_to_string`, except prsent in an enviroment where types can be infered.
+    /// Eg. In a function call like this `foo((uintptr_t)5)` the cast can be safely ommited.
     fn node_to_string_implict(
         node: CILNode,
         asm: &mut Assembly,
@@ -291,20 +302,21 @@ impl CExporter {
         inputs: &[(Type, Option<Interned<IString>>)],
         sig: Interned<FnSig>,
     ) -> Result<String, TypeCheckError> {
-        match node{
-            CILNode::PtrCast(ref src_node,ref target ) if matches!(target.as_ref(),PtrCastRes::Ptr(_)) =>{
+        match node {
+            CILNode::PtrCast(ref src_node, ref target)
+                if matches!(target.as_ref(), PtrCastRes::Ptr(_)) =>
+            {
                 let Type::Ptr(ptr) = asm[*src_node].clone().typecheck(sig, locals, asm)? else {
                     return Self::node_to_string(node, asm, locals, inputs, sig);
                 };
-                let Type::Void = asm[ptr] else{
-              
+                let Type::Void = asm[ptr] else {
                     return Self::node_to_string(node, asm, locals, inputs, sig);
                 };
                 Self::node_to_string(asm[*src_node].clone(), asm, locals, inputs, sig)
             }
-            CILNode::Const(cst)=> Ok(match cst.as_ref() {
-                Const::ByteBuffer { data, tpe:_ }=>{
-                    format!("c_{}",encode(data.inner() as u64))
+            CILNode::Const(cst) => Ok(match cst.as_ref() {
+                Const::ByteBuffer { data, tpe: _ } => {
+                    format!("c_{}", encode(data.inner() as u64))
                 }
                 Const::I8(v) => format!("{v}"),
                 Const::I16(v) => format!("{v}"),
@@ -316,7 +328,7 @@ impl CExporter {
                     format!("(__int128)((unsigned __int128)(0x{low:x}) | ((unsigned __int128)(0x{high:x}) << 64))")
                 }
                 Const::ISize(v) => format!("(intptr_t)0x{v:x}L"),
-                  // For u8 and u16, using hex makes no sense(uses more chars)
+                // For u8 and u16, using hex makes no sense(uses more chars)
                 Const::U8(v) => format!("{v}"),
                 Const::U16(v) => format!("{v}"),
                 Const::U32(v) => format!("{v}"),
@@ -326,11 +338,13 @@ impl CExporter {
                     let high = ({ *v } >> 64) as u64;
                     format!("((unsigned __int128)(0x{low:x}) | ((unsigned __int128)(0x{high:x}) << 64))")
                 }
-                Const::USize(v) => if *v < u32::MAX as u64{
-                    format!("{v}")
-                }else{
-                    format!("0x{v:x}uL")
-                },
+                Const::USize(v) => {
+                    if *v < u32::MAX as u64 {
+                        format!("{v}")
+                    } else {
+                        format!("0x{v:x}uL")
+                    }
+                }
                 Const::PlatformString(string_idx) => format!("{:?}", &asm[*string_idx]),
                 Const::Bool(val) => {
                     if *val {
@@ -355,9 +369,8 @@ impl CExporter {
                 }
                 Const::Null(class_ref_idx) => todo!(),
             }),
-            _=>Self::node_to_string(node, asm, locals, inputs, sig),
+            _ => Self::node_to_string(node, asm, locals, inputs, sig),
         }
-
     }
     fn node_to_string(
         node: CILNode,
@@ -368,7 +381,11 @@ impl CExporter {
     ) -> Result<String, TypeCheckError> {
         Ok(match node {
             CILNode::Const(cst) => match cst.as_ref() {
-                Const::ByteBuffer { data, tpe }=>format!("(({tpe}*)c_{})",encode(data.inner() as u64),tpe = c_tpe(asm[*tpe], asm)),
+                Const::ByteBuffer { data, tpe } => format!(
+                    "(({tpe}*)c_{})",
+                    encode(data.inner() as u64),
+                    tpe = c_tpe(asm[*tpe], asm)
+                ),
                 Const::I8(v) => format!("(int8_t)0x{v:x}"),
                 Const::I16(v) => format!("(int16_t)0x{v:x}"),
                 Const::I32(v) => format!("((int32_t)0x{v:x})"),
@@ -379,7 +396,7 @@ impl CExporter {
                     format!("(__int128)((unsigned __int128)(0x{low:x}) | ((unsigned __int128)(0x{high:x}) << 64))")
                 }
                 Const::ISize(v) => format!("(intptr_t)0x{v:x}L"),
-                  // For u8 and u16, using hex makes no sense(uses more chars)
+                // For u8 and u16, using hex makes no sense(uses more chars)
                 Const::U8(v) => format!("(uint8_t){v}"),
                 Const::U16(v) => format!("(uint16_t){v}"),
                 Const::U32(v) => format!("{v}u"),
@@ -497,8 +514,14 @@ impl CExporter {
                     .map(|arg| {
                         format!(
                             "{}",
-                            Self::node_to_string_implict(asm[*arg].clone(), asm, locals, inputs, sig)
-                                .unwrap()
+                            Self::node_to_string_implict(
+                                asm[*arg].clone(),
+                                asm,
+                                locals,
+                                inputs,
+                                sig
+                            )
+                            .unwrap()
                         )
                     })
                     .intersperse(",".into())
@@ -582,9 +605,7 @@ impl CExporter {
                     .class_ref_to_def(field.owner())
                     .is_some_and(|tpe| asm[tpe].has_nonveralpping_layout())
                 {
-                   
-                  format!("&({addr})->{name}")
-                   
+                    format!("&({addr})->{name}")
                 } else {
                     format!("&({addr})->{name}.f")
                 }
@@ -602,7 +623,6 @@ impl CExporter {
                             .is_some_and(|tpe| asm[tpe].has_nonveralpping_layout())
                         {
                             format!("({addr_str})->{name}")
-                           
                         } else {
                             format!("({addr_str})->{name}.f")
                         }
@@ -612,10 +632,12 @@ impl CExporter {
                             .class_ref_to_def(field.owner())
                             .is_some_and(|tpe| asm[tpe].has_nonveralpping_layout())
                         {
-                            match asm[addr]{
-                                CILNode::LdLoc(loc)=>format!("{loc}.{name}",loc = local_name(locals, asm, loc)),
-                                CILNode::LdField{..}=>format!("{addr_str}.{name}"),
-                                _=>  format!("({addr_str}).{name}"),
+                            match asm[addr] {
+                                CILNode::LdLoc(loc) => {
+                                    format!("{loc}.{name}", loc = local_name(locals, asm, loc))
+                                }
+                                CILNode::LdField { .. } => format!("{addr_str}.{name}"),
+                                _ => format!("({addr_str}).{name}"),
                             }
                         } else {
                             format!("({addr_str}).{name}.f")
@@ -630,18 +652,19 @@ impl CExporter {
                 volatile,
             } => {
                 if volatile {
-                    if matches!(asm[tpe], Type::Ptr(_) | Type::Ref(_)){
+                    if matches!(asm[tpe], Type::Ptr(_) | Type::Ref(_)) {
                         format!(
                             "(({tpe})*(volatile size_t*)({addr}))",
                             tpe = c_tpe(asm[tpe], asm),
-                            addr = Self::node_to_string(asm[addr].clone(), asm, locals, inputs, sig)?
+                            addr =
+                                Self::node_to_string(asm[addr].clone(), asm, locals, inputs, sig)?
                         )
-                    }
-                    else{
+                    } else {
                         format!(
                             "*(volatile {tpe}*)({addr})",
                             tpe = c_tpe(asm[tpe], asm),
-                            addr = Self::node_to_string(asm[addr].clone(), asm, locals, inputs, sig)?
+                            addr =
+                                Self::node_to_string(asm[addr].clone(), asm, locals, inputs, sig)?
                         )
                     }
                 } else {
@@ -663,8 +686,14 @@ impl CExporter {
                     .map(|arg| {
                         format!(
                             "{}",
-                            Self::node_to_string_implict(asm[*arg].clone(), asm, locals, inputs, sig)
-                                .unwrap()
+                            Self::node_to_string_implict(
+                                asm[*arg].clone(),
+                                asm,
+                                locals,
+                                inputs,
+                                sig
+                            )
+                            .unwrap()
                         )
                     })
                     .intersperse(",".into())
@@ -850,7 +879,6 @@ impl CExporter {
                 let call_args = args
                     .iter()
                     .map(|arg| {
-                     
                         format!(
                             "{}",
                             Self::node_to_string_implict(asm[*arg].clone(), asm, locals, inputs, sig).unwrap()
@@ -1061,7 +1089,6 @@ impl CExporter {
                 }
 
                 let root = self.root_to_string(
-                  
                     asm[*root_idx].clone(),
                     asm,
                     &locals[..],
@@ -1189,21 +1216,50 @@ impl CExporter {
         if !class.static_fields().is_empty() {
             writeln!(type_defs, "\n/*START OF STATCIDEFS*/\n")?;
         }
-        for StaticFieldDef {
-            tpe: sfield_tpe,
-            name: sfname,
-            is_tls: is_thread_local,
-        } in class.static_fields()
-        {
+        for sttic in class.static_fields() {
+            let StaticFieldDef {
+                tpe: sfield_tpe,
+                name: sfname,
+                is_tls: is_thread_local,
+                is_const,
+                default_value,
+            } = sttic;
             let fname = escape_nonfn_name(&asm[*sfname]);
             let field_tpe = nonvoid_c_type(*sfield_tpe, asm);
             let fname = class_member_name(&class_name, &fname);
             let extrn = if extrn { "extern" } else { "" };
+            if let Some(default) = default_value {
+                assert!(!*is_thread_local);
+
+                let val = match default {
+                    Const::Bool(b) => format!("{b}"),
+                    Const::U64(v) => {
+                        if *v < u32::MAX as u64 {
+                            format!("{v}")
+                        } else {
+                            format!("0x{v:x}ul")
+                        }
+                    }
+                    Const::U32(v) => {
+                        format!("{v}")
+                    }
+                    Const::U16(v) => {
+                        format!("{v}")
+                    }
+                    Const::U8(v) => {
+                        format!("{v}")
+                    }
+                    _ => todo!("Unsupported default {default:?}"),
+                };
+                writeln!(type_defs, "{extrn} {field_tpe} {fname} = {val};")?;
+                continue;
+            }
             if *is_thread_local {
                 writeln!(type_defs, "{extrn} _Thread_local {field_tpe} {fname};")?;
             } else {
                 writeln!(type_defs, "{extrn} {field_tpe} {fname};")?;
             }
+            //writeln!(type_defs, "// {sttic:?}")?;
         }
         if !class.static_fields().is_empty() {
             writeln!(type_defs, "\n/*END OF STATCIDEFS*/\n")?;
@@ -1237,7 +1293,11 @@ impl CExporter {
         let mut delayed_defs: FxHashSet<ClassDefIdx> = asm.iter_class_def_ids().cloned().collect();
         let mut delayed_defs_copy: FxHashSet<ClassDefIdx> = FxHashSet::default();
         for (const_data, idx) in asm.const_data.1.iter() {
-            let data: String = const_data.iter().map(|u| format!("{u}")).intersperse(",".into()).collect();
+            let data: String = const_data
+                .iter()
+                .map(|u| format!("{u}"))
+                .intersperse(",".into())
+                .collect();
             let encoded = encode(idx.inner() as u64);
             writeln!(type_defs, "uint8_t c_{encoded}[] = {{{data}}};")?;
         }
@@ -1288,15 +1348,19 @@ impl CExporter {
         }
         Ok(())
     }
-    
-    fn set_sfi(&mut self, line_start: u32, file: super::bimap::Interned<IString>,asm:&Assembly) -> String {
-        if file == self.curr_fname{
+
+    fn set_sfi(
+        &mut self,
+        line_start: u32,
+        file: super::bimap::Interned<IString>,
+        asm: &Assembly,
+    ) -> String {
+        if file == self.curr_fname {
             format!("#line {line_start} ")
-        }else{
+        } else {
             self.curr_fname = file;
             format!("#line {line_start} {file:?}", file = &asm[file])
         }
-       
     }
 }
 fn call_entry(out: &mut impl Write, asm: &Assembly) -> Result<(), std::io::Error> {
@@ -1315,7 +1379,6 @@ impl CExporter {
         extrn: bool,
         is_main: bool,
     ) -> Result<(), std::io::Error> {
-     
         let mut c_out = std::io::BufWriter::new(std::fs::File::create(c_path)?);
         println!("Exporting {c_path:?}");
 
@@ -1384,7 +1447,11 @@ impl CExporter {
 impl Exporter for CExporter {
     type Error = std::io::Error;
 
-    fn export(&mut self, asm: &super::Assembly, target: &std::path::Path) -> Result<(), Self::Error> {
+    fn export(
+        &mut self,
+        asm: &super::Assembly,
+        target: &std::path::Path,
+    ) -> Result<(), Self::Error> {
         if *PARTS == 1 {
             // The IL file should be next to the target
             let c_path = target.with_extension("c");

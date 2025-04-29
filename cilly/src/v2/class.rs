@@ -1,6 +1,6 @@
 use super::{
     bimap::{BiMapIndex, Interned, IntoBiMapIndex},
-    Assembly, IntoAsmIndex, MethodDefIdx, MethodRef, Type,
+    Assembly, Const, IntoAsmIndex, MethodDefIdx, MethodRef, Type,
 };
 use crate::Access;
 use crate::{utilis::assert_unique, IString};
@@ -449,11 +449,21 @@ impl ClassRef {
         self.generics = generics.into();
     }
 }
-#[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
+#[derive(Hash, Eq, Clone, Debug, Serialize, Deserialize)]
 pub struct StaticFieldDef {
     pub tpe: Type,
     pub name: Interned<IString>,
     pub is_tls: bool,
+    pub default_value: Option<Const>,
+    pub is_const: bool,
+}
+impl PartialEq for StaticFieldDef {
+    fn eq(&self, other: &Self) -> bool {
+        self.tpe == other.tpe
+            && self.name == other.name
+            && self.is_tls == other.is_tls
+            && self.is_const == other.is_const
+    }
 }
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub struct ClassDef {
@@ -728,6 +738,8 @@ fn has_explicit_layout() {
                 tpe: Type::Bool,
                 name,
                 is_tls: false,
+                default_value: None,
+                is_const: false,
             }],
             Access::Extern,
             None,

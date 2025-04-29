@@ -7,7 +7,11 @@ pub struct CillyIRExpoter {}
 impl Exporter for CillyIRExpoter {
     type Error = std::io::Error;
 
-    fn export(&mut self, asm: &super::Assembly, target: &std::path::Path) -> Result<(), Self::Error> {
+    fn export(
+        &mut self,
+        asm: &super::Assembly,
+        target: &std::path::Path,
+    ) -> Result<(), Self::Error> {
         let il_path = target.with_extension("rs");
 
         if let Err(err) = std::fs::remove_file(&il_path) {
@@ -48,10 +52,10 @@ impl Exporter for CillyIRExpoter {
             let static_fields: String = def
                 .static_fields()
                 .iter()
-                .map(|StaticFieldDef { tpe, name, is_tls }| {
+                .map(|StaticFieldDef { tpe, name, is_tls,default_value,is_const }| {
                     let tpe = tpe_to(tpe, asm);
                     let name = &asm[*name];
-                    format!("({tpe},{{asm.alloc_string({name:?})}},{is_tls})")
+                    format!("({tpe},{{asm.alloc_string({name:?})}},{is_tls},{default_value:?},{is_const})")
                 })
                 .intersperse(",".to_owned())
                 .collect();

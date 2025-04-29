@@ -35,7 +35,8 @@ pub fn atomic_add(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly)
                     addr.cast_ptr(usize_ref),
                     addend.cast_ptr(Type::Int(Int::USize))
                 ]
-            ).cast_ptr(tpe)
+            )
+            .cast_ptr(tpe)
         }
 
         _ => todo!(),

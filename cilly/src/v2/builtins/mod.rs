@@ -919,10 +919,17 @@ pub fn argc_argv_init(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
         drop(blocks);
         let def = MethodDef::from_v1(&init_method, asm, main_module);
         asm.new_method(def);
-        asm.add_static(Type::Bool, "argv_argc_init_status", false, main_module);
+        asm.add_static(
+            Type::Bool,
+            "argv_argc_init_status",
+            false,
+            main_module,
+            None,
+            false,
+        );
         let uint8_ptr_ptr = asm.nptr(uint8_ptr);
-        asm.add_static(uint8_ptr_ptr, "argv", false, main_module);
-        asm.add_static(Type::Int(Int::I32), "argc", false, main_module);
+        asm.add_static(uint8_ptr_ptr, "argv", false, main_module, None, false);
+        asm.add_static(Type::Int(Int::I32), "argc", false, main_module, None, false);
         MethodDef::from_v1(&init_method, asm, main_module)
             .implementation()
             .clone()

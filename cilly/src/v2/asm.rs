@@ -455,6 +455,8 @@ impl Assembly {
         name: impl Into<IString>,
         thread_local: bool,
         in_class: ClassDefIdx,
+        default_value: Option<Const>,
+        is_const: bool,
     ) -> Interned<StaticFieldDesc> {
         let name = self.alloc_string(name);
         let sfld = StaticFieldDesc::new(*in_class, name, tpe);
@@ -466,6 +468,8 @@ impl Assembly {
                 tpe,
                 name,
                 is_tls: thread_local,
+                default_value,
+                is_const,
             })
         {
             self.class_mut(in_class)
@@ -474,6 +478,8 @@ impl Assembly {
                     tpe,
                     name,
                     is_tls: thread_local,
+                    default_value,
+                    is_const,
                 });
         }
 
@@ -1434,7 +1440,7 @@ impl Assembly {
 
     pub(crate) fn global_void(&mut self) -> Interned<StaticFieldDesc> {
         let main = self.main_module();
-        self.add_static(Type::Void, "global_void", false, main)
+        self.add_static(Type::Void, "global_void", false, main, None, true)
     }
 
     pub(crate) fn alloc_const_data(&mut self, data: &[u8]) -> Interned<Box<[u8]>> {
