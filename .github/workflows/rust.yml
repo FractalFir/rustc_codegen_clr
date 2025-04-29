@@ -13,24 +13,24 @@ jobs:
   linux_build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Build on Linux
         run: cargo build --verbose
   windows_build:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Build on Windows
         run: cargo build --verbose
   linux_test:
     runs-on: ubuntu-22.04
    
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Build
         run: cargo build
       - name: Setup dotnet
-        uses: actions/setup-dotnet@v3
+        uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
       - name: Check ILASM
@@ -40,9 +40,9 @@ jobs:
   linux_c_test:
     runs-on: ubuntu-22.04
     env: 
-    	C_MODE: 1
+      C_MODE: 1
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Build
         run: cargo build
       - name: Run cargo tests
