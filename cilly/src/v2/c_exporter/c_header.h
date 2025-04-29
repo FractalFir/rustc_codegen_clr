@@ -189,7 +189,7 @@ bool __atomic_compare_exchange_n(uintptr_t *ptr, uintptr_t *expected, uintptr_t 
 }
 #endif
 
-#if !(defined(__TINYC__) || defined(__SDCC) || defined(_MSC_VER) || defined(__COMPCERT__) || defined(__LCC__))
+#ifdef FLT16_MIN
 static inline _Float16 System_Half_op_Explicitf32f16(float val){
     return (_Float16)val;
 }
@@ -869,7 +869,9 @@ static inline intptr_t System_Runtime_InteropServices_Marshal_StringToCoTaskMemU
 }
 #endif
 float fabsf32(float input);
+#ifdef FLT16_MIN
 #define System_Half_op_Explicitf32f2(f)(_Float16)(f)
+#endif
 #define TYPEDEF_SIMDVEC(TYPE, MANGLED, SIZE) \
     typedef struct __simdvec##MANGLED##_##SIZE  \
     {                                        \
