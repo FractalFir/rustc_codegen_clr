@@ -57,6 +57,8 @@ fn simplify_handler<'tcx>(
             target,
             unwind: _,
             replace: _,
+            drop: _,
+            async_fut: _,
         } => {
             let ty = monomorphize(method_instance, place.ty(method, tcx).ty, tcx);
 

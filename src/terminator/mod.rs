@@ -172,6 +172,9 @@ pub fn handle_terminator<'tcx>(
             target,
             unwind: _,
             replace: _,
+            //TODO: figure out what the hell those 2 fields are doing.
+            drop: _,
+            async_fut: _,
         } => {
             let ty = ctx.monomorphize(place.ty(ctx.body(), ctx.tcx()).ty);
 
