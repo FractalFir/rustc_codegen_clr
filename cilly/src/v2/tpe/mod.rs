@@ -39,6 +39,24 @@ pub enum GenericKind {
     TypeGeneric,
 }
 impl Type {
+    /// Checks if this type is a GC reference. This function may raise false positive.
+    pub fn is_gcref(&self, asm: &Assembly) -> bool {
+        match self {
+            Type::ClassRef(c) => !asm[*c].is_valuetype(),
+            // Conservatively assume all C# generic. *could* be GC refs.
+            Type::PlatformGeneric(_, _) => true,
+            Type::PlatformArray { .. } | Type::PlatformObject | Type::PlatformString => true,
+            Type::Int(_)
+            | Type::Float(_)
+            | Type::Bool
+            | Type::PlatformChar
+            | Type::Void
+            | Type::Ptr(_)
+            | Type::Ref(_)
+            | Type::FnPtr(_)
+            | Type::SIMDVector(_) => false,
+        }
+    }
     pub fn iter_class_refs<'a, 'asm: 'a>(
         &'a self,
         asm: &'asm Assembly,

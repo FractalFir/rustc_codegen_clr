@@ -1,7 +1,7 @@
 use super::{
     bimap::{BiMap, BiMapIndex, Interned, IntoBiMapIndex},
     cilnode::{BinOp, ExtendKind, MethodKind, PtrCastRes, UnOp},
-    class::{ClassDefIdx, StaticFieldDef},
+    class::{ClassDefIdx, LayoutError, StaticFieldDef},
     opt::{OptFuel, SideEffectInfoCache},
     Access, CILNode, CILRoot, ClassDef, ClassRef, Const, Exporter, FieldDesc, FnSig, Int,
     IntoAsmIndex, MethodDef, MethodDefIdx, MethodRef, StaticFieldDesc, Type,
@@ -480,19 +480,20 @@ impl Assembly {
         idx
     }
     /// Adds a new class definition to this type
-    pub fn class_def(&mut self, def: ClassDef) -> ClassDefIdx {
+    pub fn class_def(&mut self, def: ClassDef) -> Result<ClassDefIdx, LayoutError> {
+        def.layout_check(self)?;
         let cref = def.ref_to();
         let cref = self.alloc_class_ref(cref);
 
         if self.class_defs.contains_key(&ClassDefIdx(cref)) {
             if self[def.name()].contains("core.ffi.c_void") || self[def.name()].contains("RustVoid")
             {
-                return ClassDefIdx(cref);
+                return Ok(ClassDefIdx(cref));
             }
             panic!()
         }
         self.class_defs.insert(ClassDefIdx(cref), def.clone());
-        ClassDefIdx(cref)
+        Ok(ClassDefIdx(cref))
     }
     pub fn main_module(&mut self) -> ClassDefIdx {
         let main_module = self.alloc_string(MAIN_MODULE);
@@ -515,7 +516,7 @@ impl Assembly {
         if self.class_defs.contains_key(&ClassDefIdx(cref)) {
             ClassDefIdx(cref)
         } else {
-            self.class_def(class_def)
+            self.class_def(class_def).unwrap()
         }
     }
     /// Adds a method definition to this assembly.
@@ -794,6 +795,7 @@ impl Assembly {
             None,
             true,
         ))
+        .unwrap()
     }
     /// Converts the old assembly repr to the new one.
     #[must_use]

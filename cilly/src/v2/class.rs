@@ -6,6 +6,14 @@ use crate::Access;
 use crate::{utilis::assert_unique, IString};
 use serde::{Deserialize, Serialize};
 use std::{num::NonZeroU32, ops::Deref};
+#[derive(Debug)]
+pub enum LayoutError {
+    ManagedRefInOverlapingField {
+        owner: String,
+        field: String,
+        name: String,
+    },
+}
 #[derive(Hash, PartialEq, Eq, Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct ClassDefIdx(pub Interned<ClassRef>);
 impl ClassDefIdx {
@@ -514,6 +522,20 @@ impl ClassDef {
     pub(crate) fn ref_to(&self) -> ClassRef {
         assert_eq!(self.generics, 0);
         ClassRef::new(self.name, None, self.is_valuetype, vec![].into())
+    }
+    pub fn layout_check(&self, asm: &Assembly) -> Result<(), LayoutError> {
+        if !self.has_nonveralpping_layout() {
+            for (t, name, _offset) in self.fields() {
+                if t.is_gcref(asm) {
+                    return Err(LayoutError::ManagedRefInOverlapingField {
+                        owner: asm[self.name()].into(),
+                        field: t.mangle(asm),
+                        name: asm[*name].into(),
+                    });
+                }
+            }
+        }
+        Ok(())
     }
     pub fn add_def(&mut self, val: MethodDefIdx) {
         self.methods.push(val);

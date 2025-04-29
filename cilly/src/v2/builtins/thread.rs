@@ -412,19 +412,21 @@ pub fn instert_threading(asm: &mut Assembly, patcher: &mut MissingMethodPatcher)
     let start_fn_tpe = Type::FnPtr(start_fn_sig);
     let start_fn = asm.alloc_string("start_fn");
     let data = asm.alloc_string("data");
-    let unmanaged_start = asm.class_def(ClassDef::new(
-        uts,
-        false,
-        0,
-        Some(object),
-        vec![(start_fn_tpe, start_fn, None), (void_ptr, data, None)],
-        vec![],
-        // TODO: fix the bug which causes this to be cleaned up by dead code elimination when access is set to Public.
-        Access::Extern,
-        None,
-        None,
-        true,
-    ));
+    let unmanaged_start = asm
+        .class_def(ClassDef::new(
+            uts,
+            false,
+            0,
+            Some(object),
+            vec![(start_fn_tpe, start_fn, None), (void_ptr, data, None)],
+            vec![],
+            // TODO: fix the bug which causes this to be cleaned up by dead code elimination when access is set to Public.
+            Access::Extern,
+            None,
+            None,
+            true,
+        ))
+        .unwrap();
 
     let ctor = asm.alloc_string(".ctor");
     let this = asm.alloc_node(CILNode::LdArg(0));

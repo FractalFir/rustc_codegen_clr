@@ -2,15 +2,18 @@
 extern crate rustc_abi;
 extern crate rustc_driver;
 extern crate rustc_middle;
+extern crate rustc_span;
 use cilly::Assembly;
 use rustc_middle::ty::SymbolName;
 use rustc_middle::ty::layout::HasTypingEnv;
 use rustc_middle::ty::{Instance, PseudoCanonicalInput, TyCtxt};
+use rustc_span::Span;
 pub struct MethodCompileCtx<'tcx, 'asm> {
     tcx: TyCtxt<'tcx>,
     method: Option<&'tcx rustc_middle::mir::Body<'tcx>>,
     method_instance: Instance<'tcx>,
     asm: &'asm mut Assembly,
+    span: Option<Span>,
 }
 
 impl std::ops::DerefMut for MethodCompileCtx<'_, '_> {
@@ -29,6 +32,9 @@ impl<'asm> std::ops::Deref for MethodCompileCtx<'_, 'asm> {
 }
 
 impl<'tcx, 'asm> MethodCompileCtx<'tcx, 'asm> {
+    pub fn set_span(&mut self, span: Span) {
+        self.span = Some(span);
+    }
     #[must_use]
     /// Creates a [`MethodCompileCtx`] with a certain MIR body.
     pub fn with_body<'a: 'asm>(&'a mut self, body: &'tcx rustc_middle::mir::Body<'tcx>) -> Self {
@@ -41,6 +47,7 @@ impl<'tcx, 'asm> MethodCompileCtx<'tcx, 'asm> {
             method: Some(body),
             method_instance: self.method_instance,
             asm: self.asm,
+            span: Some(body.span),
         }
     }
     pub fn new(
@@ -54,7 +61,11 @@ impl<'tcx, 'asm> MethodCompileCtx<'tcx, 'asm> {
             method,
             method_instance,
             asm,
+            span: None,
         }
+    }
+    pub fn span(&self) -> Span {
+        self.span.unwrap()
     }
     pub fn tcx_and_asm(&mut self) -> (TyCtxt<'tcx>, &mut Assembly) {
         (self.tcx, self.asm)

@@ -101,4 +101,4 @@ By default, `cg_clr` will keep symbol(function) names more-or-less intact. Howev
 ```
 _ZN54_$LT$$LP$A$C$B$RP$$u20$as$u20$fuzz100__PrintFDebug$GT$12printf_debug17h769fc7ecbdc54ca9E
 ```
-In those cases, simply set `ASCI_IDENT` enviroment variable to ensure correct symbol names.
+In those cases, simply set `ASCI_IDENT` enviroment variable to ensure correct symbol names

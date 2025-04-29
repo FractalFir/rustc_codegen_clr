@@ -247,6 +247,7 @@ pub fn statement_to_ops<'tcx>(
     statement: &Statement<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> Result<Vec<CILTree>, CodegenError> {
+    ctx.set_span(statement.source_info.span);
     if *crate::config::ABORT_ON_ERROR {
         Ok(crate::statement::handle_statement(statement, ctx))
     } else {
@@ -451,7 +452,12 @@ pub fn add_fn<'tcx, 'asm, 'a: 'asm>(
     crate::method::resolve_global_allocations(&mut method, ctx);
 
     let main_module = ctx.main_module();
-    let method = MethodDef::from_v1(&method, ctx, main_module);
+    let mut method = MethodDef::from_v1(&method, ctx, main_module);
+    if let Err(err) = method.typecheck(ctx) {
+        ctx.tcx()
+            .dcx()
+            .span_warn(ctx.body().span, format!("Typecheck failed {err:?}"));
+    };
     ctx.new_method(method);
     drop(timer);
     Ok(())

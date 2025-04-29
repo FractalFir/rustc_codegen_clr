@@ -197,6 +197,10 @@ pub enum TypeCheckError {
         /// The kind of operation that was done.
         op: BinOp,
     },
+    ManagedPtrCast {
+        src: String,
+        dst: String,
+    },
 }
 /// Converts a typecheck error to a graph representing the issue with the typecheck process.
 pub fn typecheck_err_to_string(
@@ -772,15 +776,27 @@ impl CILNode {
                 let arg = asm.get_node(*arg).clone();
                 let arg_tpe = arg.typecheck(sig, locals, asm)?;
                 match arg_tpe {
-                    Type::Ptr(_)
-                    | Type::Ref(_)
-                    | Type::Int(Int::USize | Int::ISize)
-                    | Type::FnPtr(_) => (),
+                    Type::Ptr(inner) | Type::Ref(inner) => {
+                        if asm[inner].is_gcref(asm) {
+                            return Err(TypeCheckError::ManagedPtrCast {
+                                src: arg_tpe.mangle(asm),
+                                dst: res.as_ref().as_type().mangle(asm),
+                            });
+                        }
+                    }
+
+                    Type::Int(Int::USize | Int::ISize) | Type::FnPtr(_) => (),
                     _ => Err(TypeCheckError::InvalidPtrCast {
                         expected: res.as_ref().clone(),
                         got: arg_tpe,
                     })?,
                 };
+                if res.as_ref().as_type().is_gcref(asm) {
+                    return Err(TypeCheckError::ManagedPtrCast {
+                        src: arg_tpe.mangle(asm),
+                        dst: res.as_ref().as_type().mangle(asm),
+                    });
+                }
                 Ok(res.as_ref().as_type())
             }
             CILNode::LdFieldAdress { addr, field } => {

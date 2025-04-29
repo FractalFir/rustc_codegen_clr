@@ -347,18 +347,21 @@ fn fixed_array(
                 element = element.mangle(asm)
             )
         };
-        let arr = asm.class_def(ClassDef::new(
-            class_ref.name(),
-            true,
-            0,
-            None,
-            fields,
-            vec![],
-            Access::Public,
-            Some(NonZeroU32::new(size).unwrap()),
-            NonZeroU32::new(align.try_into().unwrap()),
-            true,
-        ));
+        let arr = asm
+            .class_def(ClassDef::new(
+                class_ref.name(),
+                true,
+                0,
+                None,
+                fields,
+                vec![],
+                Access::Public,
+                Some(NonZeroU32::new(size).unwrap()),
+                NonZeroU32::new(align.try_into().unwrap()),
+                true,
+            ))
+            .expect("Layout error in array!");
+
         // Common nodes
         let ldarg_2 = ld_arg!(2).into_idx(asm);
         let elem_tpe_idx = asm.alloc_type(element);
@@ -840,7 +843,7 @@ pub fn tuple_typedef(
         }
         fields.push((field, ctx.alloc_string(name), Some(offset)));
     }
-    ctx.class_def(ClassDef::new(
+    match ctx.class_def(ClassDef::new(
         name,
         true,
         0,
@@ -870,5 +873,14 @@ pub fn tuple_typedef(
             .unwrap(),
         ),
         true,
-    ))
+    )) {
+        Ok(cdef) => cdef,
+        Err(error) => {
+            ctx.tcx().dcx().span_err(
+                ctx.span(),
+                format!("Tuple type with invalid layout. error:{error:?}!"),
+            );
+            todo!();
+        }
+    }
 }

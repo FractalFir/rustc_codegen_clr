@@ -37,4 +37,14 @@ jobs:
         run: ilasm --version
       - name: Run cargo tests
         run: cargo test --verbose ::stable -- --skip f128 --skip num_test
+  linux_c_test:
+    runs-on: ubuntu-22.04
+    env: 
+    	C_MODE: 1
+    steps:
+      - uses: actions/checkout@v3
+      - name: Build
+        run: cargo build
+      - name: Run cargo tests
+        run: cargo test --verbose ::stable -- --skip f128 --skip num_test --skip arithmetic_misc --skip simd --skip round --skip interop
  

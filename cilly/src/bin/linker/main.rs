@@ -504,18 +504,20 @@ fn main() {
     let _ = final_assembly.tcctor();
     let _ = final_assembly.cctor();
     let float128 = final_assembly.alloc_string("f128");
-    final_assembly.class_def(ClassDef::new(
-        float128,
-        true,
-        0,
-        None,
-        vec![],
-        vec![],
-        cilly::Access::Public,
-        NonZeroU32::new(16),
-        NonZeroU32::new(16),
-        true,
-    ));
+    final_assembly
+        .class_def(ClassDef::new(
+            float128,
+            true,
+            0,
+            None,
+            vec![],
+            vec![],
+            cilly::Access::Public,
+            NonZeroU32::new(16),
+            NonZeroU32::new(16),
+            true,
+        ))
+        .unwrap();
 
     final_assembly.patch_missing_methods(&externs, &modifies_errno, &overrides);
     final_assembly.patch_missing_methods(&externs, &modifies_errno, &overrides);

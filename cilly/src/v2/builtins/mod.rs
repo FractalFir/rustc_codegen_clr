@@ -437,18 +437,20 @@ pub fn insert_exception(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) 
     let data_pointer = asm.alloc_string("data_pointer");
     let this = asm.alloc_string("this");
     let extends = Some(ClassRef::exception(asm));
-    let rust_exception = asm.class_def(ClassDef::new(
-        rust_exception,
-        false,
-        0,
-        extends,
-        vec![(Type::Int(Int::USize), data_pointer, None)],
-        vec![],
-        Access::Public,
-        None,
-        None,
-        true,
-    ));
+    let rust_exception = asm
+        .class_def(ClassDef::new(
+            rust_exception,
+            false,
+            0,
+            extends,
+            vec![(Type::Int(Int::USize), data_pointer, None)],
+            vec![],
+            Access::Public,
+            None,
+            None,
+            true,
+        ))
+        .unwrap();
     let ctor = asm.alloc_string(".ctor");
     let sig = asm.sig(
         [Type::ClassRef(*rust_exception), Type::Int(Int::USize)],

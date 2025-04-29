@@ -6,6 +6,7 @@ use cilly::{
     {cilnode::MethodKind, ClassRef, Int, MethodRef},
 };
 use rustc_codegen_clr_type::GetTypeExt;
+use rustc_middle::span_bug;
 use rustc_middle::ty::{IntTy, Ty, TyKind, UintTy};
 
 pub fn bit_and_unchecked<'tcx>(
@@ -55,6 +56,7 @@ pub fn bit_and_unchecked<'tcx>(
                 ]
             )
         }
+        TyKind::RawPtr(..) => span_bug!(ctx.span(), "bitand of ptr"),
         _ => and!(operand_a, operand_b),
     }
 }

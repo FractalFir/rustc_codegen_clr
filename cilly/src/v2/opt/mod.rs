@@ -4,7 +4,10 @@ use root::root_opt;
 use super::Float;
 
 use super::{
-    bimap::Interned, cilroot::BranchCond, method::LocalDef, typecheck::display_typecheck_err,
+    bimap::Interned,
+    cilroot::BranchCond,
+    method::LocalDef,
+    typecheck::{display_typecheck_err, TypeCheckError},
     BasicBlock, CILIter, CILIterElem, CILNode, CILRoot, FieldDesc, FnSig, Int, MethodImpl, Type,
 };
 use crate::{Assembly, MethodDef};
@@ -650,19 +653,19 @@ impl MethodDef {
             });
         }
     }
-    pub fn typecheck(&mut self, asm: &mut Assembly) {
+    pub fn typecheck(&mut self, asm: &mut Assembly) -> Result<(), TypeCheckError> {
         let sig = self.sig();
         let locals = self.iter_locals(asm).cloned().collect::<Vec<_>>();
-        let name = self.name();
         if let Some(roots) = self.iter_roots_mut() {
-            roots.for_each(|root| {
+            for root in roots {
                 let check = asm.get_root(*root).clone().typecheck(sig, &locals, asm);
                 if check.is_err() {
                     display_typecheck_err(*root, asm, sig, &locals);
                 };
-                check.unwrap_or_else(|_| eprintln!("Could not verify method {}", &asm[name]))
-            })
+                check?
+            }
         }
+        Ok(())
     }
     pub fn optimize(
         &mut self,
