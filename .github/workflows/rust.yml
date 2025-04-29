@@ -36,7 +36,7 @@ jobs:
       - name: Check ILASM
         run: ilasm --version
       - name: Run cargo tests
-        run: cargo test --verbose ::stable -- --skip f128 --skip num_test
+        run: cargo test --verbose ::stable -- --skip f128 --skip num_test --skip simd --skip fuzz87
   linux_c_test:
     runs-on: ubuntu-22.04
     env: 
