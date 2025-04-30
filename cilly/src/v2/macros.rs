@@ -241,14 +241,14 @@ macro_rules! zero_extend {
         {
             |asm: &mut $crate::asm::Assembly| {
                 use $crate::IntoAsmIndex;
-                <$crate::CILNode as IntoAsmIndex<$crate::Interned<CILNode>>>::into_idx(
+
                     asm.int_cast(
                         |$asm| $val,
                         <$ty as $crate::IntoIntType>::int_type(),
                         $crate::cilnode::ExtendKind::ZeroExtend,
                     ),
                     asm,
-                )
+
             }
         }
     }};
@@ -272,15 +272,15 @@ macro_rules! zero_extend {
         #[allow(unused_must_use)]
         {
             |asm: &mut $crate::asm::Assembly| {
-                use $crate::IntoAsmIndex;
-                <$crate::CILNode as IntoAsmIndex<$crate::v2::Interned<$crate::v2::CILNode>>>::into_idx(
+
+
                     asm.int_cast(
                         $val,
                         <$ty as $crate::IntoIntType>::int_type(),
                         $crate::cilnode::ExtendKind::ZeroExtend,
-                    ),
-                    asm,
-                )
+                    )
+
+
             }
         }
     }};

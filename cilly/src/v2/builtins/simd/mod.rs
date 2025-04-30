@@ -207,6 +207,7 @@ fn simd_allset(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
 
 pub fn simd(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
     simd_eq(asm, patcher);
+    simd_lt(asm, patcher);
     simd_ones_compliment(asm, patcher);
     simd_neg(asm, patcher);
     simd_abs(asm, patcher);
@@ -221,3 +222,4 @@ pub fn simd(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
     simd_mul(asm, patcher);
     simd_div(asm, patcher);
 }
+pub use binop::fallback_simd;

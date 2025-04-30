@@ -251,6 +251,43 @@ impl CodegenBackend for MyBackend {
 
         Box::new((name, asm, metadata, CrateInfo::new(tcx, "clr".to_string())))
     }
+
+    fn target_config(&self, sess: &Session) -> rustc_codegen_ssa::TargetConfig {
+        use rustc_span::sym;
+        // FIXME return the actually used target features. this is necessary for #[cfg(target_feature)]
+        let target_features = if sess.target.arch == "x86_64" && sess.target.os != "none" {
+            // x86_64 mandates SSE2 support and rustc requires the x87 feature to be enabled
+            vec![
+                sym::fsxr,
+                sym::sse,
+                //sym::sse2,
+                rustc_span::Symbol::intern("x87"),
+            ]
+        } else if sess.target.arch == "aarch64" {
+            match &*sess.target.os {
+                "none" => vec![],
+                // On macOS the aes, sha2 and sha3 features are enabled by default and ring
+                // fails to compile on macOS when they are not present.
+                "macos" => vec![sym::neon, sym::aes, sym::sha2, sym::sha3],
+                // AArch64 mandates Neon support
+                _ => vec![sym::neon],
+            }
+        } else {
+            vec![]
+        };
+        // FIXME do `unstable_target_features` properly
+        let unstable_target_features = target_features.clone();
+
+        rustc_codegen_ssa::TargetConfig {
+            target_features,
+            unstable_target_features,
+            // Cranelift does not yet support f16 or f128
+            has_reliable_f16: false,
+            has_reliable_f16_math: false,
+            has_reliable_f128: false,
+            has_reliable_f128_math: false,
+        }
+    }
     /// Saves an in-memory assemably to codegen specific IR in a .bc file.
     fn join_codegen(
         &self,

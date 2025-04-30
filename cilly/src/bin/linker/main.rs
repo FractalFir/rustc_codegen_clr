@@ -496,6 +496,7 @@ fn main() {
                 }
             }),
         );
+        cilly::builtins::simd::fallback_simd(&mut final_assembly, &mut overrides);
     } else {
         cilly::builtins::instert_threading(&mut final_assembly, &mut overrides);
         cilly::builtins::math::math(&mut final_assembly, &mut overrides);

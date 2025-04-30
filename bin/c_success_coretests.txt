@@ -31,11 +31,9 @@ array::array_try_from
 array::array_try_from_fn
 array::cell_allows_array_cycle
 array::empty_array_is_always_default
-array::iterator_clone
 array::iterator_collect
 array::iterator_count
 array::iterator_debug
-array::iterator_drops
 array::iterator_flat_map
 array::iterator_fused
 array::iterator_last
@@ -138,19 +136,15 @@ char::test_decode_utf16
 char::test_decode_utf16_size_hint
 char::test_encode_utf16
 char::test_encode_utf8
-char::test_escape_debug
 char::test_escape_default
 char::test_escape_unicode
 char::test_from_str
 char::test_is_control
 char::test_is_lowercase
-char::test_is_numeric
 char::test_is_uppercase
 char::test_is_whitespace
 char::test_len_utf16
 char::test_to_digit
-char::test_to_lowercase
-char::test_to_uppercase
 clone::cstr_metadata_is_length_with_nul
 clone::test_borrowed_clone
 clone::test_clone_from
@@ -176,6 +170,7 @@ const_ptr::mut_ptr_write
 const_ptr::read
 const_ptr::write
 ffi::cstr::compares_as_u8s
+ffi::cstr::debug
 fmt::builders::debug_list::test_empty
 fmt::builders::debug_list::test_empty_non_exhaustive
 fmt::builders::debug_list::test_multiple
@@ -220,7 +215,6 @@ fmt::formatting_options_ctor
 fmt::formatting_options_flags
 fmt::num::test_format_debug_hex
 fmt::num::test_format_int
-fmt::num::test_format_int_exp_limits
 fmt::num::test_format_int_flags
 fmt::num::test_format_int_sign_padding
 fmt::num::test_format_int_twos_complement
@@ -262,7 +256,6 @@ io::borrowed_buf::new
 io::borrowed_buf::reborrow_written
 io::borrowed_buf::set_init
 io::borrowed_buf::uninit
-iter::adapters::array_chunks::test_iterator_array_chunks_clone_and_drop
 iter::adapters::array_chunks::test_iterator_array_chunks_count
 iter::adapters::array_chunks::test_iterator_array_chunks_fold
 iter::adapters::array_chunks::test_iterator_array_chunks_infer
@@ -294,6 +287,7 @@ iter::adapters::cloned::test_cloned_try_folds
 iter::adapters::copied::test_copied
 iter::adapters::cycle::test_cycle
 iter::adapters::enumerate::test_double_ended_enumerate
+iter::adapters::enumerate::test_empty_iterator_enumerate_next_index
 iter::adapters::enumerate::test_enumerate_try_folds
 iter::adapters::enumerate::test_iterator_enumerate
 iter::adapters::enumerate::test_iterator_enumerate_advance_by
@@ -1402,9 +1396,11 @@ ptr::test_const_swap_ptr
 ptr::test_is_null
 ptr::test_null_array_as_slice
 ptr::test_ptr_addition
+ptr::test_ptr_default
 ptr::test_ptr_from_raw_parts_in_const
 ptr::test_ptr_metadata_in_const
 ptr::test_ptr_subtraction
+ptr::test_ptr_swap_nonoverlapping_is_untyped
 ptr::test_set_memory
 ptr::test_set_memory_const
 ptr::test_unsized_nonnull
@@ -1555,9 +1551,6 @@ slice::test_array_windows_count
 slice::test_array_windows_infer
 slice::test_array_windows_nth
 slice::test_array_windows_nth_back
-slice::test_binary_search
-slice::test_binary_search_by_overflow
-slice::test_binary_search_implementation_details
 slice::test_chunks_count
 slice::test_chunks_exact_count
 slice::test_chunks_exact_last
@@ -1613,7 +1606,6 @@ slice::test_iterator_count
 slice::test_iterator_last
 slice::test_iterator_nth
 slice::test_iterator_nth_back
-slice::test_partition_point
 slice::test_position
 slice::test_rchunks_count
 slice::test_rchunks_exact_count
@@ -1662,7 +1654,6 @@ slice::test_windows_nth
 slice::test_windows_nth_back
 slice::test_windows_zip
 str_lossy::chunks
-str_lossy::debug
 task::poll_const
 task::waker_const
 time::abs_diff

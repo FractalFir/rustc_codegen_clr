@@ -553,7 +553,7 @@ impl CExporter {
                     (Int::USize, ExtendKind::SignExtend) => {
                         format!("(uintptr_t)(intptr_t)({input})")
                     }
-                    (Int::I8, ExtendKind::ZeroExtend) => todo!(),
+                    (Int::I8, ExtendKind::ZeroExtend) => format!("(int8_t)({input})"),
                     (Int::I8, ExtendKind::SignExtend) => format!("(int8_t)({input})"),
                     (Int::I16, ExtendKind::ZeroExtend) => todo!(),
                     (Int::I16, ExtendKind::SignExtend) => format!("(int16_t)({input})"),

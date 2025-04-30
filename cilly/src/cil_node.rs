@@ -362,7 +362,7 @@ impl CILNode {
                 }))
                 .cast_ptr(tpe)
             }
-            _ => todo!(),
+            _ => todo!("Can't select {tpe:?}"),
         }
     }
 

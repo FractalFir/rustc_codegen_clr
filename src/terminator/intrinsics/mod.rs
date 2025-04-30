@@ -820,6 +820,44 @@ pub fn handle_intrinsic<'tcx>(
             let eq = main_module.static_mref(&[comparands, comparands], result, name, ctx);
             vec![place_set(destination, call!(eq, [lhs, rhs]), ctx)]
         }
+        "simd_lt" => {
+            let comparands = ctx.type_from_cache(
+                call_instance.args[0]
+                    .as_type()
+                    .expect("simd_lt works only on types!"),
+            );
+            let result = ctx.type_from_cache(
+                call_instance.args[1]
+                    .as_type()
+                    .expect("simd_lt works only on types!"),
+            );
+            let lhs = handle_operand(&args[0].node, ctx);
+            let rhs = handle_operand(&args[1].node, ctx);
+            let name = ctx.alloc_string("simd_lt");
+            let main_module = ctx.main_module();
+            let main_module = ctx[*main_module].clone();
+            let eq = main_module.static_mref(&[comparands, comparands], result, name, ctx);
+            vec![place_set(destination, call!(eq, [lhs, rhs]), ctx)]
+        }
+        "simd_gt" => {
+            let comparands = ctx.type_from_cache(
+                call_instance.args[0]
+                    .as_type()
+                    .expect("simd_gt works only on types!"),
+            );
+            let result = ctx.type_from_cache(
+                call_instance.args[1]
+                    .as_type()
+                    .expect("simd_gt works only on types!"),
+            );
+            let lhs = handle_operand(&args[0].node, ctx);
+            let rhs = handle_operand(&args[1].node, ctx);
+            let name = ctx.alloc_string("simd_gt");
+            let main_module = ctx.main_module();
+            let main_module = ctx[*main_module].clone();
+            let eq = main_module.static_mref(&[comparands, comparands], result, name, ctx);
+            vec![place_set(destination, call!(eq, [lhs, rhs]), ctx)]
+        }
         "simd_or" => {
             let vec = ctx.type_from_cache(
                 call_instance.args[0]

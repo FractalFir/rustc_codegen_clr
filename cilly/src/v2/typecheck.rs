@@ -151,9 +151,9 @@ pub enum TypeCheckError {
     /// A write instruction was passed an adress of incorrect type.
     WriteWrongAddr {
         /// Expected addr type
-        addr: Type,
+        addr: String,
         /// Recived type
-        tpe: Type,
+        tpe: String,
     },
     /// A write instruction was passed a value of incorrect type.
     WriteWrongValue {
@@ -1050,7 +1050,10 @@ impl CILRoot {
                 let addr = asm[*addr].clone().typecheck(sig, locals, asm)?;
                 let value = asm[*value].clone().typecheck(sig, locals, asm)?;
                 let Some(addr_points_to) = addr.pointed_to().map(|tpe| asm[tpe]) else {
-                    return Err(TypeCheckError::WriteWrongAddr { addr, tpe: *tpe });
+                    return Err(TypeCheckError::WriteWrongAddr {
+                        addr: addr.mangle(asm),
+                        tpe: tpe.mangle(asm),
+                    });
                 };
                 if !(tpe.is_assignable_to(addr_points_to, asm)
                     || addr_points_to
@@ -1059,7 +1062,10 @@ impl CILRoot {
                         .is_some_and(|(a, b)| a.as_unsigned() == b.as_unsigned())
                     || addr_points_to == Type::Bool && *tpe == Type::Int(Int::I8))
                 {
-                    return Err(TypeCheckError::WriteWrongAddr { addr, tpe: *tpe });
+                    return Err(TypeCheckError::WriteWrongAddr {
+                        addr: addr.mangle(asm),
+                        tpe: tpe.mangle(asm),
+                    });
                 }
                 if !(value.is_assignable_to(*tpe, asm)
                     || value

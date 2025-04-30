@@ -374,12 +374,13 @@ impl Assembly {
         input: impl IntoAsmIndex<Interned<CILNode>>,
         target: Int,
         extend: ExtendKind,
-    ) -> CILNode {
-        CILNode::IntCast {
-            input: input.into_idx(self),
+    ) -> Interned<CILNode> {
+        let input = input.into_idx(self);
+        self.alloc_node(CILNode::IntCast {
+            input,
             target,
             extend,
-        }
+        })
     }
     pub fn ptr_cast(
         &mut self,

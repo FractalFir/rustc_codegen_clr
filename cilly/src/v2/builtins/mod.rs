@@ -531,6 +531,7 @@ pub fn rust_assert(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
         "assert_shl",
         "assert_zero_rem",
         "assert_sub",
+        "assert_div",
         "assert_zero_div",
         "assert_shr",
         "assert_neg_overflow",
