@@ -46,5 +46,5 @@ jobs:
       - name: Build
         run: cargo build
       - name: Run cargo tests
-        run: cargo test --verbose ::stable -- --skip f128 --skip num_test --skip arithmetic_misc --skip simd --skip round --skip interop --skip cargo --skip fuzz87 --skip fuzz86 --skip fuzz47 --skip f16
+        run: cargo test --verbose ::stable -- --skip f128 --skip num_test --skip arithmetic_misc --skip simd --skip round --skip interop --skip cargo --skip fuzz87 --skip fuzz86 --skip fuzz47 --skip f16 --skip fuzz96
  

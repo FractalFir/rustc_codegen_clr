@@ -500,26 +500,45 @@ fn insert_pause(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
     patcher.insert(name, Box::new(generator));
 }
 pub fn rust_assert(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
-    let name = asm.alloc_string("rust_assert");
-    let generator = move |_, asm: &mut Assembly| {
-        let ret = asm.alloc_root(CILRoot::VoidRet);
-        let assert = asm.alloc_node(CILNode::LdArg(0));
-        let assert = asm.alloc_root(CILRoot::Branch(Box::new((
-            1,
-            0,
-            Some(BranchCond::False(assert)),
-        ))));
-        let mref = Interned::abort(asm);
-        let assert_failed = asm.alloc_root(CILRoot::call(mref, vec![]));
-        MethodImpl::MethodBody {
-            blocks: vec![
-                BasicBlock::new(vec![assert, ret], 0, None),
-                BasicBlock::new(vec![assert_failed, ret], 1, None),
-            ],
-            locals: vec![],
-        }
-    };
-    patcher.insert(name, Box::new(generator));
+    fn assert(asm: &mut Assembly, patcher: &mut MissingMethodPatcher, name: &str) {
+        let name = asm.alloc_string(name);
+        let generator = move |_, asm: &mut Assembly| {
+            let ret = asm.alloc_root(CILRoot::VoidRet);
+            let assert = asm.alloc_node(CILNode::LdArg(0));
+            let assert = asm.alloc_root(CILRoot::Branch(Box::new((
+                1,
+                0,
+                Some(BranchCond::False(assert)),
+            ))));
+            let mref = Interned::abort(asm);
+            let assert_failed = asm.alloc_root(CILRoot::call(mref, vec![]));
+            MethodImpl::MethodBody {
+                blocks: vec![
+                    BasicBlock::new(vec![assert, ret], 0, None),
+                    BasicBlock::new(vec![assert_failed, ret], 1, None),
+                ],
+                locals: vec![],
+            }
+        };
+        patcher.insert(name, Box::new(generator));
+    }
+    const ASSERTS: &[&str] = &[
+        "assert_bounds_check",
+        "assert_ptr_align",
+        "assert_notnull",
+        "assert_add",
+        "assert_mul",
+        "assert_shl",
+        "assert_zero_rem",
+        "assert_sub",
+        "assert_zero_div",
+        "assert_shr",
+        "assert_neg_overflow",
+        "assert_mod",
+    ];
+    for kind in ASSERTS {
+        assert(asm, patcher, kind);
+    }
 }
 
 fn insert_catch_unwind_stub(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {

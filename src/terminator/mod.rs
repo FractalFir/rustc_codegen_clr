@@ -1,14 +1,12 @@
 use crate::assembly::MethodCompileCtx;
 use cilly::{
-    cil_node::CILNode,
-    cil_root::CILRoot,
-    cil_tree::CILTree,
-    ld_field, Const, Type,
-    {cilnode::MethodKind, Assembly, FieldDesc, FnSig, Int, MethodRef},
+    cil_node::CILNode, cil_root::CILRoot, cil_tree::CILTree, cilnode::MethodKind, ld_field,
+    Assembly, BinOp, Const, FieldDesc, FnSig, Int, MethodRef, Type,
 };
 use rustc_codegen_clr_ctx::function_name;
 use rustc_codegen_clr_place::{place_adress, place_set};
 use rustc_codegen_clr_type::GetTypeExt;
+use rustc_middle::mir::AssertKind;
 
 use rustc_codgen_clr_operand::{
     constant::{load_const_int, load_const_uint},
@@ -134,18 +132,64 @@ pub fn handle_terminator<'tcx>(
         TerminatorKind::Assert {
             cond,
             expected,
-            msg: _,
+            msg,
             target,
             unwind: _,
         } => {
-            let cond = CILNode::Eq(
-                Box::new(handle_operand(cond, ctx)),
-                Box::new(CILNode::V2(ctx.alloc_node(*expected))),
-            );
+            let cond = if *expected {
+                handle_operand(cond, ctx)
+            } else {
+                CILNode::Eq(
+                    Box::new(handle_operand(cond, ctx)),
+                    Box::new(CILNode::V2(ctx.alloc_node(*expected))),
+                )
+            };
             // FIXME: propelrly handle *all* assertion messages.
             let main = ctx.main_module();
+
+            let name = match msg.as_ref() {
+                AssertKind::Overflow(op, _, _) => {
+                    let op: BinOp = crate::map_binop(op);
+                    format!("assert_{}", op.name())
+                }
+                AssertKind::OverflowNeg(_) => "assert_neg_overflow".into(),
+                AssertKind::BoundsCheck { len, index } => {
+                    let len = handle_operand(len, ctx);
+                    let index = handle_operand(index, ctx);
+                    let sig = ctx.sig([Type::Bool], Type::Void);
+                    let site = ctx.new_methodref(
+                        *main,
+                        "assert_bounds_check",
+                        sig,
+                        MethodKind::Static,
+                        vec![],
+                    );
+                    return vec![
+                        CILRoot::Call {
+                            site,
+                            args: vec![cond].into(),
+                        }
+                        .into(),
+                        CILRoot::GoTo {
+                            target: target.as_u32(),
+                            sub_target: 0,
+                        }
+                        .into(),
+                    ];
+                }
+                AssertKind::NullPointerDereference => "assert_notnull".into(),
+                AssertKind::MisalignedPointerDereference {
+                    required: _,
+                    found: _,
+                } => "assert_ptr_align".into(),
+                AssertKind::DivisionByZero(_) => "assert_zero_div".into(),
+                AssertKind::RemainderByZero(_) => "assert_zero_rem".into(),
+                AssertKind::ResumedAfterReturn(_) => "assert_coroutine_resume_after_return".into(),
+                AssertKind::ResumedAfterPanic(_) => "assert_coroutine_resume_after_panic".into(),
+                AssertKind::ResumedAfterDrop(_) => "assert_coroutine_resume_after_drop".into(),
+            };
             let sig = ctx.sig([Type::Bool], Type::Void);
-            let site = ctx.new_methodref(*main, "rust_assert", sig, MethodKind::Static, vec![]);
+            let site = ctx.new_methodref(*main, name, sig, MethodKind::Static, vec![]);
             vec![
                 CILRoot::Call {
                     site,

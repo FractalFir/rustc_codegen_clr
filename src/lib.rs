@@ -337,3 +337,20 @@ use std::alloc::Layout;
 pub fn custom_alloc_error_hook(layout: Layout) {
     panic!("memory allocation of {} bytes failed", layout.size());
 }
+
+fn map_binop(op: &rustc_middle::mir::BinOp) -> cilly::BinOp {
+    use rustc_middle::mir::BinOp::*;
+    match op {
+        Add | AddUnchecked | AddWithOverflow => cilly::BinOp::Add,
+        Sub | SubUnchecked | SubWithOverflow => cilly::BinOp::Sub,
+        Mul | MulUnchecked | MulWithOverflow => cilly::BinOp::Mul,
+        Div => cilly::BinOp::Div,
+        Rem => cilly::BinOp::Rem,
+        BitXor => cilly::BinOp::XOr,
+        BitOr => cilly::BinOp::Or,
+        BitAnd => cilly::BinOp::And,
+        Shl | ShlUnchecked => cilly::BinOp::Shl,
+        Shr | ShrUnchecked => cilly::BinOp::Shr,
+        _ => todo!(),
+    }
+}
