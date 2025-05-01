@@ -1,9 +1,8 @@
 use serde::{Deserialize, Serialize};
 
 use super::{
-    bimap::{BiMapIndex, Interned, IntoBiMapIndex},
-    cilnode::IsPure,
-    Assembly, CILNode, FieldDesc, Float, FnSig, Int, MethodRef, StaticFieldDesc, Type,
+    bimap::Interned, cilnode::IsPure, Assembly, CILNode, FieldDesc, Float, FnSig, Int, MethodRef,
+    StaticFieldDesc, Type,
 };
 use crate::{cil_root::CILRoot as V1Root, IString};
 //use crate::cil_node::CILNode as V1Node;

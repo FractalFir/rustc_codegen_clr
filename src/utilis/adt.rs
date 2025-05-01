@@ -1,6 +1,6 @@
 use cilly::{
-    bimap::IntoBiMapIndex, call, cil_node::CILNode, cil_root::CILRoot, cilnode::MethodKind, eq,
-    gt_un, Assembly, ClassRef, Const, FieldDesc, Float, Int, Interned, MethodRef, Type,
+    call, cil_node::CILNode, cil_root::CILRoot, cilnode::MethodKind, eq, gt_un, Assembly, ClassRef,
+    Const, FieldDesc, Float, Int, Interned, MethodRef, Type,
 };
 use rustc_abi::{FieldIdx, FieldsShape, Layout, LayoutData, TagEncoding, VariantIdx, Variants};
 use rustc_middle::ty::Ty;

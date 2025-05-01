@@ -22,7 +22,6 @@ use rustc_codegen_clr_place::place_set;
 use rustc_codegen_clr_type::{utilis::garg_to_string, GetTypeExt};
 use rustc_codgen_clr_operand::{handle_operand, operand_address};
 use rustc_middle::ty::InstanceKind;
-use rustc_middle::ty::TypingEnv;
 use rustc_middle::{
     mir::{Operand, Place},
     ty::{GenericArg, Instance, Ty, TyKind},

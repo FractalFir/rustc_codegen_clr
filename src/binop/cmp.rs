@@ -1,9 +1,9 @@
 use cilly::{
     call, cil_node::CILNode, cilnode::MethodKind, eq, gt, gt_un, ld_field, lt, lt_un, Assembly,
-    ClassRef, FieldDesc, Float, Int, Interned, MethodRef, Type,
+    ClassRef, Float, Int, Interned, MethodRef, Type,
 };
 use rustc_codegen_clr_ctx::MethodCompileCtx;
-use rustc_codegen_clr_type::{adt::field_descrptor, r#type::get_type, utilis::is_fat_ptr};
+use rustc_codegen_clr_type::{r#type::get_type, utilis::is_fat_ptr};
 use rustc_middle::ty::{FloatTy, IntTy, Ty, TyKind, UintTy};
 
 pub fn ne_unchecked<'tcx>(

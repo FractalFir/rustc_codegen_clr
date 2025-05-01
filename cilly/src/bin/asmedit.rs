@@ -360,7 +360,7 @@ fn misolate(asm: &mut Assembly, isolate_id: Interned<MethodRef>) {
 }
 fn parse_id(id: &str, asm: &Assembly) -> Interned<MethodRef> {
     if let Ok(id) = id.parse::<u32>() {
-        unsafe { Interned::from_index(NonZeroU32::new(id).unwrap()) }
+        Interned::from_index(NonZeroU32::new(id).unwrap())
     } else {
         let Some(mut iter) = asm.find_methods_matching(id) else {
             panic!("{id:?} is neithier a method name nor a method id")

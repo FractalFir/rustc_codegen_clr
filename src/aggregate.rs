@@ -4,7 +4,7 @@ use crate::{
 };
 use cilly::{
     cil_node::CILNode, cil_root::CILRoot, cilnode::MethodKind, ClassRef, Const, FieldDesc, FnSig,
-    Int, Interned, MethodRef, Type,
+    Int, MethodRef, Type,
 };
 use rustc_abi::FieldIdx;
 use rustc_codegen_clr_place::{place_adress, place_get, place_set};

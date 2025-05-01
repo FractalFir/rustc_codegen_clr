@@ -108,10 +108,10 @@ impl Assembly {
             super::Const::Null(cref) => super::Const::Null(self.translate_class_ref(source, *cref)),
             super::Const::ByteBuffer { data, tpe } => {
                 let tpe = self.translate_type(source, source[*tpe]);
-                (super::Const::ByteBuffer {
+                super::Const::ByteBuffer {
                     data: self.alloc_const_data(&source.const_data[*data]),
                     tpe: self.alloc_type(tpe),
-                })
+                }
             }
             _ => cst.clone(),
         }

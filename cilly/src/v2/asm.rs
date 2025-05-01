@@ -185,7 +185,9 @@ impl Assembly {
         let method_def_idxs: Box<[_]> = self.method_defs.keys().copied().collect();
         for method in method_def_idxs {
             let mut tmp_method = self.method_def(method).clone();
-            tmp_method.typecheck(self);
+            if let Err(err) = tmp_method.typecheck(self) {
+                eprintln!("{err:?}");
+            };
         }
     }
     #[must_use]

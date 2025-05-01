@@ -715,13 +715,15 @@ impl CExporter {
             CILNode::LdStaticField(static_field_idx) => {
                 let field = asm[static_field_idx];
                 let class = asm[field.owner()].clone();
-                let fname = class_member_name(&asm[class.name()], &asm[field.name()]);
+                let fname =
+                    class_member_name(&asm[class.name()], &escape_nonfn_name(&asm[field.name()]));
                 fname.to_string()
             }
             CILNode::LdStaticFieldAdress(static_field_idx) => {
                 let field = asm[static_field_idx];
                 let class = asm[field.owner()].clone();
-                let fname = class_member_name(&asm[class.name()], &asm[field.name()]);
+                let fname =
+                    class_member_name(&asm[class.name()], &escape_nonfn_name(&asm[field.name()]));
                 format!("&{}", fname)
             }
             CILNode::LdFtn(method) => mref_to_name(&asm[method], asm),
@@ -951,7 +953,8 @@ impl CExporter {
             CILRoot::SetStaticField { field, val } => {
                 let field = asm[field];
                 let class = asm[field.owner()].clone();
-                let fname = class_member_name(&asm[class.name()], &asm[field.name()]);
+                let fname =
+                class_member_name(&asm[class.name()], &escape_nonfn_name(&asm[field.name()]));
                 let val = Self::node_to_string(asm[val].clone(), asm, locals, inputs, sig)?;
                 format!("{fname} = {val};")
             }

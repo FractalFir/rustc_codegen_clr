@@ -1,7 +1,4 @@
-use super::{
-    bimap::{BiMapIndex, Interned, IntoBiMapIndex},
-    Assembly, Const, IntoAsmIndex, MethodDefIdx, MethodRef, Type,
-};
+use super::{bimap::Interned, Assembly, Const, MethodDefIdx, MethodRef, Type};
 use crate::Access;
 use crate::{utilis::assert_unique, IString};
 use serde::{Deserialize, Serialize};
@@ -859,7 +856,8 @@ fn type_gc() {
         None,
         None,
         true,
-    ));
+    ))
+    .unwrap();
     let name: Interned<IString> = asm.alloc_string("Gone");
     asm.class_def(ClassDef::new(
         name,
@@ -872,7 +870,8 @@ fn type_gc() {
         None,
         None,
         true,
-    ));
+    ))
+    .unwrap();
     assert_eq!(asm.class_defs().len(), 2);
     asm.eliminate_dead_types();
     assert_eq!(asm.class_defs().len(), 1);

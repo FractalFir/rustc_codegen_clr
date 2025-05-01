@@ -1,7 +1,7 @@
 use crate::assembly::MethodCompileCtx;
 use cilly::{
-    cil_node::CILNode, cil_root::CILRoot, cil_tree::CILTree, cilnode::MethodKind, ld_field,
-    Assembly, BinOp, Const, FieldDesc, FnSig, Int, MethodRef, Type,
+    cil_node::CILNode, cil_root::CILRoot, cil_tree::CILTree, cilnode::MethodKind, ld_field, BinOp,
+    Const, FieldDesc, FnSig, Int, MethodRef, Type,
 };
 use rustc_codegen_clr_ctx::function_name;
 use rustc_codegen_clr_place::{place_adress, place_set};

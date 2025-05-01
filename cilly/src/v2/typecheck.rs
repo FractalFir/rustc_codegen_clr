@@ -137,9 +137,9 @@ pub enum TypeCheckError {
         /// Index of the local.
         loc: u32,
         /// Recived type.
-        got: Type,
+        got: String,
         /// Expected type
-        expected: Type,
+        expected: String,
     },
     /// A comparison of non-prmitive types.
     ValueTypeCompare {
@@ -1006,8 +1006,8 @@ impl CILRoot {
                 if !got.is_assignable_to(expected, asm) {
                     Err(TypeCheckError::LocalAssigementWrong {
                         loc: *loc,
-                        got,
-                        expected,
+                        got: got.mangle(asm),
+                        expected: expected.mangle(asm),
                     })
                 } else {
                     Ok(())

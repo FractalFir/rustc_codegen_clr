@@ -1,9 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use super::{
-    bimap::{BiMapIndex, IntoBiMapIndex},
-    Type,
-};
+use super::Type;
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub struct FnSig {
     inputs: Box<[Type]>,

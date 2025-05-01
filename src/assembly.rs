@@ -7,16 +7,14 @@ use crate::{
 };
 use cilly::{
     basic_block::BasicBlock,
-    call,
     cil_node::CILNode,
     cil_root::CILRoot,
     cil_tree::CILTree,
     cilnode::{MethodKind, PtrCastRes},
     method::{Method, MethodType},
-    utilis::{self, encode},
+    utilis::{self},
     v2::method::LocalDef,
-    Access, Assembly, Const, FnSig, Int, Interned, IntoAsmIndex, MethodDef, MethodRef,
-    StaticFieldDesc, Type,
+    Access, Assembly, Int, Interned, IntoAsmIndex, MethodDef, MethodRef, StaticFieldDesc, Type,
 };
 use rustc_codegen_clr_call::CallInfo;
 use rustc_codegen_clr_ctx::function_name;
@@ -24,11 +22,7 @@ pub use rustc_codegen_clr_ctx::MethodCompileCtx;
 use rustc_codegen_clr_type::{adt::field_descrptor, r#type::get_type, utilis::is_zst, GetTypeExt};
 use rustc_middle::mir::mono::Linkage;
 use rustc_middle::{
-    mir::{
-        interpret::{AllocId, Allocation, GlobalAlloc},
-        mono::MonoItem,
-        Local, LocalDecl, Statement, Terminator,
-    },
+    mir::{interpret::GlobalAlloc, mono::MonoItem, Local, LocalDecl, Statement, Terminator},
     ty::{TyCtxt, TyKind},
 };
 fn linkage_to_access(link: Option<Linkage>) -> Access {
@@ -87,132 +81,6 @@ fn locals_from_mir<'tcx>(
     (arg_names, local_types)
 }
 
-fn allocation_initializer_method(
-    const_allocation: &Allocation,
-    name: &str,
-    asm: &mut cilly::Assembly,
-    tcx: TyCtxt<'_>,
-) -> Method {
-    let bytes: &[u8] =
-        const_allocation.inspect_with_uninit_and_ptr_outside_interpreter(0..const_allocation.len());
-    let ptrs = const_allocation.provenance().ptrs();
-    let mut trees: Vec<CILTree> = Vec::new();
-    let align: u64 = const_allocation.align.bytes().max(1);
-    //trees.push(CILRoot::debug(&format!("Preparing to initialize allocation with size {}",bytes.len())).into());
-    if align > 8 {
-        let aligned_alloc = MethodRef::aligned_alloc(asm);
-        trees.push(
-            CILRoot::STLoc {
-                local: 0,
-                tree: Box::new(call!(
-                    asm.alloc_methodref(aligned_alloc),
-                    [
-                        CILNode::V2(asm.alloc_node(Const::USize(bytes.len() as u64))),
-                        CILNode::V2(asm.alloc_node(Const::USize(align)))
-                    ]
-                ))
-                .cast_ptr(asm.nptr(Type::Int(Int::U8))),
-            }
-            .into(),
-        );
-    } else {
-        let alloc = MethodRef::alloc(asm);
-        trees.push(
-            CILRoot::STLoc {
-                local: 0,
-                tree: Box::new(call!(
-                    asm.alloc_methodref(alloc),
-                    [CILNode::V2(asm.alloc_node(Const::ISize(
-                        i64::try_from(bytes.len()).expect("Static alloc too big")
-                    )))]
-                ))
-                .cast_ptr(asm.nptr(Type::Int(Int::U8))),
-            }
-            .into(),
-        );
-    }
-
-    trees.push(
-        CILRoot::CpBlk {
-            dst: Box::new(CILNode::LDLoc(0)),
-            src: Box::new(CILNode::V2(asm.bytebuffer(bytes, Int::U8))),
-            len: Box::new(CILNode::V2(
-                asm.alloc_node(Const::USize(bytes.len() as u64)),
-            )),
-        }
-        .into(),
-    );
-
-    if !ptrs.is_empty() {
-        for (offset, prov) in ptrs.iter() {
-            let offset = u32::try_from(offset.bytes_usize()).unwrap();
-            // Check if this allocation is a function
-            let reloc_target_alloc = tcx.global_alloc(prov.alloc_id());
-            if let GlobalAlloc::Function {
-                instance: finstance,
-            } = reloc_target_alloc
-            {
-                // If it is a function, patch its pointer up.
-                let mut ctx = MethodCompileCtx::new(tcx, None, finstance, asm);
-                let call_info = CallInfo::sig_from_instance_(finstance, &mut ctx);
-                let function_name = function_name(tcx.symbol_name(finstance));
-                let mref = MethodRef::new(
-                    *asm.main_module(),
-                    asm.alloc_string(function_name),
-                    asm.alloc_sig(call_info.sig().clone()),
-                    MethodKind::Static,
-                    vec![].into(),
-                );
-                trees.push(
-                    CILRoot::STIndISize(
-                        (CILNode::LDLoc(0)
-                            + CILNode::V2(asm.alloc_node(Const::USize(offset.into()))))
-                        .cast_ptr(asm.nptr(Type::Int(Int::USize))),
-                        CILNode::LDFtn(asm.alloc_methodref(mref)).cast_ptr(Type::Int(Int::USize)),
-                    )
-                    .into(),
-                );
-            } else {
-                let ptr_alloc = add_allocation(prov.alloc_id().0.into(), asm, tcx);
-
-                trees.push(
-                    CILRoot::STIndISize(
-                        (CILNode::LDLoc(0)
-                            + CILNode::V2(asm.alloc_node(Const::USize(offset.into()))))
-                        .cast_ptr(asm.nptr(Type::Int(Int::USize))),
-                        ptr_alloc.cast_ptr(Type::Int(Int::USize)),
-                    )
-                    .into(),
-                );
-            }
-        }
-    }
-    //trees.push(CILRoot::debug(&format!("Finished initializing an allocation with size {}",bytes.len())).into());
-    trees.push(
-        CILRoot::Ret {
-            tree: CILNode::LDLoc(0),
-        }
-        .into(),
-    );
-    let uint8_ptr = asm.nptr(Type::Int(Int::U8));
-    let uint8_ptr_idx = asm.alloc_type(uint8_ptr);
-    Method::new(
-        Access::Private,
-        MethodType::Static,
-        FnSig::new([], uint8_ptr),
-        &format!("init_{name}"),
-        vec![(Some("alloc_ptr".into_idx(asm)), uint8_ptr_idx)],
-        vec![BasicBlock::new(trees, 0, None)],
-        vec![],
-        asm,
-    )
-}
-fn calculate_hash<T: std::hash::Hash>(t: &T) -> u64 {
-    use std::hash::{DefaultHasher, Hasher};
-    let mut s = DefaultHasher::new();
-    t.hash(&mut s);
-    s.finish()
-}
 /// Turns a terminator into ops, if `ABORT_ON_ERROR` set to false, will handle and recover from errors.
 pub fn terminator_to_ops<'tcx>(
     term: &Terminator<'tcx>,
@@ -515,30 +383,31 @@ pub fn add_item<'tcx>(
             let alloc = tcx.eval_static_initializer(stotic).unwrap();
             let alloc_id = tcx.reserve_and_set_memory_alloc(alloc);
             let attrs = tcx.codegen_fn_attrs(stotic);
-
-            let int8_ptr = asm.nptr(Type::Int(Int::I8));
-            let int8_ptr_ptr = asm.nptr(int8_ptr);
+            let instance = rustc_middle::ty::Instance::new(stotic, rustc_middle::ty::List::empty());
+            let mut ctx = MethodCompileCtx::new(tcx, None, instance, asm);
+            let int8_ptr = ctx.nptr(Type::Int(Int::I8));
+            let int8_ptr_ptr = ctx.nptr(int8_ptr);
             if let Some(section) = attrs.link_section {
                 if section.to_string().contains(".init_array") {
-                    let argc = utilis::argc_argv_init_method(asm);
-                    let init_argc = asm.alloc_root(cilly::CILRoot::call(argc, []));
+                    let argc = utilis::argc_argv_init_method(&mut ctx);
+                    let init_argc = ctx.alloc_root(cilly::CILRoot::call(argc, []));
 
-                    asm.add_user_init(&[init_argc]);
-                    let get_environ: Interned<MethodRef> = utilis::get_environ(asm);
+                    ctx.add_user_init(&[init_argc]);
+                    let get_environ: Interned<MethodRef> = utilis::get_environ(&mut ctx);
                     let fn_ptr = alloc.0.provenance().ptrs().iter().next().unwrap();
                     let fn_ptr = tcx.global_alloc(fn_ptr.1.alloc_id());
                     let init_call_site = if let GlobalAlloc::Function {
                         instance: finstance,
                     } = fn_ptr
                     {
-                        let mut ctx = MethodCompileCtx::new(tcx, None, finstance, asm);
+                        let mut ctx = MethodCompileCtx::new(tcx, None, finstance, &mut ctx);
                         // If it is a function, patch its pointer up.
                         let call_info = CallInfo::sig_from_instance_(finstance, &mut ctx);
                         let function_name = function_name(tcx.symbol_name(finstance));
                         MethodRef::new(
-                            *asm.main_module(),
-                            asm.alloc_string(function_name),
-                            asm.alloc_sig(call_info.sig().clone()),
+                            *ctx.main_module(),
+                            ctx.alloc_string(function_name),
+                            ctx.alloc_sig(call_info.sig().clone()),
                             MethodKind::Static,
                             vec![].into(),
                         )
@@ -546,290 +415,42 @@ pub fn add_item<'tcx>(
                         panic!()
                     };
 
-                    let argv = asm.alloc_string("argv");
-                    let argc = asm.alloc_string("argc");
-                    let main_module = asm.main_module();
-                    let mref = asm.alloc_methodref(init_call_site);
+                    let argv = ctx.alloc_string("argv");
+                    let argc = ctx.alloc_string("argc");
+                    let main_module = ctx.main_module();
+                    let mref = ctx.alloc_methodref(init_call_site);
                     let argv =
-                        asm.alloc_sfld(StaticFieldDesc::new(*main_module, argv, int8_ptr_ptr));
-                    let argc = asm.alloc_sfld(StaticFieldDesc::new(
+                        ctx.alloc_sfld(StaticFieldDesc::new(*main_module, argv, int8_ptr_ptr));
+                    let argc = ctx.alloc_sfld(StaticFieldDesc::new(
                         *main_module,
                         argc,
                         Type::Int(Int::I32),
                     ));
-                    let argv = asm.alloc_node(cilly::CILNode::LdStaticField(argv));
-                    let uint8_ptr = asm.nptr(Int::U8);
-                    let uint8_ptr_idx = asm.alloc_type(uint8_ptr);
+                    let argv = ctx.alloc_node(cilly::CILNode::LdStaticField(argv));
+                    let uint8_ptr = ctx.nptr(Int::U8);
+                    let uint8_ptr_idx = ctx.alloc_type(uint8_ptr);
                     let args = [
-                        asm.alloc_node(cilly::CILNode::LdStaticField(argc)),
-                        asm.alloc_node(cilly::CILNode::PtrCast(
+                        ctx.alloc_node(cilly::CILNode::LdStaticField(argc)),
+                        ctx.alloc_node(cilly::CILNode::PtrCast(
                             argv,
                             Box::new(PtrCastRes::Ptr(uint8_ptr_idx)),
                         )),
-                        asm.alloc_node(cilly::CILNode::call(get_environ, [])),
+                        ctx.alloc_node(cilly::CILNode::call(get_environ, [])),
                     ];
-                    let root = asm.alloc_root(cilly::CILRoot::call(mref, args));
-                    asm.add_user_init(&[root]);
+                    let root = ctx.alloc_root(cilly::CILRoot::call(mref, args));
+                    ctx.add_user_init(&[root]);
                 } else {
                     panic!("Unsuported link section {section}.")
                 }
             }
-            add_allocation(alloc_id_to_u64(alloc_id), asm, tcx);
+
+            crate::static_data::add_allocation(alloc_id_to_u64(alloc_id), &mut ctx);
 
             drop(static_compile_timer);
 
             Ok(())
         }
     }
-}
-/// Adds a static field and initialized for allocation represented by `alloc_id`.
-pub fn add_allocation(alloc_id: u64, asm: &mut cilly::Assembly, tcx: TyCtxt<'_>) -> CILNode {
-    let uint8_ptr = asm.nptr(Type::Int(Int::U8));
-    let main_module_id = asm.main_module();
-    let (thread_local, const_allocation, krate) =
-        match tcx.global_alloc(AllocId(alloc_id.try_into().expect("0 alloc id?"))) {
-            GlobalAlloc::Memory(alloc) => (false, alloc, None),
-            GlobalAlloc::Static(def_id) => {
-                let alloc = tcx.eval_static_initializer(def_id).unwrap();
-                let attrs = tcx.codegen_fn_attrs(def_id);
-
-                (
-                    attrs.flags.contains(
-                        rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags::THREAD_LOCAL,
-                    ),
-                    alloc,
-                    Some(def_id.krate),
-                )
-            }
-            GlobalAlloc::VTable(..) => {
-                //TODO: handle VTables
-                let alloc_fld: IString = format!("al_{alloc_id:x}").into();
-
-                let field_desc = StaticFieldDesc::new(
-                    *asm.main_module(),
-                    asm.alloc_string(alloc_fld.clone()),
-                    uint8_ptr,
-                );
-                asm.add_static(uint8_ptr, alloc_fld, false, main_module_id, None, false);
-                return CILNode::LDStaticField(Box::new(field_desc));
-            }
-            GlobalAlloc::Function { .. } => {
-                //TODO: handle constant functions
-                let alloc_fld: IString = format!("al_{alloc_id:x}").into();
-                let field_desc = StaticFieldDesc::new(
-                    *asm.main_module(),
-                    asm.alloc_string(alloc_fld.clone()),
-                    uint8_ptr,
-                );
-                asm.add_static(uint8_ptr, alloc_fld, false, main_module_id, None, false);
-
-                return CILNode::LDStaticField(Box::new(field_desc));
-                //todo!("Function/Vtable allocation.");
-            }
-        };
-
-    let const_allocation = const_allocation.inner();
-
-    let bytes: &[u8] =
-        const_allocation.inspect_with_uninit_and_ptr_outside_interpreter(0..const_allocation.len());
-    let align = const_allocation.align.bytes().max(1);
-    if const_allocation.len() == 0 {
-        return CILNode::V2(asm.alloc_node(Const::USize(align)));
-    }
-    // Alloc ids are *not* unique across all crates. Adding the hash here ensures we don't overwrite allocations during linking
-    // TODO:consider using something better here / making the hashes stable.
-    let byte_hash = calculate_hash(&bytes);
-    match (align, bytes.len()) {
-        // Assumes this constant is not a pointer.
-        (0..=1, len @ 1) | (0..=2, len @ 1..=2) | (0..=4, len @ 1..=4) | (0..=8, len @ 1..=16)
-            if len <= asm.max_static_size() =>
-        {
-            let alloc_name: IString = if let Some(krate) = krate {
-                format!(
-                    "s_{}_{}_{}_{thread_local}_{}",
-                    encode(alloc_id),
-                    encode(byte_hash),
-                    const_allocation.len(),
-                    encode(u64::from(krate.as_u32())),
-                )
-                .into()
-            } else {
-                format!(
-                    "s_{}_{}_{}_{thread_local}",
-                    encode(alloc_id),
-                    encode(byte_hash),
-                    const_allocation.len()
-                )
-                .into()
-            };
-            let name = asm.alloc_string(alloc_name.clone());
-            let tpe: Int = Int::from_size_sign(
-                u8::try_from(bytes.len()).unwrap().next_power_of_two(),
-                false,
-            );
-            let field_desc = StaticFieldDesc::new(*asm.main_module(), name, cilly::Type::Int(tpe));
-            // Currently, all static fields are in one module. Consider spliting them up.
-            let main_module = asm.class_mut(main_module_id);
-            if main_module.has_static_field(name, field_desc.tpe()) {
-                return CILNode::AddressOfStaticField(Box::new(field_desc));
-            }
-            let cst: Const = tpe.from_bytes(bytes);
-            let field = asm.alloc_sfld(field_desc);
-
-            let val = asm.alloc_node(cst);
-            let mut roots = if thread_local || len > 8 {
-                asm.add_static(
-                    cilly::Type::Int(tpe),
-                    &*alloc_name,
-                    thread_local,
-                    main_module_id,
-                    None,
-                    false,
-                );
-                vec![asm.alloc_root(cilly::CILRoot::SetStaticField { field, val })]
-            } else {
-                asm.add_static(
-                    cilly::Type::Int(tpe),
-                    &*alloc_name,
-                    thread_local,
-                    main_module_id,
-                    Some(cst),
-                    false,
-                );
-                vec![]
-            };
-
-            let addr = CILNode::AddressOfStaticField(Box::new(field_desc));
-            for (offset, prov) in const_allocation.provenance().ptrs().iter() {
-                let offset = u32::try_from(offset.bytes_usize()).unwrap();
-                // Check if this allocation is a function
-                let reloc_target_alloc = tcx.global_alloc(prov.alloc_id());
-                if let GlobalAlloc::Function {
-                    instance: finstance,
-                } = reloc_target_alloc
-                {
-                    // If it is a function, patch its pointer up.
-                    let mut ctx = MethodCompileCtx::new(tcx, None, finstance, asm);
-                    let call_info = CallInfo::sig_from_instance_(finstance, &mut ctx);
-                    let function_name = function_name(tcx.symbol_name(finstance));
-                    let mref = MethodRef::new(
-                        *asm.main_module(),
-                        asm.alloc_string(function_name),
-                        asm.alloc_sig(call_info.sig().clone()),
-                        MethodKind::Static,
-                        vec![].into(),
-                    );
-                    let root = cilly::CILRoot::from_v1(
-                        &CILRoot::STIndISize(
-                            (addr.clone()
-                                + CILNode::V2(asm.alloc_node(Const::USize(offset.into()))))
-                            .cast_ptr(asm.nptr(Type::Int(Int::USize))),
-                            CILNode::LDFtn(asm.alloc_methodref(mref))
-                                .cast_ptr(Type::Int(Int::USize)),
-                        ),
-                        asm,
-                    );
-                    roots.push(asm.alloc_root(root));
-                } else {
-                    let ptr_alloc = add_allocation(prov.alloc_id().0.into(), asm, tcx);
-                    let root = cilly::CILRoot::from_v1(
-                        &CILRoot::STIndISize(
-                            (addr.clone()
-                                + CILNode::V2(asm.alloc_node(Const::USize(offset.into()))))
-                            .cast_ptr(asm.nptr(Type::Int(Int::USize))),
-                            ptr_alloc.cast_ptr(Type::Int(Int::USize)),
-                        ),
-                        asm,
-                    );
-                    roots.push(asm.alloc_root(root));
-                }
-            }
-            if thread_local {
-                asm.add_tcctor(&roots);
-            } else {
-                asm.add_cctor(&roots);
-            }
-            CILNode::AddressOfStaticField(Box::new(field_desc))
-        }
-        _ => {
-            let tl = if thread_local { "t" } else { "g" };
-            let alloc_name: IString = if let Some(krate) = krate {
-                format!(
-                    "al_{}_{}_{}_{tl}_{}",
-                    encode(alloc_id),
-                    encode(byte_hash),
-                    const_allocation.len(),
-                    encode(u64::from(krate.as_u32())),
-                )
-                .into()
-            } else {
-                format!(
-                    "al_{}_{}_{}_{tl}",
-                    encode(alloc_id),
-                    encode(byte_hash),
-                    const_allocation.len()
-                )
-                .into()
-            };
-            let name = asm.alloc_string(alloc_name.clone());
-            let field_desc =
-                StaticFieldDesc::new(*asm.main_module(), name, asm.nptr(Type::Int(Int::U8)));
-            // Currently, all static fields are in one module. Consider spliting them up.
-            let main_module = asm.class_mut(main_module_id);
-            if main_module.has_static_field(name, field_desc.tpe()) {
-                return CILNode::LDStaticField(Box::new(field_desc));
-            }
-            asm.add_static(
-                uint8_ptr,
-                &*alloc_name,
-                thread_local,
-                main_module_id,
-                None,
-                false,
-            );
-
-            let init_method =
-                allocation_initializer_method(const_allocation, &alloc_name, asm, tcx);
-            let init_method = MethodDef::from_v1(&init_method, asm, main_module_id);
-            let initialzer = asm.new_method(init_method);
-            // Calls the static initialzer, and sets the static field to the returned pointer.
-            let val = asm.alloc_node(cilly::CILNode::call(*initialzer, []));
-
-            let field = asm.alloc_sfld(field_desc);
-            let root = asm.alloc_root(cilly::CILRoot::SetStaticField { field, val });
-            if thread_local {
-                asm.add_tcctor(&[root]);
-            } else {
-                asm.add_cctor(&[root]);
-            }
-
-            CILNode::LDStaticField(Box::new(field_desc))
-        }
-    }
-}
-pub fn add_const_value(asm: &mut cilly::Assembly, bytes: u128) -> StaticFieldDesc {
-    let uint8_ptr = Type::Int(Int::U128);
-    let main_module_id = asm.main_module();
-    let alloc_fld: IString = format!("a_{bytes:x}").into();
-    let alloc_fld_name = asm.alloc_string(alloc_fld.clone());
-
-    let field_desc = StaticFieldDesc::new(*asm.main_module(), alloc_fld_name, Type::Int(Int::U128));
-
-    let main_module = asm.class_mut(main_module_id);
-    if main_module.has_static_field(alloc_fld_name, field_desc.tpe()) {
-        return field_desc;
-    }
-    asm.add_static(uint8_ptr, alloc_fld, false, main_module_id, None, false);
-    let cst = CILNode::const_u128(bytes, asm);
-
-    let field = asm.alloc_sfld(field_desc);
-    let val = cilly::CILNode::from_v1(&cst, asm);
-    let val = asm.alloc_node(val);
-    let set = asm.alloc_root(cilly::CILRoot::SetStaticField { field, val });
-
-    asm.add_cctor(&[set]);
-
-    field_desc
 }
 
 pub(crate) fn span_source_info(tcx: TyCtxt, span: rustc_span::Span) -> CILRoot {

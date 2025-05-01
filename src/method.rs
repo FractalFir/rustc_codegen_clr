@@ -4,6 +4,8 @@ use cilly::{cil_iter_mut::CILIterElemMut, cil_node::CILNode, method::Method};
 
 use rustc_codegen_clr_ctx::MethodCompileCtx;
 
+use crate::static_data::{add_allocation, add_const_value};
+
 pub(crate) fn resolve_global_allocations(method: &mut Method, ctx: &mut MethodCompileCtx<'_, '_>) {
     let mut blocks = method.blocks_mut();
     let mut tmp: Vec<_> = blocks
@@ -17,13 +19,11 @@ pub(crate) fn resolve_global_allocations(method: &mut Method, ctx: &mut MethodCo
             if let CILIterElemMut::Node(node) = elem {
                 match node {
                     CILNode::LoadGlobalAllocPtr { alloc_id } => {
-                        let (tcx, asm) = ctx.tcx_and_asm();
-                        *node = crate::assembly::add_allocation(*alloc_id, asm, tcx);
+                        *node = add_allocation(*alloc_id, ctx);
                     }
                     CILNode::PointerToConstValue(bytes) => {
-                        *node = CILNode::AddressOfStaticField(Box::new(
-                            crate::assembly::add_const_value(ctx, **bytes),
-                        ));
+                        *node =
+                            CILNode::AddressOfStaticField(Box::new(add_const_value(ctx, **bytes)));
                     }
                     _ => (),
                 }

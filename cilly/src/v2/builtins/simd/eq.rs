@@ -1,8 +1,6 @@
 use crate::{
-    asm::MissingMethodPatcher,
-    bimap::Interned,
-    tpe::simd::{SIMDElem, SIMDVector},
-    Assembly, BasicBlock, BinOp, CILNode, CILRoot, Const, MethodImpl, MethodRef, Type,
+    asm::MissingMethodPatcher, bimap::Interned, Assembly, BasicBlock, CILNode, CILRoot, MethodImpl,
+    MethodRef, Type,
 };
 
 use super::dotnet_vec_cast;

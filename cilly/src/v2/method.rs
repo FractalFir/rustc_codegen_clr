@@ -2,13 +2,12 @@ use fxhash::{FxHashMap, FxHashSet};
 use serde::{Deserialize, Serialize};
 
 use super::{
-    bimap::{BiMapIndex, Interned, IntoBiMapIndex},
+    bimap::Interned,
     cilnode::{IsPure, MethodKind},
     class::ClassDefIdx,
-    Access, Assembly, BasicBlock, CILIterElem, CILNode, ClassDef, ClassRef, FnSig, Int,
-    IntoAsmIndex, Type,
+    Access, Assembly, BasicBlock, CILIterElem, CILNode, ClassRef, FnSig, Int, IntoAsmIndex, Type,
 };
-use crate::{cil_node::CallOpArgs, cilnode::PtrCastRes, iter::TpeIter};
+use crate::{cilnode::PtrCastRes, iter::TpeIter};
 use crate::{CILRoot, IString};
 pub type LocalId = u32;
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
@@ -143,7 +142,7 @@ impl MethodRef {
         )
     }
 
-    pub(crate) fn aligned_free(asm: &mut Assembly) -> Interned<MethodRef> {
+    pub fn aligned_free(asm: &mut Assembly) -> Interned<MethodRef> {
         let void_ptr = asm.nptr(Type::Void);
         let sig = asm.sig([void_ptr], Type::Void);
         let aligned_free = asm.alloc_string("AlignedFree");
@@ -764,7 +763,7 @@ impl MethodImpl {
             let val = asm.alloc_node(CILNode::Call(Box::new((alloc, args, IsPure::NOT))));
             if asm[mref.sig()].output() != sig.output() {
                 match (asm[mref.sig()].output(), sig.output()) {
-                    (Type::Ptr(a), Type::Ptr(b)) => {
+                    (Type::Ptr(a), Type::Ptr(_)) => {
                         let val =
                             asm.alloc_node(CILNode::PtrCast(val, Box::new(PtrCastRes::Ptr(*a))));
                         vec![asm.alloc_root(CILRoot::Ret(val))]

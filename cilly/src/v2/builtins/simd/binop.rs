@@ -1,6 +1,6 @@
 use crate::{
     asm::MissingMethodPatcher, tpe::simd::SIMDElem, Assembly, BasicBlock, BinOp, CILNode, CILRoot,
-    Const, Int, Interned, MethodImpl, MethodRef, Type,
+    Const, Interned, MethodImpl, MethodRef, Type,
 };
 macro_rules! binop {
     ($op_name:ident,$op_dotnet:literal) => {
@@ -108,7 +108,7 @@ fn simd_binop(
 }
 pub fn fallback_simd(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
     simd_binop(
-        |asm, lhs, rhs, elem, res_tpe| {
+        |asm, lhs, rhs, _, res_tpe| {
             let res = asm.biop(lhs, rhs, BinOp::Lt);
             asm.int_cast(
                 res,
@@ -121,7 +121,7 @@ pub fn fallback_simd(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
         patcher,
     );
     simd_binop(
-        |asm, lhs, rhs, elem, res_tpe| {
+        |asm, lhs, rhs, _, res_tpe| {
             let res = asm.biop(lhs, rhs, BinOp::Eq);
             asm.int_cast(
                 res,

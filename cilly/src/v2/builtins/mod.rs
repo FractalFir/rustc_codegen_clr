@@ -429,7 +429,8 @@ pub fn insert_exeception_stub(asm: &mut Assembly, patcher: &mut MissingMethodPat
         Some(NonZeroU32::new(8).unwrap()),
         None,
         true,
-    ));
+    ))
+    .unwrap();
     insert_catch_unwind_stub(asm, patcher);
 }
 pub fn insert_exception(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {

@@ -3,10 +3,7 @@ use std::num::NonZeroU8;
 use serde::{Deserialize, Serialize};
 use simd::SIMDVector;
 
-use super::{
-    bimap::{BiMapIndex, Interned, IntoBiMapIndex},
-    Assembly, ClassRef, Float, FnSig, Int,
-};
+use super::{bimap::Interned, Assembly, ClassRef, Float, FnSig, Int};
 
 pub mod float;
 pub mod int;

@@ -710,37 +710,7 @@ impl MethodDef {
         cache: &mut SideEffectInfoCache,
     ) {
         if let MethodImpl::MethodBody { blocks, .. } = self.implementation_mut() {
-            /*let has_targets: FxHashMap<_, bool> = blocks
-                .iter()
-                .map(|block| (block.block_id(), block.targets(asm).next().is_some()))
-                .collect();
-            let blocks_copy: FxHashMap<_, _> = blocks
-                .iter()
-                .map(|block| (block.block_id(), block.clone()))
-                .collect();*/
             for block in blocks.iter_mut() {
-                /* if let CILRoot::Branch(info) =
-                    &asm[*block.roots().last().expect("Blocks can't be empty")]
-                {
-                    if block.roots().iter().all(|root| match &asm[*root] {
-                        CILRoot::StLoc(_, _)
-                        | CILRoot::SourceFileInfo { .. }
-                        | CILRoot::Nop
-                        | CILRoot::SetField(_) => true,
-                        CILRoot::Branch(info) => is_branch_unconditional(&info),
-                        _ => false,
-                    }) {
-                        let (target, _, None) = info.as_ref() else {
-                            continue;
-                        };
-                        // Ret or throw
-                        if !has_targets[target] && blocks_copy[target].roots().len() < 60 {
-                            let roots = block.roots_mut();
-                            roots.pop();
-                            roots.extend(blocks_copy[target].roots());
-                        }
-                    }
-                }*/
                 let Some(handler) = block.handler() else {
                     continue;
                 };

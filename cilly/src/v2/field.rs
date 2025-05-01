@@ -2,8 +2,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::IString;
 
-use super::bimap::{BiMapIndex, Interned};
-use super::{bimap::IntoBiMapIndex, Type};
+use super::bimap::Interned;
+use super::Type;
 use super::{ClassRef, Int, IntoAsmIndex};
 
 impl Interned<FieldDesc> {

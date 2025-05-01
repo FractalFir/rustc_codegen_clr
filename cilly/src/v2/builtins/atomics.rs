@@ -1,7 +1,7 @@
 use crate::{
     asm::MissingMethodPatcher,
     bimap::Interned,
-    cilnode::{ExtendKind, MethodKind, PtrCastRes},
+    cilnode::{ExtendKind, MethodKind},
     cilroot::BranchCond,
     BasicBlock, BinOp, CILNode, CILRoot, ClassRef, Const, Int, MethodImpl, MethodRef, Type,
 };

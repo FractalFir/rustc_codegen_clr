@@ -2,7 +2,7 @@
 #![allow(clippy::module_name_repetitions)]
 // This lint includes tests for some bizzare reason, so ignoring it seems like the best course of action
 #![allow(clippy::missing_panics_doc)]
-#![warn(missing_docs)]
+//#![warn(missing_docs)]
 pub use super::bimap::Interned;
 use std::path::Path;
 
@@ -24,31 +24,48 @@ pub use tpe::int::Int;
 pub use tpe::Type;
 
 use crate::IString;
-
+/// Assembly
 pub mod asm;
+/// Linker-related code
 pub mod asm_link;
+/// Basic block - the building block of control-flow
 pub mod basic_block;
+/// Interning code
 pub mod bimap;
+/// Builtin intrinsics
 pub mod builtins;
+/// Code exporting C source files
 pub mod c_exporter;
-
+/// Exports modules to IR builders. Used for quickly implementing intrinsics
 pub mod cillyir_exporter;
 pub mod cilnode;
 pub mod cilroot;
+/// Definitons of a value / byref type
 pub mod class;
+/// IR constant
 pub mod cst;
+/// IR field
 pub mod field;
+/// IR functions signature
 pub mod fnsig;
 /// Defines hashable and equable floating point types. All NaNs are compared by bits, and -0.0 != 0.0.
 pub mod hashable;
+/// Exports IR to .NET bytecode
 pub mod il_exporter;
+/// IR iterator
 pub mod iter;
+/// Exports IR to JVM bytecode
 pub mod java_exporter;
 pub mod macros;
+/// IR functions
 pub mod method;
+/// IR function builder
 pub mod method_builder;
+/// IR optimization functions
 pub mod opt;
+/// IR type repr
 pub mod tpe;
+/// IR typechecker
 pub mod typecheck;
 #[test]
 fn types() {
@@ -58,7 +75,7 @@ fn types() {
     assert_eq!(*tpe.deref(&asm).deref(&asm), Type::Int(Int::U8));
 }
 #[test]
-pub fn nodes() {
+fn nodes() {
     let mut asm = Assembly::default();
     let add = asm.biop(Const::I8(2), Const::I8(1), BinOp::Add);
     let mut iter = CILIter::new(asm[add].clone(), &asm);
@@ -83,7 +100,9 @@ pub fn nodes() {
     ));
     assert!(iter.next().is_none());
 }
+/// IL exporter
 pub trait Exporter {
+    /// Export error
     type Error: std::fmt::Debug;
     /// # Errors
     /// Returns an error if the export process failed.

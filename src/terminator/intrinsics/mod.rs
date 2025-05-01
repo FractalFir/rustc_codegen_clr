@@ -8,9 +8,9 @@ use cilly::{
     conv_usize, Const, FieldDesc, IntoAsmIndex, MethodRef, Type, {ClassRef, Float, Int},
 };
 use ints::{ctlz, rotate_left, rotate_right};
-use rustc_codegen_clr_place::{deref_op, place_adress, place_set, ptr_set_op};
+use rustc_codegen_clr_place::{place_adress, place_set, ptr_set_op};
 use rustc_codegen_clr_type::GetTypeExt;
-use rustc_codgen_clr_operand::{constant::load_const_value, handle_operand};
+use rustc_codgen_clr_operand::{constant::load_const_value, handle_operand, operand_address};
 use rustc_middle::ty::TypingEnv;
 use rustc_middle::{
     mir::{Operand, Place},
@@ -1070,9 +1070,19 @@ pub fn handle_intrinsic<'tcx>(
                     .expect("select_unpredictable works only on types!"),
             );
             let cond = handle_operand(&args[0].node, ctx);
+
+            if let Some(_) = tpe.as_class_ref() {
+                let true_val = operand_address(&args[1].node, ctx);
+                let false_val = operand_address(&args[2].node, ctx);
+                let select = CILNode::select(ctx.nptr(tpe), true_val, false_val, cond, ctx);
+                let select = CILNode::LdObj {
+                    ptr: Box::new(select),
+                    obj: Box::new(tpe),
+                };
+                return vec![place_set(destination, select, ctx)];
+            }
             let true_val = handle_operand(&args[1].node, ctx);
             let false_val = handle_operand(&args[2].node, ctx);
-
             let select = CILNode::select(tpe, true_val, false_val, cond, ctx);
             vec![place_set(destination, select, ctx)]
         }

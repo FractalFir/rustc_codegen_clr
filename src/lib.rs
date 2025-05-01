@@ -106,33 +106,31 @@ pub mod assembly;
 pub mod basic_block;
 /// Code handling binary operations
 mod binop;
-
 mod call_info;
 /// Code hansling rust `as` casts.
 mod casts;
-/// Method compilation context
-mod fn_ctx;
-pub mod native_pastrough;
-
 /// Runtime errors and utlity functions/macros related to them
 mod codegen_error;
 /// Test harnesses.
 pub mod compile_test;
 /// Implementation of compiletime features neccessary for interop.
 mod comptime;
+/// Method compilation context
+mod fn_ctx;
 /// Signature of a function (inputs)->output
 pub mod function_sig;
 /// Interop type handling.
 mod interop;
-
 /// A representation of a .NET method
 pub mod method;
+pub mod native_pastrough;
 /// Handles a MIR operand.
 mod operand;
 /// Converts righthandside of a MIR statement into CIL ops.
 mod rvalue;
 /// Code dealing with truning an individual MIR statement into CIL ops.
 pub mod statement;
+mod static_data;
 /// Converts a terminator of a basic block into CIL ops.
 mod terminator;
 /// Code related to types.
