@@ -8,16 +8,17 @@ use cilly::{
 };
 use rustc_codegen_clr_call::CallInfo;
 use rustc_codegen_clr_ctx::MethodCompileCtx;
-use rustc_codegen_clr_place::deref_op;
-use rustc_codegen_clr_type::{GetTypeExt, utilis::is_fat_ptr};
+use rustc_codegen_clr_type::{GetTypeExt, r#type::fixed_array, utilis::is_fat_ptr};
 use rustc_middle::ty::ExistentialTraitRef;
 use rustc_middle::{
     mir::{
         ConstOperand, ConstValue,
-        interpret::{AllocId, GlobalAlloc, Scalar},
+        interpret::Scalar,
+        interpret::{AllocId, GlobalAlloc},
     },
-    ty::{FloatTy, IntTy, Ty, TyKind, UintTy},
+    ty::{FloatTy, IntTy, Ty, TyCtxt, TyKind, UintTy},
 };
+use rustc_span::def_id::DefId;
 pub fn handle_constant<'tcx>(
     constant_op: &ConstOperand<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
@@ -42,6 +43,9 @@ fn create_const_from_data<'tcx>(
     ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> CILNode {
     let _ = offset_bytes;
+    let ty = ctx.monomorphize(ty);
+    let tpe = ctx.type_from_cache(ty);
+    let tpe_idx = ctx.alloc_type(tpe);
     // Optimization - check if this can be replaced by a scalar.
     if let GlobalAlloc::Memory(alloc) = ctx.tcx().global_alloc(alloc_id) {
         let const_allocation = alloc.inner();
@@ -58,8 +62,8 @@ fn create_const_from_data<'tcx>(
                 Scalar::from_u128(u128::from_ne_bytes(bytes.as_slice().try_into().unwrap()));
             return load_const_scalar(scalar, ty, ctx);
         }
-        let (ptr, align) = alloc_ptr_unaligned(alloc_id, &alloc, ctx);
-        if align == u64::MAX {
+        let (ptr, align) = alloc_ptr_unaligned(alloc_id, &alloc, ctx, tpe_idx);
+        if align.is_none() {
             let ty = ctx.monomorphize(ty);
 
             let tpe = ctx.type_from_cache(ty);
@@ -78,19 +82,51 @@ fn create_const_from_data<'tcx>(
             return call!(unaligned_read, [ptr.cast_ptr(tpe_ptr)]);
         }
     }
-    let ptr = CILNode::LoadGlobalAllocPtr {
-        alloc_id: alloc_id.0.into(),
-    };
-    let ty = ctx.monomorphize(ty);
 
-    let tpe = ctx.type_from_cache(ty);
+    let ptr = CILNode::global_alloc_ptr(alloc_id.0.into(), tpe_idx, ctx);
+
     let tpe_ptr = ctx.nptr(tpe);
     CILNode::LdObj {
         ptr: Box::new(ptr.cast_ptr(tpe_ptr)),
         obj: Box::new(tpe),
     }
 }
-
+fn alloc_align_size(alloc_id: u64, ctx: &mut MethodCompileCtx<'_, '_>) -> (u64, u64) {
+    let global_alloc = ctx
+        .tcx()
+        .global_alloc(AllocId(alloc_id.try_into().expect("0 alloc id?")));
+    match global_alloc {
+        GlobalAlloc::Memory(alloc) => (alloc.0.0.align.bytes(), alloc.0.len() as u64),
+        _ => todo!(),
+    }
+}
+fn const_slice_backer_type<'tcx>(
+    const_ty: Ty<'tcx>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
+    alloc_id: u64,
+    meta: u64,
+) -> Type {
+    let elem = match const_ty.kind() {
+        TyKind::Str => Type::Int(Int::U8),
+        TyKind::Adt(def, generics) => {
+            assert_eq!(
+                def.all_fields().count(),
+                1,
+                "DSTs in slice constants must have exactly one field!"
+            );
+            let fld = def.all_fields().next().unwrap();
+            return const_slice_backer_type(fld.ty(ctx.tcx(), generics), ctx, alloc_id, meta);
+        }
+        TyKind::Slice(elem) => ctx.type_from_cache(*elem),
+        _ => todo!("Unhandled const {const_ty:?}"),
+    };
+    if meta == 1 {
+        return elem;
+    }
+    let (align, arr_size) = alloc_align_size(alloc_id, ctx);
+    let arr_tpe = fixed_array(ctx, elem, meta, arr_size, align);
+    Type::ClassRef(arr_tpe)
+}
 pub fn load_const_value<'tcx>(
     const_val: ConstValue<'tcx>,
     const_ty: Ty<'tcx>,
@@ -113,8 +149,21 @@ pub fn load_const_value<'tcx>(
 
             let alloc_id = ctx.tcx().reserve_and_set_memory_alloc(data);
 
+            let ptr = if meta == 0 {
+                CILNode::V2(ctx.alloc_node(Const::USize(1 << 30))).cast_ptr(ctx.nptr(Type::Void))
+            } else {
+                let arr_type = const_slice_backer_type(
+                    const_ty.builtin_deref(true).unwrap(),
+                    ctx,
+                    alloc_id.0.get(),
+                    meta,
+                );
+
+                let arr_tpe = ctx.alloc_type(arr_type);
+
+                alloc_ptr(alloc_id, &data, ctx, arr_tpe).cast_ptr(ctx.nptr(Type::Void))
+            };
             let meta = CILNode::V2(ctx.alloc_node(Const::USize(meta)));
-            let ptr = alloc_ptr(alloc_id, &data, ctx).cast_ptr(ctx.nptr(Type::Void));
             CILNode::create_slice(slice_dotnet, ctx, meta, ptr)
         }
         ConstValue::Indirect { alloc_id, offset } => {
@@ -123,9 +172,13 @@ pub fn load_const_value<'tcx>(
         } //_ => todo!("Unhandled const value {const_val:?} of type {const_ty:?}"),
     }
 }
+pub fn static_ty<'tcx>(def_id: DefId, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
+    tcx.type_of(def_id).instantiate_identity()
+}
 fn load_scalar_ptr(
     ctx: &mut MethodCompileCtx<'_, '_>,
     ptr: rustc_middle::mir::interpret::Pointer,
+    tpe: Interned<Type>,
 ) -> CILNode {
     let (alloc_id, offset) = ptr.into_parts();
     let global_alloc = ctx.tcx().global_alloc(alloc_id.alloc_id());
@@ -189,18 +242,18 @@ fn load_scalar_ptr(
             //def_id.ty();
             let _memory = ctx.tcx().reserve_and_set_memory_alloc(alloc);
             let alloc_id = alloc_id.alloc_id().0.into();
-            CILNode::LoadGlobalAllocPtr { alloc_id }
+            CILNode::global_alloc_ptr(alloc_id, tpe, ctx)
         }
         GlobalAlloc::Memory(const_allocation) => {
             if offset.bytes() != 0 {
                 CILNode::Add(
-                    alloc_ptr(alloc_id.alloc_id(), &const_allocation, ctx).into(),
+                    alloc_ptr(alloc_id.alloc_id(), &const_allocation, ctx, tpe).into(),
                     Box::new(CILNode::V2(
                         ctx.alloc_node(cilly::Const::USize(offset.bytes())),
                     )),
                 )
             } else {
-                alloc_ptr(alloc_id.alloc_id(), &const_allocation, ctx)
+                alloc_ptr(alloc_id.alloc_id(), &const_allocation, ctx, tpe)
             }
         }
         GlobalAlloc::Function {
@@ -236,13 +289,12 @@ fn alloc_ptr<'tcx>(
     alloc_id: AllocId,
     const_alloc: &rustc_middle::mir::interpret::ConstAllocation,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
+    tpe: Interned<Type>,
 ) -> CILNode {
-    let (ptr, align) = alloc_ptr_unaligned(alloc_id, const_alloc, ctx);
+    let (ptr, align) = alloc_ptr_unaligned(alloc_id, const_alloc, ctx, tpe);
     // If aligement is small enough to be *guaranteed*, and no pointers are present.
-    if align == u64::MAX || align <= ctx.const_align() {
-        CILNode::LoadGlobalAllocPtr {
-            alloc_id: alloc_id.0.into(),
-        }
+    if align.is_some_and(|align| align <= ctx.const_align()) {
+        CILNode::global_alloc_ptr(alloc_id.0.into(), tpe, ctx)
     } else {
         ptr
     }
@@ -253,12 +305,12 @@ fn alloc_ptr_unaligned<'tcx>(
     alloc_id: AllocId,
     const_alloc: &rustc_middle::mir::interpret::ConstAllocation,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-) -> (CILNode, u64) {
+    tpe: Interned<Type>,
+) -> (CILNode, Option<u64>) {
     let const_alloc = const_alloc.inner();
     // If aligement is small enough to be *guaranteed*, and no pointers are present.
     if const_alloc.provenance().ptrs().is_empty() {
         if const_alloc.align.bytes() <= ctx.const_align() {
-            //unaligned_read
             (
                 CILNode::V2(
                     ctx.bytebuffer(
@@ -267,7 +319,7 @@ fn alloc_ptr_unaligned<'tcx>(
                         Int::U8,
                     ),
                 ),
-                u64::MAX,
+                None,
             )
         } else {
             //unaligned_read
@@ -279,16 +331,11 @@ fn alloc_ptr_unaligned<'tcx>(
                         Int::U8,
                     ),
                 ),
-                ctx.const_align(),
+                Some(ctx.const_align()),
             )
         }
     } else {
-        (
-            CILNode::LoadGlobalAllocPtr {
-                alloc_id: alloc_id.0.into(),
-            },
-            u64::MAX,
-        )
+        (CILNode::global_alloc_ptr(alloc_id.0.into(), tpe, ctx), None)
     }
 }
 fn load_const_scalar<'tcx>(
@@ -298,14 +345,21 @@ fn load_const_scalar<'tcx>(
 ) -> CILNode {
     let scalar_ty = ctx.monomorphize(scalar_type);
     let scalar_type = ctx.type_from_cache(scalar_ty);
+
     let scalar_u128 = match scalar {
         Scalar::Int(scalar_int) => scalar_int.to_uint(scalar.size()),
         Scalar::Ptr(ptr, _size) => {
+            let const_type = scalar_ty
+                .builtin_deref(true)
+                .map(|ty| ctx.type_from_cache(ty))
+                .unwrap_or(Int::USize.into());
+            let const_type_idx = ctx.alloc_type(const_type);
             if matches!(scalar_type, Type::Ptr(_) | Type::FnPtr(_)) {
-                return load_scalar_ptr(ctx, ptr).cast_ptr(scalar_type);
+                return load_scalar_ptr(ctx, ptr, const_type_idx).cast_ptr(scalar_type);
             }
             return CILNode::transmute_on_stack(
-                load_scalar_ptr(ctx, ptr).cast_ptr(Type::Ptr(ctx.alloc_type(Type::Int(Int::U8)))),
+                load_scalar_ptr(ctx, ptr, const_type_idx)
+                    .cast_ptr(Type::Ptr(ctx.alloc_type(Type::Int(Int::U8)))),
                 ctx.nptr(Type::Int(Int::U8)),
                 scalar_type,
                 ctx,
@@ -559,7 +613,21 @@ pub fn get_vtable<'tcx>(
     let ty = fx.monomorphize(ty);
 
     let alloc_id = fx.tcx().vtable_allocation((ty, trait_ref));
-    CILNode::LoadGlobalAllocPtr {
-        alloc_id: alloc_id.0.get(),
-    }
+    let vtable_len = fx
+        .tcx()
+        .vtable_entries(
+            trait_ref
+                .expect("None trait ref :(")
+                .with_self_ty(fx.tcx(), ty),
+        )
+        .len();
+    let tpe = fixed_array(
+        fx,
+        cilly::Type::Int(Int::USize),
+        vtable_len.try_into().unwrap(),
+        vtable_len as u64 * 8,
+        8,
+    );
+    let tpe = fx.alloc_type(Type::ClassRef(tpe));
+    CILNode::global_alloc_ptr(alloc_id.0.get(), tpe, fx)
 }

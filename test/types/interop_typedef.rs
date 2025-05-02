@@ -25,6 +25,11 @@ struct RustcCLRInteropManagedClass<const ASSEMBLY: &'static str, const CLASS_PAT
 }
 type Object = RustcCLRInteropManagedClass<"System.Runtime", "System.Object">;
 type MString = RustcCLRInteropManagedClass<"System.Runtime", "System.String">;
+impl Into<MString> for &str {
+    fn into(self) -> MString {
+        todo!()
+    }
+}
 type RustObj_ = RustcCLRInteropManagedClass<"", "RustObj">;
 type RustObj2_ = RustcCLRInteropManagedClass<"", "RustObj2">;
 #[inline(never)]
@@ -145,9 +150,11 @@ dotnet_typedef! {
     class RustObj inherits [System::Runtime]System::Runtime::Object{
         a : f32,
         virtual fn ToString(this:RustObj_)->MString{
-            panic!()
+            "This is a .NET class - defined in Rust !".into()
         },
-
+        // NOTE: the current shape of this macro, and it's implementation is
+        // highly experimental. All of this is subject to change,
+        // This is a **very** early prototype!
     }
 }
 

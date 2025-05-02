@@ -149,7 +149,7 @@ impl<'a> Iterator for CILIter<'a> {
                     | CILNode::LDFtn(_)
                     | CILNode::LDTypeToken(_)
                     | CILNode::LocAllocAligned { tpe: _, align: _ }
-                    | CILNode::LoadGlobalAllocPtr { alloc_id: _ }
+                    | CILNode::LoadGlobalAllocPtr { .. }
                     | CILNode::LoadAddresOfTMPLocal
                     | CILNode::PointerToConstValue(_)
                     | CILNode::LoadTMPLocal

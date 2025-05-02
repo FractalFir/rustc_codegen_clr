@@ -1449,6 +1449,10 @@ impl Assembly {
     pub(crate) fn alloc_const_data(&mut self, data: &[u8]) -> Interned<Box<[u8]>> {
         self.const_data.alloc(data.into())
     }
+
+    pub(crate) fn char_is_u8(&self) -> bool {
+        true
+    }
 }
 config!(GUARANTED_ALIGN, u8, 8);
 config!(MAX_STATIC_SIZE, usize, 16);

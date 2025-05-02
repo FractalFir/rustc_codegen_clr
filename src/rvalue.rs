@@ -402,10 +402,8 @@ pub fn handle_rvalue<'tcx>(
                 let rvalue_type = ctx.type_from_cache(rvalue_ty);
                 (
                     vec![],
-                    CILNode::LoadGlobalAllocPtr {
-                        alloc_id: alloc_id.0.into(),
-                    }
-                    .cast_ptr(rvalue_type),
+                    CILNode::global_alloc_ptr(alloc_id.0.into(), ctx.alloc_type(rvalue_type), ctx)
+                        .cast_ptr(rvalue_type),
                 )
             }
         }

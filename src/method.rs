@@ -18,8 +18,8 @@ pub(crate) fn resolve_global_allocations(method: &mut Method, ctx: &mut MethodCo
         .for_each(|elem| {
             if let CILIterElemMut::Node(node) = elem {
                 match node {
-                    CILNode::LoadGlobalAllocPtr { alloc_id } => {
-                        *node = add_allocation(*alloc_id, ctx);
+                    CILNode::LoadGlobalAllocPtr { alloc_id, tpe } => {
+                        *node = add_allocation(*alloc_id, ctx, *tpe);
                     }
                     CILNode::PointerToConstValue(bytes) => {
                         *node =

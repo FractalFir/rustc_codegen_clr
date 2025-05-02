@@ -65,7 +65,7 @@ impl<'tcx, 'asm> MethodCompileCtx<'tcx, 'asm> {
         }
     }
     pub fn span(&self) -> Span {
-        self.span.unwrap()
+        self.span.unwrap_or(Span::default())
     }
     pub fn tcx_and_asm(&mut self) -> (TyCtxt<'tcx>, &mut Assembly) {
         (self.tcx, self.asm)

@@ -1296,12 +1296,23 @@ impl CExporter {
         let mut delayed_defs: FxHashSet<ClassDefIdx> = asm.iter_class_def_ids().cloned().collect();
         let mut delayed_defs_copy: FxHashSet<ClassDefIdx> = FxHashSet::default();
         for (const_data, idx) in asm.const_data.1.iter() {
-            let data: String = const_data
-                .iter()
-                .map(|u| format!("{u}"))
-                .intersperse(",".into())
-                .collect();
+            let data: String = match str::from_utf8(const_data) {
+                Ok(s)
+                    if asm.char_is_u8()
+                        && s.chars().all(|c| {
+                            c.is_ascii_graphic() || matches!(c, '\0' | ' ' | '\n' | '\t' | '\r')
+                        }) =>
+                {
+                    format!("{s:?}")
+                }
+                Ok(_) | Err(_) => const_data
+                    .iter()
+                    .map(|u| format!("{u}"))
+                    .intersperse(",".into())
+                    .collect(),
+            };
             let encoded = encode(idx.inner() as u64);
+
             writeln!(type_defs, "uint8_t c_{encoded}[] = {{{data}}};")?;
         }
         // Ensure RustVoid present

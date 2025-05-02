@@ -171,7 +171,7 @@ impl<'a> Iterator for CILIterMut<'a> {
                     | CILNode::LoadAddresOfTMPLocal
                     | CILNode::LoadTMPLocal
                     | CILNode::LocAllocAligned { tpe: _, align: _ }
-                    | CILNode::LoadGlobalAllocPtr { alloc_id: _ }
+                    | CILNode::LoadGlobalAllocPtr { .. }
                     | CILNode::PointerToConstValue(_)
                     | CILNode::GetException
                     | CILNode::V2(_) => {

@@ -287,4 +287,12 @@ impl Type {
             None
         }
     }
+
+    /// Returns `true` if the type is [`Ptr`].
+    ///
+    /// [`Ptr`]: Type::Ptr
+    #[must_use]
+    pub fn is_ptr(&self) -> bool {
+        matches!(self, Self::Ptr(..))
+    }
 }

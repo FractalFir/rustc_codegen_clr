@@ -444,7 +444,7 @@ pub fn add_item<'tcx>(
                 }
             }
 
-            crate::static_data::add_allocation(alloc_id_to_u64(alloc_id), &mut ctx);
+            crate::static_data::add_static(stotic, &mut ctx);
 
             drop(static_compile_timer);
 

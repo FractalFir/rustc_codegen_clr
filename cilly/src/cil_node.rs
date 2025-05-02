@@ -4,6 +4,7 @@ use crate::cilnode::MethodKind;
 use crate::v2::method::LocalDef;
 
 use crate::FieldDesc;
+use crate::IntoAsmIndex;
 use crate::{
     call,
     cil_root::CILRoot,
@@ -137,6 +138,7 @@ pub enum CILNode {
     LdcF32(HashableF32),
     LoadGlobalAllocPtr {
         alloc_id: u64,
+        tpe: Interned<Type>,
     },
     ConvU8(Box<Self>),
     ConvU16(Box<Self>),
@@ -225,6 +227,15 @@ pub enum CILNode {
 }
 
 impl CILNode {
+    pub fn global_alloc_ptr(
+        alloc_id: u64,
+        tpe: impl IntoAsmIndex<Interned<Type>>,
+        asm: &mut Assembly,
+    ) -> Self {
+        let tmp = tpe.into_idx(asm);
+        //assert!(!asm[tmp].is_ptr(), "{}", asm[tmp].mangle(asm));
+        Self::LoadGlobalAllocPtr { alloc_id, tpe: tmp }
+    }
     pub fn stack_addr(val: Self, tpe_idx: Interned<Type>, _asm: &mut Assembly) -> Self {
         CILNode::TemporaryLocal(Box::new((
             tpe_idx,
@@ -459,7 +470,7 @@ impl CILNode {
             Self::LocAllocAligned {..}=>(),
             Self::CastPtr { val, new_ptr: _ }=>val.allocate_tmps(curr_loc, locals),
             Self:: PointerToConstValue(_arr)=>(),
-            Self::LoadGlobalAllocPtr { alloc_id: _ } => (),
+            Self::LoadGlobalAllocPtr { alloc_id: _,tpe:_ } => (),
             Self::LDLoc(_) |
             Self::LDArg(_) |
             Self::LDLocA(_)|

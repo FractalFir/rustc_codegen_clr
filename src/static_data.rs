@@ -8,21 +8,20 @@ use cilly::{
     cilnode::MethodKind,
     method::{Method, MethodType},
     utilis::encode,
-    Access, Assembly, Const, FnSig, Int, IntoAsmIndex, MethodDef, MethodDefIdx, MethodRef,
-    StaticFieldDesc, Type,
+    Access, Assembly, Const, FnSig, Int, Interned, IntoAsmIndex, MethodDef, MethodDefIdx,
+    MethodRef, StaticFieldDesc, Type,
 };
 use rustc_codegen_clr_call::CallInfo;
 use rustc_codegen_clr_ctx::function_name;
 pub use rustc_codegen_clr_ctx::MethodCompileCtx;
-use rustc_codegen_clr_type::GetTypeExt;
+use rustc_codegen_clr_type::{r#type::fixed_array, GetTypeExt};
+use rustc_codgen_clr_operand::constant::static_ty;
 use rustc_middle::{
     mir::interpret::{AllocId, Allocation, GlobalAlloc},
-    ty::{Instance, List, Ty, TyCtxt, TypingEnv},
+    ty::{Instance, List, TypingEnv},
 };
 use rustc_span::def_id::DefId;
-pub fn static_ty<'tcx>(def_id: DefId, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
-    tcx.type_of(def_id).instantiate_identity()
-}
+
 pub fn add_static(def_id: DefId, ctx: &mut MethodCompileCtx<'_, '_>) -> CILNode {
     let main_module_id = ctx.main_module();
     let alloc = ctx.tcx().eval_static_initializer(def_id).unwrap();
@@ -40,6 +39,7 @@ pub fn add_static(def_id: DefId, ctx: &mut MethodCompileCtx<'_, '_>) -> CILNode 
         .tcx()
         .symbol_name(Instance::new(def_id, List::empty()))
         .to_string();
+
     let sfld = ctx.add_static(
         tpe,
         symbol.clone(),
@@ -62,19 +62,67 @@ pub fn add_static(def_id: DefId, ctx: &mut MethodCompileCtx<'_, '_>) -> CILNode 
 
     ptr
 }
-/// Adds a static field and initialized for allocation represented by `alloc_id`.
-pub fn add_allocation(alloc_id: u64, ctx: &mut MethodCompileCtx<'_, '_>) -> CILNode {
-    let uint8_ptr = ctx.nptr(Type::Int(Int::U8));
-    let main_module_id = ctx.main_module();
-    let (thread_local, const_allocation) = match ctx
+fn alloc_default_type(alloc_id: u64, ctx: &mut MethodCompileCtx<'_, '_>) -> Type {
+    let alloc = match ctx
         .tcx()
         .global_alloc(AllocId(alloc_id.try_into().expect("0 alloc id?")))
     {
-        GlobalAlloc::Memory(alloc) => (false, alloc),
+        GlobalAlloc::Memory(alloc) => alloc,
+        GlobalAlloc::Static(def_id) => return ctx.type_from_cache(static_ty(def_id, ctx.tcx())),
+        GlobalAlloc::VTable(..) => {
+            todo!()
+        }
+        GlobalAlloc::Function { .. } => {
+            todo!()
+        }
+    };
+    let tpe = match alloc.0 .0.align.bytes() {
+        ..1 => Int::U8,
+        ..2 => Int::U16,
+        ..4 => Int::U32,
+        ..8 => Int::U64,
+        _ => {
+            ctx.tcx().dcx().span_warn(
+                ctx.span(),
+                format!(
+                    "Alloc of align {} required, but that can't be guranteed!",
+                    alloc.0 .0.align.bytes()
+                ),
+            );
+            Int::U64
+        }
+    };
+    let arr_size = alloc.0.len() as u64;
+    if arr_size == 0 {
+        return Type::Void;
+    }
+    let size = tpe.size().unwrap_or(8) as u64;
+    let tpe = fixed_array(
+        ctx,
+        Type::Int(tpe),
+        arr_size.div_ceil(size),
+        arr_size.next_multiple_of(size),
+        tpe.size().unwrap_or(8) as u64,
+    );
+    Type::ClassRef(tpe)
+}
+/// Adds a static field and initialized for allocation represented by `alloc_id`.
+pub fn add_allocation(
+    alloc_id: u64,
+    ctx: &mut MethodCompileCtx<'_, '_>,
+    tpe: Interned<Type>,
+) -> CILNode {
+    let uint8_ptr = ctx.nptr(Type::Int(Int::U8));
+    let main_module_id = ctx.main_module();
+    let const_allocation = match ctx
+        .tcx()
+        .global_alloc(AllocId(alloc_id.try_into().expect("0 alloc id?")))
+    {
+        GlobalAlloc::Memory(alloc) => alloc,
         GlobalAlloc::Static(def_id) => return add_static(def_id, ctx),
         GlobalAlloc::VTable(..) => {
             //TODO: handle VTables
-            let alloc_fld: IString = format!("al_{alloc_id:x}").into();
+            let alloc_fld: IString = format!("v_{alloc_id:x}").into();
 
             let field_desc = StaticFieldDesc::new(
                 *ctx.main_module(),
@@ -86,7 +134,7 @@ pub fn add_allocation(alloc_id: u64, ctx: &mut MethodCompileCtx<'_, '_>) -> CILN
         }
         GlobalAlloc::Function { .. } => {
             //TODO: handle constant functions
-            let alloc_fld: IString = format!("al_{alloc_id:x}").into();
+            let alloc_fld: IString = format!("f_{alloc_id:x}").into();
             let field_desc = StaticFieldDesc::new(
                 *ctx.main_module(),
                 ctx.alloc_string(alloc_fld.clone()),
@@ -107,148 +155,45 @@ pub fn add_allocation(alloc_id: u64, ctx: &mut MethodCompileCtx<'_, '_>) -> CILN
     if const_allocation.len() == 0 {
         return CILNode::V2(ctx.alloc_node(Const::USize(align)));
     }
+    // Check if const literal can be used
+    if const_allocation.provenance().ptrs().is_empty() && align <= 1 {
+        return CILNode::V2(ctx.bytebuffer(bytes, Int::U8));
+    }
     // Alloc ids are *not* unique across all crates. Adding the hash here ensures we don't overwrite allocations during linking
     // TODO:consider using something better here / making the hashes stable.
     let byte_hash = calculate_hash(&bytes);
     match (align, bytes.len()) {
-        // Assumes this constant is not a pointer.
-        (0..=1, len @ 1) | (0..=2, len @ 1..=2) | (0..=4, len @ 1..=4) | (0..=8, len @ 1..=16)
-            if len <= ctx.max_static_size() =>
-        {
+        _ => {
             let alloc_name: IString = format!(
-                "s_{}_{}_{}_{thread_local}",
+                "al_{}_{}_{}_{}",
                 encode(alloc_id),
                 encode(byte_hash),
+                encode(tpe.inner().into()),
                 const_allocation.len()
             )
             .into();
             let name = ctx.alloc_string(alloc_name.clone());
-            let tpe: Int = Int::from_size_sign(
-                u8::try_from(bytes.len()).unwrap().next_power_of_two(),
-                false,
-            );
-            let field_desc = StaticFieldDesc::new(*ctx.main_module(), name, cilly::Type::Int(tpe));
+            let field_desc = StaticFieldDesc::new(*ctx.main_module(), name, ctx[tpe]);
             // Currently, all static fields are in one module. Consider spliting them up.
+
             let main_module = ctx.class_mut(main_module_id);
+
             if main_module.has_static_field(name, field_desc.tpe()) {
                 return CILNode::AddressOfStaticField(Box::new(field_desc));
             }
-            let cst: Const = tpe.from_bytes(bytes);
-            let field = ctx.alloc_sfld(field_desc);
+            let tpe = ctx[tpe].clone();
+            ctx.add_static(tpe, &*alloc_name, false, main_module_id, None, false);
 
-            let val = ctx.alloc_node(cst);
-            let mut roots = if thread_local || len > 8 {
-                ctx.add_static(
-                    cilly::Type::Int(tpe),
-                    &*alloc_name,
-                    thread_local,
-                    main_module_id,
-                    None,
-                    false,
-                );
-                vec![ctx.alloc_root(cilly::CILRoot::SetStaticField { field, val })]
-            } else {
-                ctx.add_static(
-                    cilly::Type::Int(tpe),
-                    &*alloc_name,
-                    thread_local,
-                    main_module_id,
-                    Some(cst),
-                    false,
-                );
-                vec![]
-            };
-
-            let addr = CILNode::AddressOfStaticField(Box::new(field_desc));
-            for (offset, prov) in const_allocation.provenance().ptrs().iter() {
-                let offset = u32::try_from(offset.bytes_usize()).unwrap();
-                // Check if this allocation is a function
-                let reloc_target_alloc = ctx.tcx().global_alloc(prov.alloc_id());
-                if let GlobalAlloc::Function {
-                    instance: finstance,
-                } = reloc_target_alloc
-                {
-                    // If it is a function, patch its pointer up.
-
-                    let call_info = CallInfo::sig_from_instance_(finstance, ctx);
-                    let function_name = function_name(ctx.tcx().symbol_name(finstance));
-                    let mref = MethodRef::new(
-                        *ctx.main_module(),
-                        ctx.alloc_string(function_name),
-                        ctx.alloc_sig(call_info.sig().clone()),
-                        MethodKind::Static,
-                        vec![].into(),
-                    );
-                    let st_ind = &CILRoot::STIndISize(
-                        (addr.clone() + CILNode::V2(ctx.alloc_node(Const::USize(offset.into()))))
-                            .cast_ptr(ctx.nptr(Type::Int(Int::USize))),
-                        CILNode::LDFtn(ctx.alloc_methodref(mref)).cast_ptr(Type::Int(Int::USize)),
-                    );
-                    let root = cilly::CILRoot::from_v1(st_ind, ctx);
-                    roots.push(ctx.alloc_root(root));
-                } else {
-                    let ptr_alloc = add_allocation(prov.alloc_id().0.into(), ctx);
-                    let root = cilly::CILRoot::from_v1(
-                        &CILRoot::STIndISize(
-                            (addr.clone()
-                                + CILNode::V2(ctx.alloc_node(Const::USize(offset.into()))))
-                            .cast_ptr(ctx.nptr(Type::Int(Int::USize))),
-                            ptr_alloc.cast_ptr(Type::Int(Int::USize)),
-                        ),
-                        ctx,
-                    );
-                    roots.push(ctx.alloc_root(root));
-                }
-            }
-            if thread_local {
-                ctx.add_tcctor(&roots);
-            } else {
-                ctx.add_cctor(&roots);
-            }
-            CILNode::AddressOfStaticField(Box::new(field_desc))
-        }
-        _ => {
-            let tl = if thread_local { "t" } else { "g" };
-            let alloc_name: IString = format!(
-                "al_{}_{}_{}_{tl}",
-                encode(alloc_id),
-                encode(byte_hash),
-                const_allocation.len()
-            )
-            .into();
-            let name = ctx.alloc_string(alloc_name.clone());
-            let field_desc =
-                StaticFieldDesc::new(*ctx.main_module(), name, ctx.nptr(Type::Int(Int::U8)));
-            // Currently, all static fields are in one module. Consider spliting them up.
-            let main_module = ctx.class_mut(main_module_id);
-            if main_module.has_static_field(name, field_desc.tpe()) {
-                return CILNode::LDStaticField(Box::new(field_desc));
-            }
-            ctx.add_static(
-                uint8_ptr,
-                &*alloc_name,
-                thread_local,
-                main_module_id,
-                None,
-                false,
-            );
-            let align: u64 = const_allocation.align.bytes().max(1);
-            let ptr = alloc_buff(align, ctx, const_allocation.len());
+            let ptr =
+                CILNode::AddressOfStaticField(Box::new(field_desc)).cast_ptr(ctx.nptr(Int::U8));
             let initialzer: MethodDefIdx =
-                allocation_initializer_method(const_allocation, &alloc_name, ctx, ptr, false);
+                allocation_initializer_method(const_allocation, &alloc_name, ctx, ptr, true);
 
             // Calls the static initialzer, and sets the static field to the returned pointer.
-            let val = ctx.alloc_node(cilly::CILNode::call(*initialzer, []));
+            let root = ctx.alloc_root(cilly::CILRoot::call(*initialzer, []));
+            ctx.add_cctor(&[root]);
 
-            let field = ctx.alloc_sfld(field_desc);
-            let root = ctx.alloc_root(cilly::CILRoot::SetStaticField { field, val });
-            if thread_local {
-                ctx.add_tcctor(&[root]);
-            } else {
-                ctx.add_cctor(&[root]);
-            }
-
-            CILNode::LDStaticField(Box::new(field_desc))
+            CILNode::AddressOfStaticField(Box::new(field_desc))
         }
     }
 }
@@ -359,7 +304,9 @@ fn allocation_initializer_method(
                     .into(),
                 );
             } else {
-                let ptr_alloc = add_allocation(prov.alloc_id().0.into(), ctx);
+                let tpe = alloc_default_type(prov.alloc_id().0.into(), ctx);
+                let tpe = ctx.alloc_type(tpe);
+                let ptr_alloc = add_allocation(prov.alloc_id().0.into(), ctx, tpe);
 
                 trees.push(
                     CILRoot::STIndISize(

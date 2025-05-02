@@ -327,13 +327,14 @@ pub fn get_type<'tcx>(ty: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_>) -> Typ
     }
 }
 //
-fn fixed_array(
+pub fn fixed_array(
     asm: &mut Assembly,
     element: Type,
     length: u64,
     arr_size: u64,
     align: u64,
 ) -> Interned<ClassRef> {
+    assert_ne!(arr_size, 0);
     // Get the reference to the array class
     let cref = ClassRef::fixed_array(element, length, asm);
 

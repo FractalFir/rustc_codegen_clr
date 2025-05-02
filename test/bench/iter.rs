@@ -1,19 +1,15 @@
-use std::ffi::c_int;
 use std::ffi::c_char;
+use std::ffi::c_int;
 use std::hint::black_box;
 extern "C" {
     fn printf(fmt: *const c_char, ...) -> c_int;
 }
-fn bench_for_each_chain_fold<const BIG:u32>() -> u32 {
+fn bench_for_each_chain_fold<const BIG: u32>() -> u32 {
     let mut acc = 0;
-    unsafe{printf(c"Callin".as_ptr())};
-    unsafe{printf(c"g `fol".as_ptr())};
-    unsafe{printf(c"d` %d".as_ptr(),BIG)};
-    unsafe{printf(c" time".as_ptr())};
-    unsafe{printf(c"s\n".as_ptr())};
+    unsafe { printf(c"Calling `fold` %d times\n".as_ptr(), BIG) };
     let iter = (0..BIG).chain(0..BIG).map(black_box);
     for_each_fold(iter, |x| acc += x);
-    unsafe{printf(c"DONE!\n".as_ptr())};
+    unsafe { printf(c"DONE!\n".as_ptr()) };
     acc
 }
 fn for_each_fold<I, F>(iter: I, mut f: F)
