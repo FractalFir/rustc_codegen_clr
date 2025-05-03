@@ -167,7 +167,7 @@ pub fn atomic_and(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly)
             let cilnode = call!(asm.alloc_methodref(mref), [addr, addend]);
             cilnode
         }
-        Type::Int(Int::USize | Int::ISize) => {
+        Type::Int(Int::USize) => {
             let usize_ref = asm.nref(Type::Int(Int::USize));
             let mref = MethodRef::new(
                 *asm.main_module(),
@@ -178,6 +178,24 @@ pub fn atomic_and(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly)
             );
             let cilnode = call!(asm.alloc_methodref(mref), [addr, addend]);
             cilnode
+        }
+        Type::Int(Int::ISize) => {
+            let usize_ref = asm.nref(Type::Int(Int::USize));
+            let mref = MethodRef::new(
+                *asm.main_module(),
+                asm.alloc_string("atomic_and_usize"),
+                asm.sig([usize_ref, Type::Int(Int::USize)], Type::Int(Int::USize)),
+                MethodKind::Static,
+                vec![].into(),
+            );
+            let cilnode = call!(
+                asm.alloc_methodref(mref),
+                [
+                    addr.cast_ptr(asm.nref(Type::Int(Int::USize))),
+                    addend.cast_ptr(Type::Int(Int::USize))
+                ]
+            );
+            cilnode.cast_ptr(Type::Int(Int::ISize))
         }
         Type::Ptr(inner) => {
             let usize_ref = asm.nref(Type::Int(Int::USize));

@@ -6,6 +6,7 @@ extern crate rustc_driver;
 extern crate rustc_middle;
 extern crate rustc_span;
 pub mod constant;
+pub mod static_data;
 use cilly::Type;
 use cilly::cil_node::CILNode;
 use rustc_codegen_clr_ctx::MethodCompileCtx;
@@ -39,7 +40,7 @@ pub fn operand_address<'tcx>(
             CILNode::LdObj {
                 ptr: Box::new(ptr),
                 obj: Box::new(local_type),
-            } //operand.ty(ctx.body(), ctx.tcx())
+            }
         }
     }
 }

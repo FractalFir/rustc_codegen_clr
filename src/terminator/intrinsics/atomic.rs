@@ -90,7 +90,7 @@ pub fn cxchg<'tcx>(
     destination: &Place<'tcx>,
 
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-) -> CILRoot {
+) -> [CILRoot; 2] {
     let interlocked = ClassRef::interlocked(ctx);
     // *T
     let dst = handle_operand(&args[0].node, ctx);

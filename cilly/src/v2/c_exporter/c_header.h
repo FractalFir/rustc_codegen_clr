@@ -23,7 +23,9 @@
 #endif
 #include <stdlib.h>
 #include <string.h>
+#ifndef __SDCC
 #include <math.h>
+#endif
 #ifdef __LCC__
 #define inline
 #endif
@@ -379,9 +381,11 @@ static inline int32_t System_Numerics_BitOperations_LeadingZeroCountusizei32(uin
 #define System_Numerics_BitOperations_PopCountusizei32(val) __builtin_popcountll((uint64_t)val)
 #define System_Numerics_BitOperations_PopCountu32i32(val) __builtin_popcountll((uint32_t)val)
 #define System_Numerics_BitOperations_PopCountu64i32(val) __builtin_popcountll((uint64_t)val)
+#ifndef __SDCC
 static inline __uint128_t System_UInt128_PopCountu128u128(__uint128_t val) {
     return __builtin_popcountll((uint64_t)val) +  __builtin_popcountll((uint64_t)(val>>64)); 
 }
+#endif
 
 #define System_Console_WriteLinev() printf("\n")
 #define System_Console_WriteLinestv(msg) printf("%s\n", msg)
@@ -592,7 +596,6 @@ static inline float System_Single_Expf32f32(float input){
 static inline double System_Double_Expf64f64(double input){
     return exp(input);
 }
-#endif 
 static inline float System_Single_Log2f32f32(float input){
     return log2f(input);
 }
@@ -611,6 +614,7 @@ static inline float System_Single_Logf32f32(float input){
 static inline float System_Double_Logf64f64(float input){
     return log(input);
 }
+#endif 
 #define System_Math_Roundf64f64(input) round(input)
 #define System_Math_Floorf64f64(input) floor(input)
 #define System_Math_Sqrtf64f64(input) sqrt(input)

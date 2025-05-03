@@ -186,14 +186,6 @@ impl Method {
     pub fn locals(&self) -> &[(Option<Interned<IString>>, Interned<Type>)] {
         &self.locals
     }
-    /// Returns the list of external calls this function preforms. Calls may repeat.
-    // TODO: make this not call `into_ops`
-    pub fn calls(&self) -> impl Iterator<Item = Interned<MethodRef>> + '_ {
-        self.blocks
-            .iter()
-            .flat_map(|block| block.iter_cil())
-            .call_sites()
-    }
 
     /// Returns a call site that describes this method.
     pub fn call_site(&self, asm: &mut crate::Assembly) -> Interned<MethodRef> {

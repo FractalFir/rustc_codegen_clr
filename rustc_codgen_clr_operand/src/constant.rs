@@ -19,6 +19,8 @@ use rustc_middle::{
     ty::{FloatTy, IntTy, Ty, TyCtxt, TyKind, UintTy},
 };
 use rustc_span::def_id::DefId;
+
+use crate::static_data::add_allocation;
 pub fn handle_constant<'tcx>(
     constant_op: &ConstOperand<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
@@ -83,7 +85,7 @@ fn create_const_from_data<'tcx>(
         }
     }
 
-    let ptr = CILNode::global_alloc_ptr(alloc_id.0.into(), tpe_idx, ctx);
+    let ptr = add_allocation(alloc_id.0.into(), ctx, tpe_idx);
 
     let tpe_ptr = ctx.nptr(tpe);
     CILNode::LdObj {
@@ -214,14 +216,11 @@ fn load_scalar_ptr(
                     MethodKind::Static,
                     vec![].into(),
                 );
-                return CILNode::stack_addr(
-                    CILNode::Call(Box::new(CallOpArgs {
-                        args: Box::new([]),
-                        site: ctx.alloc_methodref(mref),
-                        is_pure: IsPure::NOT,
-                    })),
-                    ctx.alloc_type(u8_ptr_ptr),
-                    ctx,
+                let mref = ctx.alloc_methodref(mref);
+                let environ = ctx.alloc_node(cilly::v2::CILNode::call(mref, []));
+                let environ = ctx.annon_const(environ);
+                return CILNode::V2(
+                    ctx.alloc_node(cilly::v2::CILNode::LdStaticFieldAdress(environ)),
                 );
             }
             let attrs = ctx.tcx().codegen_fn_attrs(def_id);
@@ -229,8 +228,8 @@ fn load_scalar_ptr(
             if attrs.import_linkage.is_some() {
                 // TODO: this could cause issues if the pointer to the static is not imediatly dereferenced.
                 let site = get_fn_from_static_name(&name, ctx);
-                let ptr_sig = Type::FnPtr(ctx[site].sig());
-                return CILNode::stack_addr(CILNode::LDFtn(site), ctx.alloc_type(ptr_sig), ctx);
+                let cst = ctx.annon_const(cilly::v2::CILNode::LdFtn(site));
+                return CILNode::V2(ctx.alloc_node(cilly::v2::CILNode::LdStaticFieldAdress(cst)));
             }
             if let Some(section) = attrs.link_section {
                 panic!("static {name} requires special linkage in section {section:?}");
@@ -242,7 +241,7 @@ fn load_scalar_ptr(
             //def_id.ty();
             let _memory = ctx.tcx().reserve_and_set_memory_alloc(alloc);
             let alloc_id = alloc_id.alloc_id().0.into();
-            CILNode::global_alloc_ptr(alloc_id, tpe, ctx)
+            add_allocation(alloc_id, ctx, tpe)
         }
         GlobalAlloc::Memory(const_allocation) => {
             if offset.bytes() != 0 {
@@ -294,7 +293,7 @@ fn alloc_ptr<'tcx>(
     let (ptr, align) = alloc_ptr_unaligned(alloc_id, const_alloc, ctx, tpe);
     // If aligement is small enough to be *guaranteed*, and no pointers are present.
     if align.is_some_and(|align| align <= ctx.const_align()) {
-        CILNode::global_alloc_ptr(alloc_id.0.into(), tpe, ctx)
+        add_allocation(alloc_id.0.into(), ctx, tpe)
     } else {
         ptr
     }
@@ -335,7 +334,7 @@ fn alloc_ptr_unaligned<'tcx>(
             )
         }
     } else {
-        (CILNode::global_alloc_ptr(alloc_id.0.into(), tpe, ctx), None)
+        (add_allocation(alloc_id.0.into(), ctx, tpe), None)
     }
 }
 fn load_const_scalar<'tcx>(
@@ -629,5 +628,5 @@ pub fn get_vtable<'tcx>(
         8,
     );
     let tpe = fx.alloc_type(Type::ClassRef(tpe));
-    CILNode::global_alloc_ptr(alloc_id.0.get(), tpe, fx)
+    add_allocation(alloc_id.0.get(), fx, tpe)
 }

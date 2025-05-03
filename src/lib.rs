@@ -121,8 +121,6 @@ mod fn_ctx;
 pub mod function_sig;
 /// Interop type handling.
 mod interop;
-/// A representation of a .NET method
-pub mod method;
 pub mod native_pastrough;
 /// Handles a MIR operand.
 mod operand;
@@ -130,7 +128,6 @@ mod operand;
 mod rvalue;
 /// Code dealing with truning an individual MIR statement into CIL ops.
 pub mod statement;
-mod static_data;
 /// Converts a terminator of a basic block into CIL ops.
 mod terminator;
 /// Code related to types.

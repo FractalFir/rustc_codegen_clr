@@ -20,6 +20,7 @@ use rustc_codegen_clr_call::CallInfo;
 use rustc_codegen_clr_ctx::function_name;
 pub use rustc_codegen_clr_ctx::MethodCompileCtx;
 use rustc_codegen_clr_type::{adt::field_descrptor, r#type::get_type, utilis::is_zst, GetTypeExt};
+use rustc_codgen_clr_operand::static_data::add_static;
 use rustc_middle::mir::mono::Linkage;
 use rustc_middle::{
     mir::{interpret::GlobalAlloc, mono::MonoItem, Local, LocalDecl, Statement, Terminator},
@@ -317,7 +318,6 @@ pub fn add_fn<'tcx, 'asm, 'a: 'asm>(
         arg_names,
         ctx,
     );
-    crate::method::resolve_global_allocations(&mut method, ctx);
 
     let main_module = ctx.main_module();
     let mut method = MethodDef::from_v1(&method, ctx, main_module);
@@ -444,7 +444,7 @@ pub fn add_item<'tcx>(
                 }
             }
 
-            crate::static_data::add_static(stotic, &mut ctx);
+            add_static(stotic, &mut ctx);
 
             drop(static_compile_timer);
 

@@ -136,10 +136,7 @@ pub enum CILNode {
     CallVirt(Box<CallOpArgs>),
     LdcF64(HashableF64),
     LdcF32(HashableF32),
-    LoadGlobalAllocPtr {
-        alloc_id: u64,
-        tpe: Interned<Type>,
-    },
+ 
     ConvU8(Box<Self>),
     ConvU16(Box<Self>),
     ConvU32(Box<Self>),
@@ -163,9 +160,6 @@ pub enum CILNode {
     Gt(Box<Self>, Box<Self>),
     /// Compares two operands, returning true if lhs < rhs. Unsigned for intigers, unordered(in respect to NaNs) for floats.
     GtUn(Box<Self>, Box<Self>),
-    TemporaryLocal(Box<(Interned<Type>, Box<[CILRoot]>, Self)>),
-
-    SubTrees(Box<(Box<[CILRoot]>, Box<Self>)>),
     LoadAddresOfTMPLocal,
     LoadTMPLocal,
     LDFtn(Interned<MethodRef>),
@@ -196,7 +190,6 @@ pub enum CILNode {
         arr: Box<Self>,
         idx: Box<Self>,
     },
-    PointerToConstValue(Box<u128>),
 
     /// Tells the codegen a pointer value type is changed. Used during verification, to implement things like`transmute`.
     CastPtr {
@@ -227,21 +220,10 @@ pub enum CILNode {
 }
 
 impl CILNode {
-    pub fn global_alloc_ptr(
-        alloc_id: u64,
-        tpe: impl IntoAsmIndex<Interned<Type>>,
-        asm: &mut Assembly,
-    ) -> Self {
-        let tmp = tpe.into_idx(asm);
-        //assert!(!asm[tmp].is_ptr(), "{}", asm[tmp].mangle(asm));
-        Self::LoadGlobalAllocPtr { alloc_id, tpe: tmp }
-    }
-    pub fn stack_addr(val: Self, tpe_idx: Interned<Type>, _asm: &mut Assembly) -> Self {
-        CILNode::TemporaryLocal(Box::new((
-            tpe_idx,
-            [CILRoot::SetTMPLocal { value: val }].into(),
-            CILNode::LoadAddresOfTMPLocal,
-        )))
+    pub fn stack_addr(val: Self, _: Interned<Type>, asm: &mut Assembly) -> Self {
+        let val = crate::v2::CILNode::from_v1(&val, asm);
+        let sfld = asm.annon_const(val);
+        CILNode::V2(asm.alloc_node(crate::v2::CILNode::LdStaticFieldAdress(sfld)))
     }
     pub fn ovf_check_tuple(
         asm: &mut Assembly,
@@ -258,26 +240,6 @@ impl CILNode {
             site,
             is_pure: IsPure::PURE,
         }))
-        /*
-                let item2 = asm.alloc_string("Item2");
-        let item1 = asm.alloc_string("Item1");
-        CILNode::TemporaryLocal(Box::new((
-            asm.alloc_type(tuple),
-            [
-                CILRoot::SetField {
-                    addr: Box::new(CILNode::LoadAddresOfTMPLocal),
-                    value: Box::new(out_of_range),
-                    desc: asm.alloc_field(crate::FieldDesc::new(tuple, item2, Type::Bool)),
-                },
-                CILRoot::SetField {
-                    addr: Box::new(CILNode::LoadAddresOfTMPLocal),
-                    value: Box::new(val),
-                    desc: asm.alloc_field(crate::FieldDesc::new(tuple, item1, tpe)),
-                },
-            ]
-            .into(),
-            CILNode::LoadTMPLocal,
-        )))*/
     }
     pub fn create_slice(
         slice_tpe: Interned<ClassRef>,
@@ -412,7 +374,7 @@ impl CILNode {
         destination_addr: Self,
         val_desc: Interned<FieldDesc>,
         flag_desc: Interned<FieldDesc>,
-    ) -> CILRoot {
+    ) -> [CILRoot;2] {
         // Set the value of the result.
         let set_val = CILRoot::SetField {
             addr: Box::new(destination_addr.clone()),
@@ -420,22 +382,19 @@ impl CILNode {
             desc: val_desc,
         };
         // Get the result back
-        let val = CILNode::SubTrees(Box::new((
-            [set_val].into(),
-            CILNode::LDField {
-                addr: Box::new(destination_addr.clone()),
-                field: val_desc,
-            }
-            .into(),
-        )));
+        let val = CILNode::LDField {
+            addr: Box::new(destination_addr.clone()),
+            field: val_desc,
+        }
+        ;
 
         let cmp = CILNode::Eq(val.into(), expected.into());
 
-        CILRoot::SetField {
+        [set_val,CILRoot::SetField {
             addr: Box::new(destination_addr.clone()),
             value: Box::new(cmp),
             desc: flag_desc,
-        }
+        }]
     }
     #[track_caller]
     pub fn cast_ptr(self, new_ptr: Type) -> Self {
@@ -468,9 +427,7 @@ impl CILNode {
             Self::GetException=>(),
             Self::LocAlloc{..}=>(),
             Self::LocAllocAligned {..}=>(),
-            Self::CastPtr { val, new_ptr: _ }=>val.allocate_tmps(curr_loc, locals),
-            Self:: PointerToConstValue(_arr)=>(),
-            Self::LoadGlobalAllocPtr { alloc_id: _,tpe:_ } => (),
+            Self::CastPtr { val, new_ptr: _ }=>val.allocate_tmps(curr_loc, locals),      
             Self::LDLoc(_) |
             Self::LDArg(_) |
             Self::LDLocA(_)|
@@ -537,37 +494,8 @@ impl CILNode {
             //Self::Volatile(_) => todo!(),
             Self::Neg(val) |
             Self::Not(val) =>val.allocate_tmps(curr_loc, locals),
-            Self::TemporaryLocal(tmp_loc) => {
-                let tpe = &mut tmp_loc.0;
-                let end_loc = locals.len();
-                locals.push((None,*tpe));
-                let roots = &mut tmp_loc.1;
-                let main = &mut tmp_loc.2;
-                roots.iter_mut().for_each(|tree|tree.allocate_tmps(Some(end_loc as u32), locals));
-                main.allocate_tmps(Some(end_loc as u32), locals);
-                debug_assert!(
-                    !(&*main).into_iter().any(|node| {
-                        matches!(node, crate::cil_iter::CILIterElem::Node(
-                                crate::cil_node::CILNode::TemporaryLocal(_),
-                            ))
-                    }),
-                    "self:{self:?}"
-                );
-                debug_assert!(
-                    !roots.iter().flat_map(|root|root.into_iter()).any(|node| {
-                        matches!(node, crate::cil_iter::CILIterElem::Node(
-                                crate::cil_node::CILNode::TemporaryLocal(_),
-                            ))
-                    }),
-                    "self:{self:?}"
-                );
-                *self=  Self::SubTrees(Box::new((roots.clone(), Box::new(main.clone()))));
-            },
-            Self::SubTrees(sub_trees) =>{
-                let (trees, main) = sub_trees.as_mut();
-                trees.iter_mut().for_each(|arg|arg.allocate_tmps(curr_loc,locals));
-                main.allocate_tmps(curr_loc, locals);
-            }
+            
+          
             Self::LoadAddresOfTMPLocal => *self = Self::LDLocA(curr_loc.expect("Temporary local referenced when none present")),
             Self::LoadTMPLocal =>*self = Self::LDLoc(curr_loc.expect("Temporary local referenced when none present")),
             Self::LDFtn(_) => (),

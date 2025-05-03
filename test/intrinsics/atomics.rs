@@ -49,13 +49,13 @@ fn main() {
 
     let mut tmp = 0xFF_u8;
     unsafe { test_eq!(atomic_nand_u8(&mut tmp, 0x0A_u8), 0xFF_u8) };
-    unsafe{printf(c"%x\n".as_ptr(),tmp as u32)};
+    unsafe { printf(c"%x\n".as_ptr(), tmp as u32) };
     test_eq!(tmp, !(0xFF_u8 & 0x0A_u8));
 
-    let mut arr = [0x12,0xFF,0x45,0x67];
+    let mut arr = [0x12, 0xFF, 0x45, 0x67];
 
     unsafe { test_eq!(atomic_nand_u8(&mut arr[1], 0x0A_u8), 0xFF_u8) };
-    unsafe{printf(c"%x\n".as_ptr(),arr[1] as u32)};
+    unsafe { printf(c"%x\n".as_ptr(), arr[1] as u32) };
 
     test_eq!(arr[0], 0x12);
     test_eq!(arr[1], !(0xFF_u8 & 0x0A_u8));
@@ -67,13 +67,13 @@ fn main() {
     unsafe{printf(c"%x\n".as_ptr(),tmp as u32)};
     test_eq!(tmp, !(0xFF_u16 & 0x0A_u16));*/
 
-
     ptr_bitops_tagging();
     let atomic = core::sync::atomic::AtomicUsize::new(0);
     test_eq!(atomic.load(core::sync::atomic::Ordering::Relaxed), 0);
     let atomic_old = atomic.fetch_add(1, core::sync::atomic::Ordering::Relaxed);
     unsafe { printf(c"atomic_old:%lx\n".as_ptr(), atomic_old as u64) };
     test_eq!(atomic_old, 0);
+    int_and();
 }
 fn ptr_bitops_tagging() {
     #[repr(align(16))]
@@ -150,4 +150,11 @@ fn ptr_add_data() {
 
     test_eq!(atom.fetch_byte_sub(5, SeqCst), bytes_from_n(5));
     test_eq!(atom.load(SeqCst), n);
+}
+#[no_mangle]
+fn int_and() {
+    use std::sync::atomic::AtomicIsize;
+    let x = AtomicIsize::new(0xf731);
+    test_eq!(x.fetch_and(0x137f, SeqCst), 0xf731);
+    test_eq!(x.load(SeqCst), 0xf731 & 0x137f);
 }

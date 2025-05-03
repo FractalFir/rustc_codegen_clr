@@ -113,15 +113,3 @@ macro_rules! assert_morphic {
 pub(crate) fn alloc_id_to_u64(alloc_id: AllocId) -> u64 {
     alloc_id.0.into()
 }
-pub fn align_of<'tcx>(ty: rustc_middle::ty::Ty<'tcx>, tcx: TyCtxt<'tcx>) -> u64 {
-    let layout = tcx
-        .layout_of(PseudoCanonicalInput {
-            typing_env: rustc_middle::ty::TypingEnv::fully_monomorphized(),
-            value: ty,
-        })
-        .expect("Can't get layout of a type.")
-        .layout;
-
-    let align = layout.align.abi;
-    align.bytes()
-}

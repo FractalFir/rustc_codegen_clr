@@ -1406,7 +1406,7 @@ impl CExporter {
         if is_main {
             cmd.args(["-DMAIN_FILE"]);
         }
-
+        cmd.args(env_c_args());
         cmd.arg("-fPIC");
         cmd.arg(c_path).arg("-o").arg(target);
         if !*NO_DEBUG {
@@ -1458,6 +1458,15 @@ impl CExporter {
         Ok(())
     }
 }
+
+fn env_c_args() -> Vec<String> {
+    let Ok(var) = std::env::var("CFLAGS") else {
+        return vec![];
+    };
+    var.split_ascii_whitespace()
+        .map(|s| s.to_string())
+        .collect()
+}
 impl Exporter for CExporter {
     type Error = std::io::Error;
 
@@ -1483,6 +1492,7 @@ impl Exporter for CExporter {
             }
 
             let mut cmd = std::process::Command::new(Self::c_compiler());
+            cmd.args(env_c_args());
             cmd.args(&self.dirs);
 
             cmd.args(&self.libs);

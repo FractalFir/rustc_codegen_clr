@@ -448,7 +448,6 @@ fn main() {
     cilly::builtins::int128::u128_mul_ovf_check(&mut final_assembly, &mut overrides);
     cilly::builtins::f16::generate_f16_ops(&mut final_assembly, &mut overrides, *C_MODE);
     cilly::builtins::atomics::generate_all_atomics(&mut final_assembly, &mut overrides);
-    cilly::builtins::stack_addr(&mut final_assembly, &mut overrides);
     cilly::builtins::transmute(&mut final_assembly, &mut overrides);
     cilly::builtins::create_slice(&mut final_assembly, &mut overrides);
     cilly::builtins::ovf_check_tuple(&mut final_assembly, &mut overrides);
@@ -515,7 +514,7 @@ fn main() {
             true,
             0,
             None,
-            vec![],
+            vec![(Type::Int(Int::I128), float128, Some(0))],
             vec![],
             cilly::Access::Public,
             NonZeroU32::new(16),

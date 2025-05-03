@@ -1,5 +1,7 @@
-use crate::IString;
+use crate::constant::static_ty;
 use cilly::{
+    Access, Assembly, Const, FnSig, Int, Interned, IntoAsmIndex, MethodDef, MethodDefIdx,
+    MethodRef, StaticFieldDesc, Type,
     basic_block::BasicBlock,
     call,
     cil_node::CILNode,
@@ -8,14 +10,11 @@ use cilly::{
     cilnode::MethodKind,
     method::{Method, MethodType},
     utilis::encode,
-    Access, Assembly, Const, FnSig, Int, Interned, IntoAsmIndex, MethodDef, MethodDefIdx,
-    MethodRef, StaticFieldDesc, Type,
 };
 use rustc_codegen_clr_call::CallInfo;
-use rustc_codegen_clr_ctx::function_name;
 pub use rustc_codegen_clr_ctx::MethodCompileCtx;
-use rustc_codegen_clr_type::{r#type::fixed_array, GetTypeExt};
-use rustc_codgen_clr_operand::constant::static_ty;
+use rustc_codegen_clr_ctx::function_name;
+use rustc_codegen_clr_type::{GetTypeExt, align_of, r#type::fixed_array};
 use rustc_middle::{
     mir::interpret::{AllocId, Allocation, GlobalAlloc},
     ty::{Instance, List, TypingEnv},
@@ -33,7 +32,7 @@ pub fn add_static(def_id: DefId, ctx: &mut MethodCompileCtx<'_, '_>) -> CILNode 
     let align = alloc.0.align.bytes().max(1);
     let ty = static_ty(def_id, ctx.tcx());
     let tpe = ctx.type_from_cache(ty);
-    assert_eq!(align, crate::utilis::align_of(ty, ctx.tcx()));
+    assert_eq!(align, align_of(ty, ctx.tcx()));
     assert!(ty.is_sized(ctx.tcx(), TypingEnv::fully_monomorphized()));
     let symbol: String = ctx
         .tcx()
@@ -76,7 +75,7 @@ fn alloc_default_type(alloc_id: u64, ctx: &mut MethodCompileCtx<'_, '_>) -> Type
             todo!()
         }
     };
-    let tpe = match alloc.0 .0.align.bytes() {
+    let tpe = match alloc.0.0.align.bytes() {
         ..1 => Int::U8,
         ..2 => Int::U16,
         ..4 => Int::U32,
@@ -86,7 +85,7 @@ fn alloc_default_type(alloc_id: u64, ctx: &mut MethodCompileCtx<'_, '_>) -> Type
                 ctx.span(),
                 format!(
                     "Alloc of align {} required, but that can't be guranteed!",
-                    alloc.0 .0.align.bytes()
+                    alloc.0.0.align.bytes()
                 ),
             );
             Int::U64
@@ -122,7 +121,7 @@ pub fn add_allocation(
         GlobalAlloc::Static(def_id) => return add_static(def_id, ctx),
         GlobalAlloc::VTable(..) => {
             //TODO: handle VTables
-            let alloc_fld: IString = format!("v_{alloc_id:x}").into();
+            let alloc_fld = format!("v_{alloc_id:x}");
 
             let field_desc = StaticFieldDesc::new(
                 *ctx.main_module(),
@@ -134,7 +133,7 @@ pub fn add_allocation(
         }
         GlobalAlloc::Function { .. } => {
             //TODO: handle constant functions
-            let alloc_fld: IString = format!("f_{alloc_id:x}").into();
+            let alloc_fld = format!("f_{alloc_id:x}");
             let field_desc = StaticFieldDesc::new(
                 *ctx.main_module(),
                 ctx.alloc_string(alloc_fld.clone()),
@@ -164,14 +163,13 @@ pub fn add_allocation(
     let byte_hash = calculate_hash(&bytes);
     match (align, bytes.len()) {
         _ => {
-            let alloc_name: IString = format!(
+            let alloc_name = format!(
                 "al_{}_{}_{}_{}",
                 encode(alloc_id),
                 encode(byte_hash),
                 encode(tpe.inner().into()),
                 const_allocation.len()
-            )
-            .into();
+            );
             let name = ctx.alloc_string(alloc_name.clone());
             let field_desc = StaticFieldDesc::new(*ctx.main_module(), name, ctx[tpe]);
             // Currently, all static fields are in one module. Consider spliting them up.
@@ -200,7 +198,7 @@ pub fn add_allocation(
 pub fn add_const_value(asm: &mut cilly::Assembly, bytes: u128) -> StaticFieldDesc {
     let uint8_ptr = Type::Int(Int::U128);
     let main_module_id = asm.main_module();
-    let alloc_fld: IString = format!("a_{bytes:x}").into();
+    let alloc_fld = format!("a_{bytes:x}");
     let alloc_fld_name = asm.alloc_string(alloc_fld.clone());
 
     let field_desc = StaticFieldDesc::new(*asm.main_module(), alloc_fld_name, Type::Int(Int::U128));

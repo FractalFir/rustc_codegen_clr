@@ -17,7 +17,9 @@ use rustc_codegen_clr_type::{
     utilis::{pointer_to_is_fat, try_resolve_const_size},
     GetTypeExt,
 };
-use rustc_codgen_clr_operand::{handle_operand, is_const_zero, is_uninit, operand_address};
+use rustc_codgen_clr_operand::{
+    handle_operand, is_const_zero, is_uninit, operand_address, static_data::add_allocation,
+};
 use rustc_middle::{
     mir::{CastKind, NullOp, Operand, Place, Rvalue},
     ty::{adjustment::PointerCoercion, GenericArgs, Instance, InstanceKind, Ty, TyKind},
@@ -143,7 +145,7 @@ pub fn handle_rvalue<'tcx>(
                 }
             }
             NullOp::AlignOf => {
-                let algin = crate::utilis::align_of(ctx.monomorphize(*ty), ctx.tcx());
+                let algin = rustc_codegen_clr_type::align_of(ctx.monomorphize(*ty), ctx.tcx());
                 (vec![], CILNode::V2(ctx.alloc_node(Const::USize(algin))))
             }
             NullOp::OffsetOf(fields) => {
@@ -400,10 +402,10 @@ pub fn handle_rvalue<'tcx>(
                 let alloc_id = ctx.tcx().reserve_and_set_static_alloc(*def_id);
                 let rvalue_ty = rvalue.ty(ctx.body(), ctx.tcx());
                 let rvalue_type = ctx.type_from_cache(rvalue_ty);
+                let tpe = ctx.alloc_type(rvalue_type);
                 (
                     vec![],
-                    CILNode::global_alloc_ptr(alloc_id.0.into(), ctx.alloc_type(rvalue_type), ctx)
-                        .cast_ptr(rvalue_type),
+                    add_allocation(alloc_id.0.into(), ctx, tpe).cast_ptr(rvalue_type),
                 )
             }
         }

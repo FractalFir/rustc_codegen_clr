@@ -665,20 +665,7 @@ fn insert_catch_unwind(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
 }
 const ALLOC_CAP: u64 = u32::MAX as u64;
 pub(crate) const UNMANAGED_THREAD_START: &str = "UnmanagedThreadStart";
-/// THIS BUILTIN MUST ALWAYS BE INLINED!
-pub fn stack_addr(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
-    let name = asm.alloc_string("stack_addr");
-    let generator = move |_, asm: &mut Assembly| {
-        let addr = asm.alloc_node(CILNode::LdArgA(0));
-        let ptr = asm.alloc_node(CILNode::RefToPtr(addr));
-        let ret = asm.alloc_root(CILRoot::Ret(ptr));
-        MethodImpl::MethodBody {
-            blocks: vec![BasicBlock::new(vec![ret], 0, None)],
-            locals: vec![],
-        }
-    };
-    patcher.insert(name, Box::new(generator));
-}
+
 pub fn transmute(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
     let name = asm.alloc_string("transmute");
     let generator = move |mref: Interned<MethodRef>, asm: &mut Assembly| {

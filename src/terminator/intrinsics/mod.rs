@@ -254,7 +254,7 @@ pub fn handle_intrinsic<'tcx>(
         | "atomic_cxchg_seqcst_relaxed"
         | "atomic_cxchg_acqrel_relaxed"
         | "atomic_cxchg_relaxed_relaxed"
-        | "atomic_cxchg_acqrel_seqcst" => vec![atomic::cxchg(args, destination, ctx)],
+        | "atomic_cxchg_acqrel_seqcst" => atomic::cxchg(args, destination, ctx).into(),
         "atomic_xsub_release"
         | "atomic_xsub_acqrel"
         | "atomic_xsub_acquire"
@@ -412,7 +412,7 @@ pub fn handle_intrinsic<'tcx>(
                     .as_type()
                     .expect("needs_drop works only on types!"),
             );
-            let align = crate::utilis::align_of(tpe, ctx.tcx());
+            let align = rustc_codegen_clr_type::align_of(tpe, ctx.tcx());
             vec![place_set(
                 destination,
                 conv_usize!(CILNode::V2(ctx.alloc_node(align))),
@@ -794,11 +794,11 @@ pub fn handle_intrinsic<'tcx>(
             )]
         }
         "abort" => vec![CILRoot::throw("Called abort!", ctx)],
-        "const_allocate" => vec![place_set(
-            destination,
-            CILNode::V2(ctx.alloc_node(Const::USize(0))),
-            ctx,
-        )],
+        "const_allocate" => {
+            let null = ctx.alloc_node(Const::USize(0));
+            let null = ctx.cast_ptr(null, Int::U8);
+            vec![place_set(destination, CILNode::V2(null), ctx)]
+        }
         "vtable_size" => vec![vtable::vtable_size(args, destination, ctx)],
         "vtable_align" => vec![vtable::vtable_align(args, destination, ctx)],
         "simd_eq" => {

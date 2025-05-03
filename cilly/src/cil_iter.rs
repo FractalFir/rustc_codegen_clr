@@ -149,9 +149,7 @@ impl<'a> Iterator for CILIter<'a> {
                     | CILNode::LDFtn(_)
                     | CILNode::LDTypeToken(_)
                     | CILNode::LocAllocAligned { tpe: _, align: _ }
-                    | CILNode::LoadGlobalAllocPtr { .. }
                     | CILNode::LoadAddresOfTMPLocal
-                    | CILNode::PointerToConstValue(_)
                     | CILNode::LoadTMPLocal
                     | CILNode::GetException
                     | CILNode::V2(_),
@@ -312,44 +310,7 @@ impl<'a> Iterator for CILIter<'a> {
                         continue;
                     }
                 }
-                CILIterElem::Node(CILNode::SubTrees(rn)) => {
-                    let (roots, node) = rn.as_ref();
-                    match (*idx - 1).cmp(&roots.len()) {
-                        std::cmp::Ordering::Less => {
-                            let root: &CILRoot = &roots[*idx - 1];
-                            *idx += 1;
-                            self.elems.push((0, CILIterElem::Root(root)));
-                        }
-                        std::cmp::Ordering::Equal => {
-                            *idx += 1;
-                            self.elems.push((0, CILIterElem::Node(node)));
-                        }
-                        std::cmp::Ordering::Greater => {
-                            self.elems.pop();
-                        }
-                    }
 
-                    continue;
-                }
-
-                CILIterElem::Node(CILNode::TemporaryLocal(pack)) => {
-                    let (_, roots, node) = pack.as_ref();
-                    match (*idx - 1).cmp(&roots.len()) {
-                        std::cmp::Ordering::Less => {
-                            let root: &CILRoot = &roots[*idx - 1];
-                            *idx += 1;
-                            self.elems.push((0, CILIterElem::Root(root)));
-                        }
-                        std::cmp::Ordering::Equal => {
-                            *idx += 1;
-                            self.elems.push((0, CILIterElem::Node(node)));
-                        }
-                        std::cmp::Ordering::Greater => {
-                            self.elems.pop();
-                        }
-                    }
-                    continue;
-                }
                 CILIterElem::Root(CILRoot::CallI {
                     sig: _,
                     args,

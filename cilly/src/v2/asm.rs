@@ -488,6 +488,27 @@ impl Assembly {
 
         idx
     }
+    pub fn annon_const(
+        &mut self,
+        node: impl IntoAsmIndex<Interned<CILNode>>,
+    ) -> Interned<StaticFieldDesc> {
+        let main_module = self.main_module();
+        let node = node.into_idx(self);
+        let name = format!("n_{}", encode(node.as_bimap_index().get() as u64));
+        let sig = self.sig([], Type::Void);
+        let tpe = self[node].clone().typecheck(sig, &[], self).unwrap();
+        let name_idx = self.alloc_string(name.clone());
+        let field = StaticFieldDesc::new(*main_module, name_idx, tpe);
+        let field = self.alloc_sfld(field);
+        if self[main_module].has_static_field(name_idx, tpe) {
+            return field;
+        }
+        self.add_static(tpe, &name[..], false, main_module, None, false);
+        let init = self.alloc_root(CILRoot::SetStaticField { field, val: node });
+        self.add_cctor(&[init]);
+
+        return field;
+    }
     /// Adds a new class definition to this type
     pub fn class_def(&mut self, def: ClassDef) -> Result<ClassDefIdx, LayoutError> {
         def.layout_check(self)?;
@@ -495,11 +516,13 @@ impl Assembly {
         let cref = self.alloc_class_ref(cref);
 
         if self.class_defs.contains_key(&ClassDefIdx(cref)) {
-            if self[def.name()].contains("core.ffi.c_void") || self[def.name()].contains("RustVoid")
+            if self[def.name()].contains("core.ffi.c_void")
+                || self[def.name()].contains("RustVoid")
+                || &self[def.name()] == "f128"
             {
                 return Ok(ClassDefIdx(cref));
             }
-            panic!()
+            panic!("Invalid class {:?}", &self[def.name()])
         }
         self.class_defs.insert(ClassDefIdx(cref), def.clone());
         Ok(ClassDefIdx(cref))

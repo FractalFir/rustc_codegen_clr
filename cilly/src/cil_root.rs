@@ -255,28 +255,7 @@ impl CILRoot {
             _ => (),
         }
     }
-    #[must_use]
-    pub fn sheed_trees(mut self) -> Vec<Self> {
-        let iter_mut = (&mut self).into_iter();
-        let mut res: Vec<CILRoot> = iter_mut
-            .flat_map(|tree| match tree {
-                crate::cil_iter_mut::CILIterElemMut::Node(node) => match node {
-                    CILNode::SubTrees(tm) => {
-                        let (trees, main) = tm.as_mut();
-                        let vec = trees.to_vec();
-                        let iter = vec.into_iter();
-                        let trees = iter.flat_map(|tree| tree.sheed_trees()).collect();
-                        *node = *main.clone();
-                        trees
-                    }
-                    _ => vec![],
-                },
-                _ => vec![],
-            })
-            .collect();
-        res.push(self);
-        res
-    }
+
     pub fn allocate_tmps(&mut self, curr_loc: Option<u32>, locals: &mut Vec<LocalDef>) {
         match self {
             Self::V2(_) => (),

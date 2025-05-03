@@ -28,15 +28,7 @@ impl CILTree {
     /// Converts a tree with subtrees into multiple trees.
     #[must_use]
     pub fn shed_trees(self) -> Vec<Self> {
-        //let tree: CILRoot = (*self.tree).clone();
-        let tree: CILRoot = self.tree;
-        let trees: Vec<Self> = tree
-            .sheed_trees()
-            .into_iter()
-            .map(std::convert::Into::into)
-            .collect();
-
-        trees
+        vec![self]
     }
     /// Retunrs the root of this tree.
     #[must_use]

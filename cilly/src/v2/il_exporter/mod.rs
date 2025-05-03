@@ -253,7 +253,6 @@ impl ILExporter {
         name: &str,
         sig: Interned<FnSig>,
     ) -> std::io::Result<()> {
-        //assert_ne!(name,"stack_addr", "The builtin 'stack_addr' cilly function must always be inlined, and can't be exported otherwise.");
         match  mimpl{
             MethodImpl::MethodBody { blocks, locals } => {
                 let locals_string:String = locals.iter().map(|(name,tpe)|match name {
