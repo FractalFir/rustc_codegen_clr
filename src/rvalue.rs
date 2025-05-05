@@ -401,6 +401,7 @@ pub fn handle_rvalue<'tcx>(
                 let rvalue_type = ctx.type_from_cache(rvalue_ty);
                 let tpe = ctx.alloc_type(rvalue_type);
                 let ptr = add_allocation(alloc_id.0.into(), ctx, tpe);
+                let tpe = ctx[tpe].pointed_to().unwrap();
                 (vec![], ctx.cast_ptr(ptr, tpe).into())
             }
         }
