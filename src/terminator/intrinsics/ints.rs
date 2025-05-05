@@ -1,7 +1,7 @@
 use crate::assembly::MethodCompileCtx;
 use cilly::{
     and, call,
-    cil_node::CILNode,
+    cil_node::V1Node,
     cil_root::CILRoot,
     conv_i16, conv_i32, conv_i8, conv_isize, conv_u16, conv_u32, conv_u64, conv_u8, rem_un,
     Assembly, Int, Type,
@@ -15,7 +15,7 @@ use rustc_middle::{
     ty::Instance,
 };
 use rustc_span::source_map::Spanned;
-fn ctpop_small_int(asm: &mut cilly::Assembly, operand: CILNode, int: Int) -> CILNode {
+fn ctpop_small_int(asm: &mut cilly::Assembly, operand: V1Node, int: Int) -> V1Node {
     assert!(int.size().is_none_or(|size| size <= 8));
     let mref = MethodRef::new(
         ClassRef::bit_operations(asm),
@@ -147,10 +147,10 @@ pub fn ctlz<'tcx>(
                 ctx,
             );
         }
-        Type::Int(Int::I64 | Int::U64) => CILNode::V2(ctx.alloc_node(0_i32)),
-        Type::Int(Int::I32 | Int::U32) => CILNode::V2(ctx.alloc_node(32_i32)),
-        Type::Int(Int::I16 | Int::U16) => CILNode::V2(ctx.alloc_node(48_i32)),
-        Type::Int(Int::I8 | Int::U8) => CILNode::V2(ctx.alloc_node(56_i32)),
+        Type::Int(Int::I64 | Int::U64) => V1Node::V2(ctx.alloc_node(0_i32)),
+        Type::Int(Int::I32 | Int::U32) => V1Node::V2(ctx.alloc_node(32_i32)),
+        Type::Int(Int::I16 | Int::U16) => V1Node::V2(ctx.alloc_node(48_i32)),
+        Type::Int(Int::I8 | Int::U8) => V1Node::V2(ctx.alloc_node(56_i32)),
         Type::Int(Int::I128) => {
             let mref = MethodRef::new(
                 ClassRef::int_128(ctx),
@@ -196,7 +196,7 @@ pub fn ctlz<'tcx>(
     );
     place_set(
         destination,
-        conv_u32!(CILNode::Sub(
+        conv_u32!(V1Node::Sub(
             Box::new(call!(
                 ctx.alloc_methodref(mref),
                 [conv_u64!(handle_operand(&args[0].node, ctx))]
@@ -249,7 +249,7 @@ pub fn cttz<'tcx>(
                 destination,
                 call!(
                     ctx.alloc_methodref(min),
-                    [value_calc, CILNode::V2(ctx.alloc_node(i8::BITS))]
+                    [value_calc, V1Node::V2(ctx.alloc_node(i8::BITS))]
                 ),
                 ctx,
             )
@@ -277,7 +277,7 @@ pub fn cttz<'tcx>(
                 destination,
                 call!(
                     ctx.alloc_methodref(min),
-                    [value_calc, CILNode::V2(ctx.alloc_node(i16::BITS))]
+                    [value_calc, V1Node::V2(ctx.alloc_node(i16::BITS))]
                 ),
                 ctx,
             )
@@ -305,7 +305,7 @@ pub fn cttz<'tcx>(
                 destination,
                 call!(
                     ctx.alloc_methodref(min),
-                    [value_calc, CILNode::V2(ctx.alloc_node(u8::BITS))]
+                    [value_calc, V1Node::V2(ctx.alloc_node(u8::BITS))]
                 ),
                 ctx,
             )
@@ -333,7 +333,7 @@ pub fn cttz<'tcx>(
                 destination,
                 call!(
                     ctx.alloc_methodref(min),
-                    [value_calc, CILNode::V2(ctx.alloc_node(u16::BITS))]
+                    [value_calc, V1Node::V2(ctx.alloc_node(u16::BITS))]
                 ),
                 ctx,
             )
@@ -416,7 +416,7 @@ pub fn rotate_left<'tcx>(
         _ => todo!("Can't ror {val_tpe:?}"),
     }
 }
-pub fn rol_int(val: CILNode, rot: CILNode, int: Int, asm: &mut cilly::Assembly) -> CILNode {
+pub fn rol_int(val: V1Node, rot: V1Node, int: Int, asm: &mut cilly::Assembly) -> V1Node {
     let mref = MethodRef::new(
         int.class(asm),
         asm.alloc_string("RotateLeft"),
@@ -426,7 +426,7 @@ pub fn rol_int(val: CILNode, rot: CILNode, int: Int, asm: &mut cilly::Assembly) 
     );
     call!(asm.alloc_methodref(mref), [val, rot])
 }
-pub fn ror_int(val: CILNode, rot: CILNode, int: Int, asm: &mut cilly::Assembly) -> CILNode {
+pub fn ror_int(val: V1Node, rot: V1Node, int: Int, asm: &mut cilly::Assembly) -> V1Node {
     let mref = MethodRef::new(
         int.class(asm),
         asm.alloc_string("RotateRight"),
@@ -473,26 +473,26 @@ pub fn rotate_right<'tcx>(
         _ => todo!("Can't ror {val_tpe:?}"),
     }
 }
-pub fn bitreverse_u8(byte: CILNode, asm: &mut Assembly) -> CILNode {
+pub fn bitreverse_u8(byte: V1Node, asm: &mut Assembly) -> V1Node {
     conv_u8!(rem_un!(
         (and!(
-            conv_u64!(byte) * CILNode::V2(asm.alloc_node(0x0002_0202_0202_u64)),
-            CILNode::V2(asm.alloc_node(0x0108_8442_2010_u64))
+            conv_u64!(byte) * V1Node::V2(asm.alloc_node(0x0002_0202_0202_u64)),
+            V1Node::V2(asm.alloc_node(0x0108_8442_2010_u64))
         )),
-        CILNode::V2(asm.alloc_node(1023_u64))
+        V1Node::V2(asm.alloc_node(1023_u64))
     ))
 }
-fn bitreverse_u16(ushort: CILNode, asm: &mut Assembly) -> CILNode {
-    conv_u16!(bitreverse_u8(conv_u8!(ushort.clone()), asm)) * CILNode::V2(asm.alloc_node(256_u16))
+fn bitreverse_u16(ushort: V1Node, asm: &mut Assembly) -> V1Node {
+    conv_u16!(bitreverse_u8(conv_u8!(ushort.clone()), asm)) * V1Node::V2(asm.alloc_node(256_u16))
         + conv_u16!(bitreverse_u8(
-            conv_u8!(CILNode::Div(
+            conv_u8!(V1Node::Div(
                 Box::new(ushort),
-                Box::new(CILNode::V2(asm.alloc_node(256_u16)))
+                Box::new(V1Node::V2(asm.alloc_node(256_u16)))
             )),
             asm
         ))
 }
-pub fn bitreverse_int(val: CILNode, int: Int, asm: &mut cilly::Assembly) -> CILNode {
+pub fn bitreverse_int(val: V1Node, int: Int, asm: &mut cilly::Assembly) -> V1Node {
     let mref = MethodRef::new(
         *asm.main_module(),
         asm.alloc_string(format!("bitreverse_{}", int.as_unsigned().name())),

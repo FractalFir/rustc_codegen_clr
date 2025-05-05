@@ -5,7 +5,7 @@ use crate::v2::method::LocalDef;
 use crate::FieldDesc;
 use crate::{
     call,
-    cil_node::{CILNode, CallOpArgs},
+    cil_node::{V1Node, CallOpArgs},
     AsmString, IString,
 };
 use crate::{Assembly, ClassRef, FnSig, MethodRef, StaticFieldDesc, Type};
@@ -14,65 +14,65 @@ use serde::{Deserialize, Serialize};
 pub enum CILRoot {
     STLoc {
         local: u32,
-        tree: CILNode,
+        tree: V1Node,
     },
     BTrue {
         target: u32,
         sub_target: u32,
-        cond: CILNode,
+        cond: V1Node,
     },
     BFalse {
         target: u32,
         sub_target: u32,
-        cond: CILNode,
+        cond: V1Node,
     },
     BEq {
         target: u32,
         sub_target: u32,
-        a: Box<CILNode>,
-        b: Box<CILNode>,
+        a: Box<V1Node>,
+        b: Box<V1Node>,
     },
     BLt {
         target: u32,
         sub_target: u32,
-        a: Box<CILNode>,
-        b: Box<CILNode>,
+        a: Box<V1Node>,
+        b: Box<V1Node>,
     },
     BLtUn {
         target: u32,
         sub_target: u32,
-        a: Box<CILNode>,
-        b: Box<CILNode>,
+        a: Box<V1Node>,
+        b: Box<V1Node>,
     },
     BGt {
         target: u32,
         sub_target: u32,
-        a: Box<CILNode>,
-        b: Box<CILNode>,
+        a: Box<V1Node>,
+        b: Box<V1Node>,
     },
     BGtUn {
         target: u32,
         sub_target: u32,
-        a: Box<CILNode>,
-        b: Box<CILNode>,
+        a: Box<V1Node>,
+        b: Box<V1Node>,
     },
     BLe {
         target: u32,
         sub_target: u32,
-        a: Box<CILNode>,
-        b: Box<CILNode>,
+        a: Box<V1Node>,
+        b: Box<V1Node>,
     },
     BGe {
         target: u32,
         sub_target: u32,
-        a: Box<CILNode>,
-        b: Box<CILNode>,
+        a: Box<V1Node>,
+        b: Box<V1Node>,
     },
     BNe {
         target: u32,
         sub_target: u32,
-        a: Box<CILNode>,
-        b: Box<CILNode>,
+        a: Box<V1Node>,
+        b: Box<V1Node>,
     },
     GoTo {
         target: u32,
@@ -81,61 +81,61 @@ pub enum CILRoot {
 
     Call {
         site: Interned<MethodRef>,
-        args: Box<[CILNode]>,
+        args: Box<[V1Node]>,
     },
     SetField {
-        addr: Box<CILNode>,
-        value: Box<CILNode>,
+        addr: Box<V1Node>,
+        value: Box<V1Node>,
         desc: Interned<FieldDesc>,
     },
 
     CpBlk {
-        dst: Box<CILNode>,
-        src: Box<CILNode>,
-        len: Box<CILNode>,
+        dst: Box<V1Node>,
+        src: Box<V1Node>,
+        len: Box<V1Node>,
     },
-    STIndI8(CILNode, CILNode),
-    STIndI16(CILNode, CILNode),
-    STIndI32(CILNode, CILNode),
-    STIndI64(CILNode, CILNode),
-    STIndISize(CILNode, CILNode),
+    STIndI8(V1Node, V1Node),
+    STIndI16(V1Node, V1Node),
+    STIndI32(V1Node, V1Node),
+    STIndI64(V1Node, V1Node),
+    STIndISize(V1Node, V1Node),
     // addr, val, points_to
-    STIndPtr(CILNode, CILNode, Box<Type>),
-    STIndF64(CILNode, CILNode),
-    STIndF32(CILNode, CILNode),
+    STIndPtr(V1Node, V1Node, Box<Type>),
+    STIndF64(V1Node, V1Node),
+    STIndF32(V1Node, V1Node),
     STObj {
         tpe: Box<Type>,
-        addr_calc: Box<CILNode>,
-        value_calc: Box<CILNode>,
+        addr_calc: Box<V1Node>,
+        value_calc: Box<V1Node>,
     },
     STArg {
         arg: u32,
-        tree: CILNode,
+        tree: V1Node,
     },
     Break,
     Nop,
     InitBlk {
-        dst: Box<CILNode>,
-        val: Box<CILNode>,
-        count: Box<CILNode>,
+        dst: Box<V1Node>,
+        val: Box<V1Node>,
+        count: Box<V1Node>,
     },
     CallVirt {
         site: Interned<MethodRef>,
-        args: Box<[CILNode]>,
+        args: Box<[V1Node]>,
     },
     Ret {
-        tree: CILNode,
+        tree: V1Node,
     },
     Pop {
-        tree: CILNode,
+        tree: V1Node,
     },
     VoidRet,
-    Throw(CILNode),
+    Throw(V1Node),
     ReThrow,
     CallI {
         sig: Box<FnSig>,
-        fn_ptr: Box<CILNode>,
-        args: Box<[CILNode]>,
+        fn_ptr: Box<V1Node>,
+        args: Box<[V1Node]>,
     },
     JumpingPad {
         source: u32,
@@ -143,13 +143,13 @@ pub enum CILRoot {
     },
     SetStaticField {
         descr: Box<StaticFieldDesc>,
-        value: CILNode,
+        value: V1Node,
     },
     SourceFileInfo(SFI),
     OptimizedSourceFileInfo(std::ops::Range<u64>, std::ops::Range<u64>, AsmString),
     /// Marks the inner pointer operation as volatile.
     Volatile(Box<Self>),
-    InitObj(CILNode, Interned<Type>),
+    InitObj(V1Node, Interned<Type>),
     V2(Interned<crate::v2::CILRoot>),
 }
 pub type SFI = Box<(std::ops::Range<u64>, std::ops::Range<u64>, IString)>;
@@ -160,7 +160,7 @@ impl CILRoot {
 
         let name = asm.alloc_string(".ctor");
         let signature = asm.sig([class.into(), Type::PlatformString], Type::Void);
-        Self::Throw(CILNode::NewObj(Box::new(CallOpArgs {
+        Self::Throw(V1Node::NewObj(Box::new(CallOpArgs {
             site: asm.alloc_methodref(MethodRef::new(
                 class,
                 name,
@@ -168,7 +168,7 @@ impl CILRoot {
                 MethodKind::Constructor,
                 vec![].into(),
             )),
-            args: [CILNode::LdStr(msg.into())].into(),
+            args: [V1Node::LdStr(msg.into())].into(),
             is_pure: IsPure::NOT,
         })))
     }
@@ -267,7 +267,7 @@ impl CILRoot {
         Self::SourceFileInfo(Box::new((line, column, file.to_owned().into())))
     }
     #[must_use]
-    pub fn set_field(addr: CILNode, value: CILNode, desc: Interned<FieldDesc>) -> Self {
+    pub fn set_field(addr: V1Node, value: V1Node, desc: Interned<FieldDesc>) -> Self {
         Self::SetField {
             addr: Box::new(addr),
             value: Box::new(value),
@@ -275,15 +275,15 @@ impl CILRoot {
         }
     }
 }
-fn tiny_message(msg: &str, asm: &mut Assembly) -> CILNode {
+fn tiny_message(msg: &str, asm: &mut Assembly) -> V1Node {
     let pieces: Vec<_> = msg.split_inclusive(char::is_whitespace).collect();
     runtime_string(&pieces, asm)
 }
-fn runtime_string(pieces: &[&str], asm: &mut Assembly) -> CILNode {
+fn runtime_string(pieces: &[&str], asm: &mut Assembly) -> V1Node {
     //
     match pieces.len() {
         0 => panic!("Incorrect piece count"),
-        1 => CILNode::LdStr(pieces[0].to_owned().into()),
+        1 => V1Node::LdStr(pieces[0].to_owned().into()),
         2 => {
             let mref = MethodRef::new(
                 ClassRef::string(asm),
@@ -298,8 +298,8 @@ fn runtime_string(pieces: &[&str], asm: &mut Assembly) -> CILNode {
             call!(
                 asm.alloc_methodref(mref),
                 [
-                    CILNode::LdStr(pieces[0].to_owned().into()),
-                    CILNode::LdStr(pieces[1].to_owned().into())
+                    V1Node::LdStr(pieces[0].to_owned().into()),
+                    V1Node::LdStr(pieces[1].to_owned().into())
                 ]
             )
         }
@@ -321,9 +321,9 @@ fn runtime_string(pieces: &[&str], asm: &mut Assembly) -> CILNode {
             call!(
                 asm.alloc_methodref(mref),
                 [
-                    CILNode::LdStr(pieces[0].to_owned().into()),
-                    CILNode::LdStr(pieces[1].to_owned().into()),
-                    CILNode::LdStr(pieces[2].to_owned().into())
+                    V1Node::LdStr(pieces[0].to_owned().into()),
+                    V1Node::LdStr(pieces[1].to_owned().into()),
+                    V1Node::LdStr(pieces[2].to_owned().into())
                 ]
             )
         }
@@ -346,10 +346,10 @@ fn runtime_string(pieces: &[&str], asm: &mut Assembly) -> CILNode {
             call!(
                 asm.alloc_methodref(mref),
                 [
-                    CILNode::LdStr(pieces[0].to_owned().into()),
-                    CILNode::LdStr(pieces[1].to_owned().into()),
-                    CILNode::LdStr(pieces[2].to_owned().into()),
-                    CILNode::LdStr(pieces[3].to_owned().into())
+                    V1Node::LdStr(pieces[0].to_owned().into()),
+                    V1Node::LdStr(pieces[1].to_owned().into()),
+                    V1Node::LdStr(pieces[2].to_owned().into()),
+                    V1Node::LdStr(pieces[3].to_owned().into())
                 ]
             )
         }

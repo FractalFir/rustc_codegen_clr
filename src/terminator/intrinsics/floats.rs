@@ -1,7 +1,7 @@
 use crate::assembly::MethodCompileCtx;
 use cilly::{
     call,
-    cil_node::CILNode,
+    cil_node::V1Node,
     cil_root::CILRoot,
     cilnode::MethodKind,
     conv_f32, conv_f64, Int, MethodRef, Type, {ClassRef, Float},
@@ -213,7 +213,7 @@ pub fn roundf32<'tcx>(
         ctx.alloc_methodref(round),
         [
             handle_operand(&args[0].node, ctx),
-            CILNode::V2(ctx.alloc_node(1_i32)).transmute_on_stack(
+            V1Node::V2(ctx.alloc_node(1_i32)).transmute_on_stack(
                 Type::Int(Int::I32),
                 Type::ClassRef(rounding),
                 ctx
@@ -243,7 +243,7 @@ pub fn roundf64<'tcx>(
         ctx.alloc_methodref(round),
         [
             handle_operand(&args[0].node, ctx),
-            CILNode::V2(ctx.alloc_node(1_i32)).transmute_on_stack(
+            V1Node::V2(ctx.alloc_node(1_i32)).transmute_on_stack(
                 Type::Int(Int::I32),
                 Type::ClassRef(rounding),
                 ctx

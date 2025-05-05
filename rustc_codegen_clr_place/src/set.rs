@@ -9,7 +9,7 @@ use rustc_codegen_clr_type::{
 use crate::{PlaceTy, pointed_type};
 use cilly::{
     BinOp, IntoAsmIndex, Type, call,
-    cil_node::CILNode,
+    cil_node::V1Node,
     cil_root::CILRoot,
     conv_usize, ld_field,
     {ClassRef, FieldDesc, Int, MethodRef, cilnode::MethodKind},
@@ -18,7 +18,7 @@ use rustc_middle::{
     mir::PlaceElem,
     ty::{FloatTy, IntTy, Ty, TyKind, UintTy},
 };
-pub fn local_set(local: usize, method: &rustc_middle::mir::Body, tree: CILNode) -> CILRoot {
+pub fn local_set(local: usize, method: &rustc_middle::mir::Body, tree: V1Node) -> CILRoot {
     if let Some(spread_arg) = method.spread_arg
         && local == spread_arg.as_usize()
     {
@@ -47,8 +47,8 @@ pub fn place_elem_set<'a>(
     place_elem: &PlaceElem<'a>,
     curr_type: PlaceTy<'a>,
     ctx: &mut MethodCompileCtx<'a, '_>,
-    addr_calc: CILNode,
-    value_calc: CILNode,
+    addr_calc: V1Node,
+    value_calc: V1Node,
 ) -> CILRoot {
     match place_elem {
         PlaceElem::Deref => {
@@ -98,7 +98,7 @@ pub fn place_elem_set<'a>(
                         extend: cilly::cilnode::ExtendKind::ZeroExtend,
                     });
                     let offset = ctx.biop(index, size, BinOp::Mul);
-                    let addr_calc = field_val.cast_ptr(inner_ptr) + CILNode::V2(offset);
+                    let addr_calc = field_val.cast_ptr(inner_ptr) + V1Node::V2(offset);
                     ptr_set_op(super::PlaceTy::Ty(inner), ctx, addr_calc, value_calc)
                 }
                 TyKind::Array(element, _length) => {
@@ -117,7 +117,7 @@ pub fn place_elem_set<'a>(
                     );
                     CILRoot::Call {
                         site: ctx.alloc_methodref(mref),
-                        args: [addr_calc, CILNode::V2(index), value_calc].into(),
+                        args: [addr_calc, V1Node::V2(index), value_calc].into(),
                     }
                 }
                 _ => {
@@ -134,7 +134,7 @@ pub fn place_elem_set<'a>(
             let curr_ty = curr_type
                 .as_ty()
                 .expect("INVALID PLACE: Indexing into enum variant???");
-            let index = CILNode::V2(ctx.alloc_node(*offset));
+            let index = V1Node::V2(ctx.alloc_node(*offset));
             assert!(!from_end, "Indexing slice form end");
 
             match curr_ty.kind() {
@@ -171,7 +171,7 @@ pub fn place_elem_set<'a>(
                                 conv_usize!(index),
                                 ld_field!(addr_calc, ctx.alloc_field(metadata)),
                             ]
-                        ) * conv_usize!(CILNode::V2(ctx.size_of(inner_type).into_idx(ctx)));
+                        ) * conv_usize!(V1Node::V2(ctx.size_of(inner_type).into_idx(ctx)));
                     ptr_set_op(super::PlaceTy::Ty(inner), ctx, addr, value_calc)
                 }
                 TyKind::Array(element, _length) => {
@@ -226,8 +226,8 @@ pub fn place_elem_set<'a>(
 pub fn ptr_set_op<'tcx>(
     pointed_type: PlaceTy<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-    addr_calc: CILNode,
-    value_calc: CILNode,
+    addr_calc: V1Node,
+    value_calc: V1Node,
 ) -> CILRoot {
     if let PlaceTy::Ty(pointed_type) = pointed_type {
         match pointed_type.kind() {

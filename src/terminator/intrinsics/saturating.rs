@@ -1,7 +1,7 @@
 use crate::assembly::MethodCompileCtx;
 use cilly::{
     call,
-    cil_node::CILNode,
+    cil_node::V1Node,
     cil_root::CILRoot,
     cilnode::MethodKind,
     conv_i16, conv_i32, conv_i64, conv_i8, MethodRef, Type, {ClassRef, Int},
@@ -41,7 +41,7 @@ pub fn saturating_add<'tcx>(
             let or = crate::binop::bitop::bit_or_unchecked(a_ty, a_ty, ctx, a.clone(), b.clone());
             let flag = crate::binop::cmp::lt_unchecked(a_ty, sum.clone(), or.clone(), ctx);
             let max = max_value(&a_type, ctx);
-            CILNode::select(a_type, max, sum, flag, ctx)
+            V1Node::select(a_type, max, sum, flag, ctx)
         }
         Type::Int(Int::I32) => {
             let a = conv_i64!(a);
@@ -65,8 +65,8 @@ pub fn saturating_add<'tcx>(
                 ctx.alloc_methodref(clamp),
                 [
                     diff,
-                    CILNode::V2(ctx.alloc_node(i64::from(i32::MIN))),
-                    CILNode::V2(ctx.alloc_node(i64::from(i32::MAX)))
+                    V1Node::V2(ctx.alloc_node(i64::from(i32::MIN))),
+                    V1Node::V2(ctx.alloc_node(i64::from(i32::MAX)))
                 ]
             );
             conv_i32!(diff_capped)
@@ -105,8 +105,8 @@ pub fn saturating_add<'tcx>(
                 ctx.alloc_methodref(clamp),
                 [
                     diff,
-                    CILNode::const_i128(i128::from(i64::MIN) as u128, ctx),
-                    CILNode::const_i128(i128::from(i64::MAX) as u128, ctx),
+                    V1Node::const_i128(i128::from(i64::MIN) as u128, ctx),
+                    V1Node::const_i128(i128::from(i64::MAX) as u128, ctx),
                 ]
             );
             crate::casts::int_to_int(Type::Int(Int::I128), Type::Int(Int::I64), diff_capped, ctx)
@@ -146,8 +146,8 @@ pub fn saturating_add<'tcx>(
                 [
                     diff,
                     // TODO: this assumes isize::MAX == i64::MAX
-                    CILNode::const_i128(i128::from(i64::MIN) as u128, ctx),
-                    CILNode::const_i128(i128::from(i64::MAX) as u128, ctx),
+                    V1Node::const_i128(i128::from(i64::MIN) as u128, ctx),
+                    V1Node::const_i128(i128::from(i64::MAX) as u128, ctx),
                 ]
             );
             crate::casts::int_to_int(
@@ -179,8 +179,8 @@ pub fn saturating_add<'tcx>(
                 ctx.alloc_methodref(mref),
                 [
                     diff,
-                    CILNode::V2(ctx.alloc_node(i32::from(i16::MIN))),
-                    CILNode::V2(ctx.alloc_node(i32::from(i16::MAX)))
+                    V1Node::V2(ctx.alloc_node(i32::from(i16::MIN))),
+                    V1Node::V2(ctx.alloc_node(i32::from(i16::MAX)))
                 ]
             );
             conv_i16!(diff_capped)
@@ -207,8 +207,8 @@ pub fn saturating_add<'tcx>(
                 ctx.alloc_methodref(mref),
                 [
                     diff,
-                    CILNode::V2(ctx.alloc_node(i32::from(i8::MIN))),
-                    CILNode::V2(ctx.alloc_node(i32::from(i8::MAX)))
+                    V1Node::V2(ctx.alloc_node(i32::from(i8::MIN))),
+                    V1Node::V2(ctx.alloc_node(i32::from(i8::MAX)))
                 ]
             );
             conv_i8!(diff_capped)
@@ -236,7 +236,7 @@ pub fn saturating_sub<'tcx>(
             let undeflow = crate::binop::cmp::lt_unchecked(a_ty, a.clone(), b.clone(), ctx);
             let diff = crate::binop::sub_unchecked(a_ty, a_ty, ctx, a, b);
             let zero = crate::binop::checked::zero(a_ty, ctx);
-            CILNode::select(a_type, zero, diff, undeflow, ctx)
+            V1Node::select(a_type, zero, diff, undeflow, ctx)
         }
         Type::Int(Int::I64) => {
             let a = crate::casts::int_to_int(Type::Int(Int::I64), Type::Int(Int::I128), a, ctx);
@@ -271,8 +271,8 @@ pub fn saturating_sub<'tcx>(
                 ctx.alloc_methodref(clamp),
                 [
                     diff,
-                    CILNode::const_i128(i128::from(i64::MIN) as u128, ctx),
-                    CILNode::const_i128(i128::from(i64::MAX) as u128, ctx),
+                    V1Node::const_i128(i128::from(i64::MIN) as u128, ctx),
+                    V1Node::const_i128(i128::from(i64::MAX) as u128, ctx),
                 ]
             );
             crate::casts::int_to_int(Type::Int(Int::I128), Type::Int(Int::I64), diff_capped, ctx)
@@ -311,8 +311,8 @@ pub fn saturating_sub<'tcx>(
                 [
                     diff,
                     // TODO: this assumes isize::MAX == i64::MAX
-                    CILNode::const_i128(i128::from(i64::MIN) as u128, ctx),
-                    CILNode::const_i128(i128::from(i64::MAX) as u128, ctx),
+                    V1Node::const_i128(i128::from(i64::MIN) as u128, ctx),
+                    V1Node::const_i128(i128::from(i64::MAX) as u128, ctx),
                 ]
             );
             crate::casts::int_to_int(
@@ -344,8 +344,8 @@ pub fn saturating_sub<'tcx>(
                 ctx.alloc_methodref(clamp),
                 [
                     diff,
-                    CILNode::V2(ctx.alloc_node(i64::from(i32::MIN))),
-                    CILNode::V2(ctx.alloc_node(i64::from(i32::MAX)))
+                    V1Node::V2(ctx.alloc_node(i64::from(i32::MIN))),
+                    V1Node::V2(ctx.alloc_node(i64::from(i32::MAX)))
                 ]
             );
             conv_i32!(diff_capped)
@@ -372,8 +372,8 @@ pub fn saturating_sub<'tcx>(
                 ctx.alloc_methodref(clamp),
                 [
                     diff,
-                    CILNode::V2(ctx.alloc_node(i32::from(i16::MIN))),
-                    CILNode::V2(ctx.alloc_node(i32::from(i16::MAX)))
+                    V1Node::V2(ctx.alloc_node(i32::from(i16::MIN))),
+                    V1Node::V2(ctx.alloc_node(i32::from(i16::MAX)))
                 ]
             );
             conv_i16!(diff_capped)
@@ -400,8 +400,8 @@ pub fn saturating_sub<'tcx>(
                 ctx.alloc_methodref(clamp),
                 [
                     diff,
-                    CILNode::V2(ctx.alloc_node(i32::from(i8::MIN))),
-                    CILNode::V2(ctx.alloc_node(i32::from(i8::MAX)))
+                    V1Node::V2(ctx.alloc_node(i32::from(i8::MIN))),
+                    V1Node::V2(ctx.alloc_node(i32::from(i8::MAX)))
                 ]
             );
             conv_i8!(diff_capped)

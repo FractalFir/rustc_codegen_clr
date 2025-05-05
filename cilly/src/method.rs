@@ -6,7 +6,7 @@ use std::{
 };
 
 use crate::{
-    basic_block::BasicBlock, bimap::Interned, cil_node::CILNode, cil_tree::CILTree,
+    basic_block::BasicBlock, bimap::Interned, cil_node::V1Node, cil_tree::CILTree,
     cilnode::MethodKind, v2::method::LocalDef, Access, Assembly, FnSig, IString, IntoAsmIndex,
     MethodRef, Type,
 };

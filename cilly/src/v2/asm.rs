@@ -1,6 +1,6 @@
 use super::{
     bimap::{BiMap, BiMapIndex, Interned, IntoBiMapIndex},
-    cilnode::{BinOp, ExtendKind, MethodKind, PtrCastRes, UnOp},
+    cilnode::{BinOp, ExtendKind, IsPure, MethodKind, PtrCastRes, UnOp},
     class::{ClassDefIdx, LayoutError, StaticFieldDef},
     opt::{OptFuel, SideEffectInfoCache},
     Access, CILNode, CILRoot, ClassDef, ClassRef, Const, Exporter, FieldDesc, FnSig, Int,
@@ -1490,6 +1490,51 @@ impl Assembly {
     ) -> Interned<CILNode> {
         let stotic = stotic.into_idx(self);
         self.alloc_node(CILNode::LdStaticFieldAdress(stotic))
+    }
+    /// Transmutes a value from one type to another.
+    pub fn transmute_on_stack(
+        &mut self,
+        src: impl IntoAsmIndex<Interned<Type>>,
+        dst: impl IntoAsmIndex<Interned<Type>>,
+        val: impl IntoAsmIndex<Interned<CILNode>>,
+    ) -> Interned<CILNode> {
+        let src = src.into_idx(self);
+        let dst = dst.into_idx(self);
+        let val = val.into_idx(self);
+        if src == dst {
+            return val;
+        }
+        let main_module = *self.main_module();
+
+        let sig = self.sig([self[src]], self[dst]);
+        let mref = self.new_methodref(main_module, "transmute", sig, MethodKind::Static, vec![]);
+        self.call(mref, &[val], IsPure::PURE)
+    }
+    /// Calls a function with arguments and a certain purity.
+    pub fn call(
+        &mut self,
+        mref: impl IntoAsmIndex<Interned<MethodRef>>,
+        args: &[impl IntoAsmIndex<Interned<CILNode>> + Clone],
+        is_pure: IsPure,
+    ) -> Interned<CILNode> {
+        let mref = mref.into_idx(self);
+        let args: Vec<Interned<CILNode>> = args
+            .into_iter()
+            .map(|arg| IntoAsmIndex::<Interned<_>>::into_idx(arg.clone(), self))
+            .collect();
+        self.alloc_node(CILNode::Call(Box::new((mref, args.into(), is_pure))))
+    }
+    pub fn uninit_val(&mut self, tpe: impl IntoAsmIndex<Interned<Type>>) -> Interned<CILNode> {
+        let tpe = tpe.into_idx(self);
+        if self[tpe] == Type::Void {
+            let gv = self.global_void();
+            return self.load_static(gv);
+        }
+        let main = self.main_module();
+        let sig = self.sig([], self[tpe]);
+        let uninit_val = self.new_methodref(*main, "uninit_val", sig, MethodKind::Static, []);
+        const EMPTY: [Interned<CILNode>; 0] = [];
+        self.call(uninit_val, &EMPTY, IsPure::PURE)
     }
 }
 config!(GUARANTED_ALIGN, u8, 8);

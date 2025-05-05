@@ -1,6 +1,6 @@
 use crate::assembly::MethodCompileCtx;
 use cilly::{
-    call, cil_node::CILNode, cil_root::CILRoot, cilnode::MethodKind, conv_usize, ClassRef, Int,
+    call, cil_node::V1Node, cil_root::CILRoot, cilnode::MethodKind, conv_usize, ClassRef, Int,
     MethodRef, Type,
 };
 use rustc_codegen_clr_place::{place_adress, place_set};
@@ -152,7 +152,7 @@ pub fn cxchg<'tcx>(
     let dst_ty = destination.ty(ctx.body(), ctx.tcx());
     let val_desc = field_descrptor(dst_ty.ty, 0, ctx);
     let flag_desc = field_descrptor(dst_ty.ty, 1, ctx);
-    CILNode::cxchng_res_val(
+    V1Node::cxchng_res_val(
         exchange_res,
         comparand,
         place_adress(destination, ctx),

@@ -1,7 +1,7 @@
 use crate::{assembly::MethodCompileCtx, casts};
 use cilly::{
     call,
-    cil_node::CILNode,
+    cil_node::V1Node,
     cil_root::CILRoot,
     cilnode::MethodKind,
     conv_i16, conv_i32, conv_i64, conv_i8, conv_isize, conv_u16, conv_u32, conv_u64, conv_u8,
@@ -42,7 +42,7 @@ fn call_atomic<'tcx>(
     args: &[Spanned<Operand<'tcx>>],
     destination: &Place<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-    atomic: fn(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut cilly::Assembly) -> CILNode,
+    atomic: fn(addr: V1Node, addend: V1Node, tpe: Type, asm: &mut cilly::Assembly) -> V1Node,
 ) -> Vec<CILRoot> {
     // *T
     let dst = handle_operand(&args[0].node, ctx);
@@ -149,7 +149,7 @@ pub fn handle_intrinsic<'tcx>(
             let needs_drop = i32::from(needs_drop);
             vec![place_set(
                 destination,
-                CILNode::V2(ctx.alloc_node(needs_drop)),
+                V1Node::V2(ctx.alloc_node(needs_drop)),
                 ctx,
             )]
         }
@@ -271,12 +271,12 @@ pub fn handle_intrinsic<'tcx>(
             match src_type {
                 Type::Int(int) => {
                     let add_ammount = if int.is_signed() {
-                        CILNode::Neg(Box::new(sub_ammount.clone()))
+                        V1Node::Neg(Box::new(sub_ammount.clone()))
                     } else {
                         crate::casts::int_to_int(
                             Type::Int(int.as_signed()),
                             src_type,
-                            CILNode::Neg(Box::new(crate::casts::int_to_int(
+                            V1Node::Neg(Box::new(crate::casts::int_to_int(
                                 src_type,
                                 Type::Int(int.as_signed()),
                                 sub_ammount.clone(),
@@ -295,7 +295,7 @@ pub fn handle_intrinsic<'tcx>(
                     let add_ammount = crate::casts::int_to_int(
                         Type::Int(Int::ISize),
                         Type::Int(Int::USize),
-                        CILNode::Neg(Box::new(sub_ammount.cast_ptr(Type::Int(Int::ISize)))),
+                        V1Node::Neg(Box::new(sub_ammount.cast_ptr(Type::Int(Int::ISize)))),
                         ctx,
                     );
                     vec![place_set(
@@ -390,7 +390,7 @@ pub fn handle_intrinsic<'tcx>(
 
             vec![place_set(
                 destination,
-                CILNode::And(
+                V1Node::And(
                     Box::new(handle_operand(&args[0].node, ctx).cast_ptr(Type::Int(Int::USize))),
                     Box::new(handle_operand(&args[1].node, ctx)),
                 )
@@ -415,7 +415,7 @@ pub fn handle_intrinsic<'tcx>(
             let align = rustc_codegen_clr_type::align_of(tpe, ctx.tcx());
             vec![place_set(
                 destination,
-                conv_usize!(CILNode::V2(ctx.alloc_node(align))),
+                conv_usize!(V1Node::V2(ctx.alloc_node(align))),
                 ctx,
             )]
         }
@@ -431,7 +431,7 @@ pub fn handle_intrinsic<'tcx>(
             let arg = ctx.monomorphize(args[0].node.ty(ctx.body(), ctx.tcx()));
             let arg_ty = arg.builtin_deref(true).unwrap();
             let arg_type = ctx.type_from_cache(arg_ty);
-            let ops = CILNode::LdObj {
+            let ops = V1Node::LdObj {
                 ptr: Box::new(ops),
                 obj: Box::new(arg_type),
             }; //;deref_op(arg_ty.into(), ctx, ops);
@@ -548,18 +548,18 @@ pub fn handle_intrinsic<'tcx>(
                         (casts::int_to_int(
                             cilly::Type::Int(Int::U128),
                             cilly::Type::Int(promoted),
-                            CILNode::V2(ctx.alloc_node(1_u128 << (oint.size().unwrap_or(8) * 8))),
+                            V1Node::V2(ctx.alloc_node(1_u128 << (oint.size().unwrap_or(8) * 8))),
                             ctx,
                         ))
                     ]
                 )
             } else {
-                CILNode::DivUn(
+                V1Node::DivUn(
                     Box::new(sum.clone()),
                     Box::new(casts::int_to_int(
                         cilly::Type::Int(Int::U64),
                         cilly::Type::Int(promoted),
-                        CILNode::V2(ctx.alloc_node(1_u64 << (oint.size().unwrap_or(8) * 8))),
+                        V1Node::V2(ctx.alloc_node(1_u64 << (oint.size().unwrap_or(8) * 8))),
                         ctx,
                     )),
                 )
@@ -613,7 +613,7 @@ pub fn handle_intrinsic<'tcx>(
                 args: [
                     handle_operand(&args[0].node, ctx).cast_ptr(void_ptr),
                     handle_operand(&args[1].node, ctx).cast_ptr(void_ptr),
-                    conv_usize!(CILNode::V2(ctx.size_of(tpe).into_idx(ctx))),
+                    conv_usize!(V1Node::V2(ctx.size_of(tpe).into_idx(ctx))),
                 ]
                 .into(),
             }]
@@ -797,7 +797,7 @@ pub fn handle_intrinsic<'tcx>(
         "const_allocate" => {
             let null = ctx.alloc_node(Const::USize(0));
             let null = ctx.cast_ptr(null, Int::U8);
-            vec![place_set(destination, CILNode::V2(null), ctx)]
+            vec![place_set(destination, V1Node::V2(null), ctx)]
         }
         "vtable_size" => vec![vtable::vtable_size(args, destination, ctx)],
         "vtable_align" => vec![vtable::vtable_align(args, destination, ctx)],
@@ -1074,8 +1074,8 @@ pub fn handle_intrinsic<'tcx>(
             if let Some(_) = tpe.as_class_ref() {
                 let true_val = operand_address(&args[1].node, ctx);
                 let false_val = operand_address(&args[2].node, ctx);
-                let select = CILNode::select(ctx.nptr(tpe), true_val, false_val, cond, ctx);
-                let select = CILNode::LdObj {
+                let select = V1Node::select(ctx.nptr(tpe), true_val, false_val, cond, ctx);
+                let select = V1Node::LdObj {
                     ptr: Box::new(select),
                     obj: Box::new(tpe),
                 };
@@ -1083,7 +1083,7 @@ pub fn handle_intrinsic<'tcx>(
             }
             let true_val = handle_operand(&args[1].node, ctx);
             let false_val = handle_operand(&args[2].node, ctx);
-            let select = CILNode::select(tpe, true_val, false_val, cond, ctx);
+            let select = V1Node::select(tpe, true_val, false_val, cond, ctx);
             vec![place_set(destination, select, ctx)]
         }
         "simd_reduce_all" => {
@@ -1157,7 +1157,7 @@ fn volitale_load<'tcx>(
     let arg_ty = arg.builtin_deref(true).unwrap();
     let arg_type = ctx.type_from_cache(arg_ty);
     let arg = handle_operand(&args[0].node, ctx);
-    let ops = CILNode::Volatile(Box::new(CILNode::LdObj {
+    let ops = V1Node::Volatile(Box::new(V1Node::LdObj {
         ptr: Box::new(arg),
         obj: Box::new(arg_type),
     }));

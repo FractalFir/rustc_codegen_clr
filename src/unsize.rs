@@ -1,6 +1,6 @@
 use crate::assembly::MethodCompileCtx;
 
-use cilly::cil_node::CILNode;
+use cilly::cil_node::V1Node;
 use cilly::cil_root::CILRoot;
 
 use cilly::{conv_u32, conv_usize, IntoAsmIndex};
@@ -24,7 +24,7 @@ pub fn unsize2<'tcx>(
     operand: &Operand<'tcx>,
     target: Ty<'tcx>,
     destination: Place<'tcx>,
-) -> (Vec<CILRoot>, CILNode) {
+) -> (Vec<CILRoot>, V1Node) {
     // Get the monomorphized source and target type
     let target = ctx.monomorphize(target);
     let source = ctx.monomorphize(operand.ty(ctx.body(), ctx.tcx()));
@@ -66,7 +66,7 @@ pub fn unsize2<'tcx>(
         let void_ptr = ctx.nptr(Type::Void);
         CILRoot::set_field(
             target_ptr.cast_ptr(ctx.nptr(fat_ptr_type)),
-            CILNode::LDIndPtr {
+            V1Node::LDIndPtr {
                 ptr: Box::new(operand_address(operand, ctx).cast_ptr(ctx.nptr(void_ptr))),
                 loaded_ptr: Box::new(ctx.nptr(Type::Void)),
             },
@@ -78,7 +78,7 @@ pub fn unsize2<'tcx>(
         } else {
             let source_type = ctx.type_from_cache(source);
             // If this type is a box<thin>, then its layout *should* be equivalent to a pointer, so this *should* be OK.
-            CILNode::transmute_on_stack(
+            V1Node::transmute_on_stack(
                 handle_operand(operand, ctx),
                 source_type,
                 Type::Int(Int::USize),
@@ -99,25 +99,25 @@ pub fn unsize2<'tcx>(
     let copy_val = if source_size > 8 && !source.is_any_ptr() && target_size != source_size {
         let addr = operand_address(operand, ctx);
 
-        let addr = CILNode::Add(
+        let addr = V1Node::Add(
             Box::new(addr),
-            Box::new(CILNode::V2(ctx.alloc_node(8_isize))),
+            Box::new(V1Node::V2(ctx.alloc_node(8_isize))),
         );
-        let dst_addr = CILNode::MRefToRawPtr(Box::new(dst.clone()));
-        let const_16 = CILNode::V2(ctx.alloc_node(16_isize));
-        let dst_addr = CILNode::Add(Box::new(dst_addr), Box::new(const_16));
+        let dst_addr = V1Node::MRefToRawPtr(Box::new(dst.clone()));
+        let const_16 = V1Node::V2(ctx.alloc_node(16_isize));
+        let dst_addr = V1Node::Add(Box::new(dst_addr), Box::new(const_16));
         eprintln!("WARNING:Can't propely unsize types with sized fields yet. unsize assumes that layout of Wrapper<&T> ==   layout of Wrapper<FatPtr<T>>!");
         CILRoot::CpBlk {
             dst: Box::new(dst_addr),
             src: Box::new(addr),
-            len: Box::new(CILNode::V2(ctx.alloc_node(Const::USize(source_size - 8)))),
+            len: Box::new(V1Node::V2(ctx.alloc_node(Const::USize(source_size - 8)))),
         }
     } else {
         CILRoot::Nop
     };
     (
         [copy_val, init_metadata, init_ptr].into(),
-        CILNode::LdObj {
+        V1Node::LdObj {
             ptr: Box::new(dst.cast_ptr(ctx.nptr(target_type))),
             obj: Box::new(target_type),
         },
@@ -128,8 +128,8 @@ fn unsized_info<'tcx>(
     ctx: &mut MethodCompileCtx<'tcx, '_>,
     source: Ty<'tcx>,
     target: Ty<'tcx>,
-    old_info: Option<CILNode>,
-) -> CILNode {
+    old_info: Option<V1Node>,
+) -> V1Node {
     let (source, target) = ctx.tcx().struct_lockstep_tails_for_codegen(
         source,
         target,
@@ -140,7 +140,7 @@ fn unsized_info<'tcx>(
             let len = len
                 .try_to_target_usize(ctx.tcx())
                 .expect("Could not eval array length.");
-            CILNode::V2(ctx.alloc_node(Const::USize(len)))
+            V1Node::V2(ctx.alloc_node(Const::USize(len)))
         }
         (
             &TyKind::Dynamic(data_a, _, src_dyn_kind),
@@ -158,9 +158,9 @@ fn unsized_info<'tcx>(
 
             if let Some(entry_idx) = vptr_entry_idx {
                 let entry_idx = u32::try_from(entry_idx).unwrap();
-                let entry_offset = CILNode::V2(ctx.alloc_node(entry_idx))
-                    * conv_u32!(CILNode::V2(ctx.size_of(Int::USize).into_idx(ctx)));
-                CILNode::LDIndUSize {
+                let entry_offset = V1Node::V2(ctx.alloc_node(entry_idx))
+                    * conv_u32!(V1Node::V2(ctx.size_of(Int::USize).into_idx(ctx)));
+                V1Node::LDIndUSize {
                     ptr: Box::new(
                         (old_info + conv_usize!(entry_offset)).cast_ptr(ctx.nptr(Int::USize)),
                     ),
@@ -174,19 +174,20 @@ fn unsized_info<'tcx>(
             source,
             data.principal()
                 .map(|principal| ctx.tcx().instantiate_bound_regions_with_erased(principal)),
-        ),
+        )
+        .into(),
         _ => panic!("unsized_info: invalid unsizing {source:?} -> {target:?}"),
     }
 }
 
-fn load_scalar_pair(addr: CILNode, ctx: &mut MethodCompileCtx<'_, '_>) -> (CILNode, CILNode) {
+fn load_scalar_pair(addr: V1Node, ctx: &mut MethodCompileCtx<'_, '_>) -> (V1Node, V1Node) {
     (
-        CILNode::LDIndUSize {
+        V1Node::LDIndUSize {
             ptr: Box::new(Box::new(addr.clone()).cast_ptr(ctx.nptr(Type::Int(Int::USize)))),
         },
-        CILNode::LDIndUSize {
+        V1Node::LDIndUSize {
             ptr: Box::new(
-                Box::new(addr + conv_usize!(CILNode::V2(ctx.size_of(Int::ISize).into_idx(ctx))))
+                Box::new(addr + conv_usize!(V1Node::V2(ctx.size_of(Int::ISize).into_idx(ctx))))
                     .cast_ptr(ctx.nptr(Type::Int(Int::USize))),
             ),
         },
@@ -196,10 +197,10 @@ fn load_scalar_pair(addr: CILNode, ctx: &mut MethodCompileCtx<'_, '_>) -> (CILNo
 /// to a value of type `dst_ty` and store the result in `dst`
 fn unsize_metadata<'tcx>(
     fx: &mut MethodCompileCtx<'tcx, '_>,
-    src_cil: CILNode,
+    src_cil: V1Node,
     src_ty: TyAndLayout<'tcx>,
     dst_ty: TyAndLayout<'tcx>,
-) -> CILNode {
+) -> V1Node {
     let mut coerce_ptr = || {
         if fx
             .layout_of(src_ty.ty.builtin_deref(true).unwrap())
@@ -242,8 +243,8 @@ fn unsize_ptr_metadata<'tcx>(
 
     src_layout: TyAndLayout<'tcx>,
     dst_layout: TyAndLayout<'tcx>,
-    old_info: Option<CILNode>,
-) -> CILNode {
+    old_info: Option<V1Node>,
+) -> V1Node {
     match (&src_layout.ty.kind(), &dst_layout.ty.kind()) {
         (&TyKind::Ref(_, a, _), &TyKind::Ref(_, b, _) | &TyKind::RawPtr(b, _))
         | (&TyKind::RawPtr(a, _), &TyKind::RawPtr(b, _)) => unsized_info(fx, *a, *b, old_info),

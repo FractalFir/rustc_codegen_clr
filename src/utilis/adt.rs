@@ -1,5 +1,5 @@
 use cilly::{
-    call, cil_node::CILNode, cil_root::CILRoot, cilnode::MethodKind, eq, gt_un, Assembly, ClassRef,
+    call, cil_node::V1Node, cil_root::CILRoot, cilnode::MethodKind, eq, gt_un, Assembly, ClassRef,
     Const, FieldDesc, Float, Int, Interned, MethodRef, Type,
 };
 use rustc_abi::{FieldIdx, FieldsShape, Layout, LayoutData, TagEncoding, VariantIdx, Variants};
@@ -141,7 +141,7 @@ pub fn get_variant_at_index(
 pub fn set_discr<'tcx>(
     layout: Layout<'tcx>,
     variant_index: VariantIdx,
-    enum_addr: CILNode,
+    enum_addr: V1Node,
     enum_tpe: Interned<ClassRef>,
     ty: Ty<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
@@ -172,7 +172,7 @@ pub fn set_discr<'tcx>(
                     .val,
             )
             .expect("Enum varaint id can't fit in u64.");
-            let tag_val = CILNode::V2(ctx.alloc_node(tag_val));
+            let tag_val = V1Node::V2(ctx.alloc_node(tag_val));
             let tag_val = crate::casts::int_to_int(Type::Int(Int::U64), tag_tpe, tag_val, ctx);
             let enum_tag_name = ctx.alloc_string(crate::ENUM_TAG);
             CILRoot::SetField {
@@ -198,7 +198,7 @@ pub fn set_discr<'tcx>(
                 //let niche_llty = bx.cx().immediate_backend_type(niche.layout);
                 let niche_value = variant_index.as_u32() - niche_variants.start().as_u32();
                 let niche_value = u128::from(niche_value).wrapping_add(niche_start);
-                let tag_val = CILNode::V2(
+                let tag_val = V1Node::V2(
                     ctx.alloc_node(
                         std::convert::TryInto::<u64>::try_into(niche_value)
                             .expect("Enum varaint id can't fit in u64."),
@@ -218,11 +218,11 @@ pub fn set_discr<'tcx>(
 
 pub fn get_discr<'tcx>(
     layout: Layout<'tcx>,
-    enum_addr: CILNode,
+    enum_addr: V1Node,
     enum_tpe: Interned<ClassRef>,
     ty: Ty<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-) -> CILNode {
+) -> V1Node {
     //return CILNode::
     assert!(!layout.is_uninhabited(), "UB: enum layout is unanhibited!");
     let (tag_tpe, _) = enum_tag_info(layout, ctx);
@@ -231,7 +231,7 @@ pub fn get_discr<'tcx>(
             let discr_val = ty
                 .discriminant_for_variant(ctx.tcx(), index)
                 .map_or(u128::from(index.as_u32()), |discr| discr.val);
-            let tag_val = CILNode::V2(
+            let tag_val = V1Node::V2(
                 ctx.alloc_node(
                     std::convert::TryInto::<u64>::try_into(discr_val)
                         .expect("Tag does not fit within a u64"),
@@ -246,7 +246,7 @@ pub fn get_discr<'tcx>(
             return crate::casts::int_to_int(
                 Type::Int(Int::U64),
                 tag_tpe,
-                CILNode::V2(ctx.alloc_node(Const::U64(0))),
+                V1Node::V2(ctx.alloc_node(Const::U64(0))),
                 ctx,
             )
         }
@@ -260,7 +260,7 @@ pub fn get_discr<'tcx>(
                 todo!();
             } else {
                 let enum_tag_name = ctx.alloc_string(crate::ENUM_TAG);
-                CILNode::LDField {
+                V1Node::LDField {
                     field: ctx.alloc_field(FieldDesc::new(enum_tpe, enum_tag_name, tag_tpe)),
                     addr: enum_addr.into(),
                 }
@@ -274,7 +274,7 @@ pub fn get_discr<'tcx>(
             let (disrc_type, _) = enum_tag_info(layout, ctx);
             let relative_max = niche_variants.end().as_u32() - niche_variants.start().as_u32();
             let enum_tag_name = ctx.alloc_string(crate::ENUM_TAG);
-            let tag = CILNode::LDField {
+            let tag = V1Node::LDField {
                 field: ctx.alloc_field(FieldDesc::new(enum_tpe, enum_tag_name, disrc_type)),
                 addr: enum_addr.into(),
             };
@@ -316,7 +316,7 @@ pub fn get_discr<'tcx>(
                             ctx.alloc_methodref(mref),
                             [
                                 tag,
-                                CILNode::const_u128(
+                                V1Node::const_u128(
                                     u128::from(niche_variants.start().as_u32(),),
                                     ctx
                                 )
@@ -335,7 +335,7 @@ pub fn get_discr<'tcx>(
                             ctx.alloc_methodref(mref),
                             [
                                 tag,
-                                CILNode::const_i128(
+                                V1Node::const_i128(
                                     u128::from(niche_variants.start().as_u32()),
                                     ctx
                                 )
@@ -348,7 +348,7 @@ pub fn get_discr<'tcx>(
                         crate::casts::int_to_int(
                             Type::Int(Int::U64),
                             disrc_type,
-                            CILNode::V2(
+                            V1Node::V2(
                                 ctx.alloc_node(
                                     std::convert::TryInto::<u64>::try_into(niche_start)
                                         .expect("tag is too big to fit within u64")
@@ -362,7 +362,7 @@ pub fn get_discr<'tcx>(
                 let tagged_discr = crate::casts::int_to_int(
                     Type::Int(Int::U64),
                     disrc_type,
-                    CILNode::V2(ctx.alloc_node(u64::from(niche_variants.start().as_u32()))),
+                    V1Node::V2(ctx.alloc_node(u64::from(niche_variants.start().as_u32()))),
                     ctx,
                 );
                 (is_niche, tagged_discr, 0)
@@ -374,12 +374,12 @@ pub fn get_discr<'tcx>(
                     Type::Int(Int::I128 | Int::U128) => {
                         todo!("niche encoidng of 128 bit wide tags is not fully supported yet")
                     }
-                    _ => CILNode::Sub(
+                    _ => V1Node::Sub(
                         Box::new(tag),
                         Box::new(crate::casts::int_to_int(
                             Type::Int(Int::U64),
                             disrc_type,
-                            CILNode::V2(
+                            V1Node::V2(
                                 ctx.alloc_node(
                                     std::convert::TryInto::<u64>::try_into(niche_start)
                                         .expect("tag is too big to fit within u64"),
@@ -402,7 +402,7 @@ pub fn get_discr<'tcx>(
                             ctx.alloc_methodref(mref),
                             [
                                 relative_discr.clone(),
-                                CILNode::const_u128(u128::from(relative_max), ctx)
+                                V1Node::const_u128(u128::from(relative_max), ctx)
                             ]
                         )
                     }
@@ -418,7 +418,7 @@ pub fn get_discr<'tcx>(
                             ctx.alloc_methodref(mref),
                             [
                                 relative_discr.clone(),
-                                CILNode::const_i128(u128::from(relative_max), ctx)
+                                V1Node::const_i128(u128::from(relative_max), ctx)
                             ]
                         )
                     }
@@ -428,12 +428,12 @@ pub fn get_discr<'tcx>(
                         crate::casts::int_to_int(
                             Type::Int(Int::U64),
                             disrc_type,
-                            CILNode::V2(ctx.alloc_node(u64::from(relative_max))),
+                            V1Node::V2(ctx.alloc_node(u64::from(relative_max))),
                             ctx
                         )
                     ),
                 };
-                let is_niche = eq!(gt, CILNode::V2(ctx.alloc_node(false)));
+                let is_niche = eq!(gt, V1Node::V2(ctx.alloc_node(false)));
                 (
                     is_niche,
                     relative_discr,
@@ -447,7 +447,7 @@ pub fn get_discr<'tcx>(
                 let delta = crate::casts::int_to_int(
                     Type::Int(Int::U64),
                     disrc_type,
-                    CILNode::V2(
+                    V1Node::V2(
                         ctx.alloc_node(
                             std::convert::TryInto::<u64>::try_into(delta)
                                 .expect("Tag does not fit within u64"),
@@ -476,13 +476,13 @@ pub fn get_discr<'tcx>(
             // In principle we could insert assumes on the possible range of `discr`, but
             // currently in LLVM this seems to be a pessimization.
 
-            CILNode::select(
+            V1Node::select(
                 disrc_type,
                 tagged_discr,
                 crate::casts::int_to_int(
                     Type::Int(Int::U64),
                     disrc_type,
-                    CILNode::V2(ctx.alloc_node(u64::from(untagged_variant.as_u32()))),
+                    V1Node::V2(ctx.alloc_node(u64::from(untagged_variant.as_u32()))),
                     ctx,
                 ),
                 is_niche,

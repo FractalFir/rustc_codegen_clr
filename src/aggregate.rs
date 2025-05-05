@@ -3,7 +3,7 @@ use crate::{
     utilis::{adt::set_discr, field_name, instance_try_resolve, variant_name},
 };
 use cilly::{
-    cil_node::CILNode, cil_root::CILRoot, cilnode::MethodKind, ClassRef, Const, FieldDesc, FnSig,
+    cil_node::V1Node, cil_root::CILRoot, cilnode::MethodKind, ClassRef, Const, FieldDesc, FnSig,
     Int, MethodRef, Type,
 };
 use rustc_abi::FieldIdx;
@@ -26,7 +26,7 @@ pub fn handle_aggregate<'tcx>(
     target_location: &Place<'tcx>,
     aggregate_kind: &AggregateKind<'tcx>,
     value_index: &IndexVec<FieldIdx, Operand<'tcx>>,
-) -> (Vec<CILRoot>, CILNode) {
+) -> (Vec<CILRoot>, V1Node) {
     // Get CIL ops for each value
     let values: Vec<_> = value_index
         .iter()
@@ -87,7 +87,7 @@ pub fn handle_aggregate<'tcx>(
                     site: ctx.alloc_methodref(site.clone()),
                     args: [
                         array_getter.clone(),
-                        CILNode::V2(ctx.alloc_node(Const::USize(u64::from(value.0)))),
+                        V1Node::V2(ctx.alloc_node(Const::USize(u64::from(value.0)))),
                         value.1,
                     ]
                     .into(),
@@ -267,9 +267,9 @@ fn aggregate_adt<'tcx>(
     adt_type: Ty<'tcx>,
     subst: &'tcx List<GenericArg<'tcx>>,
     variant_idx: u32,
-    fields: Vec<(u32, CILNode)>,
+    fields: Vec<(u32, V1Node)>,
     active_field: Option<FieldIdx>,
-) -> (Vec<CILRoot>, CILNode) {
+) -> (Vec<CILRoot>, V1Node) {
     let adt_type = ctx.monomorphize(adt_type);
     let adt_type_ref = get_type(adt_type, ctx)
         .as_class_ref()

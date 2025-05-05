@@ -18,6 +18,11 @@ pub struct MethodRef {
     kind: MethodKind,
     generics: Box<[Type]>,
 }
+impl IntoAsmIndex<Interned<MethodRef>> for MethodRef {
+    fn into_idx(self, asm: &mut Assembly) -> Interned<MethodRef> {
+        asm.alloc_methodref(self)
+    }
+}
 impl Interned<MethodRef> {
     pub fn builtin(
         asm: &mut Assembly,

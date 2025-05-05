@@ -3,7 +3,7 @@ use crate::{
     utilis::{adt::get_discr, compiletime_sizeof},
 };
 use cilly::{
-    cil_node::CILNode,
+    cil_node::V1Node,
     cil_root::CILRoot,
     conv_usize, ld_field, size_of, Const, Type,
     {cilnode::MethodKind, FieldDesc, Float, Int, MethodRef},
@@ -62,7 +62,7 @@ pub fn handle_rvalue<'tcx>(
     rvalue: &Rvalue<'tcx>,
     target_location: &Place<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-) -> (Vec<CILRoot>, CILNode) {
+) -> (Vec<CILRoot>, V1Node) {
     match rvalue {
         Rvalue::Len(operand) => {
             let ty = ctx.monomorphize(operand.ty(ctx.body(), ctx.tcx()));
@@ -76,17 +76,14 @@ pub fn handle_rvalue<'tcx>(
                     );
                     let addr = place_address_raw(operand, ctx);
                     assert!(
-                        !matches!(addr, CILNode::LDLoc(_)),
+                        !matches!(addr, V1Node::LDLoc(_)),
                         "improper addr {addr:?}. operand:{operand:?}"
                     );
                     (vec![], ld_field!(addr, ctx.alloc_field(descriptor)))
                 }
                 TyKind::Array(_ty, length) => {
                     let len = try_resolve_const_size(ctx.monomorphize(*length)).unwrap();
-                    (
-                        vec![],
-                        CILNode::V2(ctx.alloc_node(Const::USize(len as u64))),
-                    )
+                    (vec![], V1Node::V2(ctx.alloc_node(Const::USize(len as u64))))
                 }
                 _ => todo!("Get length of type {ty:?}"),
             }
@@ -138,15 +135,15 @@ pub fn handle_rvalue<'tcx>(
                 let ty = ctx.type_from_cache(ctx.monomorphize(*ty));
                 if ty == Type::Void {
                     let val = ctx.alloc_node(Const::USize(0));
-                    (vec![], CILNode::V2(val))
+                    (vec![], V1Node::V2(val))
                 } else {
                     let val = size_of!(ty)(ctx);
-                    (vec![], conv_usize!(CILNode::V2(val)))
+                    (vec![], conv_usize!(V1Node::V2(val)))
                 }
             }
             NullOp::AlignOf => {
                 let algin = rustc_codegen_clr_type::align_of(ctx.monomorphize(*ty), ctx.tcx());
-                (vec![], CILNode::V2(ctx.alloc_node(Const::USize(algin))))
+                (vec![], V1Node::V2(ctx.alloc_node(Const::USize(algin))))
             }
             NullOp::OffsetOf(fields) => {
                 let layout = ctx.layout_of(*ty);
@@ -158,15 +155,15 @@ pub fn handle_rvalue<'tcx>(
                         fields.iter(),
                     )
                     .bytes();
-                (vec![], CILNode::V2(ctx.alloc_node(Const::USize(offset))))
+                (vec![], V1Node::V2(ctx.alloc_node(Const::USize(offset))))
             }
             rustc_middle::mir::NullOp::UbChecks => {
                 let ub_checks = ctx.tcx().sess.ub_checks();
-                (vec![], CILNode::V2(ctx.alloc_node(ub_checks)))
+                (vec![], V1Node::V2(ctx.alloc_node(ub_checks)))
             }
             rustc_middle::mir::NullOp::ContractChecks => {
                 let cc_checks = ctx.tcx().sess.contract_checks();
-                (vec![], CILNode::V2(ctx.alloc_node(cc_checks)))
+                (vec![], V1Node::V2(ctx.alloc_node(cc_checks)))
             }
         },
         Rvalue::Aggregate(aggregate_kind, field_index) => crate::aggregate::handle_aggregate(
@@ -207,15 +204,15 @@ pub fn handle_rvalue<'tcx>(
                     )
                 };
                 if target_sig == fn_ptr_sig {
-                    (vec![], CILNode::LDFtn(ctx.alloc_methodref(call_site)))
+                    (vec![], V1Node::LDFtn(ctx.alloc_methodref(call_site)))
                 } else {
                     eprintln!(
                         "Possible bug. ClosureFnPointer target:{} and source {} don't match.",
                         target_type.mangle(ctx),
                         Type::FnPtr(fn_ptr_sig).mangle(ctx)
                     );
-                    let src = CILNode::LDFtn(ctx.alloc_methodref(call_site));
-                    (vec![], CILNode::cast_ptr(src, target_type))
+                    let src = V1Node::LDFtn(ctx.alloc_methodref(call_site));
+                    (vec![], V1Node::cast_ptr(src, target_type))
                 }
             }
             _ => panic!(
@@ -301,8 +298,8 @@ pub fn handle_rvalue<'tcx>(
             let target = ctx.type_from_cache(target);
             let mut ops = handle_operand(operand, ctx);
             match target {
-                Type::Float(Float::F32) => ops = CILNode::ConvF32(ops.into()),
-                Type::Float(Float::F64) => ops = CILNode::ConvF64(ops.into()),
+                Type::Float(Float::F32) => ops = V1Node::ConvF32(ops.into()),
+                Type::Float(Float::F64) => ops = V1Node::ConvF64(ops.into()),
                 _ => panic!("Can't preform a FloatToFloat cast to type {target:?}"),
             }
             (vec![], ops)
@@ -342,7 +339,7 @@ pub fn handle_rvalue<'tcx>(
                 MethodKind::Static,
                 vec![].into(),
             );
-            (vec![], CILNode::LDFtn(ctx.alloc_methodref(call_site)))
+            (vec![], V1Node::LDFtn(ctx.alloc_methodref(call_site)))
         }
 
         Rvalue::Discriminant(place) => {
@@ -360,7 +357,7 @@ pub fn handle_rvalue<'tcx>(
                     crate::casts::int_to_int(
                         Type::Int(Int::I32),
                         target,
-                        CILNode::V2(ctx.alloc_node(0_i32)),
+                        V1Node::V2(ctx.alloc_node(0_i32)),
                         ctx,
                     ),
                 );
@@ -373,7 +370,7 @@ pub fn handle_rvalue<'tcx>(
                     crate::casts::int_to_int(
                         Type::Int(Int::I32),
                         target,
-                        CILNode::V2(ctx.alloc_node(0_i32)),
+                        V1Node::V2(ctx.alloc_node(0_i32)),
                         ctx,
                     ),
                 )
@@ -403,10 +400,8 @@ pub fn handle_rvalue<'tcx>(
                 let rvalue_ty = rvalue.ty(ctx.body(), ctx.tcx());
                 let rvalue_type = ctx.type_from_cache(rvalue_ty);
                 let tpe = ctx.alloc_type(rvalue_type);
-                (
-                    vec![],
-                    add_allocation(alloc_id.0.into(), ctx, tpe).cast_ptr(rvalue_type),
-                )
+                let ptr = add_allocation(alloc_id.0.into(), ctx, tpe);
+                (vec![], ctx.cast_ptr(ptr, tpe).into())
             }
         }
         Rvalue::Cast(rustc_middle::mir::CastKind::FnPtrToPtr, operand, target) => {
@@ -430,7 +425,7 @@ fn repeat<'tcx>(
     element: &Operand<'tcx>,
     times: rustc_middle::ty::Const<'tcx>,
     target_location: &Place<'tcx>,
-) -> (Vec<CILRoot>, CILNode) {
+) -> (Vec<CILRoot>, V1Node) {
     // Get the type of the operand
     let element_ty = ctx.monomorphize(element.ty(ctx.body(), ctx.tcx()));
     let element_type = ctx.type_from_cache(element_ty);
@@ -451,7 +446,7 @@ fn repeat<'tcx>(
         let init = CILRoot::InitBlk {
             dst: Box::new(place_address.cast_ptr(ctx.nptr(Type::Int(Int::U8)))),
             val,
-            count: Box::new(CILNode::V2(ctx.alloc_node(Const::USize(times)))),
+            count: Box::new(V1Node::V2(ctx.alloc_node(Const::USize(times)))),
         };
         return (vec![init], place_get(target_location, ctx));
     }
@@ -473,7 +468,7 @@ fn repeat<'tcx>(
                 site: mref,
                 args: [
                     place_address.clone(),
-                    CILNode::V2(ctx.alloc_node(Const::USize(idx))),
+                    V1Node::V2(ctx.alloc_node(Const::USize(idx))),
                     element.clone(),
                 ]
                 .into(),
@@ -487,14 +482,14 @@ fn repeat<'tcx>(
             // Copy curr_copy_size elements from the start of the array, starting at curr_len(the ammount of already initialized buffers)
             branches.push(CILRoot::CpBlk {
                 dst: Box::new(
-                    CILNode::MRefToRawPtr(Box::new(place_address.clone()))
-                        + CILNode::V2(ctx.alloc_node(Const::USize(curr_len)))
-                            * conv_usize!(CILNode::V2(elem_size)),
+                    V1Node::MRefToRawPtr(Box::new(place_address.clone()))
+                        + V1Node::V2(ctx.alloc_node(Const::USize(curr_len)))
+                            * conv_usize!(V1Node::V2(elem_size)),
                 ),
                 src: Box::new(place_address.clone()),
                 len: Box::new(
-                    CILNode::V2(ctx.alloc_node(Const::USize(curr_copy_size)))
-                        * conv_usize!(CILNode::V2(elem_size)),
+                    V1Node::V2(ctx.alloc_node(Const::USize(curr_copy_size)))
+                        * conv_usize!(V1Node::V2(elem_size)),
                 ),
             });
             curr_len *= 2;
@@ -518,7 +513,7 @@ fn repeat<'tcx>(
                 site: mref,
                 args: [
                     place_address.clone(),
-                    CILNode::V2(ctx.alloc_node(Const::USize(idx))),
+                    V1Node::V2(ctx.alloc_node(Const::USize(idx))),
                     element.clone(),
                 ]
                 .into(),
@@ -532,7 +527,7 @@ fn ptr_to_ptr<'tcx>(
     ctx: &mut MethodCompileCtx<'tcx, '_>,
     operand: &Operand<'tcx>,
     dst: Ty<'tcx>,
-) -> CILNode {
+) -> V1Node {
     let target = ctx.monomorphize(dst);
     let target_pointed_to = match target.kind() {
         TyKind::RawPtr(typ, _) => typ,
@@ -552,7 +547,7 @@ fn ptr_to_ptr<'tcx>(
     let target_fat = pointer_to_is_fat(*target_pointed_to, ctx.tcx(), ctx.instance());
     match (src_fat, target_fat) {
         (true, true) => {
-            CILNode::transmute_on_stack(handle_operand(operand, ctx), source_type, target_type, ctx)
+            V1Node::transmute_on_stack(handle_operand(operand, ctx), source_type, target_type, ctx)
         }
         (true, false) => {
             let field_desc = FieldDesc::new(

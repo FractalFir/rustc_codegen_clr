@@ -1,11 +1,11 @@
 use cilly::{
     call,
-    cil_node::CILNode,
+    cil_node::V1Node,
     cilnode::MethodKind,
     MethodRef, Type, {Assembly, ClassRef, Int},
 };
 
-pub fn atomic_add(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly) -> CILNode {
+pub fn atomic_add(addr: V1Node, addend: V1Node, tpe: Type, asm: &mut Assembly) -> V1Node {
     match tpe {
         Type::Int(int) => {
             let u64_ref = asm.nref(Type::Int(int));
@@ -42,7 +42,7 @@ pub fn atomic_add(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly)
         _ => todo!(),
     }
 }
-pub fn atomic_or(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly) -> CILNode {
+pub fn atomic_or(addr: V1Node, addend: V1Node, tpe: Type, asm: &mut Assembly) -> V1Node {
     match tpe {
         Type::Int(Int::U64 | Int::I64) => {
             let u64_ref = asm.nref(Type::Int(Int::U64));
@@ -101,7 +101,7 @@ pub fn atomic_or(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly) 
         _ => todo!("Can't atomic or {tpe:?}"),
     }
 }
-pub fn atomic_xor(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly) -> CILNode {
+pub fn atomic_xor(addr: V1Node, addend: V1Node, tpe: Type, asm: &mut Assembly) -> V1Node {
     match tpe {
         Type::Bool
         | Type::Int(
@@ -141,7 +141,7 @@ pub fn atomic_xor(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly)
         _ => todo!("Can't atomic xor {tpe:?}"),
     }
 }
-pub fn atomic_and(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly) -> CILNode {
+pub fn atomic_and(addr: V1Node, addend: V1Node, tpe: Type, asm: &mut Assembly) -> V1Node {
     match tpe {
         Type::Int(Int::U64 | Int::I64) => {
             let u64_ref = asm.nref(Type::Int(Int::U64));
@@ -230,7 +230,7 @@ pub fn atomic_and(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly)
         _ => todo!("Can't atomic and {tpe:?}"),
     }
 }
-pub fn compare_bytes(a: CILNode, b: CILNode, len: CILNode, asm: &mut Assembly) -> CILNode {
+pub fn compare_bytes(a: V1Node, b: V1Node, len: V1Node, asm: &mut Assembly) -> V1Node {
     let u8_ref = asm.nptr(Type::Int(Int::U8));
     let mref = MethodRef::new(
         *asm.main_module(),
@@ -241,7 +241,7 @@ pub fn compare_bytes(a: CILNode, b: CILNode, len: CILNode, asm: &mut Assembly) -
     );
     call!(asm.alloc_methodref(mref), [a, b, len])
 }
-pub fn atomic_nand(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly) -> CILNode {
+pub fn atomic_nand(addr: V1Node, addend: V1Node, tpe: Type, asm: &mut Assembly) -> V1Node {
     match tpe {
         Type::Int(int @ (Int::U32 | Int::I32 | Int::U64 | Int::I64 | Int::USize | Int::ISize)) => {
             let iref = asm.nref(Type::Int(int));
@@ -289,7 +289,7 @@ pub fn atomic_nand(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly
         _ => todo!("Can't atomic nand {tpe:?}"),
     }
 }
-pub fn atomic_min(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly) -> CILNode {
+pub fn atomic_min(addr: V1Node, addend: V1Node, tpe: Type, asm: &mut Assembly) -> V1Node {
     match tpe {
         Type::Bool
         | Type::Int(
@@ -328,7 +328,7 @@ pub fn atomic_min(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly)
         _ => todo!("Can't atomic min {tpe:?}"),
     }
 }
-pub fn atomic_max(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly) -> CILNode {
+pub fn atomic_max(addr: V1Node, addend: V1Node, tpe: Type, asm: &mut Assembly) -> V1Node {
     match tpe {
         Type::Bool
         | Type::Int(

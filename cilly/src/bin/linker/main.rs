@@ -339,12 +339,12 @@ fn main() {
                     MethodKind::Constructor,
                     vec![].into(),
                 );
-                let arg0 = cilly::cil_node::CILNode::V2(asm.alloc_node(CILNode::LdArg(0)));
+                let arg0 = cilly::cil_node::V1Node::V2(asm.alloc_node(CILNode::LdArg(0)));
                 MethodImpl::MethodBody {
                     blocks: vec![cilly::BasicBlock::from_v1(
                         &cilly::basic_block::BasicBlock::new(
                             vec![cilly::cil_root::CILRoot::Throw(
-                                cilly::cil_node::CILNode::NewObj(Box::new(
+                                cilly::cil_node::V1Node::NewObj(Box::new(
                                     cilly::cil_node::CallOpArgs {
                                         args: Box::new([conv_usize!(arg0)]),
                                         site: asm.alloc_methodref(exception_ctor),

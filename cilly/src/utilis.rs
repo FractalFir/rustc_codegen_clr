@@ -5,7 +5,7 @@ use crate::method::Method;
 
 use crate::cilnode::{ExtendKind, MethodKind};
 use crate::{call, call_virt, conv_usize, IntoAsmIndex, MethodDef, Type};
-use crate::{cil_node::CILNode, cil_root::CILRoot, Assembly};
+use crate::{cil_node::V1Node, cil_root::CILRoot, Assembly};
 use crate::{ClassRef, FnSig, Int, MethodRef, StaticFieldDesc};
 
 pub fn argc_argv_init_method(asm: &mut Assembly) -> Interned<MethodRef> {
@@ -19,7 +19,7 @@ pub fn argc_argv_init_method(asm: &mut Assembly) -> Interned<MethodRef> {
 
     asm.alloc_methodref(init_cs)
 }
-pub fn mstring_to_utf8ptr(mstring: CILNode, asm: &mut Assembly) -> CILNode {
+pub fn mstring_to_utf8ptr(mstring: V1Node, asm: &mut Assembly) -> V1Node {
     let mref = MethodRef::new(
         ClassRef::marshal(asm),
         asm.alloc_string("StringToCoTaskMemUTF8"),
@@ -94,8 +94,8 @@ pub fn get_environ(asm: &mut Assembly) -> Interned<MethodRef> {
         CILRoot::BNe {
             target: ret_bb,
             sub_target: 0,
-            a: Box::new(CILNode::V2(environ)),
-            b: Box::new(conv_usize!(CILNode::V2(asm.alloc_node(0_i32))).cast_ptr(uint8_ptr_ptr)),
+            a: Box::new(V1Node::V2(environ)),
+            b: Box::new(conv_usize!(V1Node::V2(asm.alloc_node(0_i32))).cast_ptr(uint8_ptr_ptr)),
         }
         .into(),
     );
@@ -134,16 +134,16 @@ pub fn get_environ(asm: &mut Assembly) -> Interned<MethodRef> {
             local: envc,
             tree: call_virt!(
                 asm.alloc_methodref(mref),
-                [CILNode::LDLoc(dictionary_local)]
+                [V1Node::LDLoc(dictionary_local)]
             ),
         }
         .into(),
     );
-    let element_count = CILNode::LDLoc(envc) + CILNode::V2(asm.alloc_node(1_i32));
+    let element_count = V1Node::LDLoc(envc) + V1Node::V2(asm.alloc_node(1_i32));
     let stride = asm.size_of(uint8_ptr_ptr);
     let stride = asm.int_cast(stride, Int::USize, ExtendKind::ZeroExtend);
-    let arr_size = conv_usize!(element_count) * CILNode::V2(stride.into_idx(asm));
-    let arr_align = conv_usize!(CILNode::V2(asm.size_of(uint8_ptr_ptr).into_idx(asm)));
+    let arr_size = conv_usize!(element_count) * V1Node::V2(stride.into_idx(asm));
+    let arr_align = conv_usize!(V1Node::V2(asm.size_of(uint8_ptr_ptr).into_idx(asm)));
     let aligned_alloc = MethodRef::aligned_alloc(asm);
     init.trees_mut().push(
         CILRoot::STLoc {
@@ -156,7 +156,7 @@ pub fn get_environ(asm: &mut Assembly) -> Interned<MethodRef> {
     init.trees_mut().push(
         CILRoot::STLoc {
             local: idx,
-            tree: CILNode::V2(asm.alloc_node(0_i32)),
+            tree: V1Node::V2(asm.alloc_node(0_i32)),
         }
         .into(),
     );
@@ -173,7 +173,7 @@ pub fn get_environ(asm: &mut Assembly) -> Interned<MethodRef> {
             local: iter_local,
             tree: call_virt!(
                 asm.alloc_methodref(mref),
-                [CILNode::LDLoc(dictionary_local)]
+                [V1Node::LDLoc(dictionary_local)]
             ),
         }
         .into(),
@@ -202,7 +202,7 @@ pub fn get_environ(asm: &mut Assembly) -> Interned<MethodRef> {
         CILRoot::BFalse {
             target: loop_end_bb,
             sub_target: 0,
-            cond: call_virt!(asm.alloc_methodref(move_next), [CILNode::LDLoc(iter_local)]),
+            cond: call_virt!(asm.alloc_methodref(move_next), [V1Node::LDLoc(iter_local)]),
         }
         .into(),
     );
@@ -216,10 +216,10 @@ pub fn get_environ(asm: &mut Assembly) -> Interned<MethodRef> {
     loop_body.trees_mut().push(
         CILRoot::STLoc {
             local: keyval,
-            tree: CILNode::UnboxAny(
+            tree: V1Node::UnboxAny(
                 Box::new(call_virt!(
                     asm.alloc_methodref(get_current),
-                    [CILNode::LDLoc(iter_local)]
+                    [V1Node::LDLoc(iter_local)]
                 )),
                 Box::new(Type::ClassRef(keyval_tpe)),
             ),
@@ -235,7 +235,7 @@ pub fn get_environ(asm: &mut Assembly) -> Interned<MethodRef> {
         MethodKind::Instance,
         vec![].into(),
     );
-    let kv = CILNode::V2(asm.alloc_node(crate::v2::CILNode::LdLocA(keyval)));
+    let kv = V1Node::V2(asm.alloc_node(crate::v2::CILNode::LdLocA(keyval)));
     let key = call!(asm.alloc_methodref(get_key), [kv.clone()]);
     let mref = MethodRef::new(
         keyval_tpe,
@@ -264,17 +264,17 @@ pub fn get_environ(asm: &mut Assembly) -> Interned<MethodRef> {
             local: encoded_keyval,
             tree: call!(
                 asm.alloc_methodref(concat),
-                [key, CILNode::LdStr("=".into()), value]
+                [key, V1Node::LdStr("=".into()), value]
             ),
         }
         .into(),
     );
-    let utf8_kval = mstring_to_utf8ptr(CILNode::LDLoc(encoded_keyval), asm);
+    let utf8_kval = mstring_to_utf8ptr(V1Node::LDLoc(encoded_keyval), asm);
     loop_body.trees_mut().push(
         CILRoot::STIndPtr(
-            CILNode::LDLoc(arr_ptr)
+            V1Node::LDLoc(arr_ptr)
                 + conv_usize!(
-                    CILNode::LDLoc(idx) * CILNode::V2(asm.size_of(uint8_ptr_ptr).into_idx(asm))
+                    V1Node::LDLoc(idx) * V1Node::V2(asm.size_of(uint8_ptr_ptr).into_idx(asm))
                 ),
             utf8_kval,
             Box::new(Type::Int(Int::U8)),
@@ -284,7 +284,7 @@ pub fn get_environ(asm: &mut Assembly) -> Interned<MethodRef> {
     loop_body.trees_mut().push(
         CILRoot::STLoc {
             local: idx,
-            tree: CILNode::LDLoc(idx) + CILNode::V2(asm.alloc_node(1_i32)),
+            tree: V1Node::LDLoc(idx) + V1Node::V2(asm.alloc_node(1_i32)),
         }
         .into(),
     );
@@ -297,12 +297,12 @@ pub fn get_environ(asm: &mut Assembly) -> Interned<MethodRef> {
         .into(),
     );
     let loop_end = &mut blocks[loop_end_bb as usize];
-    let null_ptr = conv_usize!(CILNode::V2(asm.alloc_node(0_i32))).cast_ptr(uint8_ptr);
+    let null_ptr = conv_usize!(V1Node::V2(asm.alloc_node(0_i32))).cast_ptr(uint8_ptr);
     loop_end.trees_mut().push(
         CILRoot::STIndPtr(
-            CILNode::LDLoc(arr_ptr)
+            V1Node::LDLoc(arr_ptr)
                 + conv_usize!(
-                    CILNode::LDLoc(envc) * CILNode::V2(asm.size_of(uint8_ptr_ptr).into_idx(asm))
+                    V1Node::LDLoc(envc) * V1Node::V2(asm.size_of(uint8_ptr_ptr).into_idx(asm))
                 ),
             null_ptr,
             Box::new(Type::Int(Int::U8)),
@@ -316,7 +316,7 @@ pub fn get_environ(asm: &mut Assembly) -> Interned<MethodRef> {
                 asm.alloc_string("environ"),
                 uint8_ptr_ptr,
             )),
-            value: CILNode::LDLoc(arr_ptr),
+            value: V1Node::LDLoc(arr_ptr),
         }
         .into(),
     );

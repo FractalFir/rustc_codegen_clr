@@ -1,8 +1,9 @@
 use core::f16;
 
 use cilly::{
-    Assembly, ClassRef, Const, Float, Int, Interned, MethodRef, StaticFieldDesc, Type, call,
-    cil_node::{CILNode, CallOpArgs},
+    Assembly, CILNode, ClassRef, Const, Float, Int, Interned, IntoAsmIndex, MethodRef,
+    StaticFieldDesc, Type, call,
+    cil_node::{CallOpArgs, V1Node},
     cilnode::{IsPure, MethodKind},
     hashable::{HashableF32, HashableF64},
 };
@@ -24,7 +25,7 @@ use crate::static_data::add_allocation;
 pub fn handle_constant<'tcx>(
     constant_op: &ConstOperand<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-) -> CILNode {
+) -> V1Node {
     let constant = constant_op.const_;
     let constant = ctx.monomorphize(constant);
     let evaluated = constant
@@ -43,7 +44,7 @@ fn create_const_from_data<'tcx>(
     alloc_id: AllocId,
     offset_bytes: u64,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-) -> CILNode {
+) -> Interned<CILNode> {
     let _ = offset_bytes;
     let ty = ctx.monomorphize(ty);
     let tpe = ctx.type_from_cache(ty);
@@ -62,36 +63,24 @@ fn create_const_from_data<'tcx>(
             }
             let scalar =
                 Scalar::from_u128(u128::from_ne_bytes(bytes.as_slice().try_into().unwrap()));
-            return load_const_scalar(scalar, ty, ctx);
+            return load_const_scalar(scalar, ty, ctx).into();
         }
         let (ptr, align) = alloc_ptr_unaligned(alloc_id, &alloc, ctx, tpe_idx);
+        let ty = ctx.monomorphize(ty);
+
+        let tpe = ctx.type_from_cache(ty);
+        let ptr = ctx.cast_ptr(ptr, tpe);
         if align.is_none() {
-            let ty = ctx.monomorphize(ty);
-
-            let tpe = ctx.type_from_cache(ty);
-            let tpe_ptr = ctx.nptr(tpe);
-            return CILNode::LdObj {
-                ptr: Box::new(ptr.cast_ptr(tpe_ptr)),
-                obj: Box::new(tpe),
-            };
+            return ctx.load(ptr, tpe);
         } else {
-            let ty = ctx.monomorphize(ty);
-
-            let tpe = ctx.type_from_cache(ty);
-            let tpe_ptr = ctx.nptr(tpe);
-
             let unaligned_read = Interned::unaligned_read(ctx, tpe);
-            return call!(unaligned_read, [ptr.cast_ptr(tpe_ptr)]);
+            return ctx.call(unaligned_read, &[ptr], IsPure::NOT);
         }
     }
 
     let ptr = add_allocation(alloc_id.0.into(), ctx, tpe_idx);
-
-    let tpe_ptr = ctx.nptr(tpe);
-    CILNode::LdObj {
-        ptr: Box::new(ptr.cast_ptr(tpe_ptr)),
-        obj: Box::new(tpe),
-    }
+    let ptr = ctx.cast_ptr(ptr, tpe);
+    return ctx.load(ptr, tpe);
 }
 fn alloc_align_size(alloc_id: u64, ctx: &mut MethodCompileCtx<'_, '_>) -> (u64, u64) {
     let global_alloc = ctx
@@ -133,9 +122,9 @@ pub fn load_const_value<'tcx>(
     const_val: ConstValue<'tcx>,
     const_ty: Ty<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-) -> CILNode {
+) -> V1Node {
     match const_val {
-        ConstValue::Scalar(scalar) => load_const_scalar(scalar, const_ty, ctx),
+        ConstValue::Scalar(scalar) => load_const_scalar(scalar, const_ty, ctx).into(),
         ConstValue::ZeroSized => {
             let tpe = ctx.monomorphize(const_ty);
             assert!(
@@ -143,7 +132,7 @@ pub fn load_const_value<'tcx>(
                 "Zero sized const with a non-zero size. It is {tpe:?}"
             );
             let tpe = ctx.type_from_cache(tpe);
-            CILNode::uninit_val(tpe, ctx)
+            V1Node::uninit_val(tpe, ctx)
         }
         ConstValue::Slice { data, meta } => {
             let slice_type = ctx.type_from_cache(const_ty);
@@ -152,7 +141,7 @@ pub fn load_const_value<'tcx>(
             let alloc_id = ctx.tcx().reserve_and_set_memory_alloc(data);
 
             let ptr = if meta == 0 {
-                CILNode::V2(ctx.alloc_node(Const::USize(1 << 30))).cast_ptr(ctx.nptr(Type::Void))
+                ctx.alloc_node(Const::USize(1 << 30))
             } else {
                 let arr_type = const_slice_backer_type(
                     const_ty.builtin_deref(true).unwrap(),
@@ -163,13 +152,14 @@ pub fn load_const_value<'tcx>(
 
                 let arr_tpe = ctx.alloc_type(arr_type);
 
-                alloc_ptr(alloc_id, &data, ctx, arr_tpe).cast_ptr(ctx.nptr(Type::Void))
+                alloc_ptr(alloc_id, &data, ctx, arr_tpe)
             };
-            let meta = CILNode::V2(ctx.alloc_node(Const::USize(meta)));
-            CILNode::create_slice(slice_dotnet, ctx, meta, ptr)
+            let ptr = ctx.cast_ptr(ptr, Type::Void);
+            let meta = V1Node::V2(ctx.alloc_node(Const::USize(meta)));
+            V1Node::create_slice(slice_dotnet, ctx, meta, ptr.into())
         }
         ConstValue::Indirect { alloc_id, offset } => {
-            create_const_from_data(const_ty, alloc_id, offset.bytes(), ctx)
+            create_const_from_data(const_ty, alloc_id, offset.bytes(), ctx).into()
             //todo!("Can't handle by-ref allocation {alloc_id:?} {offset:?}")
         } //_ => todo!("Unhandled const value {const_val:?} of type {const_ty:?}"),
     }
@@ -181,7 +171,7 @@ fn load_scalar_ptr(
     ctx: &mut MethodCompileCtx<'_, '_>,
     ptr: rustc_middle::mir::interpret::Pointer,
     tpe: Interned<Type>,
-) -> CILNode {
+) -> Interned<CILNode> {
     let (alloc_id, offset) = ptr.into_parts();
     let global_alloc = ctx.tcx().global_alloc(alloc_id.alloc_id());
     let u8_ptr = ctx.nptr(Type::Int(Int::U8));
@@ -204,7 +194,7 @@ fn load_scalar_ptr(
                     ctx.alloc_string(name),
                     Type::Int(Int::U8),
                 );
-                return ctx.static_addr(stotic).into();
+                return ctx.static_addr(stotic);
             }
             if name == "environ" {
                 let mref = MethodRef::new(
@@ -217,9 +207,7 @@ fn load_scalar_ptr(
                 let mref = ctx.alloc_methodref(mref);
                 let environ = ctx.alloc_node(cilly::v2::CILNode::call(mref, []));
                 let environ = ctx.annon_const(environ);
-                return CILNode::V2(
-                    ctx.alloc_node(cilly::v2::CILNode::LdStaticFieldAdress(environ)),
-                );
+                return ctx.alloc_node(cilly::v2::CILNode::LdStaticFieldAdress(environ));
             }
             let attrs = ctx.tcx().codegen_fn_attrs(def_id);
 
@@ -227,7 +215,7 @@ fn load_scalar_ptr(
                 // TODO: this could cause issues if the pointer to the static is not imediatly dereferenced.
                 let site = get_fn_from_static_name(&name, ctx);
                 let cst = ctx.annon_const(cilly::v2::CILNode::LdFtn(site));
-                return CILNode::V2(ctx.alloc_node(cilly::v2::CILNode::LdStaticFieldAdress(cst)));
+                return ctx.alloc_node(cilly::v2::CILNode::LdStaticFieldAdress(cst));
             }
             if let Some(section) = attrs.link_section {
                 panic!("static {name} requires special linkage in section {section:?}");
@@ -242,15 +230,11 @@ fn load_scalar_ptr(
             add_allocation(alloc_id, ctx, tpe)
         }
         GlobalAlloc::Memory(const_allocation) => {
+            let ptr = alloc_ptr(alloc_id.alloc_id(), &const_allocation, ctx, tpe);
             if offset.bytes() != 0 {
-                CILNode::Add(
-                    alloc_ptr(alloc_id.alloc_id(), &const_allocation, ctx, tpe).into(),
-                    Box::new(CILNode::V2(
-                        ctx.alloc_node(cilly::Const::USize(offset.bytes())),
-                    )),
-                )
+                ctx.biop(ptr, cilly::Const::USize(offset.bytes()), cilly::BinOp::Add)
             } else {
-                alloc_ptr(alloc_id.alloc_id(), &const_allocation, ctx, tpe)
+                ptr
             }
         }
         GlobalAlloc::Function {
@@ -268,7 +252,7 @@ fn load_scalar_ptr(
                 MethodKind::Static,
                 vec![].into(),
             );
-            CILNode::LDFtn(ctx.alloc_methodref(mref))
+            CILNode::LdFtn(ctx.alloc_methodref(mref)).into_idx(ctx)
         }
         GlobalAlloc::VTable(_, _) => {
             let (ty, polyref) = global_alloc.unwrap_vtable();
@@ -287,7 +271,7 @@ fn alloc_ptr<'tcx>(
     const_alloc: &rustc_middle::mir::interpret::ConstAllocation,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
     tpe: Interned<Type>,
-) -> CILNode {
+) -> Interned<CILNode> {
     let (ptr, align) = alloc_ptr_unaligned(alloc_id, const_alloc, ctx, tpe);
     // If aligement is small enough to be *guaranteed*, and no pointers are present.
     if align.is_some_and(|align| align <= ctx.const_align()) {
@@ -303,30 +287,26 @@ fn alloc_ptr_unaligned<'tcx>(
     const_alloc: &rustc_middle::mir::interpret::ConstAllocation,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
     tpe: Interned<Type>,
-) -> (CILNode, Option<u64>) {
+) -> (Interned<CILNode>, Option<u64>) {
     let const_alloc = const_alloc.inner();
     // If aligement is small enough to be *guaranteed*, and no pointers are present.
     if const_alloc.provenance().ptrs().is_empty() {
         if const_alloc.align.bytes() <= ctx.const_align() {
             (
-                CILNode::V2(
-                    ctx.bytebuffer(
-                        const_alloc
-                            .inspect_with_uninit_and_ptr_outside_interpreter(0..const_alloc.len()),
-                        Int::U8,
-                    ),
+                ctx.bytebuffer(
+                    const_alloc
+                        .inspect_with_uninit_and_ptr_outside_interpreter(0..const_alloc.len()),
+                    Int::U8,
                 ),
                 None,
             )
         } else {
             //unaligned_read
             (
-                CILNode::V2(
-                    ctx.bytebuffer(
-                        const_alloc
-                            .inspect_with_uninit_and_ptr_outside_interpreter(0..const_alloc.len()),
-                        Int::U8,
-                    ),
+                ctx.bytebuffer(
+                    const_alloc
+                        .inspect_with_uninit_and_ptr_outside_interpreter(0..const_alloc.len()),
+                    Int::U8,
                 ),
                 Some(ctx.const_align()),
             )
@@ -339,7 +319,7 @@ fn load_const_scalar<'tcx>(
     scalar: Scalar,
     scalar_type: Ty<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-) -> CILNode {
+) -> Interned<CILNode> {
     let scalar_ty = ctx.monomorphize(scalar_type);
     let scalar_type = ctx.type_from_cache(scalar_ty);
 
@@ -351,59 +331,52 @@ fn load_const_scalar<'tcx>(
                 .map(|ty| ctx.type_from_cache(ty))
                 .unwrap_or(Int::USize.into());
             let const_type_idx = ctx.alloc_type(const_type);
+            let ptr = load_scalar_ptr(ctx, ptr, const_type_idx);
             if matches!(scalar_type, Type::Ptr(_) | Type::FnPtr(_)) {
-                return load_scalar_ptr(ctx, ptr, const_type_idx).cast_ptr(scalar_type);
+                return ctx.cast_ptr(ptr, const_type_idx);
             }
-            return CILNode::transmute_on_stack(
-                load_scalar_ptr(ctx, ptr, const_type_idx)
-                    .cast_ptr(Type::Ptr(ctx.alloc_type(Type::Int(Int::U8)))),
-                ctx.nptr(Type::Int(Int::U8)),
-                scalar_type,
-                ctx,
-            );
+            return ctx.cast_ptr(ptr, Int::U8);
         }
     };
 
     match scalar_ty.kind() {
-        TyKind::Int(int_type) => CILNode::V2(load_const_int(scalar_u128, *int_type, ctx)),
-        TyKind::Uint(uint_type) => CILNode::V2(load_const_uint(scalar_u128, *uint_type, ctx)),
-        TyKind::Float(ftype) => load_const_float(scalar_u128, *ftype, ctx),
-        TyKind::Bool => CILNode::V2(ctx.alloc_node(scalar_u128 != 0)),
+        TyKind::Int(int_type) => load_const_int(scalar_u128, *int_type, ctx),
+        TyKind::Uint(uint_type) => load_const_uint(scalar_u128, *uint_type, ctx),
+        TyKind::Float(ftype) => load_const_float(scalar_u128, *ftype, ctx).into(),
+        TyKind::Bool => ctx.alloc_node(scalar_u128 != 0),
         TyKind::RawPtr(..) | TyKind::Ref(..) => {
             if is_fat_ptr(scalar_ty, ctx.tcx(), ctx.instance()) {
-                CILNode::V2(ctx.alloc_node(scalar_u128)).transmute_on_stack(
-                    Type::Int(Int::U128),
-                    scalar_type,
-                    ctx,
-                )
+                let val = ctx.alloc_node(scalar_u128);
+                ctx.transmute_on_stack(Type::Int(Int::U128), scalar_type, val)
             } else {
-                CILNode::V2(ctx.alloc_node(Const::USize(
+                let val = ctx.alloc_node(Const::USize(
                     u64::try_from(scalar_u128).expect("pointers must be smaller than 2^64"),
-                )))
-                .cast_ptr(scalar_type)
+                ));
+                ctx.cast_ptr(val, scalar_type)
             }
         }
         TyKind::Tuple(elements) => {
             if elements.is_empty() {
                 let scalar_ptr = ctx.nptr(scalar_type);
-                CILNode::uninit_val(scalar_ptr, ctx)
+                ctx.uninit_val(scalar_ptr)
             } else {
-                CILNode::V2(ctx.alloc_node(scalar_u128)).transmute_on_stack(
-                    Type::Int(Int::U128),
-                    scalar_type,
-                    ctx,
-                )
+                let val = ctx.alloc_node(scalar_u128);
+                ctx.transmute_on_stack(Type::Int(Int::U128), scalar_type, val)
             }
         }
-        TyKind::Adt(_, _) | TyKind::Closure(_, _) | TyKind::Array(_, _) => CILNode::V2(
-            ctx.alloc_node(scalar_u128),
-        )
-        .transmute_on_stack(Type::Int(Int::U128), scalar_type, ctx),
-        TyKind::Char => CILNode::V2(ctx.alloc_node(u32::try_from(scalar_u128).unwrap())),
+        TyKind::Adt(_, _) | TyKind::Closure(_, _) | TyKind::Array(_, _) => {
+            let val = ctx.alloc_node(scalar_u128);
+            ctx.transmute_on_stack(Type::Int(Int::U128), scalar_type, val)
+        }
+        TyKind::Char => ctx.alloc_node(u32::try_from(scalar_u128).unwrap()),
         _ => todo!("Can't load scalar constants of type {scalar_ty:?}!"),
     }
 }
-fn load_const_float(value: u128, float_type: FloatTy, asm: &mut Assembly) -> CILNode {
+fn load_const_float(
+    value: u128,
+    float_type: FloatTy,
+    asm: &mut Assembly,
+) -> Interned<cilly::v2::CILNode> {
     match float_type {
         FloatTy::F16 => {
             #[cfg(not(target_family = "windows"))]
@@ -415,13 +388,10 @@ fn load_const_float(value: u128, float_type: FloatTy, asm: &mut Assembly) -> CIL
                     MethodKind::Static,
                     vec![].into(),
                 );
-                call!(
-                    asm.alloc_methodref(mref),
-                    [asm.alloc_node(Const::F32(HashableF32(
-                        (f16::from_ne_bytes((u16::try_from(value).unwrap()).to_ne_bytes())) as f32
-                    )))
-                    .into()]
-                )
+                let cst = asm.alloc_node(Const::F32(HashableF32(
+                    (f16::from_ne_bytes((u16::try_from(value).unwrap()).to_ne_bytes())) as f32,
+                )));
+                asm.call(mref, &[cst], IsPure::PURE)
             }
             #[cfg(target_family = "windows")]
             {
@@ -437,12 +407,10 @@ fn load_const_float(value: u128, float_type: FloatTy, asm: &mut Assembly) -> CIL
             let value = f64::from_ne_bytes((u64::try_from(value).unwrap()).to_ne_bytes());
             asm.alloc_node(Const::F64(HashableF64(value))).into()
         }
-        FloatTy::F128 => CILNode::transmute_on_stack(
-            CILNode::V2(asm.alloc_node(Const::U128(value))),
-            Type::Int(Int::U128),
-            Type::Float(Float::F128),
-            asm,
-        ),
+        FloatTy::F128 => {
+            let u128_const = asm.alloc_node(Const::U128(value));
+            asm.transmute_on_stack(Type::Int(Int::U128), Type::Float(Float::F128), u128_const)
+        }
     }
 }
 pub fn load_const_int(
@@ -607,7 +575,7 @@ pub fn get_vtable<'tcx>(
     fx: &mut MethodCompileCtx<'tcx, '_>,
     ty: Ty<'tcx>,
     trait_ref: Option<ExistentialTraitRef<'tcx>>,
-) -> CILNode {
+) -> Interned<cilly::v2::CILNode> {
     let ty = fx.monomorphize(ty);
 
     let alloc_id = fx.tcx().vtable_allocation((ty, trait_ref));

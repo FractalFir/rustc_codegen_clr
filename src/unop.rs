@@ -1,6 +1,6 @@
 use crate::assembly::MethodCompileCtx;
 
-use cilly::cil_node::CILNode;
+use cilly::cil_node::V1Node;
 
 use cilly::cilnode::MethodKind;
 use cilly::{call, ld_field, Type};
@@ -18,7 +18,7 @@ pub fn unop<'tcx>(
     operand: &Operand<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
     rvalue: &Rvalue<'tcx>,
-) -> CILNode {
+) -> V1Node {
     let parrent_node = handle_operand(operand, ctx);
     let ty = operand.ty(&ctx.body().local_decls, ctx.tcx());
     match unnop {
@@ -33,8 +33,8 @@ pub fn unop<'tcx>(
                 );
                 call!(ctx.alloc_methodref(mref), [parrent_node])
             }
-            TyKind::Int(IntTy::I8) => CILNode::Neg(CILNode::ConvI8(parrent_node.into()).into()),
-            TyKind::Int(IntTy::I16) => CILNode::Neg(CILNode::ConvI16(parrent_node.into()).into()),
+            TyKind::Int(IntTy::I8) => V1Node::Neg(V1Node::ConvI8(parrent_node.into()).into()),
+            TyKind::Int(IntTy::I16) => V1Node::Neg(V1Node::ConvI16(parrent_node.into()).into()),
             TyKind::Uint(UintTy::U128) => {
                 let mref = MethodRef::new(
                     ClassRef::uint_128(ctx),
@@ -45,11 +45,11 @@ pub fn unop<'tcx>(
                 );
                 call!(ctx.alloc_methodref(mref), [parrent_node])
             }
-            _ => CILNode::Neg(parrent_node.into()),
+            _ => V1Node::Neg(parrent_node.into()),
         },
         UnOp::Not => match ty.kind() {
-            TyKind::Bool => CILNode::Eq(
-                Box::new(CILNode::V2(ctx.alloc_node(false))),
+            TyKind::Bool => V1Node::Eq(
+                Box::new(V1Node::V2(ctx.alloc_node(false))),
                 parrent_node.into(),
             ),
             TyKind::Uint(UintTy::U128) => {
@@ -72,7 +72,7 @@ pub fn unop<'tcx>(
                 );
                 call!(ctx.alloc_methodref(mref), [parrent_node])
             }
-            _ => CILNode::Not(parrent_node.into()),
+            _ => V1Node::Not(parrent_node.into()),
         },
         rustc_middle::mir::UnOp::PtrMetadata => {
             let tpe = get_type(ty, ctx);
@@ -108,7 +108,7 @@ pub fn unop<'tcx>(
                     )
                     .transmute_on_stack(Type::Int(Int::USize), target, ctx)
                 }
-                _ => CILNode::uninit_val(Type::Void, ctx),
+                _ => V1Node::uninit_val(Type::Void, ctx),
             }
         }
     }

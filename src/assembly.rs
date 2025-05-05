@@ -7,7 +7,7 @@ use crate::{
 };
 use cilly::{
     basic_block::BasicBlock,
-    cil_node::CILNode,
+    cil_node::V1Node,
     cil_root::CILRoot,
     cil_tree::CILTree,
     cilnode::{MethodKind, PtrCastRes},
@@ -218,8 +218,8 @@ pub fn add_fn<'tcx, 'asm, 'a: 'asm>(
             }
             let arg_field = field_descrptor(repacked_ty, arg_id.try_into().unwrap(), ctx);
             let arg = spread_arg.as_u32() - 1 + u32::try_from(arg_id).unwrap();
-            let arg = CILNode::V2(ctx.alloc_node(cilly::v2::CILNode::LdArg(arg)));
-            let repacked = CILNode::V2(ctx.alloc_node(cilly::v2::CILNode::LdLocA(repacked)));
+            let arg = V1Node::V2(ctx.alloc_node(cilly::v2::CILNode::LdArg(arg)));
+            let repacked = V1Node::V2(ctx.alloc_node(cilly::v2::CILNode::LdLocA(repacked)));
             repack_cil.push(
                 CILRoot::SetField {
                     addr: Box::new(repacked),

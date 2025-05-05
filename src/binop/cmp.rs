@@ -1,5 +1,5 @@
 use cilly::{
-    call, cil_node::CILNode, cilnode::MethodKind, eq, gt, gt_un, ld_field, lt, lt_un, Assembly,
+    call, cil_node::V1Node, cilnode::MethodKind, eq, gt, gt_un, ld_field, lt, lt_un, Assembly,
     ClassRef, Float, Int, Interned, MethodRef, Type,
 };
 use rustc_codegen_clr_ctx::MethodCompileCtx;
@@ -8,22 +8,22 @@ use rustc_middle::ty::{FloatTy, IntTy, Ty, TyKind, UintTy};
 
 pub fn ne_unchecked<'tcx>(
     ty_a: Ty<'tcx>,
-    operand_a: CILNode,
-    operand_b: CILNode,
+    operand_a: V1Node,
+    operand_b: V1Node,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-) -> CILNode {
+) -> V1Node {
     //vec![eq_unchecked(ty_a), CILOp::LdcI32(0), CILOp::Eq]
     eq!(
         eq_unchecked(ty_a, operand_a, operand_b, ctx),
-        CILNode::V2(ctx.alloc_node(false))
+        V1Node::V2(ctx.alloc_node(false))
     )
 }
 pub fn eq_unchecked<'tcx>(
     ty_a: Ty<'tcx>,
-    operand_a: CILNode,
-    operand_b: CILNode,
+    operand_a: V1Node,
+    operand_b: V1Node,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-) -> CILNode {
+) -> V1Node {
     match ty_a.kind() {
         TyKind::Uint(uint) => match uint {
             UintTy::U128 => {
@@ -102,10 +102,10 @@ pub fn eq_unchecked<'tcx>(
 }
 pub fn lt_unchecked(
     ty_a: Ty<'_>,
-    operand_a: CILNode,
-    operand_b: CILNode,
+    operand_a: V1Node,
+    operand_b: V1Node,
     asm: &mut Assembly,
-) -> CILNode {
+) -> V1Node {
     //return CILOp::Lt;
     match ty_a.kind() {
         TyKind::Uint(uint) => match uint {
@@ -170,10 +170,10 @@ pub fn lt_unchecked(
 }
 pub fn gt_unchecked(
     ty_a: Ty<'_>,
-    operand_a: CILNode,
-    operand_b: CILNode,
+    operand_a: V1Node,
+    operand_b: V1Node,
     asm: &mut Assembly,
-) -> CILNode {
+) -> V1Node {
     match ty_a.kind() {
         TyKind::Uint(uint) => match uint {
             UintTy::U128 => {

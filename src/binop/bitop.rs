@@ -1,7 +1,7 @@
 use crate::assembly::MethodCompileCtx;
 use cilly::{
     and, call,
-    cil_node::CILNode,
+    cil_node::V1Node,
     or, xor, Type,
     {cilnode::MethodKind, ClassRef, Int, MethodRef},
 };
@@ -13,9 +13,9 @@ pub fn bit_and_unchecked<'tcx>(
     ty_a: Ty<'tcx>,
     ty_b: Ty<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-    operand_a: CILNode,
-    operand_b: CILNode,
-) -> CILNode {
+    operand_a: V1Node,
+    operand_b: V1Node,
+) -> V1Node {
     let type_b = ctx.type_from_cache(ty_b);
     match ty_a.kind() {
         TyKind::Uint(UintTy::U128) => {
@@ -64,9 +64,9 @@ pub fn bit_or_unchecked<'tcx>(
     ty_a: Ty<'tcx>,
     ty_b: Ty<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-    operand_a: CILNode,
-    operand_b: CILNode,
-) -> CILNode {
+    operand_a: V1Node,
+    operand_b: V1Node,
+) -> V1Node {
     match ty_a.kind() {
         TyKind::Int(IntTy::I128) => {
             let ty_a = ctx.type_from_cache(ty_a);
@@ -99,9 +99,9 @@ pub fn bit_xor_unchecked<'tcx>(
     ty_a: Ty<'tcx>,
     ty_b: Ty<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-    ops_a: CILNode,
-    ops_b: CILNode,
-) -> CILNode {
+    ops_a: V1Node,
+    ops_b: V1Node,
+) -> V1Node {
     match ty_a.kind() {
         TyKind::Int(IntTy::I128) => {
             let ty_a = ctx.type_from_cache(ty_a);

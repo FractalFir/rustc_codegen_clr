@@ -1,15 +1,16 @@
 use crate::constant::static_ty;
 use cilly::{
-    Access, Assembly, Const, FnSig, Int, Interned, IntoAsmIndex, MethodDef, MethodDefIdx,
-    MethodRef, StaticFieldDesc, Type,
+    Access, Const, FnSig, Int, Interned, IntoAsmIndex, MethodDef, MethodDefIdx, MethodRef,
+    StaticFieldDesc, Type,
     basic_block::BasicBlock,
     call,
-    cil_node::CILNode,
+    cil_node::V1Node,
     cil_root::CILRoot,
     cil_tree::CILTree,
     cilnode::MethodKind,
     method::{Method, MethodType},
     utilis::encode,
+    v2::CILNode,
 };
 use rustc_codegen_clr_call::CallInfo;
 pub use rustc_codegen_clr_ctx::MethodCompileCtx;
@@ -21,7 +22,7 @@ use rustc_middle::{
 };
 use rustc_span::def_id::DefId;
 
-pub fn add_static(def_id: DefId, ctx: &mut MethodCompileCtx<'_, '_>) -> CILNode {
+pub fn add_static(def_id: DefId, ctx: &mut MethodCompileCtx<'_, '_>) -> Interned<CILNode> {
     let main_module_id = ctx.main_module();
     let alloc = ctx.tcx().eval_static_initializer(def_id).unwrap();
     let attrs = ctx.tcx().codegen_fn_attrs(def_id);
@@ -47,10 +48,10 @@ pub fn add_static(def_id: DefId, ctx: &mut MethodCompileCtx<'_, '_>) -> CILNode 
         None,
         false,
     );
-    let ptr = ctx.alloc_node(cilly::v2::CILNode::LdStaticFieldAdress(sfld));
+    let ptr = ctx.alloc_node(CILNode::LdStaticFieldAdress(sfld));
     let ptr = ctx.cast_ptr(ptr, Int::U8);
-    let ptr = CILNode::V2(ptr);
-    let initialzer = allocation_initializer_method(&alloc.0, &symbol, ctx, ptr.clone(), true);
+    let ptr = ptr;
+    let initialzer = allocation_initializer_method(&alloc.0, &symbol, ctx, ptr, true);
     let root = ctx.alloc_root(cilly::CILRoot::call(*initialzer, []));
 
     if thread_local {
@@ -110,7 +111,7 @@ pub fn add_allocation(
     alloc_id: u64,
     ctx: &mut MethodCompileCtx<'_, '_>,
     tpe: Interned<Type>,
-) -> CILNode {
+) -> Interned<CILNode> {
     let uint8_ptr = ctx.nptr(Type::Int(Int::U8));
     let main_module_id = ctx.main_module();
     let const_allocation = match ctx
@@ -129,7 +130,7 @@ pub fn add_allocation(
                 None,
                 false,
             );
-            return CILNode::V2(ctx.load_static(field_desc));
+            return (ctx.load_static(field_desc));
         }
         GlobalAlloc::Function { .. } => {
             //TODO: handle constant functions
@@ -137,7 +138,7 @@ pub fn add_allocation(
             let field_desc =
                 ctx.add_static(uint8_ptr, alloc_fld, false, main_module_id, None, false);
 
-            return CILNode::V2(ctx.load_static(field_desc));
+            return (ctx.load_static(field_desc));
             //todo!("Function/Vtable allocation.");
         }
     };
@@ -148,11 +149,11 @@ pub fn add_allocation(
         const_allocation.inspect_with_uninit_and_ptr_outside_interpreter(0..const_allocation.len());
     let align = const_allocation.align.bytes().max(1);
     if const_allocation.len() == 0 {
-        return CILNode::V2(ctx.alloc_node(Const::USize(align)));
+        return (ctx.alloc_node(Const::USize(align)));
     }
     // Check if const literal can be used
     if const_allocation.provenance().ptrs().is_empty() && align <= 1 {
-        return CILNode::V2(ctx.bytebuffer(bytes, Int::U8));
+        return (ctx.bytebuffer(bytes, Int::U8));
     }
     // Alloc ids are *not* unique across all crates. Adding the hash here ensures we don't overwrite allocations during linking
     // TODO:consider using something better here / making the hashes stable.
@@ -188,7 +189,7 @@ pub fn add_allocation(
             let root = ctx.alloc_root(cilly::CILRoot::call(*initialzer, []));
             ctx.add_cctor(&[root]);
 
-            CILNode::V2(ctx.static_addr(field_desc))
+            (ctx.static_addr(field_desc))
         }
     }
 }
@@ -205,7 +206,7 @@ pub fn add_const_value(asm: &mut cilly::Assembly, bytes: u128) -> StaticFieldDes
         return field_desc;
     }
     asm.add_static(uint8_ptr, alloc_fld, false, main_module_id, None, false);
-    let cst = CILNode::const_u128(bytes, asm);
+    let cst = V1Node::const_u128(bytes, asm);
 
     let field = asm.alloc_sfld(field_desc);
     let val = cilly::CILNode::from_v1(&cst, asm);
@@ -216,14 +217,14 @@ pub fn add_const_value(asm: &mut cilly::Assembly, bytes: u128) -> StaticFieldDes
 
     field_desc
 }
-fn alloc_buff(align: u64, asm: &mut cilly::Assembly, len: usize) -> CILNode {
+fn alloc_buff(align: u64, asm: &mut cilly::Assembly, len: usize) -> V1Node {
     if align > 8 {
         let aligned_alloc = MethodRef::aligned_alloc(asm);
         Box::new(call!(
             asm.alloc_methodref(aligned_alloc),
             [
-                CILNode::V2(asm.alloc_node(Const::USize(len as u64))),
-                CILNode::V2(asm.alloc_node(Const::USize(align)))
+                V1Node::V2(asm.alloc_node(Const::USize(len as u64))),
+                V1Node::V2(asm.alloc_node(Const::USize(align)))
             ]
         ))
         .cast_ptr(asm.nptr(Type::Int(Int::U8)))
@@ -231,7 +232,7 @@ fn alloc_buff(align: u64, asm: &mut cilly::Assembly, len: usize) -> CILNode {
         let alloc = MethodRef::alloc(asm);
         Box::new(call!(
             asm.alloc_methodref(alloc),
-            [CILNode::V2(asm.alloc_node(Const::ISize(
+            [V1Node::V2(asm.alloc_node(Const::ISize(
                 i64::try_from(len as u64).expect("Static alloc too big")
             )))]
         ))
@@ -242,7 +243,7 @@ fn allocation_initializer_method(
     const_allocation: &Allocation,
     name: &str,
     ctx: &mut MethodCompileCtx<'_, '_>,
-    ptr: CILNode,
+    ptr: Interned<CILNode>,
     void_ret: bool,
 ) -> MethodDefIdx {
     let bytes: &[u8] =
@@ -254,17 +255,15 @@ fn allocation_initializer_method(
     trees.push(
         CILRoot::STLoc {
             local: 0,
-            tree: ptr,
+            tree: ptr.into(),
         }
         .into(),
     );
     trees.push(
         CILRoot::CpBlk {
-            dst: Box::new(CILNode::LDLoc(0)),
-            src: Box::new(CILNode::V2(ctx.bytebuffer(bytes, Int::U8))),
-            len: Box::new(CILNode::V2(
-                ctx.alloc_node(Const::USize(bytes.len() as u64)),
-            )),
+            dst: Box::new(V1Node::LDLoc(0)),
+            src: Box::new(V1Node::V2(ctx.bytebuffer(bytes, Int::U8))),
+            len: Box::new(V1Node::V2(ctx.alloc_node(Const::USize(bytes.len() as u64)))),
         }
         .into(),
     );
@@ -291,10 +290,10 @@ fn allocation_initializer_method(
                 );
                 trees.push(
                     CILRoot::STIndISize(
-                        (CILNode::LDLoc(0)
-                            + CILNode::V2(ctx.alloc_node(Const::USize(offset.into()))))
+                        (V1Node::LDLoc(0)
+                            + V1Node::V2(ctx.alloc_node(Const::USize(offset.into()))))
                         .cast_ptr(ctx.nptr(Type::Int(Int::USize))),
-                        CILNode::LDFtn(ctx.alloc_methodref(mref)).cast_ptr(Type::Int(Int::USize)),
+                        V1Node::LDFtn(ctx.alloc_methodref(mref)).cast_ptr(Type::Int(Int::USize)),
                     )
                     .into(),
                 );
@@ -305,10 +304,10 @@ fn allocation_initializer_method(
 
                 trees.push(
                     CILRoot::STIndISize(
-                        (CILNode::LDLoc(0)
-                            + CILNode::V2(ctx.alloc_node(Const::USize(offset.into()))))
+                        (V1Node::LDLoc(0)
+                            + V1Node::V2(ctx.alloc_node(Const::USize(offset.into()))))
                         .cast_ptr(ctx.nptr(Type::Int(Int::USize))),
-                        ptr_alloc.cast_ptr(Type::Int(Int::USize)),
+                        Into::<V1Node>::into(ptr_alloc).cast_ptr(Type::Int(Int::USize)),
                     )
                     .into(),
                 );
@@ -321,7 +320,7 @@ fn allocation_initializer_method(
     } else {
         trees.push(
             CILRoot::Ret {
-                tree: CILNode::LDLoc(0),
+                tree: V1Node::LDLoc(0),
             }
             .into(),
         );

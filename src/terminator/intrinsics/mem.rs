@@ -1,5 +1,5 @@
 use crate::assembly::MethodCompileCtx;
-use cilly::{cil_node::CILNode, cil_root::CILRoot, conv_usize, eq, Int, IntoAsmIndex, Type};
+use cilly::{cil_node::V1Node, cil_root::CILRoot, conv_usize, eq, Int, IntoAsmIndex, Type};
 use rustc_codegen_clr_place::place_set;
 use rustc_codegen_clr_type::GetTypeExt;
 use rustc_codgen_clr_operand::handle_operand;
@@ -30,7 +30,7 @@ pub fn write_bytes<'tcx>(
     let dst = handle_operand(&args[0].node, ctx);
     let val = handle_operand(&args[1].node, ctx);
     let count = handle_operand(&args[2].node, ctx)
-        * conv_usize!(CILNode::V2(ctx.size_of(tpe).into_idx(ctx)));
+        * conv_usize!(V1Node::V2(ctx.size_of(tpe).into_idx(ctx)));
     CILRoot::InitBlk {
         dst: Box::new(dst),
         val: Box::new(val),
@@ -60,7 +60,7 @@ pub fn copy<'tcx>(
     let src = handle_operand(&args[0].node, ctx);
     let dst = handle_operand(&args[1].node, ctx);
     let count = handle_operand(&args[2].node, ctx)
-        * conv_usize!(CILNode::V2(ctx.size_of(tpe).into_idx(ctx)));
+        * conv_usize!(V1Node::V2(ctx.size_of(tpe).into_idx(ctx)));
 
     CILRoot::CpBlk {
         src: Box::new(src),
@@ -82,7 +82,7 @@ pub fn raw_eq<'tcx>(
     );
     // Raw eq always true for zsts.
     if ctx.layout_of(tpe).is_zst() {
-        return place_set(destination, CILNode::V2(ctx.alloc_node(true)), ctx);
+        return place_set(destination, V1Node::V2(ctx.alloc_node(true)), ctx);
     }
     let tpe = ctx.type_from_cache(tpe);
     let size = match tpe {
@@ -109,7 +109,7 @@ pub fn raw_eq<'tcx>(
                 ctx,
             );
         }
-        _ => CILNode::V2(ctx.size_of(tpe).into_idx(ctx)),
+        _ => V1Node::V2(ctx.size_of(tpe).into_idx(ctx)),
     };
     place_set(
         destination,
@@ -120,7 +120,7 @@ pub fn raw_eq<'tcx>(
                 conv_usize!(size),
                 ctx
             ),
-            CILNode::V2(ctx.alloc_node(0_i32))
+            V1Node::V2(ctx.alloc_node(0_i32))
         ),
         ctx,
     )

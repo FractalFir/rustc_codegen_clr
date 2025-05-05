@@ -705,7 +705,7 @@ pub fn argc_argv_init(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
     let name = asm.alloc_string("argc_argv_init");
     let generator = move |_, asm: &mut Assembly| {
         let main_module = asm.main_module();
-        use crate::cil_node::CILNode;
+        use crate::cil_node::V1Node;
         use crate::cil_root::CILRoot;
         use crate::method::Method;
         use crate::FnSig;
@@ -762,8 +762,8 @@ pub fn argc_argv_init(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
         // Calculate argc
         let argc_init = CILRoot::STLoc {
             local: argc,
-            tree: crate::conv_i32!(CILNode::LDLen {
-                arr: CILNode::LDLoc(managed_args).into()
+            tree: crate::conv_i32!(V1Node::LDLen {
+                arr: V1Node::LDLoc(managed_args).into()
             }),
         };
         let aligned_alloc = MethodRef::aligned_alloc(asm);
@@ -771,11 +771,11 @@ pub fn argc_argv_init(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
         let tree = crate::call!(
             asm.alloc_methodref(aligned_alloc),
             [
-                CILNode::Mul(
-                    crate::conv_usize!(CILNode::LDLoc(argc)).into(),
-                    crate::conv_usize!(CILNode::V2(asm.size_of(Int::USize).into_idx(asm))).into()
+                V1Node::Mul(
+                    crate::conv_usize!(V1Node::LDLoc(argc)).into(),
+                    crate::conv_usize!(V1Node::V2(asm.size_of(Int::USize).into_idx(asm))).into()
                 ),
-                crate::conv_usize!(CILNode::V2(asm.alloc_node(8_i32)))
+                crate::conv_usize!(V1Node::V2(asm.alloc_node(8_i32)))
             ]
         )
         .cast_ptr(asm.nptr(uint8_ptr));
@@ -796,7 +796,7 @@ pub fn argc_argv_init(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
             CILRoot::BTrue {
                 target: start_bb + 3,
                 sub_target: 0,
-                cond: CILNode::V2(asm.load_static(status)),
+                cond: V1Node::V2(asm.load_static(status)),
             }
             .into(),
         );
@@ -807,7 +807,7 @@ pub fn argc_argv_init(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
         start_block.trees_mut().push(
             CILRoot::STLoc {
                 local: arg_idx,
-                tree: CILNode::V2(asm.alloc_node(0_i32)),
+                tree: V1Node::V2(asm.alloc_node(0_i32)),
             }
             .into(),
         );
@@ -824,19 +824,19 @@ pub fn argc_argv_init(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
         let mut blocks = init_method.blocks_mut();
         let loop_block = &mut blocks[loop_bb as usize];
         // Load nth argument
-        let arg_nth = CILNode::LDElelemRef {
-            arr: CILNode::LDLoc(managed_args).into(),
-            idx: CILNode::LDLoc(arg_idx).into(),
+        let arg_nth = V1Node::LDElelemRef {
+            arr: V1Node::LDLoc(managed_args).into(),
+            idx: V1Node::LDLoc(arg_idx).into(),
         };
         // Convert the nth managed argument to UTF16
         let uarg = mstring_to_utf8ptr(arg_nth, asm);
         // Store the converted arg at idx+1
         loop_block.trees_mut().push(
             CILRoot::STIndPtr(
-                CILNode::LDLoc(argv)
+                V1Node::LDLoc(argv)
                     + crate::conv_usize!(
-                        CILNode::V2(asm.size_of(Int::USize).into_idx(asm))
-                            * CILNode::LDLoc(arg_idx)
+                        V1Node::V2(asm.size_of(Int::USize).into_idx(asm))
+                            * V1Node::LDLoc(arg_idx)
                     ),
                 uarg,
                 Box::new(Type::Int(Int::I8)),
@@ -847,7 +847,7 @@ pub fn argc_argv_init(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
         loop_block.trees_mut().push(
             CILRoot::STLoc {
                 local: arg_idx,
-                tree: CILNode::LDLoc(arg_idx) + CILNode::V2(asm.alloc_node(1_i32)),
+                tree: V1Node::LDLoc(arg_idx) + V1Node::V2(asm.alloc_node(1_i32)),
             }
             .into(),
         );
@@ -858,12 +858,12 @@ pub fn argc_argv_init(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
                 sub_target: 0,
                 cond: crate::eq!(
                     crate::lt!(
-                        CILNode::LDLoc(arg_idx),
-                        crate::conv_i32!(CILNode::LDLen {
-                            arr: CILNode::LDLoc(managed_args).into()
+                        V1Node::LDLoc(arg_idx),
+                        crate::conv_i32!(V1Node::LDLen {
+                            arr: V1Node::LDLoc(managed_args).into()
                         })
                     ),
-                    CILNode::V2(asm.alloc_node(false))
+                    V1Node::V2(asm.alloc_node(false))
                 ),
             }
             .into(),
@@ -889,7 +889,7 @@ pub fn argc_argv_init(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
         loop_end_block.trees_mut().push(
             CILRoot::SetStaticField {
                 descr: Box::new(argv_static),
-                value: CILNode::LDLoc(argv),
+                value: V1Node::LDLoc(argv),
             }
             .into(),
         );
@@ -901,7 +901,7 @@ pub fn argc_argv_init(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
         loop_end_block.trees_mut().push(
             CILRoot::SetStaticField {
                 descr: Box::new(argc_static),
-                value: CILNode::LDLoc(argc),
+                value: V1Node::LDLoc(argc),
             }
             .into(),
         );
@@ -915,7 +915,7 @@ pub fn argc_argv_init(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
         loop_end_block.trees_mut().push(
             CILRoot::SetStaticField {
                 descr: Box::new(asm[status]),
-                value: CILNode::V2(asm.alloc_node(true)),
+                value: V1Node::V2(asm.alloc_node(true)),
             }
             .into(),
         );

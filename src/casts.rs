@@ -1,4 +1,4 @@
-use cilly::cil_node::CILNode;
+use cilly::cil_node::V1Node;
 use cilly::cilnode::MethodKind;
 use cilly::Type;
 use cilly::{Assembly, ClassRef, Float, Int, MethodRef};
@@ -8,7 +8,7 @@ use cilly::{
     conv_u16, conv_u32, conv_u64, conv_u8, conv_usize,
 };
 /// Casts from intiger type `src` to target `target`
-pub fn int_to_int(src: Type, target: Type, operand: CILNode, asm: &mut Assembly) -> CILNode {
+pub fn int_to_int(src: Type, target: Type, operand: V1Node, asm: &mut Assembly) -> V1Node {
     if src == target {
         return operand;
     }
@@ -85,10 +85,10 @@ pub fn int_to_int(src: Type, target: Type, operand: CILNode, asm: &mut Assembly)
         }
         // Fixes sign casts
         (Type::Int(Int::I64 | Int::I32 | Int::I16 | Int::I8), Type::Int(Int::USize)) => {
-            CILNode::SignExtendToUSize(operand.into())
+            V1Node::SignExtendToUSize(operand.into())
         }
         (Type::Int(Int::I64 | Int::I32 | Int::I16 | Int::I8), Type::Int(Int::U64)) => {
-            CILNode::SignExtendToU64(operand.into())
+            V1Node::SignExtendToU64(operand.into())
         }
         // i128 bit casts
         (Type::Int(Int::U128), Type::Int(Int::I128))
@@ -157,7 +157,7 @@ pub fn int_to_int(src: Type, target: Type, operand: CILNode, asm: &mut Assembly)
     }
 }
 /// Returns CIL ops required to convert type src to target
-pub fn float_to_int(src: Type, target: Type, operand: CILNode, asm: &mut Assembly) -> CILNode {
+pub fn float_to_int(src: Type, target: Type, operand: V1Node, asm: &mut Assembly) -> V1Node {
     match target {
         Type::Int(Int::I128) => {
             let mref = MethodRef::new(
@@ -419,7 +419,7 @@ pub fn float_to_int(src: Type, target: Type, operand: CILNode, asm: &mut Assembl
     //
 }
 /// Returns CIL ops required to convert to intiger of type `target`
-fn to_int(target: Type, operand: CILNode) -> CILNode {
+fn to_int(target: Type, operand: V1Node) -> V1Node {
     match target {
         Type::Int(Int::I8) => conv_i8!(operand),
         Type::Int(Int::U8) => conv_u8!(operand),
@@ -436,7 +436,7 @@ fn to_int(target: Type, operand: CILNode) -> CILNode {
     }
 }
 /// Returns CIL ops required to casts from intiger type `src` to `target` MOVE TO CILLY
-pub fn int_to_float(src: Type, target: Type, parrent: CILNode, asm: &mut Assembly) -> CILNode {
+pub fn int_to_float(src: Type, target: Type, parrent: V1Node, asm: &mut Assembly) -> V1Node {
     if matches!(src, Type::Int(Int::I128)) {
         let mref = MethodRef::new(
             ClassRef::int_128(asm),

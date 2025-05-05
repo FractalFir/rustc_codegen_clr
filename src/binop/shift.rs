@@ -1,7 +1,7 @@
 use crate::{assembly::MethodCompileCtx, utilis::compiletime_sizeof};
 use cilly::{
     call,
-    cil_node::CILNode,
+    cil_node::V1Node,
     conv_i32, conv_u32, rem_un, shl, shr, shr_un, Type,
     {cilnode::MethodKind, ClassRef, Int, MethodRef},
 };
@@ -13,9 +13,9 @@ pub fn shr_unchecked<'tcx>(
     value_type: Ty<'tcx>,
     shift_type: Ty<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-    ops_a: CILNode,
-    ops_b: CILNode,
-) -> CILNode {
+    ops_a: V1Node,
+    ops_b: V1Node,
+) -> V1Node {
     let type_b = ctx.type_from_cache(shift_type);
     match value_type.kind() {
         TyKind::Uint(UintTy::U128) => {
@@ -83,9 +83,9 @@ pub fn shr_checked<'tcx>(
     value_type: Ty<'tcx>,
     shift_type: Ty<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-    ops_a: CILNode,
-    ops_b: CILNode,
-) -> CILNode {
+    ops_a: V1Node,
+    ops_b: V1Node,
+) -> V1Node {
     let type_b = ctx.type_from_cache(shift_type);
     let bit_cap = u32::try_from(compiletime_sizeof(value_type, ctx.tcx()) * 8)
         .expect("Intiger size over 2^32 bits.");
@@ -107,7 +107,7 @@ pub fn shr_checked<'tcx>(
                     ops_a,
                     conv_i32!(rem_un!(
                         crate::casts::int_to_int(type_b, Type::Int(Int::U32), ops_b, ctx),
-                        CILNode::V2(ctx.alloc_node(128_u32))
+                        V1Node::V2(ctx.alloc_node(128_u32))
                     ))
                 ]
             );
@@ -130,7 +130,7 @@ pub fn shr_checked<'tcx>(
                     ops_a,
                     conv_i32!(rem_un!(
                         crate::casts::int_to_int(type_b, Type::Int(Int::U32), ops_b, ctx),
-                        CILNode::V2(ctx.alloc_node(128_u32))
+                        V1Node::V2(ctx.alloc_node(128_u32))
                     ))
                 ]
             );
@@ -147,14 +147,14 @@ pub fn shr_checked<'tcx>(
                             ops_b,
                             ctx
                         )),
-                        CILNode::V2(ctx.alloc_node(bit_cap))
+                        V1Node::V2(ctx.alloc_node(bit_cap))
                     )
                 )
             }
             _ => {
                 shr_un!(
                     ops_a,
-                    rem_un!(conv_u32!(ops_b), CILNode::V2(ctx.alloc_node(bit_cap)))
+                    rem_un!(conv_u32!(ops_b), V1Node::V2(ctx.alloc_node(bit_cap)))
                 )
             }
         },
@@ -169,14 +169,14 @@ pub fn shr_checked<'tcx>(
                             ops_b,
                             ctx
                         )),
-                        CILNode::V2(ctx.alloc_node(bit_cap))
+                        V1Node::V2(ctx.alloc_node(bit_cap))
                     )
                 )
             }
             _ => {
                 shr!(
                     ops_a,
-                    rem_un!(conv_u32!(ops_b), CILNode::V2(ctx.alloc_node(bit_cap)))
+                    rem_un!(conv_u32!(ops_b), V1Node::V2(ctx.alloc_node(bit_cap)))
                 )
             }
         },
@@ -188,9 +188,9 @@ pub fn shl_checked<'tcx>(
     value_type: Ty<'tcx>,
     shift_type: Ty<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-    ops_a: CILNode,
-    ops_b: CILNode,
-) -> CILNode {
+    ops_a: V1Node,
+    ops_b: V1Node,
+) -> V1Node {
     let type_b = ctx.type_from_cache(shift_type);
     let bit_cap = u32::try_from(compiletime_sizeof(value_type, ctx.tcx()) * 8)
         .expect("Intiger has over 2^32 bits.");
@@ -217,7 +217,7 @@ pub fn shl_checked<'tcx>(
                             ops_b,
                             ctx
                         )),
-                        CILNode::V2(ctx.alloc_node(bit_cap))
+                        V1Node::V2(ctx.alloc_node(bit_cap))
                     ))
                 ]
             )
@@ -244,7 +244,7 @@ pub fn shl_checked<'tcx>(
                             ops_b,
                             ctx
                         )),
-                        CILNode::V2(ctx.alloc_node(bit_cap))
+                        V1Node::V2(ctx.alloc_node(bit_cap))
                     ))
                 ]
             )
@@ -260,14 +260,14 @@ pub fn shl_checked<'tcx>(
                             ops_b,
                             ctx
                         )),
-                        CILNode::V2(ctx.alloc_node(bit_cap))
+                        V1Node::V2(ctx.alloc_node(bit_cap))
                     )
                 )
             }
             _ => {
                 shl!(
                     ops_a,
-                    rem_un!(conv_u32!(ops_b), CILNode::V2(ctx.alloc_node(bit_cap)))
+                    rem_un!(conv_u32!(ops_b), V1Node::V2(ctx.alloc_node(bit_cap)))
                 )
             }
         },
@@ -282,7 +282,7 @@ pub fn shl_checked<'tcx>(
                             ops_b,
                             ctx
                         )),
-                        CILNode::V2(ctx.alloc_node(bit_cap))
+                        V1Node::V2(ctx.alloc_node(bit_cap))
                     )
                 )
             }
@@ -290,7 +290,7 @@ pub fn shl_checked<'tcx>(
             _ => {
                 shl!(
                     ops_a,
-                    rem_un!(conv_u32!(ops_b), CILNode::V2(ctx.alloc_node(bit_cap)))
+                    rem_un!(conv_u32!(ops_b), V1Node::V2(ctx.alloc_node(bit_cap)))
                 )
             }
         },
@@ -302,9 +302,9 @@ pub fn shl_unchecked<'tcx>(
     value_type: Ty<'tcx>,
     shift_type: Ty<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-    ops_a: CILNode,
-    ops_b: CILNode,
-) -> CILNode {
+    ops_a: V1Node,
+    ops_b: V1Node,
+) -> V1Node {
     let type_b = ctx.type_from_cache(shift_type);
     match value_type.kind() {
         TyKind::Uint(UintTy::U128) => {

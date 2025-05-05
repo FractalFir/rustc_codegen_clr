@@ -1,6 +1,6 @@
 use crate::assembly::MethodCompileCtx;
 use cilly::{
-    cil_node::CILNode, cil_root::CILRoot, cil_tree::CILTree, cilnode::MethodKind, ld_field, BinOp,
+    cil_node::V1Node, cil_root::CILRoot, cil_tree::CILTree, cilnode::MethodKind, ld_field, BinOp,
     Const, FieldDesc, FnSig, Int, MethodRef, Type,
 };
 use rustc_codegen_clr_ctx::function_name;
@@ -71,7 +71,7 @@ pub fn handle_call_terminator<'tycxt>(
                 trees.push(
                     place_set(
                         destination,
-                        CILNode::CallI(Box::new((
+                        V1Node::CallI(Box::new((
                             sig.clone(),
                             called_operand,
                             arg_operands.into(),
@@ -119,7 +119,7 @@ pub fn handle_terminator<'tcx>(
                 vec![CILRoot::VoidRet.into()]
             } else {
                 vec![CILRoot::Ret {
-                    tree: CILNode::LDLoc(0),
+                    tree: V1Node::LDLoc(0),
                 }
                 .into()]
             }
@@ -139,9 +139,9 @@ pub fn handle_terminator<'tcx>(
             let cond = if *expected {
                 handle_operand(cond, ctx)
             } else {
-                CILNode::Eq(
+                V1Node::Eq(
                     Box::new(handle_operand(cond, ctx)),
-                    Box::new(CILNode::V2(ctx.alloc_node(*expected))),
+                    Box::new(V1Node::V2(ctx.alloc_node(*expected))),
                 )
             };
             // FIXME: propelrly handle *all* assertion messages.
@@ -260,7 +260,7 @@ pub fn handle_terminator<'tcx>(
                             0
                         );
                         let sig = ctx.sig([void_ptr], Type::Void);
-                        let drop_fn_ptr = CILNode::LDIndPtr {
+                        let drop_fn_ptr = V1Node::LDIndPtr {
                             ptr: Box::new(vtable_ptr.cast_ptr(ctx.nptr(Type::FnPtr(sig)))),
                             loaded_ptr: Box::new(Type::FnPtr(sig)),
                         };
@@ -269,7 +269,7 @@ pub fn handle_terminator<'tcx>(
                                 target: target.as_u32(),
                                 sub_target: 0,
                                 a: Box::new(drop_fn_ptr.clone().cast_ptr(Type::Int(Int::USize))),
-                                b: Box::new(CILNode::V2(ctx.alloc_node(Const::USize(0)))),
+                                b: Box::new(V1Node::V2(ctx.alloc_node(Const::USize(0)))),
                             }
                             .into(),
                             CILRoot::CallI {
@@ -391,7 +391,7 @@ pub fn handle_terminator<'tcx>(
 
 fn handle_switch<'tcx>(
     ty: Ty<'tcx>,
-    discr: &CILNode,
+    discr: &V1Node,
     switch: &SwitchTargets,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> Vec<CILTree> {
@@ -399,7 +399,7 @@ fn handle_switch<'tcx>(
     for (value, target) in switch.iter() {
         //ops.extend(CILOp::debug_msg("Switchin"));
 
-        let const_val = CILNode::V2(match ty.kind() {
+        let const_val = V1Node::V2(match ty.kind() {
             TyKind::Int(int) => load_const_int(value, *int, ctx),
             TyKind::Uint(uint) => load_const_uint(value, *uint, ctx),
             TyKind::Bool => ctx.alloc_node(value != 0),

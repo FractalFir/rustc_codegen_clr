@@ -1,6 +1,6 @@
 use crate::r#type::get_type;
 use cilly::{
-    Assembly, ClassRef, Int, MethodRef, Type, bimap::Interned, call, cil_node::CILNode,
+    Assembly, ClassRef, Int, MethodRef, Type, bimap::Interned, call, cil_node::V1Node,
     cilnode::MethodKind, utilis::escape_class_name,
 };
 use rustc_codegen_clr_ctx::MethodCompileCtx;
@@ -21,7 +21,7 @@ pub struct DotnetArray {
 }
 
 #[must_use]
-pub fn max_value(tpe: &Type, asm: &mut Assembly) -> CILNode {
+pub fn max_value(tpe: &Type, asm: &mut Assembly) -> V1Node {
     match tpe {
         Type::Int(Int::USize) => {
             let mref = MethodRef::new(
@@ -33,14 +33,14 @@ pub fn max_value(tpe: &Type, asm: &mut Assembly) -> CILNode {
             );
             call!(asm.alloc_methodref(mref), [])
         }
-        Type::Int(Int::U64) => CILNode::V2(asm.alloc_node(u64::MAX)),
-        Type::Int(Int::U32) => CILNode::V2(asm.alloc_node(u32::MAX)),
-        Type::Int(Int::U16) => CILNode::V2(asm.alloc_node(u16::MAX)),
-        Type::Int(Int::U8) => CILNode::V2(asm.alloc_node(u8::MAX)),
-        Type::Int(Int::I64) => CILNode::V2(asm.alloc_node(i64::MAX)),
-        Type::Int(Int::I32) => CILNode::V2(asm.alloc_node(i32::MAX)),
-        Type::Int(Int::I16) => CILNode::V2(asm.alloc_node(i16::MAX)),
-        Type::Int(Int::I8) => CILNode::V2(asm.alloc_node(i8::MAX)),
+        Type::Int(Int::U64) => V1Node::V2(asm.alloc_node(u64::MAX)),
+        Type::Int(Int::U32) => V1Node::V2(asm.alloc_node(u32::MAX)),
+        Type::Int(Int::U16) => V1Node::V2(asm.alloc_node(u16::MAX)),
+        Type::Int(Int::U8) => V1Node::V2(asm.alloc_node(u8::MAX)),
+        Type::Int(Int::I64) => V1Node::V2(asm.alloc_node(i64::MAX)),
+        Type::Int(Int::I32) => V1Node::V2(asm.alloc_node(i32::MAX)),
+        Type::Int(Int::I16) => V1Node::V2(asm.alloc_node(i16::MAX)),
+        Type::Int(Int::I8) => V1Node::V2(asm.alloc_node(i8::MAX)),
         _ => todo!("Can't get the max value of {tpe:?}"),
     }
 }

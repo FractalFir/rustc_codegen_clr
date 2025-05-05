@@ -1,6 +1,6 @@
 use cilly::{
     Assembly, BinOp, Const, FieldDesc, Int, Interned, IntoAsmIndex, MethodRef, Type, call,
-    cil_node::CILNode,
+    cil_node::V1Node,
     cilnode::{ExtendKind, MethodKind},
     conv_usize, ld_field,
 };
@@ -48,9 +48,9 @@ pub(super) fn local_get(
     )
 }
 /// Returns the ops for getting the value of place.
-pub fn place_get<'tcx>(place: &Place<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_>) -> CILNode {
+pub fn place_get<'tcx>(place: &Place<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_>) -> V1Node {
     if place.projection.is_empty() {
-        CILNode::V2(local_get(place.local.as_usize(), ctx.body(), ctx))
+        V1Node::V2(local_get(place.local.as_usize(), ctx.body(), ctx))
     } else {
         let (mut op, mut ty) = super::local_body(place.local.as_usize(), ctx);
 
@@ -64,7 +64,7 @@ pub fn place_get<'tcx>(place: &Place<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_>
             op = curr_ops;
         }
 
-        CILNode::V2(place_elem_get(head, ty, ctx, op))
+        V1Node::V2(place_elem_get(head, ty, ctx, op))
     }
 }
 fn get_field<'a>(

@@ -1,7 +1,7 @@
 use crate::assembly::MethodCompileCtx;
 use cilly::{
     call,
-    cil_node::CILNode,
+    cil_node::V1Node,
     cil_root::CILRoot,
     {cilnode::MethodKind, ClassRef, MethodRef},
 };

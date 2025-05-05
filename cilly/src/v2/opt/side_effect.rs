@@ -98,10 +98,10 @@ fn const_no_side_effect() {
 fn select_no_side_effects() {
     use crate::{Int, Type};
     let mut asm = Assembly::default();
-    let a = crate::cil_node::CILNode::V2(asm.alloc_node(1_usize));
-    let b = crate::cil_node::CILNode::V2(asm.alloc_node(2_usize));
-    let predictate = crate::cil_node::CILNode::LDLoc(0);
-    let v1 = crate::cil_node::CILNode::select(Type::Int(Int::USize), a, b, predictate, &mut asm);
+    let a = crate::cil_node::V1Node::V2(asm.alloc_node(1_usize));
+    let b = crate::cil_node::V1Node::V2(asm.alloc_node(2_usize));
+    let predictate = crate::cil_node::V1Node::LDLoc(0);
+    let v1 = crate::cil_node::V1Node::select(Type::Int(Int::USize), a, b, predictate, &mut asm);
     let v2 = CILNode::from_v1(&v1, &mut asm);
     let v2 = asm.alloc_node(v2);
     let mut cache = SideEffectInfoCache::default();

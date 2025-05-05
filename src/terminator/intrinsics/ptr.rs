@@ -1,6 +1,6 @@
 use crate::assembly::MethodCompileCtx;
 use cilly::{
-    cil_node::CILNode, cil_root::CILRoot, conv_isize, conv_usize, Int, IntoAsmIndex, Type,
+    cil_node::V1Node, cil_root::CILRoot, conv_isize, conv_usize, Int, IntoAsmIndex, Type,
 };
 use rustc_codegen_clr_place::place_set;
 use rustc_codegen_clr_type::GetTypeExt;
@@ -27,7 +27,7 @@ pub fn arith_offset<'tcx>(
         destination,
         handle_operand(&args[0].node, ctx)
             + handle_operand(&args[1].node, ctx)
-                * conv_isize!(CILNode::V2(ctx.size_of(tpe).into_idx(ctx))),
+                * conv_isize!(V1Node::V2(ctx.size_of(tpe).into_idx(ctx))),
         ctx,
     )
 }
@@ -57,11 +57,11 @@ pub fn ptr_offset_from_unsigned<'tcx>(
     }
     place_set(
         destination,
-        CILNode::DivUn(
+        V1Node::DivUn(
             (handle_operand(&args[0].node, ctx) - handle_operand(&args[1].node, ctx))
                 .cast_ptr(Type::Int(Int::USize))
                 .into(),
-            conv_usize!(CILNode::V2(ctx.size_of(tpe).into_idx(ctx))).into(),
+            conv_usize!(V1Node::V2(ctx.size_of(tpe).into_idx(ctx))).into(),
         ),
         ctx,
     )
@@ -90,11 +90,11 @@ pub fn ptr_offset_from<'tcx>(
 
     place_set(
         destination,
-        CILNode::Div(
+        V1Node::Div(
             (handle_operand(&args[0].node, ctx) - handle_operand(&args[1].node, ctx))
                 .cast_ptr(Type::Int(Int::ISize))
                 .into(),
-            conv_isize!(CILNode::V2(ctx.size_of(tpe).into_idx(ctx))).into(),
+            conv_isize!(V1Node::V2(ctx.size_of(tpe).into_idx(ctx))).into(),
         ),
         ctx,
     )

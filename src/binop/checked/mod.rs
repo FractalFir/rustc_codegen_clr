@@ -1,7 +1,7 @@
 use crate::{assembly::MethodCompileCtx, casts};
 use cilly::{
     and, call,
-    cil_node::CILNode,
+    cil_node::V1Node,
     conv_i16, conv_i32, conv_i64, conv_i8, conv_u32, conv_u64, conv_u8, eq, gt, gt_un, lt, or,
     Type,
     {cilnode::MethodKind, Assembly, ClassRef, Int, MethodRef},
@@ -10,37 +10,37 @@ use rustc_codegen_clr_type::utilis::simple_tuple;
 use rustc_codegen_clr_type::GetTypeExt;
 use rustc_middle::ty::{IntTy, Ty, TyKind, UintTy};
 
-pub fn result_tuple(tpe: Type, out_of_range: CILNode, val: CILNode, asm: &mut Assembly) -> CILNode {
+pub fn result_tuple(tpe: Type, out_of_range: V1Node, val: V1Node, asm: &mut Assembly) -> V1Node {
     let tuple = simple_tuple(&[tpe, Type::Bool], asm);
-    CILNode::ovf_check_tuple(asm, tuple, out_of_range, val, tpe)
+    V1Node::ovf_check_tuple(asm, tuple, out_of_range, val, tpe)
 }
-pub fn zero(ty: Ty, asm: &mut Assembly) -> CILNode {
+pub fn zero(ty: Ty, asm: &mut Assembly) -> V1Node {
     match ty.kind() {
-        TyKind::Uint(UintTy::U8) => CILNode::V2(asm.alloc_node(0_u8)),
-        TyKind::Uint(UintTy::U16) => CILNode::V2(asm.alloc_node(0_u16)),
-        TyKind::Uint(UintTy::U32) => CILNode::V2(asm.alloc_node(0_u32)),
-        TyKind::Uint(UintTy::U64) => CILNode::V2(asm.alloc_node(0_u64)),
-        TyKind::Uint(UintTy::Usize) => CILNode::V2(asm.alloc_node(0_usize)),
-        TyKind::Int(IntTy::I8) => CILNode::V2(asm.alloc_node(0_i8)),
-        TyKind::Int(IntTy::I16) => CILNode::V2(asm.alloc_node(0_i16)),
-        TyKind::Int(IntTy::I32) => CILNode::V2(asm.alloc_node(0_i32)),
-        TyKind::Int(IntTy::I64) => CILNode::V2(asm.alloc_node(0_i64)),
-        TyKind::Int(IntTy::Isize) => CILNode::V2(asm.alloc_node(0_isize)),
-        TyKind::Uint(UintTy::U128) => CILNode::V2(asm.alloc_node(0_u128)),
-        TyKind::Int(IntTy::I128) => CILNode::V2(asm.alloc_node(0_i128)),
+        TyKind::Uint(UintTy::U8) => V1Node::V2(asm.alloc_node(0_u8)),
+        TyKind::Uint(UintTy::U16) => V1Node::V2(asm.alloc_node(0_u16)),
+        TyKind::Uint(UintTy::U32) => V1Node::V2(asm.alloc_node(0_u32)),
+        TyKind::Uint(UintTy::U64) => V1Node::V2(asm.alloc_node(0_u64)),
+        TyKind::Uint(UintTy::Usize) => V1Node::V2(asm.alloc_node(0_usize)),
+        TyKind::Int(IntTy::I8) => V1Node::V2(asm.alloc_node(0_i8)),
+        TyKind::Int(IntTy::I16) => V1Node::V2(asm.alloc_node(0_i16)),
+        TyKind::Int(IntTy::I32) => V1Node::V2(asm.alloc_node(0_i32)),
+        TyKind::Int(IntTy::I64) => V1Node::V2(asm.alloc_node(0_i64)),
+        TyKind::Int(IntTy::Isize) => V1Node::V2(asm.alloc_node(0_isize)),
+        TyKind::Uint(UintTy::U128) => V1Node::V2(asm.alloc_node(0_u128)),
+        TyKind::Int(IntTy::I128) => V1Node::V2(asm.alloc_node(0_i128)),
         _ => todo!("Can't get zero of {ty:?}"),
     }
 }
-fn min(ty: Ty, asm: &mut Assembly) -> CILNode {
+fn min(ty: Ty, asm: &mut Assembly) -> V1Node {
     match ty.kind() {
-        TyKind::Uint(UintTy::U8) => CILNode::V2(asm.alloc_node(u8::MIN)),
-        TyKind::Uint(UintTy::U16) => CILNode::V2(asm.alloc_node(u16::MIN)),
-        TyKind::Uint(UintTy::U32) => CILNode::V2(asm.alloc_node(u32::MIN)),
-        TyKind::Uint(UintTy::U64) => CILNode::V2(asm.alloc_node(u64::MIN)),
-        TyKind::Int(IntTy::I8) => CILNode::V2(asm.alloc_node(i8::MIN)),
-        TyKind::Int(IntTy::I16) => CILNode::V2(asm.alloc_node(i16::MIN)),
-        TyKind::Int(IntTy::I32) => CILNode::V2(asm.alloc_node(i32::MIN)),
-        TyKind::Int(IntTy::I64) => CILNode::V2(asm.alloc_node(i64::MIN)),
+        TyKind::Uint(UintTy::U8) => V1Node::V2(asm.alloc_node(u8::MIN)),
+        TyKind::Uint(UintTy::U16) => V1Node::V2(asm.alloc_node(u16::MIN)),
+        TyKind::Uint(UintTy::U32) => V1Node::V2(asm.alloc_node(u32::MIN)),
+        TyKind::Uint(UintTy::U64) => V1Node::V2(asm.alloc_node(u64::MIN)),
+        TyKind::Int(IntTy::I8) => V1Node::V2(asm.alloc_node(i8::MIN)),
+        TyKind::Int(IntTy::I16) => V1Node::V2(asm.alloc_node(i16::MIN)),
+        TyKind::Int(IntTy::I32) => V1Node::V2(asm.alloc_node(i32::MIN)),
+        TyKind::Int(IntTy::I64) => V1Node::V2(asm.alloc_node(i64::MIN)),
         TyKind::Uint(UintTy::Usize) => {
             let mref = MethodRef::new(
                 ClassRef::usize_type(asm),
@@ -86,16 +86,16 @@ fn min(ty: Ty, asm: &mut Assembly) -> CILNode {
         _ => todo!("Can't get min of {ty:?}"),
     }
 }
-fn max(ty: Ty, asm: &mut Assembly) -> CILNode {
+fn max(ty: Ty, asm: &mut Assembly) -> V1Node {
     match ty.kind() {
-        TyKind::Uint(UintTy::U8) => CILNode::V2(asm.alloc_node(u8::MAX)),
-        TyKind::Uint(UintTy::U16) => CILNode::V2(asm.alloc_node(u16::MAX)),
-        TyKind::Uint(UintTy::U32) => CILNode::V2(asm.alloc_node(u32::MAX)),
-        TyKind::Uint(UintTy::U64) => CILNode::V2(asm.alloc_node(u64::MAX)),
-        TyKind::Int(IntTy::I8) => CILNode::V2(asm.alloc_node(i8::MAX)),
-        TyKind::Int(IntTy::I16) => CILNode::V2(asm.alloc_node(i16::MAX)),
-        TyKind::Int(IntTy::I32) => CILNode::V2(asm.alloc_node(i32::MAX)),
-        TyKind::Int(IntTy::I64) => CILNode::V2(asm.alloc_node(i64::MAX)),
+        TyKind::Uint(UintTy::U8) => V1Node::V2(asm.alloc_node(u8::MAX)),
+        TyKind::Uint(UintTy::U16) => V1Node::V2(asm.alloc_node(u16::MAX)),
+        TyKind::Uint(UintTy::U32) => V1Node::V2(asm.alloc_node(u32::MAX)),
+        TyKind::Uint(UintTy::U64) => V1Node::V2(asm.alloc_node(u64::MAX)),
+        TyKind::Int(IntTy::I8) => V1Node::V2(asm.alloc_node(i8::MAX)),
+        TyKind::Int(IntTy::I16) => V1Node::V2(asm.alloc_node(i16::MAX)),
+        TyKind::Int(IntTy::I32) => V1Node::V2(asm.alloc_node(i32::MAX)),
+        TyKind::Int(IntTy::I64) => V1Node::V2(asm.alloc_node(i64::MAX)),
         TyKind::Uint(UintTy::Usize) => {
             let mref = MethodRef::new(
                 ClassRef::usize_type(asm),
@@ -141,32 +141,32 @@ fn max(ty: Ty, asm: &mut Assembly) -> CILNode {
 }
 
 pub fn mul<'tcx>(
-    ops_a: &CILNode,
-    ops_b: &CILNode,
+    ops_a: &V1Node,
+    ops_b: &V1Node,
     ty: Ty<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-) -> CILNode {
+) -> V1Node {
     //(b > 0 && a < INT_MIN + b) || (b < 0 && a > INT_MAX + b);
     let tpe = ctx.type_from_cache(ty);
     let mul = super::mul_unchecked(ty, ctx, ops_a.clone(), ops_b.clone());
     let ovf = match ty.kind() {
         // Work without promotions
         TyKind::Uint(UintTy::U8) => {
-            let mul = CILNode::Mul(
+            let mul = V1Node::Mul(
                 conv_u8!(ops_a.clone()).into(),
                 conv_u8!(ops_b.clone()).into(),
             );
             gt_un!(mul.clone(), conv_u8!(max(ty, ctx)))
         }
         TyKind::Uint(UintTy::U16) => {
-            let mul = CILNode::Mul(
+            let mul = V1Node::Mul(
                 conv_u32!(ops_a.clone()).into(),
                 conv_u32!(ops_b.clone()).into(),
             );
             gt_un!(mul.clone(), conv_u32!(max(ty, ctx)))
         }
         TyKind::Int(IntTy::I8) => {
-            let mul = CILNode::Mul(
+            let mul = V1Node::Mul(
                 conv_i16!(ops_a.clone()).into(),
                 conv_i16!(ops_b.clone()).into(),
             );
@@ -176,7 +176,7 @@ pub fn mul<'tcx>(
             )
         }
         TyKind::Int(IntTy::I16) => {
-            let mul = CILNode::Mul(
+            let mul = V1Node::Mul(
                 conv_i32!(ops_a.clone()).into(),
                 conv_i32!(ops_b.clone()).into(),
             );
@@ -187,14 +187,14 @@ pub fn mul<'tcx>(
         }
         // Works with 32 -> 64 size promotions
         TyKind::Uint(UintTy::U32) => {
-            let mul = CILNode::Mul(
+            let mul = V1Node::Mul(
                 conv_u64!(ops_a.clone()).into(),
                 conv_u64!(ops_b.clone()).into(),
             );
             gt_un!(mul.clone(), conv_u64!(max(ty, ctx)))
         }
         TyKind::Int(IntTy::I32) => {
-            let mul = CILNode::Mul(
+            let mul = V1Node::Mul(
                 conv_i64!(ops_a.clone()).into(),
                 conv_i64!(ops_b.clone()).into(),
             );
@@ -435,7 +435,7 @@ pub fn mul<'tcx>(
             );
             eq!(
                 call!(ctx.alloc_methodref(op_mul), [ops_a.clone(), ops_b.clone()]),
-                CILNode::V2(ctx.alloc_node(false))
+                V1Node::V2(ctx.alloc_node(false))
             )
         }
         TyKind::Uint(UintTy::U128) => {
@@ -448,22 +448,22 @@ pub fn mul<'tcx>(
             );
             eq!(
                 call!(ctx.alloc_methodref(op_mul), [ops_a.clone(), ops_b.clone()]),
-                CILNode::V2(ctx.alloc_node(false))
+                V1Node::V2(ctx.alloc_node(false))
             )
         }
         _ => {
             eprintln!("WARINING: can't checked mul type {ty:?}");
-            CILNode::V2(ctx.alloc_node(false))
+            V1Node::V2(ctx.alloc_node(false))
         }
     };
     result_tuple(tpe, ovf, mul, ctx)
 }
 pub fn sub_signed<'tcx>(
-    ops_a: &CILNode,
-    ops_b: &CILNode,
+    ops_a: &V1Node,
+    ops_b: &V1Node,
     ty: Ty<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-) -> CILNode {
+) -> V1Node {
     let tpe = ctx.type_from_cache(ty);
     let min = min(ty, ctx);
     let max = max(ty, ctx);
@@ -494,11 +494,11 @@ pub fn sub_signed<'tcx>(
     )
 }
 pub fn sub_unsigned<'tcx>(
-    ops_a: &CILNode,
-    ops_b: &CILNode,
+    ops_a: &V1Node,
+    ops_b: &V1Node,
     ty: Ty<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-) -> CILNode {
+) -> V1Node {
     let tpe = ctx.type_from_cache(ty);
     result_tuple(
         tpe,
@@ -508,11 +508,11 @@ pub fn sub_unsigned<'tcx>(
     )
 }
 pub fn add_unsigned<'tcx>(
-    ops_a: &CILNode,
-    ops_b: &CILNode,
+    ops_a: &V1Node,
+    ops_b: &V1Node,
     ty: Ty<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-) -> CILNode {
+) -> V1Node {
     let tpe = ctx.type_from_cache(ty);
     let res = super::add_unchecked(ty, ty, ctx, ops_a.clone(), ops_b.clone());
 
@@ -524,11 +524,11 @@ pub fn add_unsigned<'tcx>(
     )
 }
 pub fn add_signed<'tcx>(
-    ops_a: &CILNode,
-    ops_b: &CILNode,
+    ops_a: &V1Node,
+    ops_b: &V1Node,
     ty: Ty<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-) -> CILNode {
+) -> V1Node {
     let tpe = ctx.type_from_cache(ty);
     match ty.kind() {
         TyKind::Int(IntTy::I8) => {
@@ -536,8 +536,8 @@ pub fn add_signed<'tcx>(
             return result_tuple(
                 tpe,
                 or!(
-                    lt!(sum.clone(), CILNode::V2(ctx.alloc_node(i16::from(i8::MIN)))),
-                    gt!(sum.clone(), CILNode::V2(ctx.alloc_node(i16::from(i8::MAX))))
+                    lt!(sum.clone(), V1Node::V2(ctx.alloc_node(i16::from(i8::MIN)))),
+                    gt!(sum.clone(), V1Node::V2(ctx.alloc_node(i16::from(i8::MAX))))
                 ),
                 conv_i8!(sum),
                 ctx,
@@ -550,11 +550,11 @@ pub fn add_signed<'tcx>(
                 or!(
                     lt!(
                         sum.clone(),
-                        (CILNode::V2(ctx.alloc_node(i32::from(i16::MIN))))
+                        (V1Node::V2(ctx.alloc_node(i32::from(i16::MIN))))
                     ),
                     gt!(
                         sum.clone(),
-                        (CILNode::V2(ctx.alloc_node(i32::from(i16::MAX))))
+                        (V1Node::V2(ctx.alloc_node(i32::from(i16::MAX))))
                     )
                 ),
                 conv_i16!(sum),
@@ -566,11 +566,11 @@ pub fn add_signed<'tcx>(
             let out_of_range = or!(
                 lt!(
                     sum.clone(),
-                    conv_i64!(CILNode::V2(ctx.alloc_node(i32::MIN)))
+                    conv_i64!(V1Node::V2(ctx.alloc_node(i32::MIN)))
                 ),
                 gt!(
                     sum.clone(),
-                    conv_i64!(CILNode::V2(ctx.alloc_node(i32::MAX)))
+                    conv_i64!(V1Node::V2(ctx.alloc_node(i32::MAX)))
                 )
             );
             return result_tuple(tpe, out_of_range, conv_i32!(sum), ctx);

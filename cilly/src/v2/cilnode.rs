@@ -4,7 +4,7 @@ use super::bimap::Interned;
 
 use super::{Assembly, Const, Int};
 use super::{ClassRef, FieldDesc, Float, FnSig, MethodRef, StaticFieldDesc};
-use crate::cil_node::CILNode as V1Node;
+use crate::cil_node::V1Node as V1Node;
 use crate::Type;
 
 #[derive(Hash, PartialEq, Eq, Copy, Clone, Debug, Serialize, Deserialize)]

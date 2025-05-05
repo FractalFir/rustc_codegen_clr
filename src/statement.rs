@@ -6,7 +6,7 @@ use rustc_codegen_clr_type::utilis::is_zst;
 use rustc_codegen_clr_type::GetTypeExt;
 
 use cilly::zero_extend;
-use cilly::{cil_node::CILNode, cil_root::CILRoot, cil_tree::CILTree, size_of};
+use cilly::{cil_node::V1Node, cil_root::CILRoot, cil_tree::CILTree, size_of};
 
 use rustc_codgen_clr_operand::handle_operand;
 use rustc_middle::mir::{CopyNonOverlapping, NonDivergingIntrinsic, Statement, StatementKind};
@@ -86,7 +86,7 @@ pub fn handle_statement<'tcx>(
                         src: Box::new(src_op),
                         dst: Box::new(dst_op),
                         len: Box::new(
-                            count_op * CILNode::V2(zero_extend!(size_of!(pointed), usize)(ctx)),
+                            count_op * V1Node::V2(zero_extend!(size_of!(pointed), usize)(ctx)),
                         ),
                     }
                     .into()]

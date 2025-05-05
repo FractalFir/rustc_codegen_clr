@@ -1,6 +1,6 @@
 use crate::assembly::MethodCompileCtx;
 use cilly::{
-    call, call_virt, cil_node::CILNode, cil_root::CILRoot, cilnode::MethodKind, conv_u32, ClassRef,
+    call, call_virt, cil_node::V1Node, cil_root::CILRoot, cilnode::MethodKind, conv_u32, ClassRef,
     Int, MethodRef, Type,
 };
 use rustc_codegen_clr_place::place_set;
@@ -50,7 +50,7 @@ pub fn type_id<'tcx>(
                 ctx.alloc_methodref(get_hash_code),
                 [call!(
                     ctx.alloc_methodref(get_type_handle),
-                    [CILNode::LDTypeToken(tpe.into())]
+                    [V1Node::LDTypeToken(tpe.into())]
                 )]
             ))]
         ),
