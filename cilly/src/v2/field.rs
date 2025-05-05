@@ -62,7 +62,11 @@ pub struct StaticFieldDesc {
     name: Interned<IString>,
     tpe: Type,
 }
-
+impl IntoAsmIndex<Interned<StaticFieldDesc>> for StaticFieldDesc {
+    fn into_idx(self, asm: &mut super::Assembly) -> Interned<StaticFieldDesc> {
+        asm.alloc_sfld(self)
+    }
+}
 impl StaticFieldDesc {
     #[must_use]
     pub fn new(owner: Interned<ClassRef>, name: Interned<IString>, tpe: Type) -> Self {

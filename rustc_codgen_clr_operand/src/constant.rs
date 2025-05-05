@@ -199,14 +199,12 @@ fn load_scalar_ptr(
             if name == "__rust_alloc_error_handler_should_panic"
                 || name == "__rust_no_alloc_shim_is_unstable"
             {
-                return CILNode::MRefToRawPtr(Box::new(CILNode::AddressOfStaticField(
-                    StaticFieldDesc::new(
-                        *ctx.main_module(),
-                        ctx.alloc_string(name),
-                        Type::Int(Int::U8),
-                    )
-                    .into(),
-                )));
+                let stotic = StaticFieldDesc::new(
+                    *ctx.main_module(),
+                    ctx.alloc_string(name),
+                    Type::Int(Int::U8),
+                );
+                return ctx.static_addr(stotic).into();
             }
             if name == "environ" {
                 let mref = MethodRef::new(
@@ -419,9 +417,10 @@ fn load_const_float(value: u128, float_type: FloatTy, asm: &mut Assembly) -> CIL
                 );
                 call!(
                     asm.alloc_methodref(mref),
-                    [CILNode::LdcF32(HashableF32(
+                    [asm.alloc_node(Const::F32(HashableF32(
                         (f16::from_ne_bytes((u16::try_from(value).unwrap()).to_ne_bytes())) as f32
-                    ),)]
+                    )))
+                    .into()]
                 )
             }
             #[cfg(target_family = "windows")]
@@ -432,11 +431,11 @@ fn load_const_float(value: u128, float_type: FloatTy, asm: &mut Assembly) -> CIL
         }
         FloatTy::F32 => {
             let value = f32::from_ne_bytes((u32::try_from(value).unwrap()).to_ne_bytes());
-            CILNode::LdcF32(HashableF32(value))
+            asm.alloc_node(Const::F32(HashableF32(value))).into()
         }
         FloatTy::F64 => {
             let value = f64::from_ne_bytes((u64::try_from(value).unwrap()).to_ne_bytes());
-            CILNode::LdcF64(HashableF64(value))
+            asm.alloc_node(Const::F64(HashableF64(value))).into()
         }
         FloatTy::F128 => CILNode::transmute_on_stack(
             CILNode::V2(asm.alloc_node(Const::U128(value))),

@@ -1476,6 +1476,21 @@ impl Assembly {
     pub(crate) fn char_is_u8(&self) -> bool {
         true
     }
+
+    pub fn load_static(
+        &mut self,
+        stotic: impl IntoAsmIndex<Interned<StaticFieldDesc>>,
+    ) -> Interned<CILNode> {
+        let stotic = stotic.into_idx(self);
+        self.alloc_node(CILNode::LdStaticField(stotic))
+    }
+    pub fn static_addr(
+        &mut self,
+        stotic: impl IntoAsmIndex<Interned<StaticFieldDesc>>,
+    ) -> Interned<CILNode> {
+        let stotic = stotic.into_idx(self);
+        self.alloc_node(CILNode::LdStaticFieldAdress(stotic))
+    }
 }
 config!(GUARANTED_ALIGN, u8, 8);
 config!(MAX_STATIC_SIZE, usize, 16);

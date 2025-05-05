@@ -121,27 +121,23 @@ pub fn add_allocation(
         GlobalAlloc::Static(def_id) => return add_static(def_id, ctx),
         GlobalAlloc::VTable(..) => {
             //TODO: handle VTables
-            let alloc_fld = format!("v_{alloc_id:x}");
-
-            let field_desc = StaticFieldDesc::new(
-                *ctx.main_module(),
-                ctx.alloc_string(alloc_fld.clone()),
+            let field_desc = ctx.add_static(
                 uint8_ptr,
+                format!("v_{alloc_id:x}"),
+                false,
+                main_module_id,
+                None,
+                false,
             );
-            ctx.add_static(uint8_ptr, alloc_fld, false, main_module_id, None, false);
-            return CILNode::LDStaticField(Box::new(field_desc));
+            return CILNode::V2(ctx.load_static(field_desc));
         }
         GlobalAlloc::Function { .. } => {
             //TODO: handle constant functions
             let alloc_fld = format!("f_{alloc_id:x}");
-            let field_desc = StaticFieldDesc::new(
-                *ctx.main_module(),
-                ctx.alloc_string(alloc_fld.clone()),
-                uint8_ptr,
-            );
-            ctx.add_static(uint8_ptr, alloc_fld, false, main_module_id, None, false);
+            let field_desc =
+                ctx.add_static(uint8_ptr, alloc_fld, false, main_module_id, None, false);
 
-            return CILNode::LDStaticField(Box::new(field_desc));
+            return CILNode::V2(ctx.load_static(field_desc));
             //todo!("Function/Vtable allocation.");
         }
     };
@@ -177,21 +173,22 @@ pub fn add_allocation(
             let main_module = ctx.class_mut(main_module_id);
 
             if main_module.has_static_field(name, field_desc.tpe()) {
-                return CILNode::AddressOfStaticField(Box::new(field_desc));
+                return ctx.static_addr(field_desc).into();
             }
             let tpe = ctx[tpe].clone();
             ctx.add_static(tpe, &*alloc_name, false, main_module_id, None, false);
+            let uint8_ptr = ctx.nptr(Int::U8);
+            let ptr = ctx.static_addr(field_desc);
+            let ptr = ctx.cast_ptr(ptr, uint8_ptr);
 
-            let ptr =
-                CILNode::AddressOfStaticField(Box::new(field_desc)).cast_ptr(ctx.nptr(Int::U8));
             let initialzer: MethodDefIdx =
-                allocation_initializer_method(const_allocation, &alloc_name, ctx, ptr, true);
+                allocation_initializer_method(const_allocation, &alloc_name, ctx, ptr.into(), true);
 
             // Calls the static initialzer, and sets the static field to the returned pointer.
             let root = ctx.alloc_root(cilly::CILRoot::call(*initialzer, []));
             ctx.add_cctor(&[root]);
 
-            CILNode::AddressOfStaticField(Box::new(field_desc))
+            CILNode::V2(ctx.static_addr(field_desc))
         }
     }
 }

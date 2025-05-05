@@ -791,11 +791,12 @@ pub fn argc_argv_init(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
             asm.alloc_string("argv_argc_init_status"),
             Type::Bool,
         );
+        let status = asm.alloc_sfld(status);
         start_block.trees_mut().push(
             CILRoot::BTrue {
                 target: start_bb + 3,
                 sub_target: 0,
-                cond: CILNode::LDStaticField(Box::new(status)),
+                cond: CILNode::V2(asm.load_static(status)),
             }
             .into(),
         );
@@ -913,7 +914,7 @@ pub fn argc_argv_init(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
         );
         loop_end_block.trees_mut().push(
             CILRoot::SetStaticField {
-                descr: Box::new(status),
+                descr: Box::new(asm[status]),
                 value: CILNode::V2(asm.alloc_node(true)),
             }
             .into(),

@@ -781,8 +781,6 @@ impl CILNode {
 
             V1Node::LDTypeToken(tpe) => Self::LdTypeToken(asm.alloc_type(*tpe.as_ref())),
 
-            V1Node::LdcF64(val) => Const::F64(*val).into(),
-            V1Node::LdcF32(val) => Const::F32(*val).into(),
             // Special
             V1Node::IsInst(combined) => {
                 let (val, tpe) = combined.as_ref();
@@ -822,8 +820,6 @@ impl CILNode {
                 let tpe = asm.alloc_type(*tpe.as_ref());
                 CILNode::LocAllocAlgined { tpe, align: *align }
             }
-            V1Node::AddressOfStaticField(sfld) => Self::LdStaticFieldAdress(asm.alloc_sfld(**sfld)),
-            V1Node::LDStaticField(sfld) => Self::LdStaticField(asm.alloc_sfld(**sfld)),
             V1Node::LDFtn(method_ref) => Self::LdFtn(*method_ref),
             V1Node::Volatile(inner) => {
                 let mut tmp = Self::from_v1(inner, asm);
@@ -855,7 +851,6 @@ impl CILNode {
                 let tpe = asm.alloc_type(*tpe.as_ref());
                 Self::UnboxAny { object, tpe }
             }
-            V1Node::LdNull(tpe) => Self::Const(Box::new(Const::Null(*tpe))),
             V1Node::V2(v2) => asm[*v2].clone(),
             _ => todo!("v1:{v1:?}"),
         }

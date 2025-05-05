@@ -29,8 +29,6 @@ pub enum CILNode {
 
     /// A black box that prevents the bulit-in optimization engine from doing any optimizations.
     BlackBox(Box<Self>),
-    /// Loads the value of a static variable described by the descripstor.
-    LDStaticField(Box<StaticFieldDesc>),
     /// Converts the signed inner value to a 32 bit floating-point number.
     ConvF32(Box<Self>),
     /// Converts the signed inner value to a 64 bit floating-point number.
@@ -128,8 +126,6 @@ pub enum CILNode {
     ShrUn(Box<Self>, Box<Self>),
     Call(Box<CallOpArgs>),
     CallVirt(Box<CallOpArgs>),
-    LdcF64(HashableF64),
-    LdcF32(HashableF32),
 
     ConvU8(Box<Self>),
     ConvU16(Box<Self>),
@@ -208,10 +204,12 @@ pub enum CILNode {
     /// Marks the inner pointer operation as volatile.
     Volatile(Box<Self>),
     UnboxAny(Box<Self>, Box<Type>),
-    AddressOfStaticField(Box<StaticFieldDesc>),
-    LdNull(Interned<ClassRef>),
 }
-
+impl From<Interned<crate::v2::CILNode>> for CILNode {
+    fn from(value: Interned<crate::v2::CILNode>) -> Self {
+        Self::V2(value)
+    }
+}
 impl CILNode {
     pub fn stack_addr(val: Self, _: Interned<Type>, asm: &mut Assembly) -> Self {
         let val = crate::v2::CILNode::from_v1(&val, asm);
@@ -336,7 +334,7 @@ impl CILNode {
     pub fn uninit_val(tpe: Type, asm: &mut Assembly) -> Self {
         if tpe == Type::Void {
             let gv = asm.global_void();
-            return CILNode::LDStaticField(Box::new(asm[gv]));
+            return CILNode::V2(asm.load_static(gv));
         }
         let main = asm.main_module();
         let sig = asm.sig([], tpe);
@@ -409,100 +407,6 @@ impl CILNode {
             val: Box::new(self),
             new_ptr: Box::new(new_ptr),
         }
-    }
-    pub(crate) fn allocate_tmps(&mut self, curr_loc: Option<u32>, locals: &mut Vec<LocalDef>) {
-        match self {
-            Self::V2(_)=>(),
-            Self::AddressOfStaticField(_)=>(),
-            Self::LdNull(_tpe)=>(),
-            Self::UnboxAny(val,_tpe )=>val.allocate_tmps(curr_loc, locals),
-            Self::Volatile(inner)=>inner.allocate_tmps(curr_loc, locals),
-            Self::CheckedCast(inner)=>inner.0.allocate_tmps(curr_loc, locals),
-            Self::IsInst(inner)=>inner.0.allocate_tmps(curr_loc, locals),
-            Self::GetException=>(),
-            Self::LocAlloc{..}=>(),
-            Self::LocAllocAligned {..}=>(),
-            Self::CastPtr { val, new_ptr: _ }=>val.allocate_tmps(curr_loc, locals),
-            Self::LDLoc(_) => (),
-            Self::BlackBox(inner) => inner.allocate_tmps(curr_loc, locals),
-            Self::LDIndI8 { ptr }|
-            Self::LDIndBool { ptr }|
-            Self::LDIndI16 { ptr }|
-            Self::LDIndI32 { ptr }|
-            Self::LDIndI64 { ptr }|
-            Self::LDIndU8 { ptr }|
-            Self::LDIndU16 { ptr }|
-            Self::LDIndU32 { ptr }|
-            Self::LDIndU64 { ptr }|
-            Self::LDIndISize { ptr }|
-            Self::LDIndPtr { ptr, .. }|
-            Self::LDIndUSize { ptr }|
-            Self::LdObj { ptr, .. }|
-            Self::LDIndF32 { ptr } |
-            Self::LDIndF64 { ptr } => ptr.allocate_tmps(curr_loc, locals),
-            Self::LDFieldAdress { addr, field: _ } |
-            Self::LDField { addr, field: _ }=> addr.allocate_tmps(curr_loc, locals),
-            Self::Add(a, b)
-            | Self::And(a, b)
-            | Self::Sub(a, b)
-            | Self::Mul(a, b)
-            | Self::Div(a, b)
-            | Self::DivUn(a, b)
-            | Self::Rem(a, b)
-            | Self::RemUn(a, b)
-            | Self::Or(a, b)
-            | Self::XOr(a, b)
-            | Self::Shr(a, b)
-            | Self::Shl(a, b)
-            | Self::ShrUn(a, b)
-            | Self::Eq(a, b)
-            | Self::Lt(a, b)
-            | Self::LtUn(a, b)
-            | Self::Gt(a, b)
-            | Self::GtUn(a, b) => {
-                a.allocate_tmps(curr_loc, locals);
-                b.allocate_tmps(curr_loc, locals);
-            }
-            Self::Call (call_op_args)  |  Self::CallVirt (call_op_args)  |  Self::NewObj (call_op_args) =>call_op_args.args.iter_mut().for_each(|arg|arg.allocate_tmps(curr_loc, locals)),
-            Self::LdcF64(_) |
-            Self::LdcF32(_) =>(),
-            Self::ConvF64Un(val) |
-            Self::ConvF32(val)|
-            Self::ConvF64(val) |
-            Self::ConvU8(val)|
-            Self::ConvU16(val)|
-            Self::ConvU32(val)|
-            Self::ZeroExtendToU64(val)|
-            Self::MRefToRawPtr(val) |
-            Self::ZeroExtendToUSize(val)|
-            Self::ZeroExtendToISize(val)|
-            Self::ConvI8(val) |
-            Self::ConvI16(val)|
-            Self::ConvI32(val)|
-            Self::SignExtendToI64(val) |
-            Self::SignExtendToU64(val) |
-            Self::SignExtendToISize(val)|
-            Self::SignExtendToUSize(val)|
-            //Self::Volatile(_) => todo!(),
-            Self::Neg(val) |
-            Self::Not(val) =>val.allocate_tmps(curr_loc, locals),
-            Self::LDFtn(_) => (),
-            Self::LDTypeToken(_) =>(),
-
-            Self::LdStr(_) => (),
-            Self::CallI (sig_ptr_args) => {
-                sig_ptr_args.1.allocate_tmps(curr_loc, locals);
-                sig_ptr_args.2.iter_mut().for_each(|arg|arg.allocate_tmps(curr_loc, locals));
-            }
-            Self::LDStaticField(_sfield)=>(),
-            Self::LDLen { arr } =>{
-               arr.allocate_tmps(curr_loc, locals);
-            }
-            Self::LDElelemRef { arr, idx }=>{
-                arr.allocate_tmps(curr_loc, locals);
-                idx.allocate_tmps(curr_loc, locals);
-            }
-        };
     }
 }
 

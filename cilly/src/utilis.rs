@@ -45,7 +45,6 @@ pub fn get_environ(asm: &mut Assembly) -> Interned<MethodRef> {
     if asm.method_def_from_ref(init_cs).is_some() {
         return init_cs;
     }
-
     let mut get_environ = Method::new(
         crate::Access::Extern,
         crate::method::MethodType::Static,
@@ -56,6 +55,14 @@ pub fn get_environ(asm: &mut Assembly) -> Interned<MethodRef> {
         vec![],
         asm,
     );
+    // Environ static
+    let environ = StaticFieldDesc::new(
+        *asm.main_module(),
+        asm.alloc_string("environ"),
+        uint8_ptr_ptr,
+    );
+    let environ = asm.alloc_sfld(environ);
+    let environ = asm.alloc_node(crate::v2::CILNode::LdStaticField(environ));
     let dictionary_local = get_environ.add_local(
         Type::ClassRef(ClassRef::i_dictionary(asm)),
         Some("dict"),
@@ -87,11 +94,7 @@ pub fn get_environ(asm: &mut Assembly) -> Interned<MethodRef> {
         CILRoot::BNe {
             target: ret_bb,
             sub_target: 0,
-            a: Box::new(CILNode::LDStaticField(Box::new(StaticFieldDesc::new(
-                *asm.main_module(),
-                asm.alloc_string("environ"),
-                uint8_ptr_ptr,
-            )))),
+            a: Box::new(CILNode::V2(environ)),
             b: Box::new(conv_usize!(CILNode::V2(asm.alloc_node(0_i32))).cast_ptr(uint8_ptr_ptr)),
         }
         .into(),
@@ -184,16 +187,9 @@ pub fn get_environ(asm: &mut Assembly) -> Interned<MethodRef> {
         .into(),
     );
     let ret = &mut blocks[ret_bb as usize];
-    ret.trees_mut().push(
-        CILRoot::Ret {
-            tree: CILNode::LDStaticField(Box::new(StaticFieldDesc::new(
-                *asm.main_module(),
-                asm.alloc_string("environ"),
-                uint8_ptr_ptr,
-            ))),
-        }
-        .into(),
-    );
+
+    ret.trees_mut()
+        .push(CILRoot::V2(asm.alloc_root(crate::v2::CILRoot::Ret(environ))).into());
     let loop_body = &mut blocks[loop_body_bb as usize];
     let move_next = MethodRef::new(
         ClassRef::i_enumerator(asm),

@@ -37,10 +37,7 @@ impl CILTree {
     }
 
     /// Allocates the temporary variables this tree uses.
-    pub fn allocate_tmps(&mut self, locals: &mut Vec<LocalDef>) {
-        // self.tree.borrow_mut().allocate_tmps(None, locals);
-        self.tree.allocate_tmps(None, locals);
-    }
+    pub fn allocate_tmps(&mut self, locals: &mut Vec<LocalDef>) {}
 
     // TODO: remember to make this recompute tree metadtata when it is added
     pub fn root_mut(&mut self) -> &mut CILRoot {

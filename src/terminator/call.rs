@@ -11,9 +11,8 @@ use cilly::{
     call, call_virt,
     cil_node::{CILNode, CallOpArgs},
     cil_root::CILRoot,
-    cilnode::IsPure,
-    conv_usize, ld_field, IntoAsmIndex,
-    {cilnode::MethodKind, ClassRef, FieldDesc, FnSig, Int},
+    cilnode::{IsPure, MethodKind},
+    conv_usize, ld_field, ClassRef, Const, FieldDesc, FnSig, Int, IntoAsmIndex,
 };
 use cilly::{MethodRef, Type};
 use rustc_codegen_clr_call::CallInfo;
@@ -516,11 +515,14 @@ pub fn call_inner<'tcx>(
             "Managed calls may not use the `rust_call` calling convention!"
         );
         // Not-Virtual (for interop)
-        let tpe = ctx.type_from_cache(instance.args[0].as_type().unwrap());
+        let tpe = ctx
+            .type_from_cache(instance.args[0].as_type().unwrap())
+            .as_class_ref()
+            .unwrap();
 
         return vec![place_set(
             destination,
-            CILNode::LdNull(tpe.as_class_ref().unwrap()),
+            ctx.alloc_node(Const::Null(tpe)).into(),
             ctx,
         )];
     } else if function_name.contains(MANAGED_CHECKED_CAST) {
