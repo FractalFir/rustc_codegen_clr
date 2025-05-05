@@ -239,7 +239,8 @@ pub fn get_environ(asm: &mut Assembly) -> Interned<MethodRef> {
         MethodKind::Instance,
         vec![].into(),
     );
-    let key = call!(asm.alloc_methodref(get_key), [CILNode::LDLocA(keyval)]);
+    let kv = CILNode::V2(asm.alloc_node(crate::v2::CILNode::LdLocA(keyval)));
+    let key = call!(asm.alloc_methodref(get_key), [kv.clone()]);
     let mref = MethodRef::new(
         keyval_tpe,
         asm.alloc_string("get_Value"),
@@ -247,7 +248,7 @@ pub fn get_environ(asm: &mut Assembly) -> Interned<MethodRef> {
         MethodKind::Instance,
         vec![].into(),
     );
-    let value = call!(asm.alloc_methodref(mref), [CILNode::LDLocA(keyval)]);
+    let value = call!(asm.alloc_methodref(mref), [kv]);
     let concat = MethodRef::new(
         ClassRef::string(asm),
         asm.alloc_string("Concat"),

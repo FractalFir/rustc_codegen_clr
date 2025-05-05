@@ -4,7 +4,6 @@ use crate::cilnode::MethodKind;
 use crate::v2::method::LocalDef;
 
 use crate::FieldDesc;
-use crate::IntoAsmIndex;
 use crate::{
     call,
     cil_root::CILRoot,
@@ -27,12 +26,7 @@ pub enum CILNode {
     V2(Interned<crate::v2::CILNode>),
     /// Loads the value of local variable number `n`.
     LDLoc(u32),
-    /// Loads the value of argument number `n`.
-    LDArg(u32),
-    /// Loads the address of local variable number `n`.
-    LDLocA(u32),
-    /// Loads the address of argument number `n`.
-    LDArgA(u32),
+
     /// A black box that prevents the bulit-in optimization engine from doing any optimizations.
     BlackBox(Box<Self>),
     /// Loads the value of a static variable described by the descripstor.
@@ -136,7 +130,7 @@ pub enum CILNode {
     CallVirt(Box<CallOpArgs>),
     LdcF64(HashableF64),
     LdcF32(HashableF32),
- 
+
     ConvU8(Box<Self>),
     ConvU16(Box<Self>),
     ConvU32(Box<Self>),
@@ -160,8 +154,7 @@ pub enum CILNode {
     Gt(Box<Self>, Box<Self>),
     /// Compares two operands, returning true if lhs < rhs. Unsigned for intigers, unordered(in respect to NaNs) for floats.
     GtUn(Box<Self>, Box<Self>),
-    LoadAddresOfTMPLocal,
-    LoadTMPLocal,
+
     LDFtn(Interned<MethodRef>),
     LDTypeToken(Box<Type>),
     NewObj(Box<CallOpArgs>),
@@ -374,7 +367,7 @@ impl CILNode {
         destination_addr: Self,
         val_desc: Interned<FieldDesc>,
         flag_desc: Interned<FieldDesc>,
-    ) -> [CILRoot;2] {
+    ) -> [CILRoot; 2] {
         // Set the value of the result.
         let set_val = CILRoot::SetField {
             addr: Box::new(destination_addr.clone()),
@@ -385,16 +378,18 @@ impl CILNode {
         let val = CILNode::LDField {
             addr: Box::new(destination_addr.clone()),
             field: val_desc,
-        }
-        ;
+        };
 
         let cmp = CILNode::Eq(val.into(), expected.into());
 
-        [set_val,CILRoot::SetField {
-            addr: Box::new(destination_addr.clone()),
-            value: Box::new(cmp),
-            desc: flag_desc,
-        }]
+        [
+            set_val,
+            CILRoot::SetField {
+                addr: Box::new(destination_addr.clone()),
+                value: Box::new(cmp),
+                desc: flag_desc,
+            },
+        ]
     }
     #[track_caller]
     pub fn cast_ptr(self, new_ptr: Type) -> Self {
@@ -427,11 +422,8 @@ impl CILNode {
             Self::GetException=>(),
             Self::LocAlloc{..}=>(),
             Self::LocAllocAligned {..}=>(),
-            Self::CastPtr { val, new_ptr: _ }=>val.allocate_tmps(curr_loc, locals),      
-            Self::LDLoc(_) |
-            Self::LDArg(_) |
-            Self::LDLocA(_)|
-            Self::LDArgA(_) => (),
+            Self::CastPtr { val, new_ptr: _ }=>val.allocate_tmps(curr_loc, locals),
+            Self::LDLoc(_) => (),
             Self::BlackBox(inner) => inner.allocate_tmps(curr_loc, locals),
             Self::LDIndI8 { ptr }|
             Self::LDIndBool { ptr }|
@@ -494,10 +486,6 @@ impl CILNode {
             //Self::Volatile(_) => todo!(),
             Self::Neg(val) |
             Self::Not(val) =>val.allocate_tmps(curr_loc, locals),
-            
-          
-            Self::LoadAddresOfTMPLocal => *self = Self::LDLocA(curr_loc.expect("Temporary local referenced when none present")),
-            Self::LoadTMPLocal =>*self = Self::LDLoc(curr_loc.expect("Temporary local referenced when none present")),
             Self::LDFtn(_) => (),
             Self::LDTypeToken(_) =>(),
 

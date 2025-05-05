@@ -351,10 +351,8 @@ impl CILNode {
     pub fn from_v1(v1: &V1Node, asm: &mut Assembly) -> Self {
         match v1 {
             // Varaible access
-            V1Node::LDArg(arg) => CILNode::LdArg(*arg),
             V1Node::LDLoc(arg) => CILNode::LdLoc(*arg),
-            V1Node::LDArgA(arg) => CILNode::LdArgA(*arg),
-            V1Node::LDLocA(arg) => CILNode::LdLocA(*arg),
+
             // Ptr deref
             V1Node::LDIndBool { ptr } => {
                 let ptr = Self::from_v1(ptr, asm);

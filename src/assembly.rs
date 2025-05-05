@@ -217,13 +217,13 @@ pub fn add_fn<'tcx, 'asm, 'a: 'asm>(
                 continue;
             }
             let arg_field = field_descrptor(repacked_ty, arg_id.try_into().unwrap(), ctx);
-
+            let arg = spread_arg.as_u32() - 1 + u32::try_from(arg_id).unwrap();
+            let arg = CILNode::V2(ctx.alloc_node(cilly::v2::CILNode::LdArg(arg)));
+            let repacked = CILNode::V2(ctx.alloc_node(cilly::v2::CILNode::LdLocA(repacked)));
             repack_cil.push(
                 CILRoot::SetField {
-                    addr: Box::new(CILNode::LDLocA(repacked)),
-                    value: Box::new(CILNode::LDArg(
-                        spread_arg.as_u32() - 1 + u32::try_from(arg_id).unwrap(),
-                    )),
+                    addr: Box::new(repacked),
+                    value: Box::new(arg),
                     desc: (arg_field),
                 }
                 .into(),

@@ -88,9 +88,7 @@ pub enum CILRoot {
         value: Box<CILNode>,
         desc: Interned<FieldDesc>,
     },
-    SetTMPLocal {
-        value: CILNode,
-    },
+
     CpBlk {
         dst: Box<CILNode>,
         src: Box<CILNode>,
@@ -340,13 +338,6 @@ impl CILRoot {
                     .for_each(|arg| arg.allocate_tmps(curr_loc, locals));
             }
 
-            Self::SetTMPLocal { value } => {
-                value.allocate_tmps(curr_loc, locals);
-                *self = Self::STLoc {
-                    local: curr_loc.expect("Referenced a tmp local when none present!"),
-                    tree: value.clone(),
-                };
-            }
             Self::SetStaticField { descr: _, value } => value.allocate_tmps(curr_loc, locals),
             Self::JumpingPad { .. } => (),
         };
