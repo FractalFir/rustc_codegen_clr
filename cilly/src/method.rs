@@ -6,14 +6,9 @@ use std::{
 };
 
 use crate::{
-    basic_block::BasicBlock,
-    bimap::Interned,
-    cil_iter::{CILIterElem, CILIterTrait},
-    cil_node::CILNode,
-    cil_tree::CILTree,
-    cilnode::MethodKind,
-    v2::method::LocalDef,
-    Access, Assembly, FnSig, IString, IntoAsmIndex, MethodRef, Type,
+    basic_block::BasicBlock, bimap::Interned, cil_node::CILNode, cil_tree::CILTree,
+    cilnode::MethodKind, v2::method::LocalDef, Access, Assembly, FnSig, IString, IntoAsmIndex,
+    MethodRef, Type,
 };
 
 /// Represenation of a CIL method.
@@ -56,22 +51,6 @@ impl Attribute {
 }
 
 impl Method {
-    pub fn maxstack(&self) -> usize {
-        let trees = self.blocks().iter().flat_map(|block| block.trees());
-        let max = trees.map(|tree| tree.root().into_iter().count() + 3).max();
-        max.unwrap_or(6)
-    }
-    pub fn is_address_taken(&self, local: u32) -> bool {
-        self.iter_cil()
-            .nodes()
-            .any(|node| matches!(node, CILNode::LDLocA(loc) if *loc == local))
-    }
-
-    /// Iterates over each `CILNode` and `CILRoot`.
-    pub fn iter_cil(&self) -> impl Iterator<Item = CILIterElem> {
-        self.blocks().iter().flat_map(|block| block.iter_cil())
-    }
-
     /// Creates a new method with name `name`, signature `sig`, accessibility of `access`, and consists of `blocks` basic blocks.
     #[must_use]
     #[allow(clippy::too_many_arguments)]

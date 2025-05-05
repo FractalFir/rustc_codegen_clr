@@ -36,8 +36,6 @@ impl Access {
 }
 
 pub mod basic_block;
-
-pub mod cil_iter;
 pub mod cil_node;
 pub mod cil_root;
 pub mod cil_tree;

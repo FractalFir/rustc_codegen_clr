@@ -1,7 +1,7 @@
 use fxhash::{FxBuildHasher, FxHashSet};
 use serde::{Deserialize, Serialize};
 
-use crate::{cil_iter::CILIterElem, cil_root::CILRoot, cil_tree::CILTree};
+use crate::{cil_root::CILRoot, cil_tree::CILTree};
 
 #[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
 /// A block of ops that is a valid jump target, and is protected by an exception handler.
@@ -185,10 +185,6 @@ impl BasicBlock {
     #[must_use]
     pub fn trees(&self) -> &[CILTree] {
         &self.trees
-    }
-    /// Returns a iterator over `CILIterElem`
-    pub fn iter_cil(&self) -> impl Iterator<Item = CILIterElem> {
-        self.iter_tree_roots().flat_map(|root| root.into_iter())
     }
     pub fn tree_iter(&mut self) -> impl Iterator<Item = &mut CILTree> {
         let handler_bbs = self

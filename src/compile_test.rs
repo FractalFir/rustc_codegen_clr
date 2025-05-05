@@ -743,7 +743,7 @@ test_lib! {casts,stable}
 test_lib! {closure,stable}
 test_lib! {identity,stable}
 test_lib! {types,stable}
-
+test_lib! {autodiff,unstable}
 test_lib! {references,stable}
 //test_lib! {structs}
 test_lib! {empty_string_slice,stable}

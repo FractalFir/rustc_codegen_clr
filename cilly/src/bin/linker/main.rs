@@ -508,13 +508,18 @@ fn main() {
     let _ = final_assembly.tcctor();
     let _ = final_assembly.cctor();
     let float128 = final_assembly.alloc_string("f128");
+    let low = final_assembly.alloc_string("low");
+    let high = final_assembly.alloc_string("high");
     final_assembly
         .class_def(ClassDef::new(
             float128,
             true,
             0,
             None,
-            vec![(Type::Int(Int::I128), float128, Some(0))],
+            vec![
+                (Type::Int(Int::U64), low, Some(0)),
+                (Type::Int(Int::U64), high, Some(8)),
+            ],
             vec![],
             cilly::Access::Public,
             NonZeroU32::new(16),
