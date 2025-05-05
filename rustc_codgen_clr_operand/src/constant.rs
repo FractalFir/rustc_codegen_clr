@@ -1,4 +1,5 @@
 use core::f16;
+use std::collections::HashSet;
 
 use cilly::{
     Assembly, CILNode, ClassRef, Const, Float, Int, Interned, IntoAsmIndex, MethodRef,
@@ -335,7 +336,9 @@ fn load_const_scalar<'tcx>(
             if matches!(scalar_type, Type::Ptr(_) | Type::FnPtr(_)) {
                 return ctx.cast_ptr(ptr, const_type_idx);
             }
-            return ctx.cast_ptr(ptr, Int::U8);
+            let src_ptr = ctx.nptr(Int::U8);
+            let ptr = ctx.cast_ptr(ptr, Int::U8);
+            return ctx.transmute_on_stack(src_ptr, scalar_type, ptr);
         }
     };
 
@@ -352,7 +355,11 @@ fn load_const_scalar<'tcx>(
                 let val = ctx.alloc_node(Const::USize(
                     u64::try_from(scalar_u128).expect("pointers must be smaller than 2^64"),
                 ));
-                ctx.cast_ptr(val, scalar_type)
+                let const_type = scalar_ty
+                    .builtin_deref(true)
+                    .map(|ty| ctx.type_from_cache(ty))
+                    .unwrap_or(Int::USize.into());
+                ctx.cast_ptr(val, const_type)
             }
         }
         TyKind::Tuple(elements) => {

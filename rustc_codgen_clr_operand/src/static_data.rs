@@ -178,9 +178,9 @@ pub fn add_allocation(
             }
             let tpe = ctx[tpe].clone();
             ctx.add_static(tpe, &*alloc_name, false, main_module_id, None, false);
-            let uint8_ptr = ctx.nptr(Int::U8);
+
             let ptr = ctx.static_addr(field_desc);
-            let ptr = ctx.cast_ptr(ptr, uint8_ptr);
+            let ptr = ctx.cast_ptr(ptr, Int::U8);
 
             let initialzer: MethodDefIdx =
                 allocation_initializer_method(const_allocation, &alloc_name, ctx, ptr.into(), true);
@@ -189,7 +189,7 @@ pub fn add_allocation(
             let root = ctx.alloc_root(cilly::CILRoot::call(*initialzer, []));
             ctx.add_cctor(&[root]);
 
-            (ctx.static_addr(field_desc))
+            ctx.static_addr(field_desc)
         }
     }
 }

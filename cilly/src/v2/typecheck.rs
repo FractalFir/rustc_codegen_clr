@@ -236,7 +236,8 @@ pub fn display_typecheck_err(
 ) {
     eprintln!("{}", typecheck_err_to_string(root_idx, asm, sig, locals))
 }
-fn display_node(
+#[doc(hidden)]
+pub fn display_node(
     nodeidx: Interned<CILNode>,
     asm: &mut Assembly,
     sig: Interned<FnSig>,
