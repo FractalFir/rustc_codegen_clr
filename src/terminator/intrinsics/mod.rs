@@ -2,7 +2,7 @@ use crate::{assembly::MethodCompileCtx, casts};
 use cilly::{
     call,
     cil_node::V1Node,
-    cil_root::CILRoot,
+    cil_root::V1Root,
     cilnode::MethodKind,
     conv_i16, conv_i32, conv_i64, conv_i8, conv_isize, conv_u16, conv_u32, conv_u64, conv_u8,
     conv_usize, Const, FieldDesc, IntoAsmIndex, MethodRef, Type, {ClassRef, Float, Int},
@@ -43,7 +43,7 @@ fn call_atomic<'tcx>(
     destination: &Place<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
     atomic: fn(addr: V1Node, addend: V1Node, tpe: Type, asm: &mut cilly::Assembly) -> V1Node,
-) -> Vec<CILRoot> {
+) -> Vec<V1Root> {
     // *T
     let dst = handle_operand(&args[0].node, ctx);
     // T
@@ -55,20 +55,20 @@ fn call_atomic<'tcx>(
     vec![place_set(destination, atomic(dst, arg, src_type, ctx), ctx)]
 }
 
-pub fn breakpoint(args: &[Spanned<Operand<'_>>]) -> CILRoot {
+pub fn breakpoint(args: &[Spanned<Operand<'_>>]) -> V1Root {
     debug_assert_eq!(
         args.len(),
         0,
         "The intrinsic `breakpoint` MUST take in no arguments!"
     );
-    CILRoot::Break
+    V1Root::Break
 }
 pub fn black_box<'tcx>(
     args: &[Spanned<Operand<'tcx>>],
     destination: &Place<'tcx>,
     call_instance: Instance<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-) -> CILRoot {
+) -> V1Root {
     debug_assert_eq!(
         args.len(),
         1,
@@ -81,7 +81,7 @@ pub fn black_box<'tcx>(
     );
     let tpe = ctx.type_from_cache(tpe);
     if tpe == Type::Void {
-        return CILRoot::Nop;
+        return V1Root::Nop;
     }
     // assert_eq!(args.len(),1,"The intrinsic `unlikely` MUST take in exactly 1 argument!");
     place_set(destination, handle_operand(&args[0].node, ctx), ctx)
@@ -94,12 +94,12 @@ pub fn handle_intrinsic<'tcx>(
     call_instance: Instance<'tcx>,
     span: rustc_span::Span,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-) -> Vec<CILRoot> {
+) -> Vec<V1Root> {
     match fn_name {
         "arith_offset" => vec![arith_offset(args, destination, call_instance, ctx)],
         "breakpoint" => vec![breakpoint(args)],
         "cold_path" | "assert_inhabited" | "assert_zero_valid" | "const_deallocate" => {
-            vec![CILRoot::Nop]
+            vec![V1Root::Nop]
         }
         "black_box" => vec![black_box(args, destination, call_instance, ctx)],
         "caller_location" => vec![caller_location(destination, ctx, span)],
@@ -202,7 +202,7 @@ pub fn handle_intrinsic<'tcx>(
             );
             let addr_calc = handle_operand(&args[0].node, ctx);
             let value_calc = handle_operand(&args[1].node, ctx);
-            vec![CILRoot::Volatile(Box::new(ptr_set_op(
+            vec![V1Root::Volatile(Box::new(ptr_set_op(
                 pointed_type.into(),
                 ctx,
                 addr_calc,
@@ -330,7 +330,7 @@ pub fn handle_intrinsic<'tcx>(
                 MethodKind::Static,
                 vec![].into(),
             );
-            vec![CILRoot::Call {
+            vec![V1Root::Call {
                 site: ctx.alloc_methodref(fence),
                 args: [].into(),
             }]
@@ -577,12 +577,12 @@ pub fn handle_intrinsic<'tcx>(
             let item1 = ctx.alloc_string("Item1");
             let item2 = ctx.alloc_string("Item2");
             vec![
-                CILRoot::SetField {
+                V1Root::SetField {
                     addr: Box::new(dst.clone()),
                     value: Box::new(wr),
                     desc: ctx.alloc_field(FieldDesc::new(res_tpe, item1, cilly::Type::Int(oint))),
                 },
-                CILRoot::SetField {
+                V1Root::SetField {
                     addr: Box::new(dst),
                     value: Box::new(ovf),
                     desc: ctx.alloc_field(FieldDesc::new(res_tpe, item2, cilly::Type::Int(wint))),
@@ -608,7 +608,7 @@ pub fn handle_intrinsic<'tcx>(
                 MethodKind::Static,
                 vec![].into(),
             );
-            vec![CILRoot::Call {
+            vec![V1Root::Call {
                 site: ctx.alloc_methodref(generic),
                 args: [
                     handle_operand(&args[0].node, ctx).cast_ptr(void_ptr),
@@ -793,7 +793,7 @@ pub fn handle_intrinsic<'tcx>(
                 ctx,
             )]
         }
-        "abort" => vec![CILRoot::throw("Called abort!", ctx)],
+        "abort" => vec![V1Root::throw("Called abort!", ctx)],
         "const_allocate" => {
             let null = ctx.alloc_node(Const::USize(0));
             let null = ctx.cast_ptr(null, Int::U8);
@@ -1113,7 +1113,7 @@ fn intrinsic_slow<'tcx>(
     ctx: &mut MethodCompileCtx<'tcx, '_>,
     call_instance: Instance<'tcx>,
     span: rustc_span::Span,
-) -> Vec<CILRoot> {
+) -> Vec<V1Root> {
     // Then, demangle the type name, converting it to a Rust-style one (eg. `core::option::Option::h8zc8s`)
     let demangled = rustc_demangle::demangle(fn_name);
     // Using formating preserves the generic hash.
@@ -1146,7 +1146,7 @@ fn volitale_load<'tcx>(
     args: &[Spanned<Operand<'tcx>>],
     destination: &Place<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-) -> CILRoot {
+) -> V1Root {
     //TODO:fix volitale prefix!
     debug_assert_eq!(
         args.len(),
@@ -1167,7 +1167,7 @@ fn caller_location<'tcx>(
     destination: &Place<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
     span: rustc_span::Span,
-) -> CILRoot {
+) -> V1Root {
     let caller_loc = ctx.tcx().span_as_caller_location(span);
     let caller_loc_ty = ctx.tcx().caller_location_ty();
     place_set(
@@ -1193,7 +1193,7 @@ fn float_unop<'tcx>(
     ctx: &mut MethodCompileCtx<'tcx, '_>,
     float: Float,
     name: &str,
-) -> Vec<CILRoot> {
+) -> Vec<V1Root> {
     let log = MethodRef::new(
         float.class(ctx),
         ctx.alloc_string(name),
@@ -1216,7 +1216,7 @@ fn float_binop<'tcx>(
     ctx: &mut MethodCompileCtx<'tcx, '_>,
     float: Float,
     name: &str,
-) -> Vec<CILRoot> {
+) -> Vec<V1Root> {
     let log = MethodRef::new(
         float.class(ctx),
         ctx.alloc_string(name),

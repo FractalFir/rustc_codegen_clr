@@ -1,6 +1,6 @@
 use crate::assembly::MethodCompileCtx;
 use cilly::{
-    call, cil_node::V1Node, cil_root::CILRoot, cilnode::MethodKind, conv_usize, ClassRef, Int,
+    call, cil_node::V1Node, cil_root::V1Root, cilnode::MethodKind, conv_usize, ClassRef, Int,
     MethodRef, Type,
 };
 use rustc_codegen_clr_place::{place_adress, place_set};
@@ -13,7 +13,7 @@ pub fn xchg<'tcx>(
     args: &[Spanned<Operand<'tcx>>],
     destination: &Place<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-) -> CILRoot {
+) -> V1Root {
     let interlocked = ClassRef::interlocked(ctx);
     // *T
     let dst = handle_operand(&args[0].node, ctx);
@@ -90,7 +90,7 @@ pub fn cxchg<'tcx>(
     destination: &Place<'tcx>,
 
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-) -> [CILRoot; 2] {
+) -> [V1Root; 2] {
     let interlocked = ClassRef::interlocked(ctx);
     // *T
     let dst = handle_operand(&args[0].node, ctx);

@@ -4,7 +4,7 @@ use crate::{
 };
 use cilly::{
     cil_node::V1Node,
-    cil_root::CILRoot,
+    cil_root::V1Root,
     conv_usize, ld_field, size_of, Const, Type,
     {cilnode::MethodKind, FieldDesc, Float, Int, MethodRef},
 };
@@ -62,7 +62,7 @@ pub fn handle_rvalue<'tcx>(
     rvalue: &Rvalue<'tcx>,
     target_location: &Place<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-) -> (Vec<CILRoot>, V1Node) {
+) -> (Vec<V1Root>, V1Node) {
     match rvalue {
         Rvalue::Len(operand) => {
             let ty = ctx.monomorphize(operand.ty(ctx.body(), ctx.tcx()));
@@ -426,7 +426,7 @@ fn repeat<'tcx>(
     element: &Operand<'tcx>,
     times: rustc_middle::ty::Const<'tcx>,
     target_location: &Place<'tcx>,
-) -> (Vec<CILRoot>, V1Node) {
+) -> (Vec<V1Root>, V1Node) {
     // Get the type of the operand
     let element_ty = ctx.monomorphize(element.ty(ctx.body(), ctx.tcx()));
     let element_type = ctx.type_from_cache(element_ty);
@@ -444,7 +444,7 @@ fn repeat<'tcx>(
     if compiletime_sizeof(element_ty, ctx.tcx()) == 1 {
         let place_address = place_adress(target_location, ctx);
         let val = Box::new(element.transmute_on_stack(element_type, Type::Int(Int::U8), ctx));
-        let init = CILRoot::InitBlk {
+        let init = V1Root::InitBlk {
             dst: Box::new(place_address.cast_ptr(ctx.nptr(Type::Int(Int::U8)))),
             val,
             count: Box::new(V1Node::V2(ctx.alloc_node(Const::USize(times)))),
@@ -465,7 +465,7 @@ fn repeat<'tcx>(
         );
         let mref = ctx.alloc_methodref(mref);
         for idx in 0..SIMPLE_REPEAT_CAP {
-            branches.push(CILRoot::Call {
+            branches.push(V1Root::Call {
                 site: mref,
                 args: [
                     place_address.clone(),
@@ -481,7 +481,7 @@ fn repeat<'tcx>(
             let curr_copy_size = curr_len.min(times - curr_len);
             let elem_size: cilly::Interned<cilly::v2::CILNode> = ctx.size_of(element_type);
             // Copy curr_copy_size elements from the start of the array, starting at curr_len(the ammount of already initialized buffers)
-            branches.push(CILRoot::CpBlk {
+            branches.push(V1Root::CpBlk {
                 dst: Box::new(
                     V1Node::MRefToRawPtr(Box::new(place_address.clone()))
                         + V1Node::V2(ctx.alloc_node(Const::USize(curr_len)))
@@ -510,7 +510,7 @@ fn repeat<'tcx>(
         let place_address = place_adress(target_location, ctx);
         let mref = ctx.alloc_methodref(mref);
         for idx in 0..times {
-            branches.push(CILRoot::Call {
+            branches.push(V1Root::Call {
                 site: mref,
                 args: [
                     place_address.clone(),

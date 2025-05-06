@@ -148,6 +148,7 @@ fmt::write_str_macro_debug
 fmt::write_str_macro_debug_ascii
 fmt::write_str_ref
 fmt::write_str_value
+fmt::write_u128_max
 fmt::write_u128_min
 fmt::write_u64_max
 fmt::write_u64_min
@@ -318,8 +319,6 @@ num::dec2flt::bench_short_decimal
 num::int_log::u128_log10_predictable
 num::int_log::u128_log10_random
 num::int_log::u128_log10_random_small
-num::int_log::u128_log_random
-num::int_log::u128_log_random_small
 num::int_log::u16_log10_predictable
 num::int_log::u16_log10_random
 num::int_log::u16_log10_random_small
@@ -345,11 +344,9 @@ num::int_log::u8_log_geometric
 num::int_log::u8_log_random
 num::int_log::u8_log_random_small
 num::int_pow::overflowing_pow_variable
-num::int_pow::pow_m7
-num::int_pow::pow_m8
-num::int_pow::pow_variable
 num::int_pow::saturating_pow_variable
 num::int_pow::wrapping_pow_variable
+num::int_sqrt::u128_sqrt_predictable
 num::int_sqrt::u128_sqrt_random
 num::int_sqrt::u128_sqrt_random_small
 num::int_sqrt::u128_sqrt_uniform

@@ -2,7 +2,7 @@ use crate::assembly::MethodCompileCtx;
 use cilly::{
     and, call,
     cil_node::V1Node,
-    cil_root::CILRoot,
+    cil_root::V1Root,
     conv_i16, conv_i32, conv_i8, conv_isize, conv_u16, conv_u32, conv_u64, conv_u8, rem_un,
     Assembly, Int, Type,
     {cilnode::MethodKind, ClassRef, MethodRef},
@@ -32,7 +32,7 @@ pub fn ctpop<'tcx>(
 
     call_instance: Instance<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-) -> CILRoot {
+) -> V1Root {
     debug_assert_eq!(
         args.len(),
         1,
@@ -97,7 +97,7 @@ pub fn ctlz<'tcx>(
     destination: &Place<'tcx>,
     call_instance: Instance<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-) -> CILRoot {
+) -> V1Root {
     debug_assert_eq!(
         args.len(),
         1,
@@ -211,7 +211,7 @@ pub fn cttz<'tcx>(
     destination: &Place<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
     call_instance: Instance<'tcx>,
-) -> CILRoot {
+) -> V1Root {
     debug_assert_eq!(
         args.len(),
         1,
@@ -384,7 +384,7 @@ pub fn rotate_left<'tcx>(
     destination: &Place<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
     call_instance: Instance<'tcx>,
-) -> CILRoot {
+) -> V1Root {
     debug_assert_eq!(
         args.len(),
         2,
@@ -441,7 +441,7 @@ pub fn rotate_right<'tcx>(
     destination: &Place<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
     call_instance: Instance<'tcx>,
-) -> CILRoot {
+) -> V1Root {
     debug_assert_eq!(
         args.len(),
         2,
@@ -520,7 +520,7 @@ pub fn bitreverse<'tcx>(
     destination: &Place<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
     call_instance: Instance<'tcx>,
-) -> CILRoot {
+) -> V1Root {
     debug_assert_eq!(
         args.len(),
         1,

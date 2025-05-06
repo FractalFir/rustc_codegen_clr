@@ -1,5 +1,5 @@
 use cilly::{
-    call, cil_node::V1Node, cil_root::CILRoot, cilnode::MethodKind, eq, gt_un, Assembly, ClassRef,
+    call, cil_node::V1Node, cil_root::V1Root, cilnode::MethodKind, eq, gt_un, Assembly, ClassRef,
     Const, FieldDesc, Float, Int, Interned, MethodRef, Type,
 };
 use rustc_abi::{FieldIdx, FieldsShape, Layout, LayoutData, TagEncoding, VariantIdx, Variants};
@@ -145,21 +145,21 @@ pub fn set_discr<'tcx>(
     enum_tpe: Interned<ClassRef>,
     ty: Ty<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-) -> CILRoot {
+) -> V1Root {
     if get_variant_at_index(variant_index, (*layout.0).clone()).is_uninhabited() {
         // Could be skipped, but keeping a throw here can with CIL correctnes. Each block *must* terminate with a jump, return or a throw.
         // By inserting a throw, we are able to remove all code
         // after it safely.
-        return CILRoot::throw(
+        return V1Root::throw(
             "UB: SetDiscirminant used, but the specified enum variant is not inhabited.",
             ctx,
         );
     }
     match layout.variants {
-        Variants::Empty => CILRoot::Nop,
+        Variants::Empty => V1Root::Nop,
         Variants::Single { index } => {
             assert_eq!(index, variant_index);
-            CILRoot::Nop
+            V1Root::Nop
         }
         Variants::Multiple {
             tag_encoding: TagEncoding::Direct,
@@ -175,7 +175,7 @@ pub fn set_discr<'tcx>(
             let tag_val = V1Node::V2(ctx.alloc_node(tag_val));
             let tag_val = crate::casts::int_to_int(Type::Int(Int::U64), tag_tpe, tag_val, ctx);
             let enum_tag_name = ctx.alloc_string(crate::ENUM_TAG);
-            CILRoot::SetField {
+            V1Root::SetField {
                 addr: Box::new(enum_addr),
                 value: Box::new(tag_val),
                 desc: ctx.alloc_field(FieldDesc::new(enum_tpe, enum_tag_name, tag_tpe)),
@@ -191,7 +191,7 @@ pub fn set_discr<'tcx>(
             ..
         } => {
             if variant_index == untagged_variant {
-                CILRoot::Nop
+                V1Root::Nop
             } else {
                 let (tag_tpe, _) = enum_tag_info(layout, ctx);
                 //let niche = self.project_field(bx, tag_field);
@@ -206,7 +206,7 @@ pub fn set_discr<'tcx>(
                 );
                 let tag_val = crate::casts::int_to_int(Type::Int(Int::U64), tag_tpe, tag_val, ctx);
                 let enum_tag_name = ctx.alloc_string(crate::ENUM_TAG);
-                CILRoot::SetField {
+                V1Root::SetField {
                     addr: Box::new(enum_addr),
                     value: Box::new(tag_val),
                     desc: ctx.alloc_field(FieldDesc::new(enum_tpe, enum_tag_name, tag_tpe)),

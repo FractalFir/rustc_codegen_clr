@@ -1,6 +1,6 @@
 use crate::assembly::MethodCompileCtx;
 use cilly::{
-    call, call_virt, cil_node::V1Node, cil_root::CILRoot, cilnode::MethodKind, conv_u32, ClassRef,
+    call, call_virt, cil_node::V1Node, cil_root::V1Root, cilnode::MethodKind, conv_u32, ClassRef,
     Int, MethodRef, Type,
 };
 use rustc_codegen_clr_place::place_set;
@@ -10,7 +10,7 @@ pub fn type_id<'tcx>(
     destination: &Place<'tcx>,
     call_instance: Instance<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-) -> CILRoot {
+) -> V1Root {
     let tpe = ctx.monomorphize(
         call_instance.args[0]
             .as_type()

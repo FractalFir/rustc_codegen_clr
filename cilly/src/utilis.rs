@@ -5,7 +5,7 @@ use crate::method::Method;
 
 use crate::cilnode::{ExtendKind, MethodKind};
 use crate::{call, call_virt, conv_usize, IntoAsmIndex, MethodDef, Type};
-use crate::{cil_node::V1Node, cil_root::CILRoot, Assembly};
+use crate::{cil_node::V1Node, cil_root::V1Root, Assembly};
 use crate::{ClassRef, FnSig, Int, MethodRef, StaticFieldDesc};
 
 pub fn argc_argv_init_method(asm: &mut Assembly) -> Interned<MethodRef> {
@@ -91,7 +91,7 @@ pub fn get_environ(asm: &mut Assembly) -> Interned<MethodRef> {
     let mut blocks = get_environ.blocks_mut();
     let first_check = &mut blocks[first_check_bb as usize];
     first_check.trees_mut().push(
-        CILRoot::BNe {
+        V1Root::BNe {
             target: ret_bb,
             sub_target: 0,
             a: Box::new(V1Node::V2(environ)),
@@ -100,7 +100,7 @@ pub fn get_environ(asm: &mut Assembly) -> Interned<MethodRef> {
         .into(),
     );
     first_check.trees_mut().push(
-        CILRoot::GoTo {
+        V1Root::GoTo {
             target: init_bb,
             sub_target: 0,
         }
@@ -116,7 +116,7 @@ pub fn get_environ(asm: &mut Assembly) -> Interned<MethodRef> {
         vec![].into(),
     );
     init.trees_mut().push(
-        CILRoot::STLoc {
+        V1Root::STLoc {
             local: dictionary_local,
             tree: call!(asm.alloc_methodref(mref), []),
         }
@@ -130,7 +130,7 @@ pub fn get_environ(asm: &mut Assembly) -> Interned<MethodRef> {
         vec![].into(),
     );
     init.trees_mut().push(
-        CILRoot::STLoc {
+        V1Root::STLoc {
             local: envc,
             tree: call_virt!(
                 asm.alloc_methodref(mref),
@@ -146,7 +146,7 @@ pub fn get_environ(asm: &mut Assembly) -> Interned<MethodRef> {
     let arr_align = conv_usize!(V1Node::V2(asm.size_of(uint8_ptr_ptr).into_idx(asm)));
     let aligned_alloc = MethodRef::aligned_alloc(asm);
     init.trees_mut().push(
-        CILRoot::STLoc {
+        V1Root::STLoc {
             local: arr_ptr,
             tree: call!(asm.alloc_methodref(aligned_alloc), [arr_size, arr_align])
                 .cast_ptr(uint8_ptr_ptr),
@@ -154,7 +154,7 @@ pub fn get_environ(asm: &mut Assembly) -> Interned<MethodRef> {
         .into(),
     );
     init.trees_mut().push(
-        CILRoot::STLoc {
+        V1Root::STLoc {
             local: idx,
             tree: V1Node::V2(asm.alloc_node(0_i32)),
         }
@@ -169,7 +169,7 @@ pub fn get_environ(asm: &mut Assembly) -> Interned<MethodRef> {
         vec![].into(),
     );
     init.trees_mut().push(
-        CILRoot::STLoc {
+        V1Root::STLoc {
             local: iter_local,
             tree: call_virt!(
                 asm.alloc_methodref(mref),
@@ -180,7 +180,7 @@ pub fn get_environ(asm: &mut Assembly) -> Interned<MethodRef> {
     );
 
     init.trees_mut().push(
-        CILRoot::GoTo {
+        V1Root::GoTo {
             target: loop_body_bb,
             sub_target: 0,
         }
@@ -189,7 +189,7 @@ pub fn get_environ(asm: &mut Assembly) -> Interned<MethodRef> {
     let ret = &mut blocks[ret_bb as usize];
 
     ret.trees_mut()
-        .push(CILRoot::V2(asm.alloc_root(crate::v2::CILRoot::Ret(environ))).into());
+        .push(V1Root::V2(asm.alloc_root(crate::v2::CILRoot::Ret(environ))).into());
     let loop_body = &mut blocks[loop_body_bb as usize];
     let move_next = MethodRef::new(
         ClassRef::i_enumerator(asm),
@@ -199,7 +199,7 @@ pub fn get_environ(asm: &mut Assembly) -> Interned<MethodRef> {
         vec![].into(),
     );
     loop_body.trees_mut().push(
-        CILRoot::BFalse {
+        V1Root::BFalse {
             target: loop_end_bb,
             sub_target: 0,
             cond: call_virt!(asm.alloc_methodref(move_next), [V1Node::LDLoc(iter_local)]),
@@ -214,7 +214,7 @@ pub fn get_environ(asm: &mut Assembly) -> Interned<MethodRef> {
         vec![].into(),
     );
     loop_body.trees_mut().push(
-        CILRoot::STLoc {
+        V1Root::STLoc {
             local: keyval,
             tree: V1Node::UnboxAny(
                 Box::new(call_virt!(
@@ -260,7 +260,7 @@ pub fn get_environ(asm: &mut Assembly) -> Interned<MethodRef> {
         vec![].into(),
     );
     loop_body.trees_mut().push(
-        CILRoot::STLoc {
+        V1Root::STLoc {
             local: encoded_keyval,
             tree: call!(
                 asm.alloc_methodref(concat),
@@ -271,7 +271,7 @@ pub fn get_environ(asm: &mut Assembly) -> Interned<MethodRef> {
     );
     let utf8_kval = mstring_to_utf8ptr(V1Node::LDLoc(encoded_keyval), asm);
     loop_body.trees_mut().push(
-        CILRoot::STIndPtr(
+        V1Root::STIndPtr(
             V1Node::LDLoc(arr_ptr)
                 + conv_usize!(
                     V1Node::LDLoc(idx) * V1Node::V2(asm.size_of(uint8_ptr_ptr).into_idx(asm))
@@ -282,7 +282,7 @@ pub fn get_environ(asm: &mut Assembly) -> Interned<MethodRef> {
         .into(),
     );
     loop_body.trees_mut().push(
-        CILRoot::STLoc {
+        V1Root::STLoc {
             local: idx,
             tree: V1Node::LDLoc(idx) + V1Node::V2(asm.alloc_node(1_i32)),
         }
@@ -290,7 +290,7 @@ pub fn get_environ(asm: &mut Assembly) -> Interned<MethodRef> {
     );
 
     loop_body.trees_mut().push(
-        CILRoot::GoTo {
+        V1Root::GoTo {
             target: loop_body_bb,
             sub_target: 0,
         }
@@ -299,7 +299,7 @@ pub fn get_environ(asm: &mut Assembly) -> Interned<MethodRef> {
     let loop_end = &mut blocks[loop_end_bb as usize];
     let null_ptr = conv_usize!(V1Node::V2(asm.alloc_node(0_i32))).cast_ptr(uint8_ptr);
     loop_end.trees_mut().push(
-        CILRoot::STIndPtr(
+        V1Root::STIndPtr(
             V1Node::LDLoc(arr_ptr)
                 + conv_usize!(
                     V1Node::LDLoc(envc) * V1Node::V2(asm.size_of(uint8_ptr_ptr).into_idx(asm))
@@ -310,7 +310,7 @@ pub fn get_environ(asm: &mut Assembly) -> Interned<MethodRef> {
         .into(),
     );
     loop_end.trees_mut().push(
-        CILRoot::SetStaticField {
+        V1Root::SetStaticField {
             descr: Box::new(StaticFieldDesc::new(
                 *asm.main_module(),
                 asm.alloc_string("environ"),

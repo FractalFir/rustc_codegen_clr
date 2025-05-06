@@ -2,7 +2,7 @@ use crate::assembly::MethodCompileCtx;
 use cilly::{
     call,
     cil_node::V1Node,
-    cil_root::CILRoot,
+    cil_root::V1Root,
     cilnode::MethodKind,
     conv_i16, conv_i32, conv_i64, conv_i8, MethodRef, Type, {ClassRef, Int},
 };
@@ -20,7 +20,7 @@ pub fn saturating_add<'tcx>(
     destination: &Place<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
     call_instance: Instance<'tcx>,
-) -> CILRoot {
+) -> V1Root {
     let a = handle_operand(&args[0].node, ctx);
     let b = handle_operand(&args[1].node, ctx);
     let a_ty = ctx.monomorphize(
@@ -222,7 +222,7 @@ pub fn saturating_sub<'tcx>(
     destination: &Place<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
     call_instance: Instance<'tcx>,
-) -> CILRoot {
+) -> V1Root {
     let a = handle_operand(&args[0].node, ctx);
     let b = handle_operand(&args[1].node, ctx);
     let a_ty = ctx.monomorphize(

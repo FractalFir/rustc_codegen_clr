@@ -6,7 +6,7 @@ use crate::v2::method::LocalDef;
 use crate::FieldDesc;
 use crate::{
     call,
-    cil_root::CILRoot,
+    cil_root::V1Root,
     hashable::{HashableF32, HashableF64},
     IString,
 };
@@ -365,9 +365,9 @@ impl V1Node {
         destination_addr: Self,
         val_desc: Interned<FieldDesc>,
         flag_desc: Interned<FieldDesc>,
-    ) -> [CILRoot; 2] {
+    ) -> [V1Root; 2] {
         // Set the value of the result.
-        let set_val = CILRoot::SetField {
+        let set_val = V1Root::SetField {
             addr: Box::new(destination_addr.clone()),
             value: Box::new(old_val),
             desc: val_desc,
@@ -382,7 +382,7 @@ impl V1Node {
 
         [
             set_val,
-            CILRoot::SetField {
+            V1Root::SetField {
                 addr: Box::new(destination_addr.clone()),
                 value: Box::new(cmp),
                 desc: flag_desc,

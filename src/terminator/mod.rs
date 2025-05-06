@@ -1,7 +1,7 @@
 use crate::assembly::MethodCompileCtx;
 use cilly::{
-    cil_node::V1Node, cil_root::CILRoot, cil_tree::CILTree, cilnode::MethodKind, ld_field, BinOp,
-    Const, FieldDesc, FnSig, Int, MethodRef, Type,
+    cil_node::V1Node, cil_root::V1Root, cil_tree::CILTree, cilnode::MethodKind, ld_field, BinOp,
+    CILRoot, Const, FieldDesc, FnSig, Int, MethodRef, Type,
 };
 use rustc_codegen_clr_ctx::function_name;
 use rustc_codegen_clr_place::{place_adress, place_set};
@@ -60,7 +60,7 @@ pub fn handle_call_terminator<'tycxt>(
             let called_operand = handle_operand(func, ctx);
             if *sig.output() == cilly::Type::Void {
                 trees.push(
-                    CILRoot::CallI {
+                    V1Root::CallI {
                         sig: Box::new(sig.clone()),
                         fn_ptr: Box::new(called_operand),
                         args: arg_operands.into(),
@@ -68,18 +68,15 @@ pub fn handle_call_terminator<'tycxt>(
                     .into(),
                 );
             } else {
-                trees.push(
-                    place_set(
+                let root = CILRoot::from_v1(
+                    &place_set(
                         destination,
-                        V1Node::CallI(Box::new((
-                            sig.clone(),
-                            called_operand,
-                            arg_operands.into(),
-                        ))),
+                        V1Node::CallI(Box::new((sig.clone(), called_operand, arg_operands.into()))),
                         ctx,
-                    )
-                    .into(),
+                    ),
+                    ctx,
                 );
+                trees.push(V1Root::V2(ctx.alloc_root(root)).into());
             }
         }
         _ => todo!("Can't call type {func_ty:?}"),
@@ -87,14 +84,14 @@ pub fn handle_call_terminator<'tycxt>(
     // Final Jump
     if let Some(target) = target {
         trees.push(
-            CILRoot::GoTo {
+            V1Root::GoTo {
                 target: target.as_u32(),
                 sub_target: 0,
             }
             .into(),
         );
     } else {
-        trees.push(CILRoot::throw("Function returning `Never` returned!", ctx).into());
+        trees.push(V1Root::throw("Function returning `Never` returned!", ctx).into());
     }
     trees
 }
@@ -116,9 +113,9 @@ pub fn handle_terminator<'tcx>(
         TerminatorKind::Return => {
             let ret = ctx.monomorphize(ctx.body().return_ty());
             if ctx.type_from_cache(ret) == cilly::Type::Void {
-                vec![CILRoot::VoidRet.into()]
+                vec![V1Root::VoidRet.into()]
             } else {
-                vec![CILRoot::Ret {
+                vec![V1Root::Ret {
                     tree: V1Node::LDLoc(0),
                 }
                 .into()]
@@ -165,12 +162,12 @@ pub fn handle_terminator<'tcx>(
                         vec![],
                     );
                     return vec![
-                        CILRoot::Call {
+                        V1Root::Call {
                             site,
                             args: vec![cond].into(),
                         }
                         .into(),
-                        CILRoot::GoTo {
+                        V1Root::GoTo {
                             target: target.as_u32(),
                             sub_target: 0,
                         }
@@ -191,25 +188,25 @@ pub fn handle_terminator<'tcx>(
             let sig = ctx.sig([Type::Bool], Type::Void);
             let site = ctx.new_methodref(*main, name, sig, MethodKind::Static, vec![]);
             vec![
-                CILRoot::Call {
+                V1Root::Call {
                     site,
                     args: vec![cond].into(),
                 }
                 .into(),
-                CILRoot::GoTo {
+                V1Root::GoTo {
                     target: target.as_u32(),
                     sub_target: 0,
                 }
                 .into(),
             ]
         }
-        TerminatorKind::Goto { target } => vec![CILRoot::GoTo {
+        TerminatorKind::Goto { target } => vec![V1Root::GoTo {
             target: target.as_u32(),
             sub_target: 0,
         }
         .into()],
         TerminatorKind::UnwindResume => {
-            vec![CILRoot::ReThrow.into()]
+            vec![V1Root::ReThrow.into()]
         }
         TerminatorKind::Drop {
             place,
@@ -225,7 +222,7 @@ pub fn handle_terminator<'tcx>(
             let drop_instance = Instance::resolve_drop_in_place(ctx.tcx(), ty);
             if let InstanceKind::DropGlue(_, None) = drop_instance.def {
                 //Empty drop, nothing needs to happen.
-                vec![CILRoot::GoTo {
+                vec![V1Root::GoTo {
                     target: target.as_u32(),
                     sub_target: 0,
                 }
@@ -265,20 +262,20 @@ pub fn handle_terminator<'tcx>(
                             loaded_ptr: Box::new(Type::FnPtr(sig)),
                         };
                         vec![
-                            CILRoot::BEq {
+                            V1Root::BEq {
                                 target: target.as_u32(),
                                 sub_target: 0,
                                 a: Box::new(drop_fn_ptr.clone().cast_ptr(Type::Int(Int::USize))),
                                 b: Box::new(V1Node::V2(ctx.alloc_node(Const::USize(0)))),
                             }
                             .into(),
-                            CILRoot::CallI {
+                            V1Root::CallI {
                                 sig: Box::new(FnSig::new([void_ptr], Type::Void)),
                                 fn_ptr: Box::new(drop_fn_ptr),
                                 args: [obj_ptr].into(),
                             }
                             .into(),
-                            CILRoot::GoTo {
+                            V1Root::GoTo {
                                 target: target.as_u32(),
                                 sub_target: 0,
                             }
@@ -300,12 +297,12 @@ pub fn handle_terminator<'tcx>(
                             vec![].into(),
                         );
                         vec![
-                            CILRoot::Call {
+                            V1Root::Call {
                                 site: ctx.alloc_methodref(mref),
                                 args: [place_adress(place, ctx)].into(),
                             }
                             .into(),
-                            CILRoot::GoTo {
+                            V1Root::GoTo {
                                 target: target.as_u32(),
                                 sub_target: 0,
                             }
@@ -320,7 +317,7 @@ pub fn handle_terminator<'tcx>(
             let msg = ctx.alloc_string(format!("Unreachable reached at {loc:?}!"));
 
             vec![
-                rustc_middle::ty::print::with_no_trimmed_paths! {CILRoot::V2(ctx.alloc_root(cilly::CILRoot::Unreachable(msg))).into()},
+                rustc_middle::ty::print::with_no_trimmed_paths! {V1Root::V2(ctx.alloc_root(cilly::CILRoot::Unreachable(msg))).into()},
             ]
         }
         TerminatorKind::InlineAsm {
@@ -333,13 +330,13 @@ pub fn handle_terminator<'tcx>(
             asm_macro: _,
         } => {
             eprintln!("Inline assembly is not yet supported!");
-            vec![CILRoot::throw("Inline assembly is not yet supported!", ctx).into()]
+            vec![V1Root::throw("Inline assembly is not yet supported!", ctx).into()]
         }
         TerminatorKind::UnwindTerminate(_) => {
             let loc = terminator.source_info.span;
             vec![
-                rustc_middle::ty::print::with_no_trimmed_paths! {CILRoot::debug(&format!("UnwindTerminate reached at {loc:?}!"),ctx).into()},
-                CILRoot::ReThrow.into(),
+                rustc_middle::ty::print::with_no_trimmed_paths! {V1Root::debug(&format!("UnwindTerminate reached at {loc:?}!"),ctx).into()},
+                V1Root::ReThrow.into(),
             ]
         }
         TerminatorKind::FalseEdge {
@@ -347,7 +344,7 @@ pub fn handle_terminator<'tcx>(
             imaginary_target: _,
         } => {
             // imaginary_target is ignored becase you can't jump to it.
-            vec![CILRoot::GoTo {
+            vec![V1Root::GoTo {
                 target: real_target.as_u32(),
                 sub_target: 0,
             }
@@ -359,7 +356,7 @@ pub fn handle_terminator<'tcx>(
             unwind: _,
         } => {
             // unwind is ignored becase it can't happen.
-            vec![CILRoot::GoTo {
+            vec![V1Root::GoTo {
                 target: real_target.as_u32(),
                 sub_target: 0,
             }
@@ -377,12 +374,12 @@ pub fn handle_terminator<'tcx>(
     assert!(
         matches!(
             last,
-            CILRoot::GoTo { .. }
-                | CILRoot::Ret { .. }
-                | CILRoot::VoidRet
-                | CILRoot::ReThrow
-                | CILRoot::Throw(_)
-                | CILRoot::V2(_)
+            V1Root::GoTo { .. }
+                | V1Root::Ret { .. }
+                | V1Root::VoidRet
+                | V1Root::ReThrow
+                | V1Root::Throw(_)
+                | V1Root::V2(_)
         ),
         "Tree {last:?} did not terminate with an uncoditional jump!."
     );
@@ -408,7 +405,7 @@ fn handle_switch<'tcx>(
         });
         //ops.push(CILOp::LdcI64(value as i64));
         trees.push(
-            CILRoot::BTrue {
+            V1Root::BTrue {
                 target: target.into(),
                 cond: crate::binop::cmp::eq_unchecked(ty, discr.clone(), const_val, ctx),
                 sub_target: 0,
@@ -417,7 +414,7 @@ fn handle_switch<'tcx>(
         );
     }
     trees.push(
-        CILRoot::GoTo {
+        V1Root::GoTo {
             target: switch.otherwise().into(),
             sub_target: 0,
         }

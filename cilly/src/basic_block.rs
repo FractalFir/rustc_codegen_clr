@@ -1,7 +1,7 @@
 use fxhash::{FxBuildHasher, FxHashSet};
 use serde::{Deserialize, Serialize};
 
-use crate::{cil_root::CILRoot, cil_tree::CILTree};
+use crate::{cil_root::V1Root, cil_tree::CILTree};
 
 #[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
 /// A block of ops that is a valid jump target, and is protected by an exception handler.
@@ -86,7 +86,7 @@ impl BasicBlock {
             .last()
             .into_iter()
             .filter_map(|tree| match tree.root() {
-                CILRoot::GoTo { target, sub_target } => {
+                V1Root::GoTo { target, sub_target } => {
                     if *sub_target != 0 {
                         None
                     } else {
@@ -116,7 +116,7 @@ impl BasicBlock {
         handler.insert(
             0,
             Self::new(
-                vec![CILRoot::GoTo {
+                vec![V1Root::GoTo {
                     target: self.id(),
                     sub_target: *handler_id,
                 }
@@ -132,7 +132,7 @@ impl BasicBlock {
         for (target, sub_target) in targets {
             assert_eq!(*sub_target, 0);
             self.trees.push(
-                CILRoot::JumpingPad {
+                V1Root::JumpingPad {
                     target: *target,
                     source: id,
                 }
@@ -209,7 +209,7 @@ impl BasicBlock {
         self.handler.as_ref()
     }
 
-    pub(crate) fn iter_tree_roots(&self) -> impl Iterator<Item = &CILRoot> {
+    pub(crate) fn iter_tree_roots(&self) -> impl Iterator<Item = &V1Root> {
         let handler_bbs = self
             .handler
             .iter()

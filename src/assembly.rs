@@ -8,7 +8,7 @@ use crate::{
 use cilly::{
     basic_block::BasicBlock,
     cil_node::V1Node,
-    cil_root::CILRoot,
+    cil_root::V1Root,
     cil_tree::CILTree,
     cilnode::{MethodKind, PtrCastRes},
     method::{Method, MethodType},
@@ -104,7 +104,7 @@ pub fn terminator_to_ops<'tcx>(
                     format!("Tried to execute terminator {term:?} whose compialtion failed with a no-string message!")
                     }
                 };
-                vec![CILRoot::throw(&msg, ctx).into()]
+                vec![V1Root::throw(&msg, ctx).into()]
             }
         }
     };
@@ -221,7 +221,7 @@ pub fn add_fn<'tcx, 'asm, 'a: 'asm>(
             let arg = V1Node::V2(ctx.alloc_node(cilly::v2::CILNode::LdArg(arg)));
             let repacked = V1Node::V2(ctx.alloc_node(cilly::v2::CILNode::LdLocA(repacked)));
             repack_cil.push(
-                CILRoot::SetField {
+                V1Root::SetField {
                     addr: Box::new(repacked),
                     value: Box::new(arg),
                     desc: (arg_field),
@@ -233,13 +233,14 @@ pub fn add_fn<'tcx, 'asm, 'a: 'asm>(
     } else {
         vec![]
     };
+    let sig_idx = ctx.alloc_sig(sig.clone());
     // Used for type-checking the CIL to ensure its validity.
     for (last_bb_id, block_data) in blocks.into_iter().enumerate() {
         let mut trees = Vec::new();
         for statement in &block_data.statements {
             if *crate::config::INSERT_MIR_DEBUG_COMMENTS {
-                rustc_middle::ty::print::with_no_trimmed_paths! {trees.push(CILRoot::debug(&format!("{statement:?}"),ctx).into())};
-                rustc_middle::ty::print::with_no_trimmed_paths! {trees.push(CILRoot::debug(&format!("{:?}",statement.source_info.span),ctx).into())};
+                rustc_middle::ty::print::with_no_trimmed_paths! {trees.push(V1Root::debug(&format!("{statement:?}"),ctx).into())};
+                rustc_middle::ty::print::with_no_trimmed_paths! {trees.push(V1Root::debug(&format!("{:?}",statement.source_info.span),ctx).into())};
             }
 
             let statement_tree = match statement_to_ops(statement, ctx) {
@@ -248,9 +249,18 @@ pub fn add_fn<'tcx, 'asm, 'a: 'asm>(
                     rustc_middle::ty::print::with_no_trimmed_paths! {eprintln!(
                         "Method \"{name}\" failed to compile statement {statement:?} with message {err:?}\n"
                     )};
-                    rustc_middle::ty::print::with_no_trimmed_paths! {vec![(CILRoot::throw(&format!("Tired to run a statement {statement:?} which failed to compile with error message {err:?}."),ctx).into())]}
+                    rustc_middle::ty::print::with_no_trimmed_paths! {vec![(V1Root::throw(&format!("Tired to run a statement {statement:?} which failed to compile with error message {err:?}."),ctx).into())]}
                 }
             };
+            for tree in &statement_tree {
+                let Err(err) = tree.root().try_typecheck(ctx, sig_idx, &locals) else {
+                    continue;
+                };
+                ctx.tcx().dcx().span_warn(
+                    statement.source_info.span,
+                    format!("Typecheck failed:{err:?}"),
+                );
+            }
             // Only save debuginfo for statements which result in ops.
             if !statement_tree.is_empty() {
                 trees.push(span_source_info(ctx.tcx(), statement.source_info.span).into());
@@ -259,11 +269,19 @@ pub fn add_fn<'tcx, 'asm, 'a: 'asm>(
         }
         if let Some(term) = &block_data.terminator {
             if *crate::config::INSERT_MIR_DEBUG_COMMENTS {
-                rustc_middle::ty::print::with_no_trimmed_paths! {trees.push(CILRoot::debug(&format!("{term:?}"),ctx).into())};
+                rustc_middle::ty::print::with_no_trimmed_paths! {trees.push(V1Root::debug(&format!("{term:?}"),ctx).into())};
             }
             let term_trees = terminator_to_ops(term, ctx).unwrap_or_else(|err| {
                 panic!("Could not compile terminator {term:?} because {err:?}")
             });
+            for tree in &term_trees {
+                let Err(err) = tree.root().try_typecheck(ctx, sig_idx, &locals) else {
+                    continue;
+                };
+                ctx.tcx()
+                    .dcx()
+                    .span_warn(term.source_info.span, format!("Typecheck failed:{err:?}"));
+            }
             if !term_trees.is_empty() {
                 trees.push(span_source_info(ctx.tcx(), term.source_info.span).into());
             }
@@ -453,7 +471,7 @@ pub fn add_item<'tcx>(
     }
 }
 
-pub(crate) fn span_source_info(tcx: TyCtxt, span: rustc_span::Span) -> CILRoot {
+pub(crate) fn span_source_info(tcx: TyCtxt, span: rustc_span::Span) -> V1Root {
     let (file, lstart, cstart, lend, mut cend) = tcx.sess.source_map().span_to_location_info(span);
     let file = file.map_or(String::new(), |file| {
         file.name
@@ -463,7 +481,7 @@ pub(crate) fn span_source_info(tcx: TyCtxt, span: rustc_span::Span) -> CILRoot {
     if cstart >= cend {
         cend = cstart + 1;
     }
-    CILRoot::source_info(
+    V1Root::source_info(
         &file,
         (lstart as u64)..(lend as u64),
         (cstart as u64)..(cend as u64),

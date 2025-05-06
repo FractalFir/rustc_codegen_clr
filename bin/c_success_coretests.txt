@@ -13,7 +13,6 @@ any::distinct_type_names
 any::dyn_type_name
 array::array_from_fn
 array::array_from_mut
-array::array_from_ref
 array::array_into_iter_fold
 array::array_into_iter_rfold
 array::array_intoiter_advance_back_by
@@ -75,6 +74,7 @@ atomic::atomic_alignment
 atomic::atomic_compare_exchange
 atomic::bool_
 atomic::bool_nand
+atomic::int_and
 atomic::int_max
 atomic::int_min
 atomic::int_nand
@@ -136,11 +136,13 @@ char::test_decode_utf16
 char::test_decode_utf16_size_hint
 char::test_encode_utf16
 char::test_encode_utf8
+char::test_escape_debug
 char::test_escape_default
 char::test_escape_unicode
 char::test_from_str
 char::test_is_control
 char::test_is_lowercase
+char::test_is_numeric
 char::test_is_uppercase
 char::test_is_whitespace
 char::test_len_utf16
@@ -236,11 +238,13 @@ hash::sip::test_write_short_works
 hash::test_build_hasher_dyn_compatible
 hash::test_custom_state
 hash::test_indirect_hasher
+hint::select_unpredictable_drop
 intrinsics::carrying_mul_add_fallback_i128
 intrinsics::carrying_mul_add_fallback_i32
 intrinsics::carrying_mul_add_fallback_u128
 intrinsics::carrying_mul_add_fallback_u32
 intrinsics::test_assume_can_be_in_const_contexts
+intrinsics::test_const_allocate_at_runtime
 intrinsics::test_const_deallocate_at_runtime
 intrinsics::test_hints_in_const_contexts
 intrinsics::test_three_way_compare_in_const_contexts
@@ -344,7 +348,6 @@ iter::adapters::map_windows::output_n2
 iter::adapters::map_windows::test_case_from_pr_82413_comment
 iter::adapters::map_windows::test_laziness
 iter::adapters::map_windows::test_size_hint
-iter::adapters::map_windows::test_too_large_array_size
 iter::adapters::map_windows::test_zero_sized_type
 iter::adapters::peekable::test_iterator_peekable
 iter::adapters::peekable::test_iterator_peekable_count
@@ -412,7 +415,6 @@ iter::adapters::zip::test_zip_nth_back_side_effects_exhausted
 iter::adapters::zip::test_zip_nth_side_effects
 iter::adapters::zip::test_zip_trusted_random_access_composition
 iter::extend_for_unit
-iter::range::test_ascii_char_range
 iter::range::test_char_range
 iter::range::test_double_ended_range
 iter::range::test_range
@@ -562,8 +564,6 @@ mem::uninit_array_assume_init
 mem::uninit_const_assume_init_read
 mem::uninit_write_clone_of_slice
 mem::uninit_write_clone_of_slice_no_drop
-mem::uninit_write_clone_of_slice_panic_gt
-mem::uninit_write_clone_of_slice_panic_lt
 mem::uninit_write_copy_of_slice
 mem::uninit_write_copy_of_slice_panic_gt
 mem::uninit_write_copy_of_slice_panic_lt
@@ -1360,12 +1360,8 @@ panic::location::location_const_caller
 panic::location::location_const_column
 panic::location::location_const_file
 panic::location::location_const_line
-pattern::double_ended_regression_test
-pattern::test_forward_search_shared_bytes
-pattern::test_reverse_search_shared_bytes
 pattern::test_simple_iteration
 pattern::test_simple_search
-pattern::test_stress_indices
 pin::pin_const
 pin_macro::basic
 pin_macro::extension_works_through_block
@@ -1466,8 +1462,6 @@ slice::slice_index::boundpair_neg_width::pass
 slice::slice_index::boundpair_overflow_end::index_fail
 slice::slice_index::boundpair_overflow_end::index_mut_fail
 slice::slice_index::boundpair_overflow_end::pass
-slice::slice_index::boundpair_overflow_start::index_fail
-slice::slice_index::boundpair_overflow_start::index_mut_fail
 slice::slice_index::boundpair_overflow_start::pass
 slice::slice_index::range_len_len::index_fail
 slice::slice_index::range_len_len::index_mut_fail
@@ -1551,6 +1545,9 @@ slice::test_array_windows_count
 slice::test_array_windows_infer
 slice::test_array_windows_nth
 slice::test_array_windows_nth_back
+slice::test_binary_search
+slice::test_binary_search_by_overflow
+slice::test_binary_search_implementation_details
 slice::test_chunks_count
 slice::test_chunks_exact_count
 slice::test_chunks_exact_last
@@ -1577,7 +1574,6 @@ slice::test_chunks_next_back
 slice::test_chunks_nth
 slice::test_chunks_nth_back
 slice::test_chunks_zip
-slice::test_const_from_ref
 slice::test_copy_within
 slice::test_copy_within_panics_dest_too_long
 slice::test_copy_within_panics_src_inverted
@@ -1606,6 +1602,7 @@ slice::test_iterator_count
 slice::test_iterator_last
 slice::test_iterator_nth
 slice::test_iterator_nth_back
+slice::test_partition_point
 slice::test_position
 slice::test_rchunks_count
 slice::test_rchunks_exact_count
@@ -1654,6 +1651,7 @@ slice::test_windows_nth
 slice::test_windows_nth_back
 slice::test_windows_zip
 str_lossy::chunks
+str_lossy::debug
 task::poll_const
 task::waker_const
 time::abs_diff

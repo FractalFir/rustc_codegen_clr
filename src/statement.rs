@@ -5,8 +5,8 @@ use rustc_codegen_clr_place::{place_adress, place_get, place_set};
 use rustc_codegen_clr_type::utilis::is_zst;
 use rustc_codegen_clr_type::GetTypeExt;
 
-use cilly::zero_extend;
-use cilly::{cil_node::V1Node, cil_root::CILRoot, cil_tree::CILTree, size_of};
+use cilly::{cil_node::V1Node, cil_root::V1Root, cil_tree::CILTree, size_of};
+use cilly::{zero_extend, CILRoot};
 
 use rustc_codgen_clr_operand::handle_operand;
 use rustc_middle::mir::{CopyNonOverlapping, NonDivergingIntrinsic, Statement, StatementKind};
@@ -58,11 +58,17 @@ pub fn handle_statement<'tcx>(
             let tpe = ctx.type_from_cache(ty);
             let tpe = ctx.alloc_type(tpe);
             if crate::rvalue::is_rvalue_const_0(rvalue, ctx) {
-                return vec![CILRoot::InitObj(place_adress(&place, ctx), tpe).into()];
+                return vec![V1Root::InitObj(place_adress(&place, ctx), tpe).into()];
             }
             let (mut trees, value_calc) = crate::rvalue::handle_rvalue(rvalue, &place, ctx);
             trees.push(place_set(&place, value_calc, ctx));
-            trees.into_iter().map(std::convert::Into::into).collect()
+            trees
+                .into_iter()
+                .map(|v1| {
+                    let root = CILRoot::from_v1(&v1, ctx);
+                    V1Root::V2(ctx.alloc_root(root)).into()
+                })
+                .collect()
         }
         StatementKind::Intrinsic(non_diverging_intirinsic) => {
             match non_diverging_intirinsic.as_ref() {
@@ -82,7 +88,7 @@ pub fn handle_statement<'tcx>(
                         rustc_middle::ty::print::with_no_trimmed_paths! { panic!("Copy nonoverlaping called with non-pointer type {src_ty:?}")};
                     };
 
-                    vec![CILRoot::CpBlk {
+                    vec![V1Root::CpBlk {
                         src: Box::new(src_op),
                         dst: Box::new(dst_op),
                         len: Box::new(
@@ -97,7 +103,7 @@ pub fn handle_statement<'tcx>(
             panic!("Fake reads should not be passed from the backend to the forntend!")
         }
         rustc_middle::mir::StatementKind::BackwardIncompatibleDropHint { .. } => todo!(),
-        StatementKind::PlaceMention(place) => vec![CILRoot::Pop {
+        StatementKind::PlaceMention(place) => vec![V1Root::Pop {
             tree: place_get(place, ctx),
         }
         .into()],

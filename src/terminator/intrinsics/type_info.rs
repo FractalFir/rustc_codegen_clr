@@ -1,7 +1,7 @@
 use crate::assembly::MethodCompileCtx;
 use cilly::{
     cil_node::V1Node,
-    cil_root::CILRoot,
+    cil_root::V1Root,
     conv_usize, ld_field, Const, IntoAsmIndex, Type, {FieldDesc, Int},
 };
 use rustc_codegen_clr_place::place_set;
@@ -19,7 +19,7 @@ pub fn is_val_statically_known<'tcx>(
     args: &[Spanned<Operand<'tcx>>],
     destination: &Place<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-) -> CILRoot {
+) -> V1Root {
     debug_assert_eq!(
         args.len(),
         1,
@@ -33,7 +33,7 @@ pub fn size_of_val<'tcx>(
     destination: &Place<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
     call_instance: Instance<'tcx>,
-) -> CILRoot {
+) -> V1Root {
     debug_assert_eq!(
         args.len(),
         1,

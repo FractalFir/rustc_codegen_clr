@@ -333,8 +333,11 @@ fn load_const_scalar<'tcx>(
                 .unwrap_or(Int::USize.into());
             let const_type_idx = ctx.alloc_type(const_type);
             let ptr = load_scalar_ptr(ctx, ptr, const_type_idx);
-            if matches!(scalar_type, Type::Ptr(_) | Type::FnPtr(_)) {
+
+            if matches!(scalar_type, Type::Ptr(_)) {
                 return ctx.cast_ptr(ptr, const_type_idx);
+            } else if matches!(scalar_type, Type::FnPtr(_)) {
+                return ptr;
             }
             let src_ptr = ctx.nptr(Int::U8);
             let ptr = ctx.cast_ptr(ptr, Int::U8);

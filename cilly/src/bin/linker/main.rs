@@ -343,7 +343,7 @@ fn main() {
                 MethodImpl::MethodBody {
                     blocks: vec![cilly::BasicBlock::from_v1(
                         &cilly::basic_block::BasicBlock::new(
-                            vec![cilly::cil_root::CILRoot::Throw(
+                            vec![cilly::cil_root::V1Root::Throw(
                                 cilly::cil_node::V1Node::NewObj(Box::new(
                                     cilly::cil_node::CallOpArgs {
                                         args: Box::new([conv_usize!(arg0)]),

@@ -162,7 +162,7 @@ fn insert_rust_alloc_zeroed(asm: &mut Assembly, patcher: &mut MissingMethodPatch
             )),
         ))));
         let throw =
-            crate::cil_root::CILRoot::throw(&format!("Alloc limit of {ALLOC_CAP} exceeded.",), asm);
+            crate::cil_root::V1Root::throw(&format!("Alloc limit of {ALLOC_CAP} exceeded.",), asm);
         let throw = CILRoot::from_v1(&throw, asm);
         let throw = asm.alloc_root(throw);
         let zero = asm.alloc_node(Const::U8(0));
@@ -706,7 +706,7 @@ pub fn argc_argv_init(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
     let generator = move |_, asm: &mut Assembly| {
         let main_module = asm.main_module();
         use crate::cil_node::V1Node;
-        use crate::cil_root::CILRoot;
+        use crate::cil_root::V1Root;
         use crate::method::Method;
         use crate::FnSig;
         let mut init_method = Method::new(
@@ -755,12 +755,12 @@ pub fn argc_argv_init(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
             MethodKind::Static,
             vec![].into(),
         );
-        let margs_init = CILRoot::STLoc {
+        let margs_init = V1Root::STLoc {
             local: managed_args,
             tree: crate::call!(asm.alloc_methodref(mref), []),
         };
         // Calculate argc
-        let argc_init = CILRoot::STLoc {
+        let argc_init = V1Root::STLoc {
             local: argc,
             tree: crate::conv_i32!(V1Node::LDLen {
                 arr: V1Node::LDLoc(managed_args).into()
@@ -779,7 +779,7 @@ pub fn argc_argv_init(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
             ]
         )
         .cast_ptr(asm.nptr(uint8_ptr));
-        let argv_alloc = CILRoot::STLoc { local: argv, tree };
+        let argv_alloc = V1Root::STLoc { local: argv, tree };
         // Create the block which allocates argv and calculates argc.
         let start_bb = init_method.new_bb();
         let mut blocks = init_method.blocks_mut();
@@ -793,7 +793,7 @@ pub fn argc_argv_init(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
         );
         let status = asm.alloc_sfld(status);
         start_block.trees_mut().push(
-            CILRoot::BTrue {
+            V1Root::BTrue {
                 target: start_bb + 3,
                 sub_target: 0,
                 cond: V1Node::V2(asm.load_static(status)),
@@ -805,14 +805,14 @@ pub fn argc_argv_init(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
         start_block.trees_mut().push(argv_alloc.into());
         // Init arg_idx to 0
         start_block.trees_mut().push(
-            CILRoot::STLoc {
+            V1Root::STLoc {
                 local: arg_idx,
                 tree: V1Node::V2(asm.alloc_node(0_i32)),
             }
             .into(),
         );
         start_block.trees_mut().push(
-            CILRoot::GoTo {
+            V1Root::GoTo {
                 target: start_bb + 1,
                 sub_target: 0,
             }
@@ -832,11 +832,10 @@ pub fn argc_argv_init(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
         let uarg = mstring_to_utf8ptr(arg_nth, asm);
         // Store the converted arg at idx+1
         loop_block.trees_mut().push(
-            CILRoot::STIndPtr(
+            V1Root::STIndPtr(
                 V1Node::LDLoc(argv)
                     + crate::conv_usize!(
-                        V1Node::V2(asm.size_of(Int::USize).into_idx(asm))
-                            * V1Node::LDLoc(arg_idx)
+                        V1Node::V2(asm.size_of(Int::USize).into_idx(asm)) * V1Node::LDLoc(arg_idx)
                     ),
                 uarg,
                 Box::new(Type::Int(Int::I8)),
@@ -845,7 +844,7 @@ pub fn argc_argv_init(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
         );
         // Incr the arg_idx
         loop_block.trees_mut().push(
-            CILRoot::STLoc {
+            V1Root::STLoc {
                 local: arg_idx,
                 tree: V1Node::LDLoc(arg_idx) + V1Node::V2(asm.alloc_node(1_i32)),
             }
@@ -853,7 +852,7 @@ pub fn argc_argv_init(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
         );
         //If no args left, jump to exit
         loop_block.trees_mut().push(
-            CILRoot::BTrue {
+            V1Root::BTrue {
                 target: loop_bb + 1,
                 sub_target: 0,
                 cond: crate::eq!(
@@ -870,7 +869,7 @@ pub fn argc_argv_init(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
         );
         //If some args left, jump back to loop head!
         loop_block.trees_mut().push(
-            CILRoot::GoTo {
+            V1Root::GoTo {
                 target: loop_bb,
                 sub_target: 0,
             }
@@ -887,7 +886,7 @@ pub fn argc_argv_init(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
             asm.nptr(uint8_ptr),
         );
         loop_end_block.trees_mut().push(
-            CILRoot::SetStaticField {
+            V1Root::SetStaticField {
                 descr: Box::new(argv_static),
                 value: V1Node::LDLoc(argv),
             }
@@ -899,21 +898,21 @@ pub fn argc_argv_init(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
             Type::Int(Int::I32),
         );
         loop_end_block.trees_mut().push(
-            CILRoot::SetStaticField {
+            V1Root::SetStaticField {
                 descr: Box::new(argc_static),
                 value: V1Node::LDLoc(argc),
             }
             .into(),
         );
         loop_end_block.trees_mut().push(
-            CILRoot::GoTo {
+            V1Root::GoTo {
                 target: loop_end_bb + 1,
                 sub_target: 0,
             }
             .into(),
         );
         loop_end_block.trees_mut().push(
-            CILRoot::SetStaticField {
+            V1Root::SetStaticField {
                 descr: Box::new(asm[status]),
                 value: V1Node::V2(asm.alloc_node(true)),
             }
@@ -924,7 +923,7 @@ pub fn argc_argv_init(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
         let final_bb = init_method.new_bb();
         let mut blocks = init_method.blocks_mut();
         let final_block = &mut blocks[final_bb as usize];
-        final_block.trees_mut().push(CILRoot::VoidRet.into());
+        final_block.trees_mut().push(V1Root::VoidRet.into());
         drop(blocks);
         let def = MethodDef::from_v1(&init_method, asm, main_module);
         asm.new_method(def);

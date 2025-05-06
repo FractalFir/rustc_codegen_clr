@@ -2,7 +2,7 @@ use crate::assembly::MethodCompileCtx;
 use cilly::{
     call,
     cil_node::V1Node,
-    cil_root::CILRoot,
+    cil_root::V1Root,
     {cilnode::MethodKind, ClassRef, MethodRef},
 };
 use rustc_codegen_clr_place::place_set;
@@ -18,7 +18,7 @@ pub fn bswap<'tcx>(
     args: &[Spanned<Operand<'tcx>>],
     destination: &Place<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-) -> CILRoot {
+) -> V1Root {
     debug_assert_eq!(
         args.len(),
         1,

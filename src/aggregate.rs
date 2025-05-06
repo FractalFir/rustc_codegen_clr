@@ -3,7 +3,7 @@ use crate::{
     utilis::{adt::set_discr, field_name, instance_try_resolve, variant_name},
 };
 use cilly::{
-    cil_node::V1Node, cil_root::CILRoot, cilnode::MethodKind, ClassRef, Const, FieldDesc, FnSig,
+    cil_node::V1Node, cil_root::V1Root, cilnode::MethodKind, ClassRef, Const, FieldDesc, FnSig,
     Int, MethodRef, Type,
 };
 use rustc_abi::FieldIdx;
@@ -26,7 +26,7 @@ pub fn handle_aggregate<'tcx>(
     target_location: &Place<'tcx>,
     aggregate_kind: &AggregateKind<'tcx>,
     value_index: &IndexVec<FieldIdx, Operand<'tcx>>,
-) -> (Vec<CILRoot>, V1Node) {
+) -> (Vec<V1Root>, V1Node) {
     // Get CIL ops for each value
     let values: Vec<_> = value_index
         .iter()
@@ -83,7 +83,7 @@ pub fn handle_aggregate<'tcx>(
             );
             let mut sub_trees = Vec::new();
             for value in values {
-                sub_trees.push(CILRoot::Call {
+                sub_trees.push(V1Root::Call {
                     site: ctx.alloc_methodref(site.clone()),
                     args: [
                         array_getter.clone(),
@@ -114,7 +114,7 @@ pub fn handle_aggregate<'tcx>(
                 let name = format!("Item{}", field.0 + 1);
 
                 let field_name = ctx.alloc_string(name);
-                sub_trees.push(CILRoot::SetField {
+                sub_trees.push(V1Root::SetField {
                     addr: Box::new(tuple_getter.clone()),
                     value: Box::new(field.1.clone()),
                     desc: ctx.alloc_field(FieldDesc::new(
@@ -141,7 +141,7 @@ pub fn handle_aggregate<'tcx>(
                     continue;
                 }
                 let field_name = ctx.alloc_string(format!("f_{}", index.as_u32()));
-                sub_trees.push(CILRoot::SetField {
+                sub_trees.push(V1Root::SetField {
                     addr: Box::new(closure_getter.clone()),
                     value: Box::new(handle_operand(value, ctx)),
                     desc: ctx.alloc_field(FieldDesc::new(closure_dotnet, field_name, field_type)),
@@ -167,7 +167,7 @@ pub fn handle_aggregate<'tcx>(
                     continue;
                 }
                 let field_name = ctx.alloc_string(format!("f_{}", index.as_u32()));
-                sub_trees.push(CILRoot::SetField {
+                sub_trees.push(V1Root::SetField {
                     addr: Box::new(closure_getter.clone()),
                     value: Box::new(handle_operand(value, ctx)),
                     desc: ctx.alloc_field(FieldDesc::new(closure_dotnet, field_name, field_type)),
@@ -224,7 +224,7 @@ pub fn handle_aggregate<'tcx>(
             // Assign the components
             let data_ptr_name = ctx.alloc_string(crate::DATA_PTR);
             let void_ptr = ctx.nptr(cilly::Type::Void);
-            let assign_ptr = CILRoot::SetField {
+            let assign_ptr = V1Root::SetField {
                 addr: Box::new(init_addr.clone()),
                 value: Box::new(values[0].1.clone().cast_ptr(ctx.nptr(Type::Void))),
                 desc: ctx.alloc_field(FieldDesc::new(
@@ -235,7 +235,7 @@ pub fn handle_aggregate<'tcx>(
             };
             let name = ctx.alloc_string(crate::METADATA);
             let meta_type = get_type(meta.ty(ctx.body(), ctx.tcx()), ctx);
-            let assign_metadata = CILRoot::SetField {
+            let assign_metadata = V1Root::SetField {
                 addr: Box::new(init_addr),
                 value: Box::new(handle_operand(meta, ctx).transmute_on_stack(
                     meta_type,
@@ -269,7 +269,7 @@ fn aggregate_adt<'tcx>(
     variant_idx: u32,
     fields: Vec<(u32, V1Node)>,
     active_field: Option<FieldIdx>,
-) -> (Vec<CILRoot>, V1Node) {
+) -> (Vec<V1Root>, V1Node) {
     let adt_type = ctx.monomorphize(adt_type);
     let adt_type_ref = get_type(adt_type, ctx)
         .as_class_ref()
@@ -293,7 +293,7 @@ fn aggregate_adt<'tcx>(
                 }
                 let field_desc = field_descrptor(adt_type, field.0, ctx);
 
-                sub_trees.push(CILRoot::SetField {
+                sub_trees.push(V1Root::SetField {
                     addr: Box::new(obj_getter.clone()),
                     value: Box::new(field.1),
                     desc: (field_desc),
@@ -324,7 +324,7 @@ fn aggregate_adt<'tcx>(
                     continue;
                 }
 
-                sub_trees.push(CILRoot::SetField {
+                sub_trees.push(V1Root::SetField {
                     addr: Box::new(variant_address.clone()),
                     value: Box::new(field_value.1.clone()),
                     desc: ctx.alloc_field(FieldDesc::new(adt_type_ref, field_name, field_type)),
@@ -367,7 +367,7 @@ fn aggregate_adt<'tcx>(
             let field_name = field_name(adt_type, active_field.as_u32());
 
             let desc = FieldDesc::new(adt_type_ref, ctx.alloc_string(field_name), field_type);
-            sub_trees.push(CILRoot::SetField {
+            sub_trees.push(V1Root::SetField {
                 addr: Box::new(obj_getter.clone()),
                 value: Box::new(fields[0].1.clone()),
                 desc: ctx.alloc_field(desc),

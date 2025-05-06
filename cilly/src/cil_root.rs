@@ -1,17 +1,18 @@
 use crate::bimap::Interned;
 use crate::cilnode::IsPure;
 use crate::cilnode::MethodKind;
+use crate::typecheck::TypeCheckError;
 use crate::v2::method::LocalDef;
 use crate::FieldDesc;
 use crate::{
     call,
-    cil_node::{V1Node, CallOpArgs},
+    cil_node::{CallOpArgs, V1Node},
     AsmString, IString,
 };
 use crate::{Assembly, ClassRef, FnSig, MethodRef, StaticFieldDesc, Type};
 use serde::{Deserialize, Serialize};
 #[derive(Clone, Eq, PartialEq, Hash, Serialize, Deserialize, Debug)]
-pub enum CILRoot {
+pub enum V1Root {
     STLoc {
         local: u32,
         tree: V1Node,
@@ -153,7 +154,16 @@ pub enum CILRoot {
     V2(Interned<crate::v2::CILRoot>),
 }
 pub type SFI = Box<(std::ops::Range<u64>, std::ops::Range<u64>, IString)>;
-impl CILRoot {
+impl V1Root {
+    pub fn try_typecheck(
+        &self,
+        asm: &mut Assembly,
+        fn_sig: Interned<FnSig>,
+        locals: &[LocalDef],
+    ) -> Result<(), TypeCheckError> {
+        let Self::V2(root) = self else { return Ok(()) };
+        asm[*root].clone().typecheck(fn_sig, locals, asm)
+    }
     #[must_use]
     pub fn throw(msg: &str, asm: &mut Assembly) -> Self {
         let class = ClassRef::exception(asm);

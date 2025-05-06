@@ -1,5 +1,5 @@
 use crate::assembly::MethodCompileCtx;
-use cilly::{cil_node::V1Node, cil_root::CILRoot, conv_usize, eq, Int, IntoAsmIndex, Type};
+use cilly::{cil_node::V1Node, cil_root::V1Root, conv_usize, eq, Int, IntoAsmIndex, Type};
 use rustc_codegen_clr_place::place_set;
 use rustc_codegen_clr_type::GetTypeExt;
 use rustc_codgen_clr_operand::handle_operand;
@@ -15,7 +15,7 @@ pub fn write_bytes<'tcx>(
     args: &[Spanned<Operand<'tcx>>],
     call_instance: Instance<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-) -> CILRoot {
+) -> V1Root {
     debug_assert_eq!(
         args.len(),
         3,
@@ -31,7 +31,7 @@ pub fn write_bytes<'tcx>(
     let val = handle_operand(&args[1].node, ctx);
     let count = handle_operand(&args[2].node, ctx)
         * conv_usize!(V1Node::V2(ctx.size_of(tpe).into_idx(ctx)));
-    CILRoot::InitBlk {
+    V1Root::InitBlk {
         dst: Box::new(dst),
         val: Box::new(val),
         count: Box::new(count),
@@ -42,7 +42,7 @@ pub fn copy<'tcx>(
     args: &[Spanned<Operand<'tcx>>],
     call_instance: Instance<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-) -> CILRoot {
+) -> V1Root {
     debug_assert_eq!(
         args.len(),
         3,
@@ -54,7 +54,7 @@ pub fn copy<'tcx>(
             .expect("needs_drop works only on types!"),
     );
     if ctx.layout_of(tpe).is_zst() {
-        return CILRoot::Nop;
+        return V1Root::Nop;
     }
     let tpe = ctx.type_from_cache(tpe);
     let src = handle_operand(&args[0].node, ctx);
@@ -62,7 +62,7 @@ pub fn copy<'tcx>(
     let count = handle_operand(&args[2].node, ctx)
         * conv_usize!(V1Node::V2(ctx.size_of(tpe).into_idx(ctx)));
 
-    CILRoot::CpBlk {
+    V1Root::CpBlk {
         src: Box::new(src),
         dst: Box::new(dst),
         len: Box::new(count),
@@ -73,7 +73,7 @@ pub fn raw_eq<'tcx>(
     destination: &Place<'tcx>,
     call_instance: Instance<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-) -> CILRoot {
+) -> V1Root {
     // Raw eq returns 0 if values are not equal, and 1 if they are, unlike memcmp, which does the oposite.
     let tpe = ctx.monomorphize(
         call_instance.args[0]

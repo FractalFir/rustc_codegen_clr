@@ -4,7 +4,7 @@ use super::{
     bimap::Interned, cilnode::IsPure, Assembly, CILNode, FieldDesc, Float, FnSig, Int, MethodRef,
     StaticFieldDesc, Type,
 };
-use crate::{cil_root::CILRoot as V1Root, IString};
+use crate::{cil_root::V1Root as V1Root, IString};
 //use crate::cil_node::CILNode as V1Node;
 #[derive(PartialEq, Hash, Eq, Clone, Debug, Serialize, Deserialize)]
 pub enum CILRoot {

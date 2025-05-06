@@ -1,7 +1,7 @@
 use crate::assembly::MethodCompileCtx;
 
 use cilly::cil_node::V1Node;
-use cilly::cil_root::CILRoot;
+use cilly::cil_root::V1Root;
 
 use cilly::{conv_u32, conv_usize, IntoAsmIndex};
 use cilly::{Const, Type};
@@ -24,7 +24,7 @@ pub fn unsize2<'tcx>(
     operand: &Operand<'tcx>,
     target: Ty<'tcx>,
     destination: Place<'tcx>,
-) -> (Vec<CILRoot>, V1Node) {
+) -> (Vec<V1Root>, V1Node) {
     // Get the monomorphized source and target type
     let target = ctx.monomorphize(target);
     let source = ctx.monomorphize(operand.ty(ctx.body(), ctx.tcx()));
@@ -56,7 +56,7 @@ pub fn unsize2<'tcx>(
     let dst = place_address_raw(&destination, ctx);
     let target_ptr = dst.clone();
 
-    let init_metadata = CILRoot::set_field(
+    let init_metadata = V1Root::set_field(
         target_ptr.clone().cast_ptr(ctx.nptr(fat_ptr_type)),
         metadata.cast_ptr(Type::Int(Int::USize)),
         ctx.alloc_field(metadata_field),
@@ -64,7 +64,7 @@ pub fn unsize2<'tcx>(
 
     let init_ptr = if is_fat_ptr(source, ctx.tcx(), ctx.instance()) {
         let void_ptr = ctx.nptr(Type::Void);
-        CILRoot::set_field(
+        V1Root::set_field(
             target_ptr.cast_ptr(ctx.nptr(fat_ptr_type)),
             V1Node::LDIndPtr {
                 ptr: Box::new(operand_address(operand, ctx).cast_ptr(ctx.nptr(void_ptr))),
@@ -87,7 +87,7 @@ pub fn unsize2<'tcx>(
         };
         // `source` is not a fat pointer, so operand should be a pointer.
 
-        CILRoot::set_field(
+        V1Root::set_field(
             target_ptr.cast_ptr(ctx.nptr(fat_ptr_type)),
             operand.cast_ptr(ctx.nptr(Type::Void)),
             ctx.alloc_field(ptr_field),
@@ -107,13 +107,13 @@ pub fn unsize2<'tcx>(
         let const_16 = V1Node::V2(ctx.alloc_node(16_isize));
         let dst_addr = V1Node::Add(Box::new(dst_addr), Box::new(const_16));
         eprintln!("WARNING:Can't propely unsize types with sized fields yet. unsize assumes that layout of Wrapper<&T> ==   layout of Wrapper<FatPtr<T>>!");
-        CILRoot::CpBlk {
+        V1Root::CpBlk {
             dst: Box::new(dst_addr),
             src: Box::new(addr),
             len: Box::new(V1Node::V2(ctx.alloc_node(Const::USize(source_size - 8)))),
         }
     } else {
-        CILRoot::Nop
+        V1Root::Nop
     };
     (
         [copy_val, init_metadata, init_ptr].into(),

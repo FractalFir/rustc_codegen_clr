@@ -5,7 +5,7 @@ extern crate rustc_driver;
 extern crate rustc_hir;
 extern crate rustc_middle;
 use cilly::cil_node::V1Node;
-use cilly::cil_root::CILRoot;
+use cilly::cil_root::V1Root;
 use cilly::{ClassRef, Float, Int, Interned};
 use cilly::{Const, Type};
 use rustc_codegen_clr_ctx::MethodCompileCtx;
@@ -154,7 +154,7 @@ pub fn place_set<'tcx>(
     place: &Place<'tcx>,
     value_calc: V1Node,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-) -> CILRoot {
+) -> V1Root {
     if place.projection.is_empty() {
         set::local_set(place.local.as_usize(), ctx.body(), value_calc)
     } else {

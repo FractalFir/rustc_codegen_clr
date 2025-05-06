@@ -5,7 +5,7 @@ use cilly::{
     basic_block::BasicBlock,
     call,
     cil_node::V1Node,
-    cil_root::CILRoot,
+    cil_root::V1Root,
     cil_tree::CILTree,
     cilnode::MethodKind,
     method::{Method, MethodType},
@@ -253,14 +253,14 @@ fn allocation_initializer_method(
 
     //trees.push(CILRoot::debug(&format!("Preparing to initialize allocation with size {}",bytes.len())).into());
     trees.push(
-        CILRoot::STLoc {
+        V1Root::STLoc {
             local: 0,
             tree: ptr.into(),
         }
         .into(),
     );
     trees.push(
-        CILRoot::CpBlk {
+        V1Root::CpBlk {
             dst: Box::new(V1Node::LDLoc(0)),
             src: Box::new(V1Node::V2(ctx.bytebuffer(bytes, Int::U8))),
             len: Box::new(V1Node::V2(ctx.alloc_node(Const::USize(bytes.len() as u64)))),
@@ -289,7 +289,7 @@ fn allocation_initializer_method(
                     vec![].into(),
                 );
                 trees.push(
-                    CILRoot::STIndISize(
+                    V1Root::STIndISize(
                         (V1Node::LDLoc(0)
                             + V1Node::V2(ctx.alloc_node(Const::USize(offset.into()))))
                         .cast_ptr(ctx.nptr(Type::Int(Int::USize))),
@@ -303,7 +303,7 @@ fn allocation_initializer_method(
                 let ptr_alloc = add_allocation(prov.alloc_id().0.into(), ctx, tpe);
 
                 trees.push(
-                    CILRoot::STIndISize(
+                    V1Root::STIndISize(
                         (V1Node::LDLoc(0)
                             + V1Node::V2(ctx.alloc_node(Const::USize(offset.into()))))
                         .cast_ptr(ctx.nptr(Type::Int(Int::USize))),
@@ -316,10 +316,10 @@ fn allocation_initializer_method(
     }
     //trees.push(CILRoot::debug(&format!("Finished initializing an allocation with size {}",bytes.len())).into());
     if void_ret {
-        trees.push(CILRoot::VoidRet.into());
+        trees.push(V1Root::VoidRet.into());
     } else {
         trees.push(
-            CILRoot::Ret {
+            V1Root::Ret {
                 tree: V1Node::LDLoc(0),
             }
             .into(),

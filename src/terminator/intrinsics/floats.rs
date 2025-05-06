@@ -2,7 +2,7 @@ use crate::assembly::MethodCompileCtx;
 use cilly::{
     call,
     cil_node::V1Node,
-    cil_root::CILRoot,
+    cil_root::V1Root,
     cilnode::MethodKind,
     conv_f32, conv_f64, Int, MethodRef, Type, {ClassRef, Float},
 };
@@ -16,7 +16,7 @@ pub fn fmaf32<'tcx>(
     destination: &Place<'tcx>,
 
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-) -> CILRoot {
+) -> V1Root {
     let mref = MethodRef::new(
         ClassRef::single(ctx),
         ctx.alloc_string("FusedMultiplyAdd"),
@@ -47,7 +47,7 @@ pub fn fmaf64<'tcx>(
     destination: &Place<'tcx>,
 
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-) -> CILRoot {
+) -> V1Root {
     let mref = MethodRef::new(
         ClassRef::double(ctx),
         ctx.alloc_string("FusedMultiplyAdd"),
@@ -77,7 +77,7 @@ pub fn powif32<'tcx>(
     destination: &Place<'tcx>,
 
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-) -> CILRoot {
+) -> V1Root {
     debug_assert_eq!(
         args.len(),
         2,
@@ -110,7 +110,7 @@ pub fn powif64<'tcx>(
     destination: &Place<'tcx>,
 
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-) -> CILRoot {
+) -> V1Root {
     debug_assert_eq!(
         args.len(),
         2,
@@ -143,7 +143,7 @@ pub fn powf32<'tcx>(
     destination: &Place<'tcx>,
 
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-) -> CILRoot {
+) -> V1Root {
     let pow = MethodRef::new(
         ClassRef::single(ctx),
         ctx.alloc_string("Pow"),
@@ -168,7 +168,7 @@ pub fn powf64<'tcx>(
     destination: &Place<'tcx>,
 
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-) -> CILRoot {
+) -> V1Root {
     let pow = MethodRef::new(
         ClassRef::double(ctx),
         ctx.alloc_string("Pow"),
@@ -197,7 +197,7 @@ pub fn roundf32<'tcx>(
     destination: &Place<'tcx>,
 
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-) -> CILRoot {
+) -> V1Root {
     let rounding = ClassRef::midpoint_rounding(ctx);
     let round = MethodRef::new(
         ClassRef::mathf(ctx),
@@ -227,7 +227,7 @@ pub fn roundf64<'tcx>(
     destination: &Place<'tcx>,
 
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-) -> CILRoot {
+) -> V1Root {
     let rounding = ClassRef::midpoint_rounding(ctx);
     let round = MethodRef::new(
         ClassRef::math(ctx),

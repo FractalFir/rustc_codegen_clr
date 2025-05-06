@@ -759,6 +759,7 @@ run_test! {alloc,slice_to_owned,stable}
 run_test! {arthm,add,stable}
 run_test! {arthm,ctlz,unstable}
 run_test! {arthm,ptr,stable}
+run_test! {arthm,qsrt,stable}
 run_test! {arthm,cmp,stable}
 run_test! {arthm,greater_than,stable}
 run_test! {arthm,max,stable}

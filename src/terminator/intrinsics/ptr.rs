@@ -1,6 +1,6 @@
 use crate::assembly::MethodCompileCtx;
 use cilly::{
-    cil_node::V1Node, cil_root::CILRoot, conv_isize, conv_usize, Int, IntoAsmIndex, Type,
+    cil_node::V1Node, cil_root::V1Root, conv_isize, conv_usize, Int, IntoAsmIndex, Type,
 };
 use rustc_codegen_clr_place::place_set;
 use rustc_codegen_clr_type::GetTypeExt;
@@ -15,7 +15,7 @@ pub fn arith_offset<'tcx>(
     destination: &Place<'tcx>,
     call_instance: Instance<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-) -> CILRoot {
+) -> V1Root {
     let tpe = ctx.monomorphize(
         call_instance.args[0]
             .as_type()
@@ -36,7 +36,7 @@ pub fn ptr_offset_from_unsigned<'tcx>(
     destination: &Place<'tcx>,
     call_instance: Instance<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-) -> CILRoot {
+) -> V1Root {
     debug_assert_eq!(
         args.len(),
         2,
@@ -50,7 +50,7 @@ pub fn ptr_offset_from_unsigned<'tcx>(
     let tpe = ctx.type_from_cache(ty);
     // This is UB, so we can do whatever.
     if ctx.layout_of(ty).is_zst() {
-        return CILRoot::throw(
+        return V1Root::throw(
             &format!("ptr_offset_from_unsigned called with zst type:{ty}"),
             ctx,
         );
@@ -71,7 +71,7 @@ pub fn ptr_offset_from<'tcx>(
     destination: &Place<'tcx>,
     call_instance: Instance<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-) -> CILRoot {
+) -> V1Root {
     debug_assert_eq!(
         args.len(),
         2,
@@ -84,7 +84,7 @@ pub fn ptr_offset_from<'tcx>(
     );
     // This is UB, so we can do whatever.
     if ctx.layout_of(ty).is_zst() {
-        return CILRoot::throw(&format!("ptr_offset_from called with zst type:{ty}"), ctx);
+        return V1Root::throw(&format!("ptr_offset_from called with zst type:{ty}"), ctx);
     }
     let tpe = ctx.type_from_cache(ty);
 

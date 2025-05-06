@@ -10,7 +10,7 @@ use crate::{
 use cilly::{
     call, call_virt,
     cil_node::{CallOpArgs, V1Node},
-    cil_root::CILRoot,
+    cil_root::V1Root,
     cilnode::{IsPure, MethodKind},
     conv_usize, ld_field, ClassRef, Const, FieldDesc, FnSig, Int, IntoAsmIndex,
 };
@@ -40,7 +40,7 @@ fn call_managed<'tcx>(
     destination: &Place<'tcx>,
     fn_instance: Instance<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-) -> CILRoot {
+) -> V1Root {
     let argument_count = argc_from_fn_name(function_name, MANAGED_CALL_FN_NAME);
     //FIXME: figure out the proper argc.
     //assert!(subst_ref.len() as u32 == argc + 3 || subst_ref.len() as u32 == argc + 4);
@@ -68,7 +68,7 @@ fn call_managed<'tcx>(
         );
         let call_site = ctx.alloc_methodref(call_site);
         if *signature.output() == cilly::Type::Void {
-            CILRoot::Call {
+            V1Root::Call {
                 site: call_site,
                 args: [].into(),
             }
@@ -95,7 +95,7 @@ fn call_managed<'tcx>(
         );
         let call = ctx.alloc_methodref(call);
         if *signature.output() == cilly::Type::Void {
-            CILRoot::Call {
+            V1Root::Call {
                 site: call,
                 args: call_args.into(),
             }
@@ -112,7 +112,7 @@ fn callvirt_managed<'tcx>(
     destination: &Place<'tcx>,
     fn_instance: Instance<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-) -> CILRoot {
+) -> V1Root {
     let argument_count = argc_from_fn_name(function_name, MANAGED_CALL_VIRT_FN_NAME);
     //assert!(subst_ref.len() as u32 == argc + 3 || subst_ref.len() as u32 == argc + 4);
     assert!(
@@ -142,7 +142,7 @@ fn callvirt_managed<'tcx>(
         );
         let call = ctx.alloc_methodref(call);
         if *signature.output() == cilly::Type::Void {
-            CILRoot::CallVirt {
+            V1Root::CallVirt {
                 site: call,
                 args: [].into(),
             }
@@ -168,7 +168,7 @@ fn callvirt_managed<'tcx>(
             vec![].into(),
         );
         if *signature.output() == cilly::Type::Void {
-            CILRoot::CallVirt {
+            V1Root::CallVirt {
                 site: ctx.alloc_methodref(call),
                 args: call_args.into(),
             }
@@ -188,7 +188,7 @@ fn call_ctor<'tcx>(
     args: &[Spanned<Operand<'tcx>>],
     destination: &Place<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-) -> CILRoot {
+) -> V1Root {
     let argument_count = argc_from_fn_name(function_name, CTOR_FN_NAME);
     // Check that there are enough function path and argument specifers
     assert!(subst_ref.len() == argument_count as usize + 3);
@@ -263,7 +263,7 @@ pub fn call_closure<'tcx>(
     sig: FnSig,
     function_name: &str,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
-) -> CILRoot {
+) -> V1Root {
     let last_arg = args
         .last()
         .expect("Closure must be called with at least 2 arguments(closure + arg tuple)");
@@ -320,7 +320,7 @@ pub fn call_closure<'tcx>(
     // Hande the call itself
     let call = ctx.alloc_methodref(call);
     if is_void {
-        CILRoot::Call {
+        V1Root::Call {
             site: call,
             args: call_args.into(),
         }
@@ -335,7 +335,7 @@ pub fn call_inner<'tcx>(
     args: &[Spanned<Operand<'tcx>>],
     destination: &Place<'tcx>,
     span: rustc_span::Span,
-) -> Vec<CILRoot> {
+) -> Vec<V1Root> {
     if let rustc_middle::ty::InstanceKind::Virtual(_def, fn_idx) = instance.def {
         assert!(!args.is_empty());
 
@@ -426,7 +426,7 @@ pub fn call_inner<'tcx>(
         );
         let is_ret_void = matches!(signature.output(), cilly::Type::Void);
         return if is_ret_void {
-            vec![CILRoot::CallI {
+            vec![V1Root::CallI {
                 sig: Box::new(signature),
                 fn_ptr: Box::new(fn_ptr),
                 args: call_args.into(),
@@ -600,7 +600,7 @@ pub fn call_inner<'tcx>(
     let is_void = matches!(signature.output(), cilly::Type::Void);
     //rustc_middle::ty::print::with_no_trimmed_paths! {call.push(CILOp::Comment(format!("Calling {instance:?}").into()))};
     if let InstanceKind::DropGlue(_def, None) = instance.def {
-        return vec![CILRoot::Nop];
+        return vec![V1Root::Nop];
     }
     let call_site = MethodRef::new(
         *ctx.main_module(),
@@ -612,7 +612,7 @@ pub fn call_inner<'tcx>(
     // Hande
     let site = ctx.alloc_methodref(call_site);
     if is_void {
-        vec![CILRoot::Call {
+        vec![V1Root::Call {
             site,
             args: call_args.into(),
         }]
@@ -628,7 +628,7 @@ pub fn call<'tcx>(
     args: &[Spanned<Operand<'tcx>>],
     destination: &Place<'tcx>,
     span: rustc_span::Span,
-) -> Vec<CILRoot> {
+) -> Vec<V1Root> {
     let fn_type = ctx.monomorphize(fn_type);
     let instance = if let TyKind::FnDef(def_id, subst_ref) = fn_type.kind() {
         let subst = ctx.monomorphize(*subst_ref);
