@@ -9,7 +9,7 @@ use crate::{
 };
 use cilly::{
     call, call_virt,
-    cil_node::{V1Node, CallOpArgs},
+    cil_node::{CallOpArgs, V1Node},
     cil_root::CILRoot,
     cilnode::{IsPure, MethodKind},
     conv_usize, ld_field, ClassRef, Const, FieldDesc, FnSig, Int, IntoAsmIndex,
@@ -443,7 +443,6 @@ pub fn call_inner<'tcx>(
 
     let function_name = function_name(ctx.tcx().symbol_name(instance));
     if matches!(instance.def, InstanceKind::Intrinsic(_)) {
-        eprintln!("{:?} {:?}", instance, instance.def);
         return super::intrinsics::handle_intrinsic(
             &function_name,
             args,

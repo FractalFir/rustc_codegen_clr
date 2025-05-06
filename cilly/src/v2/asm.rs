@@ -494,9 +494,14 @@ impl Assembly {
     ) -> Interned<StaticFieldDesc> {
         let main_module = self.main_module();
         let node = node.into_idx(self);
-        let name = format!("n_{}", encode(node.as_bimap_index().get() as u64));
+
         let sig = self.sig([], Type::Void);
         let tpe = self[node].clone().typecheck(sig, &[], self).unwrap();
+        let name = format!(
+            "n_{}_{}",
+            encode(node.as_bimap_index().get() as u64),
+            encode(self.alloc_type(tpe).as_bimap_index().get() as u64)
+        );
         let name_idx = self.alloc_string(name.clone());
         let field = StaticFieldDesc::new(*main_module, name_idx, tpe);
         let field = self.alloc_sfld(field);
