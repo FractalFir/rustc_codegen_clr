@@ -215,3 +215,22 @@ fn add_macro() {
         crate::BinOp::Add
     );
 }
+
+pub fn branch_cond_to_name(
+    target: u32,
+    sub_target: u32,
+    is_handler: bool,
+    has_handler: bool,
+) -> String {
+    if sub_target == 0 {
+        format!("bb{}", target)
+    } else if is_handler {
+        format!("h{}_{}", target, sub_target)
+    } else if has_handler {
+        format!("jp{}_{}", target, sub_target)
+    }
+    // If the handler was removed, we can just jump directly to our target
+    else {
+        format!("bb{}", sub_target)
+    }
+}

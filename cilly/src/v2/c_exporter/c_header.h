@@ -928,3 +928,17 @@ int sigemptyset(void *set);
 int sigaction(int sig, void* act,
        void* oact); 
 int sigaltstack(void *new_ss, void* old_ss);
+// Unwind support
+union System_Exception {void* data_pointer;};
+#ifdef UNWIND_SUPPORTED
+_Thread_local unionSystem_Exception global_uwnind_exception;
+_Thread_local jmp_buf unwind_stack_top;
+#define RUST_THROW(arg) global_uwnind_exception = arg; longjump(unwind_stack_top,1);
+#define RUST_CATCH if(!setjump(fn_jump_buff)) {unwind_stack_top = fn_jump_buff;
+#define RUST_RETHROW if (fn_jump_buff == unwind_stack_top) abort(); longjump(fn_jump_buff);
+#else
+union System_Exception global_uwnind_exception;
+#define RUST_THROW(arg) arg; abort();
+#define RUST_CATCH if(true){
+#define RUST_RETHROW abort();
+#endif

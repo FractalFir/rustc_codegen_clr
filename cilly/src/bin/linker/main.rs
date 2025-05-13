@@ -278,7 +278,11 @@ fn main() {
             }
         }),
     );
-
+    if *NO_UNWIND {
+        cilly::builtins::insert_exeception_stub(&mut final_assembly, &mut overrides);
+    } else {
+        cilly::builtins::insert_exception(&mut final_assembly, &mut overrides);
+    };
     // Override allocator
     if !*C_MODE {
         // Get the marshal class
@@ -343,16 +347,16 @@ fn main() {
                 MethodImpl::MethodBody {
                     blocks: vec![cilly::BasicBlock::from_v1(
                         &cilly::basic_block::BasicBlock::new(
-                            vec![cilly::cil_root::V1Root::Throw(
-                                cilly::cil_node::V1Node::NewObj(Box::new(
-                                    cilly::cil_node::CallOpArgs {
+                            vec![
+                                cilly::cil_root::V1Root::Throw(cilly::cil_node::V1Node::NewObj(
+                                    Box::new(cilly::cil_node::CallOpArgs {
                                         args: Box::new([conv_usize!(arg0)]),
                                         site: asm.alloc_methodref(exception_ctor),
                                         is_pure: IsPure::NOT,
-                                    },
-                                )),
-                            )
-                            .into()],
+                                    }),
+                                ))
+                                .into(),
+                            ],
                             0,
                             None,
                         ),
@@ -455,7 +459,6 @@ fn main() {
     cilly::builtins::math::bitreverse(&mut final_assembly, &mut overrides);
 
     if *C_MODE {
-        cilly::builtins::insert_exeception_stub(&mut final_assembly, &mut overrides);
         externs.insert("__dso_handle", LIBC.clone());
         externs.insert("_mm_malloc", LIBC.clone());
         externs.insert("_mm_free", LIBC.clone());
@@ -499,7 +502,7 @@ fn main() {
         cilly::builtins::instert_threading(&mut final_assembly, &mut overrides);
         cilly::builtins::math::math(&mut final_assembly, &mut overrides);
         cilly::builtins::simd::simd(&mut final_assembly, &mut overrides);
-        cilly::builtins::insert_exception(&mut final_assembly, &mut overrides);
+
         cilly::builtins::argc_argv_init(&mut final_assembly, &mut overrides);
     }
 
@@ -648,28 +651,6 @@ fn bootstrap_source(fpath: &Path, output_file_path: &str, jumpstart_cmd: &str) -
 config!(NATIVE_PASSTROUGH, bool, false);
 config!(ABORT_ON_ERROR, bool, false);
 config!(C_MODE, bool, false);
+config!(NO_UNWIND, bool, false);
 config!(JAVA_MODE, bool, false);
 config!(PANIC_MANAGED_BT, bool, false);
-/*
-lazy_static! {
-    #[doc = "Tells the linker to not remove any dead code."]pub static ref KEEP_DEAD_CODE:bool = {
-        std::env::vars().find_map(|(key,value)|if key == stringify!(KEEP_DEAD_CODE){
-            Some(value)
-        }else {
-            None
-        }).map(|value|match value.as_ref(){
-            "0"|"false"|"False"|"FALSE" => false,"1"|"true"|"True"|"TRUE" => true,_ => panic!("Boolean enviroment variable {} has invalid value {}",stringify!(KEEP_DEAD_CODE),value),
-        }).unwrap_or(false)
-    };
-}
-lazy_static! {
-    #[doc = "Tells the codegen to emmit JS source files."]pub static ref JS_MODE:bool = {
-        std::env::vars().find_map(|(key,value)|if key == stringify!(JS_MODE){
-            Some(value)
-        }else {
-            None
-        }).map(|value|match value.as_ref(){
-            "0"|"false"|"False"|"FALSE" => false,"1"|"true"|"True"|"TRUE" => true,_ => panic!("Boolean enviroment variable {} has invalid value {}",stringify!(JS_MODE),value),
-        }).unwrap_or(false)
-    };
-}*/

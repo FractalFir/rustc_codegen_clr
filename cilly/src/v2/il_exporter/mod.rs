@@ -1,4 +1,5 @@
 use crate::{
+    branch_cond_to_name,
     utilis::{assert_unique, encode},
     MethodImpl,
 };
@@ -880,62 +881,38 @@ impl ILExporter {
                 Some(BranchCond::Eq(a, b)) => {
                     self.export_node(asm, out, *a, sig, locals)?;
                     self.export_node(asm, out, *b, sig, locals)?;
-                    if branch.1 == 0 {
-                        writeln!(out, "beq bb{}", branch.0)
-                    } else if is_handler {
-                        writeln!(out, "beq h{}_{}", branch.0, branch.1)
-                    } else if has_handler {
-                        writeln!(out, "beq jp{}_{}", branch.0, branch.1)
-                    }
-                    // If the handler was removed, we can just blt.un
-                    else {
-                        writeln!(out, "beq bb{}", branch.1)
-                    }
+                    writeln!(
+                        out,
+                        "beq {}",
+                        branch_cond_to_name(branch.0, branch.1, has_handler, is_handler)
+                    )
                 }
                 Some(BranchCond::Ne(a, b)) => {
                     self.export_node(asm, out, *a, sig, locals)?;
                     self.export_node(asm, out, *b, sig, locals)?;
-                    if branch.1 == 0 {
-                        writeln!(out, "bne.un bb{}", branch.0)
-                    } else if is_handler {
-                        writeln!(out, "bne.un h{}_{}", branch.0, branch.1)
-                    } else if has_handler {
-                        writeln!(out, "bne.un jp{}_{}", branch.0, branch.1)
-                    }
-                    // If the handler was removed, we can just blt.un
-                    else {
-                        writeln!(out, "bne.un bb{}", branch.1)
-                    }
+                    writeln!(
+                        out,
+                        "bne.un {}",
+                        branch_cond_to_name(branch.0, branch.1, has_handler, is_handler)
+                    )
                 }
                 Some(BranchCond::Lt(a, b, kind)) => {
                     self.export_node(asm, out, *a, sig, locals)?;
                     self.export_node(asm, out, *b, sig, locals)?;
                     match kind {
                         super::cilroot::CmpKind::Ordered | super::cilroot::CmpKind::Signed => {
-                            if branch.1 == 0 {
-                                writeln!(out, "blt bb{}", branch.0)
-                            } else if is_handler {
-                                writeln!(out, "blt h{}_{}", branch.0, branch.1)
-                            } else if has_handler {
-                                writeln!(out, "blt jp{}_{}", branch.0, branch.1)
-                            }
-                            // If the handler was removed, we can just blt
-                            else {
-                                writeln!(out, "blt bb{}", branch.1)
-                            }
+                            writeln!(
+                                out,
+                                "blt {}",
+                                branch_cond_to_name(branch.0, branch.1, has_handler, is_handler)
+                            )
                         }
                         super::cilroot::CmpKind::Unordered | super::cilroot::CmpKind::Unsigned => {
-                            if branch.1 == 0 {
-                                writeln!(out, "blt.un bb{}", branch.0)
-                            } else if is_handler {
-                                writeln!(out, "blt.un h{}_{}", branch.0, branch.1)
-                            } else if has_handler {
-                                writeln!(out, "blt.un jp{}_{}", branch.0, branch.1)
-                            }
-                            // If the handler was removed, we can just blt.un
-                            else {
-                                writeln!(out, "blt.un bb{}", branch.1)
-                            }
+                            writeln!(
+                                out,
+                                "blt.un {}",
+                                branch_cond_to_name(branch.0, branch.1, has_handler, is_handler)
+                            )
                         }
                     }
                 }
@@ -944,30 +921,18 @@ impl ILExporter {
                     self.export_node(asm, out, *b, sig, locals)?;
                     match kind {
                         super::cilroot::CmpKind::Ordered | super::cilroot::CmpKind::Signed => {
-                            if branch.1 == 0 {
-                                writeln!(out, "bgt bb{}", branch.0)
-                            } else if is_handler {
-                                writeln!(out, "bgt h{}_{}", branch.0, branch.1)
-                            } else if has_handler {
-                                writeln!(out, "bgt jp{}_{}", branch.0, branch.1)
-                            }
-                            // If the handler was removed, we can just bgt
-                            else {
-                                writeln!(out, "bgt bb{}", branch.1)
-                            }
+                            writeln!(
+                                out,
+                                "bgt {}",
+                                branch_cond_to_name(branch.0, branch.1, has_handler, is_handler)
+                            )
                         }
                         super::cilroot::CmpKind::Unordered | super::cilroot::CmpKind::Unsigned => {
-                            if branch.1 == 0 {
-                                writeln!(out, "bgt.un bb{}", branch.0)
-                            } else if is_handler {
-                                writeln!(out, "bgt.un h{}_{}", branch.0, branch.1)
-                            } else if has_handler {
-                                writeln!(out, "bgt.un jp{}_{}", branch.0, branch.1)
-                            }
-                            // If the handler was removed, we can just bgt.un
-                            else {
-                                writeln!(out, "bgt.un bb{}", branch.1)
-                            }
+                            writeln!(
+                                out,
+                                "bgt {}",
+                                branch_cond_to_name(branch.0, branch.1, has_handler, is_handler)
+                            )
                         }
                     }
                 }
@@ -976,30 +941,18 @@ impl ILExporter {
                     self.export_node(asm, out, *b, sig, locals)?;
                     match kind {
                         super::cilroot::CmpKind::Ordered | super::cilroot::CmpKind::Signed => {
-                            if branch.1 == 0 {
-                                writeln!(out, "ble bb{}", branch.0)
-                            } else if is_handler {
-                                writeln!(out, "ble h{}_{}", branch.0, branch.1)
-                            } else if has_handler {
-                                writeln!(out, "ble jp{}_{}", branch.0, branch.1)
-                            }
-                            // If the handler was removed, we can just ble
-                            else {
-                                writeln!(out, "ble bb{}", branch.1)
-                            }
+                            writeln!(
+                                out,
+                                "ble {}",
+                                branch_cond_to_name(branch.0, branch.1, has_handler, is_handler)
+                            )
                         }
                         super::cilroot::CmpKind::Unordered | super::cilroot::CmpKind::Unsigned => {
-                            if branch.1 == 0 {
-                                writeln!(out, "ble.un bb{}", branch.0)
-                            } else if is_handler {
-                                writeln!(out, "ble.un h{}_{}", branch.0, branch.1)
-                            } else if has_handler {
-                                writeln!(out, "ble.un jp{}_{}", branch.0, branch.1)
-                            }
-                            // If the handler was removed, we can just ble.un
-                            else {
-                                writeln!(out, "ble.un bb{}", branch.1)
-                            }
+                            writeln!(
+                                out,
+                                "ble.un {}",
+                                branch_cond_to_name(branch.0, branch.1, has_handler, is_handler)
+                            )
                         }
                     }
                 }
@@ -1008,75 +961,43 @@ impl ILExporter {
                     self.export_node(asm, out, *b, sig, locals)?;
                     match kind {
                         super::cilroot::CmpKind::Ordered | super::cilroot::CmpKind::Signed => {
-                            if branch.1 == 0 {
-                                writeln!(out, "bge bb{}", branch.0)
-                            } else if is_handler {
-                                writeln!(out, "bge h{}_{}", branch.0, branch.1)
-                            } else if has_handler {
-                                writeln!(out, "bge jp{}_{}", branch.0, branch.1)
-                            }
-                            // If the handler was removed, we can just bge
-                            else {
-                                writeln!(out, "bge bb{}", branch.1)
-                            }
+                            writeln!(
+                                out,
+                                "bge {}",
+                                branch_cond_to_name(branch.0, branch.1, has_handler, is_handler)
+                            )
                         }
                         super::cilroot::CmpKind::Unordered | super::cilroot::CmpKind::Unsigned => {
-                            if branch.1 == 0 {
-                                writeln!(out, "bge.un bb{}", branch.0)
-                            } else if is_handler {
-                                writeln!(out, "bge.un h{}_{}", branch.0, branch.1)
-                            } else if has_handler {
-                                writeln!(out, "bge.un jp{}_{}", branch.0, branch.1)
-                            }
-                            // If the handler was removed, we can just bge.un
-                            else {
-                                writeln!(out, "bge.un bb{}", branch.1)
-                            }
+                            writeln!(
+                                out,
+                                "bge.un {}",
+                                branch_cond_to_name(branch.0, branch.1, has_handler, is_handler)
+                            )
                         }
                     }
                 }
                 Some(BranchCond::True(cond)) => {
                     self.export_node(asm, out, *cond, sig, locals)?;
-                    if branch.1 == 0 {
-                        writeln!(out, "brtrue bb{}", branch.0)
-                    } else if is_handler {
-                        writeln!(out, "brtrue h{}_{}", branch.0, branch.1)
-                    } else if has_handler {
-                        writeln!(out, "brtrue jp{}_{}", branch.0, branch.1)
-                    }
-                    // If the handler was removed, we can just brtrue
-                    else {
-                        writeln!(out, "brtrue bb{}", branch.1)
-                    }
+                    writeln!(
+                        out,
+                        "brtrue {}",
+                        branch_cond_to_name(branch.0, branch.1, has_handler, is_handler)
+                    )
                 }
                 Some(BranchCond::False(cond)) => {
                     self.export_node(asm, out, *cond, sig, locals)?;
-                    if branch.1 == 0 {
-                        writeln!(out, "brfalse bb{}", branch.0)
-                    } else if is_handler {
-                        writeln!(out, "brfalse h{}_{}", branch.0, branch.1)
-                    } else if has_handler {
-                        writeln!(out, "brfalse jp{}_{}", branch.0, branch.1)
-                    }
-                    // If the handler was removed, we can just brfalse
-                    else {
-                        writeln!(out, "brfalse bb{}", branch.1)
-                    }
+                    writeln!(
+                        out,
+                        "brfalse {}",
+                        branch_cond_to_name(branch.0, branch.1, has_handler, is_handler)
+                    )
                 }
                 None => {
-                    if branch.1 == 0 {
-                        writeln!(out, "br bb{}", branch.0)
-                    } else if is_handler {
-                        writeln!(out, "br h{}_{}", branch.0, branch.1)
-                    }
-                    // If it is not a handler, then this is the only block in this try, then all jumps are extern, then we can just use leave
-                    else if has_handler {
-                        writeln!(out, "leave bb{}", branch.1)
-                    }
-                    // If the handler was removed, we can just br
-                    else {
-                        writeln!(out, "br bb{}", branch.1)
-                    }
+                    writeln!(
+                        out,
+                        "br {}",
+                        branch_cond_to_name(branch.0, branch.1, has_handler, is_handler)
+                    )
                 }
             },
             super::CILRoot::SourceFileInfo {
