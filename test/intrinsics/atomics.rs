@@ -13,6 +13,7 @@
     dead_code,
     unused_unsafe
 )]
+use core::intrinsics::AtomicOrdering;
 use core::sync::atomic::AtomicPtr;
 use core::sync::atomic::Ordering::SeqCst;
 include!("../common.rs");
@@ -28,17 +29,29 @@ use core::ptr::addr_of_mut;
 //fn compare_exchange_byte(addr:&mut u8, byte:u8)->u8
 fn main() {
     let mut u: u32 = black_box(20);
-    let sub_old = unsafe { core::intrinsics::atomic_xsub_release(addr_of_mut!(u), 10) };
+    let sub_old = unsafe {
+        core::intrinsics::atomic_xsub::<_, { AtomicOrdering::SeqCst }>(addr_of_mut!(u), 10)
+    };
     unsafe { printf(c"sub_old:%lx\n".as_ptr(), sub_old) };
     test_eq!(sub_old, 20);
     let mut u: u32 = black_box(20);
-    let (val, is_eq) =
-        unsafe { core::intrinsics::atomic_cxchgweak_acquire_relaxed(addr_of_mut!(u), 20_u32, 10) };
+    let (val, is_eq) = unsafe {
+        core::intrinsics::atomic_cxchgweak::<
+            _,
+            { AtomicOrdering::SeqCst },
+            { AtomicOrdering::SeqCst },
+        >(addr_of_mut!(u), 20_u32, 10)
+    };
     test_eq!(val, 20_u32);
     test_eq!(u, 10_u32);
     //test_eq!(is_eq,true);
-    let (val, is_eq) =
-        unsafe { core::intrinsics::atomic_cxchgweak_acquire_relaxed(addr_of_mut!(u), 10_u32, 20) };
+    let (val, is_eq) = unsafe {
+        core::intrinsics::atomic_cxchgweak::<
+            _,
+            { AtomicOrdering::SeqCst },
+            { AtomicOrdering::SeqCst },
+        >(addr_of_mut!(u), 10_u32, 20)
+    };
     test_eq!(val, 10_u32);
     let mut tmp = 0xFF_u32;
     unsafe { test_eq!(atomic_xor_u32(&mut tmp, 0x0A), 0xFF_u32) };

@@ -286,7 +286,7 @@ pub fn get_type<'tcx>(ty: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_>) -> Typ
             // Get the layout and size of this array
             let layout = ctx.layout_of(ty);
             let arr_size = layout.layout.size().bytes();
-            let arr_align = layout.layout.align().pref.bytes();
+            let arr_align = layout.layout.align().abi.bytes();
             // An array of this size can't be represented on the .NET side
             if std::convert::TryInto::<u32>::try_into(arr_size).is_err() {
                 eprintln!(
@@ -557,10 +557,10 @@ pub fn closure_typedef(
             NonZeroU32::new(
                 layout
                     .align()
-                    .pref
+                    .abi
                     .bytes()
                     .try_into()
-                    .expect("Closure alignement exceeds 2^32"),
+                    .expect("Closure alignment exceeds 2^32"),
             )
             .unwrap(),
         ),
@@ -622,7 +622,7 @@ fn struct_<'tcx>(
                 layout
                     .layout
                     .align()
-                    .pref
+                    .abi
                     .bytes()
                     .try_into()
                     .expect("Struct alignement exceeds 2^32"),
@@ -732,7 +732,7 @@ fn enum_<'tcx>(
                 layout
                     .layout
                     .align()
-                    .pref
+                    .abi
                     .bytes()
                     .try_into()
                     .expect("Enum alignement exceeds 2^32"),
@@ -781,7 +781,7 @@ fn union_<'tcx>(
                 layout
                     .layout
                     .align()
-                    .pref
+                    .abi
                     .bytes()
                     .try_into()
                     .expect("Union alignement exceeds 2^32"),
@@ -866,7 +866,7 @@ pub fn tuple_typedef(
             NonZeroU32::new(
                 layout
                     .align()
-                    .pref
+                    .abi
                     .bytes()
                     .try_into()
                     .expect("Tuple alignement exceeds 2^32"),

@@ -5,6 +5,7 @@ use std::{collections::HashSet, io::Write, num::NonZero, path::Path};
 
 use crate::{
     asm::LINKER_RECOVER,
+    cilnode::MethodKind,
     config, typecheck,
     utilis::{assert_unique, encode},
     BiMap, IString, MethodImpl,
@@ -88,13 +89,16 @@ impl CExporter {
             return Ok(());
         }
         let output = c_tpe(mref.output(asm), asm);
-        let inputs = mref
+        let mut inputs = mref
             .stack_inputs(asm)
             .iter()
             .map(|i| nonvoid_c_type(*i, asm))
             .intersperse(",".into())
             .collect::<String>();
-
+        if mref.kind() == MethodKind::Constructor {
+            let owner = nonvoid_c_type(Type::ClassRef(mref.class()), asm);
+            inputs = format!("{owner},{inputs}")
+        }
         writeln!(method_decls, "{output} {method_name}({inputs});")
     }
     #[allow(clippy::too_many_arguments)]
@@ -820,7 +824,7 @@ impl CExporter {
             CILRoot::Branch(binfo) => {
                 let (target, sub_target, cond) = binfo.as_ref();
                 //let target = if *sub_target != 0 { sub_target } else { target };
-                let label = branch_cond_to_name(*target, *sub_target, is_handler, has_handler);
+                let label = branch_cond_to_name(*target, *sub_target, has_handler, is_handler);
                 let Some(cond) = cond else {
                     if next == Some(*target) && *sub_target == 0 {
                         return Ok("".into());
@@ -908,7 +912,7 @@ impl CExporter {
             CILRoot::Call(info) => {
                 let (method, args, _is_pure) = info.as_ref();
                 let method = asm[*method].clone();
-                let call_args = args
+                let mut call_args = args
                     .iter()
                     .map(|arg| {
                         format!(
@@ -925,6 +929,10 @@ impl CExporter {
                     })
                     .intersperse(",".into())
                     .collect::<String>();
+                if method.kind() == MethodKind::Constructor {
+                    let owner = nonvoid_c_type(Type::ClassRef(method.class()), asm);
+                    call_args = format!("*({owner}*)malloc(sizeof({owner})),{call_args}");
+                }
                 let method_name = mref_to_name(&method, asm);
                 format!("{method_name}({call_args});")
             }

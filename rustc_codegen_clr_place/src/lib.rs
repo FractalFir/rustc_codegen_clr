@@ -90,7 +90,7 @@ pub fn place_adress<'a>(place: &Place<'a>, ctx: &mut MethodCompileCtx<'a, '_>) -
     let layout = ctx.layout_of(place_ty);
     if layout.is_zst() {
         let place_type = ctx.type_from_cache(place_ty);
-        return V1Node::V2(ctx.alloc_node(Const::USize(layout.align.pref.bytes())))
+        return V1Node::V2(ctx.alloc_node(Const::USize(layout.align.abi.bytes())))
             .cast_ptr(ctx.nptr(place_type));
     }
     if place.projection.is_empty() {
@@ -123,7 +123,7 @@ pub fn place_address_raw<'a>(place: &Place<'a>, ctx: &mut MethodCompileCtx<'a, '
 
     let layout = ctx.layout_of(place_ty);
     if layout.is_zst() {
-        return V1Node::V2(ctx.alloc_node(Const::USize(layout.align.pref.bytes())));
+        return V1Node::V2(ctx.alloc_node(Const::USize(layout.align.abi.bytes())));
     }
     if place.projection.is_empty() {
         V1Node::V2(local_adress(place.local.as_usize(), ctx.body(), ctx))

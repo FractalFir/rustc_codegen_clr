@@ -401,7 +401,8 @@ pub fn add_item<'tcx>(
             let alloc = tcx.eval_static_initializer(stotic).unwrap();
             let alloc_id = tcx.reserve_and_set_memory_alloc(alloc);
             let attrs = tcx.codegen_fn_attrs(stotic);
-            let instance = rustc_middle::ty::Instance::new(stotic, rustc_middle::ty::List::empty());
+            let instance =
+                rustc_middle::ty::Instance::new_raw(stotic, rustc_middle::ty::List::empty());
             let mut ctx = MethodCompileCtx::new(tcx, None, instance, asm);
             let int8_ptr = ctx.nptr(Type::Int(Int::I8));
             let int8_ptr_ptr = ctx.nptr(int8_ptr);

@@ -4,11 +4,10 @@ extern crate rustc_driver;
 extern crate rustc_middle;
 extern crate rustc_target;
 use cilly::FnSig;
-use rustc_abi::ExternAbi as TargetAbi;
+use rustc_abi::{CanonAbi, ExternAbi as TargetAbi};
 use rustc_codegen_clr_ctx::MethodCompileCtx;
 use rustc_codegen_clr_type::r#type::get_type;
 use rustc_middle::ty::{Instance, List, PseudoCanonicalInput, TyKind};
-use rustc_target::callconv::Conv;
 pub struct CallInfo {
     sig: FnSig,
     split_last_tuple: bool,
@@ -30,9 +29,9 @@ impl CallInfo {
         let conv = fn_abi.conv;
         #[allow(clippy::match_same_arms)]
         match conv {
-            Conv::C | Conv::Rust => (),
+            CanonAbi::C | CanonAbi::Rust => (),
             // TODO: check this is 100% correct!
-            Conv::X86_64SysV => (),
+            CanonAbi::X86(_) => (),
             _ => panic!("ERROR:calling using convention {conv:?} is not supported!"),
         }
         //assert!(!fn_abi.c_variadic);

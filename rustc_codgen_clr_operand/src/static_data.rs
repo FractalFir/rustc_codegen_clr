@@ -37,7 +37,7 @@ pub fn add_static(def_id: DefId, ctx: &mut MethodCompileCtx<'_, '_>) -> Interned
     assert!(ty.is_sized(ctx.tcx(), TypingEnv::fully_monomorphized()));
     let symbol: String = ctx
         .tcx()
-        .symbol_name(Instance::new(def_id, List::empty()))
+        .symbol_name(Instance::new_raw(def_id, List::empty()))
         .to_string();
 
     let sfld = ctx.add_static(

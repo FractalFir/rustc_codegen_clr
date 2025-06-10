@@ -219,8 +219,8 @@ fn add_macro() {
 pub fn branch_cond_to_name(
     target: u32,
     sub_target: u32,
-    is_handler: bool,
     has_handler: bool,
+    is_handler: bool,
 ) -> String {
     if sub_target == 0 {
         format!("bb{}", target)

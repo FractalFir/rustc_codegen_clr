@@ -1,10 +1,10 @@
 use crate::codegen_error::CodegenError;
 use cilly::{FnSig, Type};
+use rustc_abi::CanonAbi;
 use rustc_abi::ExternAbi as TargetAbi;
 use rustc_codegen_clr_ctx::MethodCompileCtx;
 use rustc_codegen_clr_type::r#type::get_type;
 use rustc_middle::ty::{Instance, List, Ty, TyCtxt, TyKind};
-use rustc_target::callconv::Conv;
 
 /// Creates a `FnSig` from ` `. May not match the result of `sig_from_instance_`!
 /// Use ONLY for function pointers!
@@ -37,7 +37,7 @@ pub fn sig_from_instance_<'tcx>(
     };
     let conv = fn_abi.conv;
     match conv {
-        Conv::Rust | Conv::C => (),
+        CanonAbi::Rust | CanonAbi::C => (),
         _ => panic!("ERROR:calling using convention {conv:?} is not supported!"),
     }
     //assert!(!fn_abi.c_variadic);

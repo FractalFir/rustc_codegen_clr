@@ -209,11 +209,8 @@ pub fn handle_intrinsic<'tcx>(
                 value_calc,
             )))]
         }
-        "atomic_store_relaxed"
-        | "atomic_store_seqcst"
-        | "atomic_store_release"
-        | "atomic_store_unordered" => {
-            // This is *propably* wrong :)
+        "atomic_store" => {
+            // TODO: implement a proper atomic store.
             debug_assert_eq!(
                 args.len(),
                 2,
@@ -225,53 +222,20 @@ pub fn handle_intrinsic<'tcx>(
 
             vec![ptr_set_op(arg_ty.into(), ctx, addr, val)]
         }
-        "atomic_cxchgweak_acquire_acquire"
-        | "atomic_cxchgweak_acquire_relaxed"
-        | "atomic_cxchgweak_relaxed_relaxed"
-        | "atomic_cxchgweak_relaxed_acquire"
-        | "atomic_cxchgweak_seqcst_acquire"
-        | "atomic_cxchgweak_seqcst_seqcst"
-        | "atomic_cxchgweak_seqcst_relaxed"
-        | "atomic_cxchg_acqrel_acquire"
-        | "atomic_cxchg_acquire_seqcst"
-        | "atomic_cxchg_release_relaxed"
-        | "atomic_cxchg_relaxed_acquire"
-        | "atomic_cxchg_acquire_relaxed"
-        | "atomic_cxchg_relaxed_seqcst"
-        | "atomic_cxchg_acquire_acquire"
-        | "atomic_cxchg_release_acquire"
-        | "atomic_cxchg_release_seqcst"
-        | "atomic_cxchgweak_relaxed_seqcst"
-        | "atomic_cxchgweak_acquire_seqcst"
-        | "atomic_cxchgweak_release_relaxed"
-        | "atomic_cxchgweak_release_acquire"
-        | "atomic_cxchgweak_release_seqcst"
-        | "atomic_cxchgweak_acqrel_relaxed"
-        | "atomic_cxchgweak_acqrel_acquire"
-        | "atomic_cxchgweak_acqrel_seqcst"
-        | "atomic_cxchg_seqcst_seqcst"
-        | "atomic_cxchg_seqcst_acquire"
-        | "atomic_cxchg_seqcst_relaxed"
-        | "atomic_cxchg_acqrel_relaxed"
-        | "atomic_cxchg_relaxed_relaxed"
-        | "atomic_cxchg_acqrel_seqcst" => atomic::cxchg(args, destination, ctx).into(),
-        "atomic_xsub_release"
-        | "atomic_xsub_acqrel"
-        | "atomic_xsub_acquire"
-        | "atomic_xsub_relaxed"
-        | "atomic_xsub_seqcst" => {
+        "atomic_cxchg" | "atomic_cxchgweak" => atomic::cxchg(args, destination, ctx).into(),
+        "atomic_xsub" => {
             // *T
             let dst = handle_operand(&args[0].node, ctx);
             // T
-            let sub_ammount = handle_operand(&args[1].node, ctx);
+            let sub_amount = handle_operand(&args[1].node, ctx);
             // we sub by adding a negative number
 
             let src_type = ctx.monomorphize(args[1].node.ty(ctx.body(), ctx.tcx()));
             let src_type = ctx.type_from_cache(src_type);
             match src_type {
                 Type::Int(int) => {
-                    let add_ammount = if int.is_signed() {
-                        V1Node::Neg(Box::new(sub_ammount.clone()))
+                    let add_amount = if int.is_signed() {
+                        V1Node::Neg(Box::new(sub_amount.clone()))
                     } else {
                         crate::casts::int_to_int(
                             Type::Int(int.as_signed()),
@@ -279,7 +243,7 @@ pub fn handle_intrinsic<'tcx>(
                             V1Node::Neg(Box::new(crate::casts::int_to_int(
                                 src_type,
                                 Type::Int(int.as_signed()),
-                                sub_ammount.clone(),
+                                sub_amount.clone(),
                                 ctx,
                             ))),
                             ctx,
@@ -287,7 +251,7 @@ pub fn handle_intrinsic<'tcx>(
                     };
                     vec![place_set(
                         destination,
-                        atomic_add(dst, add_ammount.clone(), src_type, ctx),
+                        atomic_add(dst, add_amount.clone(), src_type, ctx),
                         ctx,
                     )]
                 }
@@ -295,7 +259,7 @@ pub fn handle_intrinsic<'tcx>(
                     let add_ammount = crate::casts::int_to_int(
                         Type::Int(Int::ISize),
                         Type::Int(Int::USize),
-                        V1Node::Neg(Box::new(sub_ammount.cast_ptr(Type::Int(Int::ISize)))),
+                        V1Node::Neg(Box::new(sub_amount.cast_ptr(Type::Int(Int::ISize)))),
                         ctx,
                     );
                     vec![place_set(
@@ -307,21 +271,11 @@ pub fn handle_intrinsic<'tcx>(
                 _ => panic!("{src_type:?} is not an int."),
             }
         }
-        "atomic_or_seqcst" | "atomic_or_release" | "atomic_or_acqrel" | "atomic_or_acquire"
-        | "atomic_or_relaxed" => call_atomic(args, destination, ctx, atomic_or),
-        "atomic_xor_seqcst" | "atomic_xor_release" | "atomic_xor_acqrel" | "atomic_xor_acquire"
-        | "atomic_xor_relaxed" => call_atomic(args, destination, ctx, atomic_xor),
-        "atomic_and_seqcst" | "atomic_and_release" | "atomic_and_acqrel" | "atomic_and_acquire"
-        | "atomic_and_relaxed" => call_atomic(args, destination, ctx, atomic_and),
-        "atomic_nand_seqcst"
-        | "atomic_nand_release"
-        | "atomic_nand_acqrel"
-        | "atomic_nand_acquire"
-        | "atomic_nand_relaxed" => call_atomic(args, destination, ctx, atomic_nand),
-        "atomic_fence_acquire"
-        | "atomic_fence_seqcst"
-        | "atomic_fence_release"
-        | "atomic_fence_acqrel" => {
+        "atomic_or" => call_atomic(args, destination, ctx, atomic_or),
+        "atomic_xor" => call_atomic(args, destination, ctx, atomic_xor),
+        "atomic_and" => call_atomic(args, destination, ctx, atomic_and),
+        "atomic_nand" => call_atomic(args, destination, ctx, atomic_nand),
+        "atomic_fence" => {
             let thread = ClassRef::thread(ctx);
             let fence = MethodRef::new(
                 thread,
@@ -335,37 +289,11 @@ pub fn handle_intrinsic<'tcx>(
                 args: [].into(),
             }]
         }
-        "atomic_xadd_release"
-        | "atomic_xadd_relaxed"
-        | "atomic_xadd_seqcst"
-        | "atomic_xadd_acqrel"
-        | "atomic_xadd_acquire" => call_atomic(args, destination, ctx, atomic_add),
-        "atomic_umin_release"
-        | "atomic_umin_relaxed"
-        | "atomic_umin_seqcst"
-        | "atomic_umin_acqrel"
-        | "atomic_umin_acquire"
-        | "atomic_min_release"
-        | "atomic_min_relaxed"
-        | "atomic_min_seqcst"
-        | "atomic_min_acqrel"
-        | "atomic_min_acquire" => call_atomic(args, destination, ctx, atomic_min),
-        "atomic_umax_release"
-        | "atomic_umax_relaxed"
-        | "atomic_umax_seqcst"
-        | "atomic_umax_acqrel"
-        | "atomic_umax_acquire"
-        | "atomic_max_release"
-        | "atomic_max_relaxed"
-        | "atomic_max_seqcst"
-        | "atomic_max_acqrel"
-        | "atomic_max_acquire" => call_atomic(args, destination, ctx, atomic_max),
-        "atomic_xchg_release"
-        | "atomic_xchg_acquire"
-        | "atomic_xchg_acqrel"
-        | "atomic_xchg_relaxed"
-        | "atomic_xchg_seqcst" => vec![atomic::xchg(args, destination, ctx)],
-        // TODO:Those are not stricly neccessary, but SHOULD be implemented at some point.
+        "atomic_xadd" => call_atomic(args, destination, ctx, atomic_add),
+        "atomic_umin" => call_atomic(args, destination, ctx, atomic_min),
+        "atomic_umax" => call_atomic(args, destination, ctx, atomic_max),
+        "atomic_xchg" => vec![atomic::xchg(args, destination, ctx)],
+        // TODO: ensure those intrinsics are sound in C. perhaps time for a new cillyIR node?
         "ptr_offset_from_unsigned" => {
             vec![ptr::ptr_offset_from_unsigned(
                 args,
@@ -419,9 +347,9 @@ pub fn handle_intrinsic<'tcx>(
                 ctx,
             )]
         }
-        // .NET guarantess all loads are tear-free
-        "atomic_load_relaxed" => {
-            //I am not sure this is implemented propely
+        // .NET guarantees all loads are tear-free. TODO: what bout C?
+        "atomic_load" => {
+            //I am not sure this is implemented properly
             debug_assert_eq!(
                 args.len(),
                 1,
@@ -1128,9 +1056,9 @@ fn intrinsic_slow<'tcx>(
             );
         }
         super::call::call_inner(
-            Instance::new(call_instance.def_id(), call_instance.args)
+            Instance::new_raw(call_instance.def_id(), call_instance.args)
                 .ty(ctx.tcx(), TypingEnv::fully_monomorphized()),
-            Instance::new(call_instance.def_id(), call_instance.args),
+            Instance::new_raw(call_instance.def_id(), call_instance.args),
             ctx,
             args,
             destination,

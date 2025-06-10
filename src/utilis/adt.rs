@@ -93,7 +93,7 @@ pub fn enum_tag_info(r#enum: Layout<'_>, asm: &mut Assembly) -> (Type, u32) {
         Variants::Multiple { tag, tag_field, .. } => (
             scalr_to_type(*tag, asm),
             FieldOffsetIterator::from_fields_shape(r#enum.fields())
-                .nth(*tag_field)
+                .nth((*tag_field).into())
                 .unwrap_or(0),
         ),
         Variants::Empty => (Type::Void, 0),
