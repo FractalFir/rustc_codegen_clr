@@ -607,7 +607,7 @@ impl ILExporter {
                 writeln!(out, "conv.u//rtp")
             }
             CILNode::PtrCast(val, _) => self.export_node(asm, out, val, sig, locals),
-            CILNode::LdFieldAdress { addr, field } => {
+            CILNode::LdFieldAddress { addr, field } => {
                 self.export_node(asm, out, addr, sig, locals)?;
                 let fld = asm.get_field(field);
                 let owner = class_ref(fld.owner(), asm);
@@ -772,7 +772,7 @@ impl ILExporter {
                 let tpe = non_void_type_il(&sfld.tpe(), asm);
                 writeln!(out, "ldsfld {tpe} {owner}::{name}")
             }
-            CILNode::LdStaticFieldAdress(sfld) => {
+            CILNode::LdStaticFieldAddress(sfld) => {
                 let sfld = asm.get_static_field(sfld);
                 let owner = class_ref(sfld.owner(), asm);
                 let name = &asm[sfld.name()];

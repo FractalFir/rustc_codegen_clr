@@ -18,7 +18,7 @@ impl OptFuel {
     pub fn new(fuel: u32) -> Self {
         Self(fuel)
     }
-    /// Decreases the ammount of fuel avalible if fuel present, and returns false if not enough fuel present.
+    /// Decreases the amount of fuel avalible if fuel present, and returns false if not enough fuel present.
     pub fn consume(&mut self, cost: u32) -> bool {
         if self.0 >= cost {
             self.0 -= cost;

@@ -186,11 +186,10 @@ fn bitreverse_u32(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
             let inv_mask = asm.alloc_node(Const::U32(!masks[i]));
             let masked = asm.alloc_node(CILNode::BinOp(curr, mask, BinOp::And));
             let inv_masked = asm.alloc_node(CILNode::BinOp(curr, inv_mask, BinOp::And));
-            let shift_ammount = asm.alloc_node(Const::I32(shift));
-            let masked_shifted =
-                asm.alloc_node(CILNode::BinOp(masked, shift_ammount, BinOp::ShrUn));
+            let shift_amount = asm.alloc_node(Const::I32(shift));
+            let masked_shifted = asm.alloc_node(CILNode::BinOp(masked, shift_amount, BinOp::ShrUn));
             let inv_masked_shifted =
-                asm.alloc_node(CILNode::BinOp(inv_masked, shift_ammount, BinOp::Shl));
+                asm.alloc_node(CILNode::BinOp(inv_masked, shift_amount, BinOp::Shl));
             let curr_val = asm.alloc_node(CILNode::BinOp(
                 masked_shifted,
                 inv_masked_shifted,
@@ -229,11 +228,10 @@ fn bitreverse_u64(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
             let inv_mask = asm.alloc_node(Const::U64(!masks[i]));
             let masked = asm.alloc_node(CILNode::BinOp(curr, mask, BinOp::And));
             let inv_masked = asm.alloc_node(CILNode::BinOp(curr, inv_mask, BinOp::And));
-            let shift_ammount = asm.alloc_node(Const::I32(shift));
-            let masked_shifted =
-                asm.alloc_node(CILNode::BinOp(masked, shift_ammount, BinOp::ShrUn));
+            let shift_amount = asm.alloc_node(Const::I32(shift));
+            let masked_shifted = asm.alloc_node(CILNode::BinOp(masked, shift_amount, BinOp::ShrUn));
             let inv_masked_shifted =
-                asm.alloc_node(CILNode::BinOp(inv_masked, shift_ammount, BinOp::Shl));
+                asm.alloc_node(CILNode::BinOp(inv_masked, shift_amount, BinOp::Shl));
             let curr_val = asm.alloc_node(CILNode::BinOp(
                 masked_shifted,
                 inv_masked_shifted,
@@ -306,10 +304,10 @@ fn bitreverse_u128(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
             let inv_mask = asm.alloc_node(Const::U128(curr_mask));
             let masked = asm.alloc_node(CILNode::call(and, [curr, mask]));
             let inv_masked = asm.alloc_node(CILNode::call(and, [curr, inv_mask]));
-            let shift_ammount = asm.alloc_node(Const::I32(shift));
-            let masked_shifted = asm.alloc_node(CILNode::call(rshift, [masked, shift_ammount]));
+            let shift_amount = asm.alloc_node(Const::I32(shift));
+            let masked_shifted = asm.alloc_node(CILNode::call(rshift, [masked, shift_amount]));
             let inv_masked_shifted =
-                asm.alloc_node(CILNode::call(lshift, [inv_masked, shift_ammount]));
+                asm.alloc_node(CILNode::call(lshift, [inv_masked, shift_amount]));
 
             let curr_val = asm.alloc_node(CILNode::call(or, [masked_shifted, inv_masked_shifted]));
             trees.push(asm.alloc_root(CILRoot::StLoc(0, curr_val)));

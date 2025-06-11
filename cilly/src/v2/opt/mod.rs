@@ -220,11 +220,11 @@ impl CILNode {
                 let ptr = asm.alloc_node(ptr);
                 CILNode::PtrCast(ptr, cast_res.clone())
             }
-            CILNode::LdFieldAdress { addr, field } => {
+            CILNode::LdFieldAddress { addr, field } => {
                 let addr = asm.get_node(*addr).clone();
                 let addr = addr.propagate_locals(asm, idx, tpe, new_node, fuel);
                 let addr = asm.alloc_node(addr);
-                CILNode::LdFieldAdress {
+                CILNode::LdFieldAddress {
                     addr,
                     field: *field,
                 }
@@ -259,7 +259,7 @@ impl CILNode {
             | CILNode::SizeOf(_)
             | CILNode::LocAlloc { .. }
             | CILNode::LdStaticField(_)
-            | CILNode::LdStaticFieldAdress(_)
+            | CILNode::LdStaticFieldAddress(_)
             | CILNode::LdFtn(_)
             | CILNode::LdTypeToken(_)
             | CILNode::LocAllocAlgined { .. }
@@ -575,7 +575,7 @@ impl MethodImpl {
         {
             match asm.get_root(*root) {
                 CILRoot::StLoc(local, tree) => {
-                    // If the local is never read nor adress of, replace it with a pop or a nop.
+                    // If the local is never read nor address of, replace it with a pop or a nop.
                     if !local_reads[*local as usize] && (local_address_of[*local as usize] <= 0) {
                         // Tree has side effects, so it has to be evalueted, so we replace it with a pop
                         if cache.has_side_effects(*tree, asm) {

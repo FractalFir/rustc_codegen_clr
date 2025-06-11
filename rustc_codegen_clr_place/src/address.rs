@@ -14,7 +14,7 @@ use rustc_middle::{
     mir::PlaceElem,
     ty::{Ty, TyKind},
 };
-pub fn local_adress(
+pub fn local_address(
     local: usize,
     method: &rustc_middle::mir::Body,
     asm: &mut Assembly,
@@ -179,7 +179,7 @@ fn field_address<'a>(
         }
     }
 }
-pub fn place_elem_adress<'tcx>(
+pub fn place_elem_address<'tcx>(
     place_elem: &PlaceElem<'tcx>,
     curr_type: PlaceTy<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_>,
@@ -320,10 +320,7 @@ pub fn place_elem_adress<'tcx>(
                     } else {
                         call!(
                             ctx.alloc_methodref(mref),
-                            [
-                                addr_calc,
-                                V1Node::V2(ctx.alloc_node(Const::USize(*offset)))
-                            ]
+                            [addr_calc, V1Node::V2(ctx.alloc_node(Const::USize(*offset)))]
                         )
                     }
                 }
@@ -333,7 +330,7 @@ pub fn place_elem_adress<'tcx>(
             }
         }
         _ => {
-            rustc_middle::ty::print::with_no_trimmed_paths! {todo!("Can't handle porojection {place_elem:?} in adress")}
+            rustc_middle::ty::print::with_no_trimmed_paths! {todo!("Can't handle porojection {place_elem:?} in address")}
         }
     }
 }

@@ -37,7 +37,7 @@ impl SideEffectInfoCache {
             | CILNode::IntCast { input, .. }
             | CILNode::FloatCast { input, .. }
             | CILNode::PtrCast(input, _) => self.has_side_effects(*input, asm), // Casts don't have side effects, unless their input has one.
-            CILNode::LdFieldAdress { addr, .. }
+            CILNode::LdFieldAddress { addr, .. }
             | CILNode::LdField { addr, .. }
             | CILNode::LdInd { addr, .. } => self.has_side_effects(*addr, asm), // Reading a pointer or a field never has side effects.
             CILNode::GetException => true, // This is a low-level, unsafe operation, which manipulates the runtime stack, and can't be preformed twice. It for sure has side effects.
@@ -48,7 +48,7 @@ impl SideEffectInfoCache {
             }
             CILNode::CallI(_) => true, // Indidrect calls may have side effects
             CILNode::LocAllocAlgined { .. } | CILNode::LocAlloc { .. } => true, // Allocation has side effects
-            CILNode::LdStaticField(_) | CILNode::LdStaticFieldAdress(_) => false, // Loading static fields has no side effects.
+            CILNode::LdStaticField(_) | CILNode::LdStaticFieldAddress(_) => false, // Loading static fields has no side effects.
             CILNode::LdLen(arr) => self.has_side_effects(*arr, asm), // Loading a length only has side effects if the index has array.
             CILNode::LdElelemRef { array, index } => {
                 self.has_side_effects(*array, asm) || self.has_side_effects(*index, asm)

@@ -8,7 +8,7 @@ use cilly::{
     conv_usize, Const, FieldDesc, IntoAsmIndex, MethodRef, Type, {ClassRef, Float, Int},
 };
 use ints::{ctlz, rotate_left, rotate_right};
-use rustc_codegen_clr_place::{place_adress, place_set, ptr_set_op};
+use rustc_codegen_clr_place::{place_address, place_set, ptr_set_op};
 use rustc_codegen_clr_type::GetTypeExt;
 use rustc_codgen_clr_operand::{constant::load_const_value, handle_operand, operand_address};
 use rustc_middle::ty::TypingEnv;
@@ -256,7 +256,7 @@ pub fn handle_intrinsic<'tcx>(
                     )]
                 }
                 Type::Ptr(_) => {
-                    let add_ammount = crate::casts::int_to_int(
+                    let add_amount = crate::casts::int_to_int(
                         Type::Int(Int::ISize),
                         Type::Int(Int::USize),
                         V1Node::Neg(Box::new(sub_amount.cast_ptr(Type::Int(Int::ISize)))),
@@ -264,7 +264,7 @@ pub fn handle_intrinsic<'tcx>(
                     );
                     vec![place_set(
                         destination,
-                        atomic_add(dst, add_ammount.clone(), src_type, ctx).cast_ptr(src_type),
+                        atomic_add(dst, add_amount.clone(), src_type, ctx).cast_ptr(src_type),
                         ctx,
                     )]
                 }
@@ -501,7 +501,7 @@ pub fn handle_intrinsic<'tcx>(
                 .type_from_cache(destination.ty(ctx.body(), ctx.tcx()).ty)
                 .as_class_ref()
                 .unwrap();
-            let dst = place_adress(destination, ctx);
+            let dst = place_address(destination, ctx);
             let item1 = ctx.alloc_string("Item1");
             let item2 = ctx.alloc_string("Item2");
             vec![

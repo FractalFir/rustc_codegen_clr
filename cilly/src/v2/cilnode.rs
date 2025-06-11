@@ -4,7 +4,7 @@ use super::bimap::Interned;
 
 use super::{Assembly, Const, Int};
 use super::{ClassRef, FieldDesc, Float, FnSig, MethodRef, StaticFieldDesc};
-use crate::cil_node::V1Node as V1Node;
+use crate::cil_node::V1Node;
 use crate::Type;
 
 #[derive(Hash, PartialEq, Eq, Copy, Clone, Debug, Serialize, Deserialize)]
@@ -52,7 +52,7 @@ pub enum CILNode {
     /// Changes the type of a pointer to `PtrCastRes`
     PtrCast(Interned<CILNode>, Box<PtrCastRes>),
     /// Loads the address of a field at `addr`
-    LdFieldAdress {
+    LdFieldAddress {
         addr: Interned<CILNode>,
         field: Interned<FieldDesc>,
     },
@@ -84,7 +84,7 @@ pub enum CILNode {
     /// Loads a static field at descr
     LdStaticField(Interned<StaticFieldDesc>),
     /// Loads a static field at descr
-    LdStaticFieldAdress(Interned<StaticFieldDesc>),
+    LdStaticFieldAddress(Interned<StaticFieldDesc>),
     /// Loads a pointer to a function
     LdFtn(Interned<MethodRef>),
     /// Loads a "type token"
@@ -286,13 +286,13 @@ impl CILNode {
             | CILNode::LdFtn(_)
             | CILNode::LdTypeToken(_)
             | CILNode::LdStaticField(_)
-            | CILNode::LdStaticFieldAdress(_)
+            | CILNode::LdStaticFieldAddress(_)
             | CILNode::GetException => vec![],
             CILNode::UnOp(node_idx, _)
             | CILNode::RefToPtr(node_idx)
             | CILNode::PtrCast(node_idx, _)
             | CILNode::LdLen(node_idx)
-            | CILNode::LdFieldAdress { addr: node_idx, .. }
+            | CILNode::LdFieldAddress { addr: node_idx, .. }
             | CILNode::LdField { addr: node_idx, .. }
             | CILNode::LdInd { addr: node_idx, .. }
             | CILNode::LocAlloc { size: node_idx }
@@ -731,7 +731,7 @@ impl CILNode {
             }
             V1Node::LDFieldAdress { addr, field } => {
                 let addr = Self::from_v1(addr, asm);
-                Self::LdFieldAdress {
+                Self::LdFieldAddress {
                     addr: asm.alloc_node(addr),
                     field: *field,
                 }
@@ -872,7 +872,7 @@ impl CILNode {
             | CILNode::GetException
             | CILNode::LocAllocAlgined { .. }
             | CILNode::LdStaticField(_)
-            | CILNode::LdStaticFieldAdress(_)
+            | CILNode::LdStaticFieldAddress(_)
             | CILNode::LdFtn(_)
             | CILNode::LdTypeToken(_) => map(self, asm),
             CILNode::BinOp(lhs, rhs, op) => {
@@ -935,9 +935,9 @@ impl CILNode {
                 let node = CILNode::PtrCast(asm.alloc_node(input), tpe);
                 map(node, asm)
             }
-            CILNode::LdFieldAdress { addr, field } => {
+            CILNode::LdFieldAddress { addr, field } => {
                 let addr = asm.get_node(addr).clone().map(asm, map);
-                let node = CILNode::LdFieldAdress {
+                let node = CILNode::LdFieldAddress {
                     addr: asm.alloc_node(addr),
                     field,
                 };

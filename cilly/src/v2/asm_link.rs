@@ -197,12 +197,12 @@ impl Assembly {
                 };
                 CILNode::PtrCast(input, Box::new(cast_res))
             }
-            CILNode::LdFieldAdress { addr, field } => {
+            CILNode::LdFieldAddress { addr, field } => {
                 let field = self.translate_field(source, *source.get_field(*field));
                 let field = self.alloc_field(field);
                 let addr = self.translate_node(source, source.get_node(*addr).clone());
                 let addr = self.alloc_node(addr);
-                CILNode::LdFieldAdress { addr, field }
+                CILNode::LdFieldAddress { addr, field }
             }
             CILNode::LdField { addr, field } => {
                 let field = self.translate_field(source, *source.get_field(*field));
@@ -271,10 +271,10 @@ impl Assembly {
                 let sfld = self.alloc_sfld(sfld);
                 CILNode::LdStaticField(sfld)
             }
-            CILNode::LdStaticFieldAdress(sfld) => {
+            CILNode::LdStaticFieldAddress(sfld) => {
                 let sfld = self.translate_static_field(source, *source.get_static_field(*sfld));
                 let sfld = self.alloc_sfld(sfld);
-                CILNode::LdStaticFieldAdress(sfld)
+                CILNode::LdStaticFieldAddress(sfld)
             }
             CILNode::LdFtn(mref) => {
                 let method_ref = self.translate_method_ref(source, &source[*mref]);

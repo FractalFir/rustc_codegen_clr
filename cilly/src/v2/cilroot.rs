@@ -55,7 +55,7 @@ pub enum CILRoot {
     },
     /// Executing this root is instant UB.
     Unreachable(Interned<IString>),
-    /// Zero-initializes the value at *adress* of *type*.
+    /// Zero-initializes the value at *address* of *type*.
     InitObj(Interned<CILNode>, Interned<Type>),
 }
 

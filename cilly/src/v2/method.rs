@@ -528,7 +528,7 @@ impl MethodDef {
         cil.any(|node| {
             matches!(
                 node,
-                CILIterElem::Node(CILNode::LdStaticField(_) | CILNode::LdStaticFieldAdress(_))
+                CILIterElem::Node(CILNode::LdStaticField(_) | CILNode::LdStaticFieldAddress(_))
                     | CILIterElem::Root(CILRoot::SetStaticField { .. })
             )
         })

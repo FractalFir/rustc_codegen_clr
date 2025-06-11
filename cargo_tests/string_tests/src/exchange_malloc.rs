@@ -15,8 +15,8 @@ pub unsafe fn exchange_malloc(size: usize, align: usize) -> *mut u8 {
     if res == std::ptr::null_mut(){
         core::intrinsics::abort();
     }
-    //unsafe{super::printf("Allocated buffer of size %p algined to %p at adress %p\n\r\n\r\0".as_ptr() as *const i8,size,align,res)};
-    unsafe{super::printf("Allocating pointer at adress %p.\n\0".as_ptr() as *const i8,res)};
+    //unsafe{super::printf("Allocated buffer of size %p algined to %p at address %p\n\r\n\r\0".as_ptr() as *const i8,size,align,res)};
+    unsafe{super::printf("Allocating pointer at address %p.\n\0".as_ptr() as *const i8,res)};
     unsafe{super::printf("The align is %p.\n\0".as_ptr() as *const i8,align)};
     res
 }
@@ -45,7 +45,7 @@ pub fn exchange_malloc_test() {
     _11 = _8 & _10;
     _12 = _11 == 0_usize;
     _6 = _4 as *mut f64;
-    unsafe{super::printf("Allocated ptr at adress %p\n\0".as_ptr() as *const i8,_6)};
+    unsafe{super::printf("Allocated ptr at address %p\n\0".as_ptr() as *const i8,_6)};
     if _6 == std::ptr::null_mut(){
         core::intrinsics::abort();
     }

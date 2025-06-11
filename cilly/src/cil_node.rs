@@ -214,7 +214,7 @@ impl V1Node {
     pub fn stack_addr(val: Self, _: Interned<Type>, asm: &mut Assembly) -> Self {
         let val = crate::v2::CILNode::from_v1(&val, asm);
         let sfld = asm.annon_const(val);
-        V1Node::V2(asm.alloc_node(crate::v2::CILNode::LdStaticFieldAdress(sfld)))
+        V1Node::V2(asm.alloc_node(crate::v2::CILNode::LdStaticFieldAddress(sfld)))
     }
     pub fn ovf_check_tuple(
         asm: &mut Assembly,
@@ -330,7 +330,7 @@ impl V1Node {
         }
     }
 
-    /// Creates an unintialized value of type *tpe*.
+    /// Creates an uninitialized value of type *tpe*.
     pub fn uninit_val(tpe: Type, asm: &mut Assembly) -> Self {
         if tpe == Type::Void {
             let gv = asm.global_void();

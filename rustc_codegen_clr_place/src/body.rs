@@ -1,5 +1,5 @@
 use super::{PlaceTy, array_get_address, array_get_item, pointed_type};
-use crate::{body_ty_is_by_adress, deref_op};
+use crate::{body_ty_is_by_address, deref_op};
 use cilly::{
     BinOp, Const, FieldDesc, Int, Interned, IntoAsmIndex, Type, call, conv_usize, ld_field,
     v2::CILNode,
@@ -19,8 +19,8 @@ pub fn local_body<'tcx>(
 ) -> (Interned<cilly::v2::CILNode>, Ty<'tcx>) {
     let ty = ctx.body().local_decls[Local::from_usize(local)].ty;
     let ty = ctx.monomorphize(ty);
-    if body_ty_is_by_adress(ty, ctx) {
-        (super::adress::local_adress(local, ctx.body(), ctx), ty)
+    if body_ty_is_by_address(ty, ctx) {
+        (super::address::local_address(local, ctx.body(), ctx), ty)
     } else {
         (super::get::local_get(local, ctx.body(), ctx), ty)
     }
@@ -42,7 +42,7 @@ fn body_field<'a>(
             ) {
                 (false, false) => {
                     let field_desc = field_descrptor(curr_type, field_index, ctx);
-                    if body_ty_is_by_adress(field_type, ctx) {
+                    if body_ty_is_by_address(field_type, ctx) {
                         (
                             (field_type).into(),
                             ctx.ld_field_addr(parrent_node, field_desc),
@@ -77,7 +77,7 @@ fn body_field<'a>(
                     let field_addr =
                         ctx.biop(obj_addr, Const::USize(u64::from(offset)), BinOp::Add);
                     let field_addr = ctx.cast_ptr(field_addr, obj);
-                    if body_ty_is_by_adress(field_type, ctx) {
+                    if body_ty_is_by_address(field_type, ctx) {
                         (field_type.into(), field_addr)
                     } else {
                         (field_type.into(), ctx.load(field_addr, obj))
@@ -130,7 +130,7 @@ pub fn place_elem_body_index<'tcx>(
             let addr = ctx.cast_ptr(addr, inner_type);
             let addr = ctx.biop(addr, offset, BinOp::Add);
 
-            if body_ty_is_by_adress(inner, ctx) {
+            if body_ty_is_by_address(inner, ctx) {
                 (inner.into(), addr)
             } else {
                 (
@@ -148,7 +148,7 @@ pub fn place_elem_body_index<'tcx>(
             let element_tpe = ctx.type_from_cache(*element);
             let parrent_node = ctx.cast_ptr(parrent_node, element_tpe);
             let addr = ctx.offset(parrent_node, index, element_tpe);
-            if body_ty_is_by_adress(*element, ctx) {
+            if body_ty_is_by_address(*element, ctx) {
                 ((*element).into(), addr)
             } else {
                 ((*element).into(), ctx.load(addr, element_tpe))
@@ -172,7 +172,7 @@ pub fn place_elem_body<'tcx>(
     match place_elem {
         PlaceElem::Deref => {
             let pointed = pointed_type(curr_ty);
-            if body_ty_is_by_adress(pointed, ctx) {
+            if body_ty_is_by_address(pointed, ctx) {
                 (pointed.into(), parrent_node)
             } else {
                 (pointed.into(), deref_op(pointed.into(), ctx, parrent_node))
@@ -209,7 +209,7 @@ pub fn place_elem_body<'tcx>(
             *index,
         ),
         PlaceElem::Subtype(tpe) => {
-            if body_ty_is_by_adress(curr_type.as_ty().unwrap(), ctx) {
+            if body_ty_is_by_address(curr_type.as_ty().unwrap(), ctx) {
                 (
                     PlaceTy::Ty(*tpe),
                     super::deref_op((*tpe).into(), ctx, parrent_node),
@@ -243,7 +243,7 @@ pub fn place_elem_body<'tcx>(
                     let addr = ctx.cast_ptr(addr, inner_type);
                     let addr = ctx.offset(addr, index, inner_type);
 
-                    if body_ty_is_by_adress(inner, ctx) {
+                    if body_ty_is_by_address(inner, ctx) {
                         (inner.into(), addr)
                     } else {
                         (
@@ -254,10 +254,10 @@ pub fn place_elem_body<'tcx>(
                 }
                 TyKind::Array(element, _length) => {
                     let element_tpe = ctx.type_from_cache(*element);
-                    if body_ty_is_by_adress(*element, ctx) {
+                    if body_ty_is_by_address(*element, ctx) {
                         let parrent_node = ctx.cast_ptr(parrent_node, element_tpe);
                         let addr = ctx.offset(parrent_node, index, element_tpe);
-                        if body_ty_is_by_adress(*element, ctx) {
+                        if body_ty_is_by_address(*element, ctx) {
                             ((*element).into(), addr)
                         } else {
                             ((*element).into(), ctx.load(addr, element_tpe))
@@ -265,7 +265,7 @@ pub fn place_elem_body<'tcx>(
                     } else {
                         let parrent_node = ctx.cast_ptr(parrent_node, element_tpe);
                         let addr = ctx.offset(parrent_node, index, element_tpe);
-                        if body_ty_is_by_adress(*element, ctx) {
+                        if body_ty_is_by_address(*element, ctx) {
                             ((*element).into(), addr)
                         } else {
                             ((*element).into(), ctx.load(addr, element_tpe))

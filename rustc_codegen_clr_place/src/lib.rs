@@ -14,11 +14,11 @@ use rustc_codegen_clr_type::utilis::pointer_to_is_fat;
 
 use rustc_middle::mir::Place;
 
-mod adress;
+mod address;
 mod body;
 mod get;
 mod set;
-pub use adress::*;
+pub use address::*;
 pub use body::*;
 pub use get::*;
 use rustc_middle::ty::{FloatTy, IntTy, Ty, TyKind, UintTy};
@@ -42,7 +42,7 @@ fn pointed_type(ty: PlaceTy) -> Ty {
         panic!("Can't dereference enum variant!");
     }
 }
-fn body_ty_is_by_adress<'tcx>(last_ty: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_>) -> bool {
+fn body_ty_is_by_address<'tcx>(last_ty: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_>) -> bool {
     match *last_ty.kind() {
         // True for non-0 tuples
         TyKind::Tuple(elements) => !elements.is_empty(),
@@ -60,7 +60,7 @@ fn body_ty_is_by_adress<'tcx>(last_ty: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx
             pointer_to_is_fat(ty, ctx.tcx(), ctx.instance())
         }
         _ => todo!(
-            "TODO: body_ty_is_by_adress does not support type {last_ty:?} kind:{kind:?}",
+            "TODO: body_ty_is_by_address does not support type {last_ty:?} kind:{kind:?}",
             kind = last_ty.kind()
         ),
     }
@@ -83,7 +83,7 @@ pub fn deref_op<'tcx>(
 }
 
 /// Returns the ops for getting the address of a given place.
-pub fn place_adress<'a>(place: &Place<'a>, ctx: &mut MethodCompileCtx<'a, '_>) -> V1Node {
+pub fn place_address<'a>(place: &Place<'a>, ctx: &mut MethodCompileCtx<'a, '_>) -> V1Node {
     let place_ty = place.ty(ctx.body(), ctx.tcx());
     let place_ty = ctx.monomorphize(place_ty).ty;
 
@@ -98,7 +98,7 @@ pub fn place_adress<'a>(place: &Place<'a>, ctx: &mut MethodCompileCtx<'a, '_>) -
         if pointer_to_is_fat(loc_ty, ctx.tcx(), ctx.instance()) {
             V1Node::V2(local_get(place.local.as_usize(), ctx.body(), ctx))
         } else {
-            V1Node::V2(local_adress(place.local.as_usize(), ctx.body(), ctx))
+            V1Node::V2(local_address(place.local.as_usize(), ctx.body(), ctx))
         }
     } else {
         let (mut addr_calc, mut ty) = local_body(place.local.as_usize(), ctx);
@@ -113,7 +113,7 @@ pub fn place_adress<'a>(place: &Place<'a>, ctx: &mut MethodCompileCtx<'a, '_>) -
             addr_calc = curr_ops;
         }
         let addr_calc = V1Node::V2(addr_calc);
-        adress::place_elem_adress(head, ty, ctx, place_ty, addr_calc)
+        address::place_elem_address(head, ty, ctx, place_ty, addr_calc)
     }
 }
 /// Should be only used in certain builit-in features. For unsized types, returns the address of the fat pointer, not the address contained within it.
@@ -126,14 +126,14 @@ pub fn place_address_raw<'a>(place: &Place<'a>, ctx: &mut MethodCompileCtx<'a, '
         return V1Node::V2(ctx.alloc_node(Const::USize(layout.align.abi.bytes())));
     }
     if place.projection.is_empty() {
-        V1Node::V2(local_adress(place.local.as_usize(), ctx.body(), ctx))
+        V1Node::V2(local_address(place.local.as_usize(), ctx.body(), ctx))
     } else if place.projection.len() == 1
         && matches!(
             slice_head(place.projection).0,
             rustc_middle::mir::PlaceElem::Deref
         )
     {
-        return V1Node::V2(local_adress(place.local.as_usize(), ctx.body(), ctx));
+        return V1Node::V2(local_address(place.local.as_usize(), ctx.body(), ctx));
     } else {
         let (mut addr_calc, mut ty) = local_body(place.local.as_usize(), ctx);
 
@@ -147,7 +147,7 @@ pub fn place_address_raw<'a>(place: &Place<'a>, ctx: &mut MethodCompileCtx<'a, '
             addr_calc = curr_ops;
         }
         let addr_calc = V1Node::V2(addr_calc);
-        adress::place_elem_adress(head, ty, ctx, place_ty, addr_calc)
+        address::place_elem_address(head, ty, ctx, place_ty, addr_calc)
     }
 }
 pub fn place_set<'tcx>(

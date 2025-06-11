@@ -14,7 +14,8 @@ use cilly::{
     method::{Method, MethodType},
     utilis::{self},
     v2::method::LocalDef,
-    Access, Assembly, Int, Interned, IntoAsmIndex, MethodDef, MethodRef, StaticFieldDesc, Type,
+    Access, Assembly, CILRoot, Int, Interned, IntoAsmIndex, MethodDef, MethodRef, StaticFieldDesc,
+    Type,
 };
 use rustc_codegen_clr_call::CallInfo;
 use rustc_codegen_clr_ctx::function_name;
@@ -243,7 +244,7 @@ pub fn add_fn<'tcx, 'asm, 'a: 'asm>(
                 rustc_middle::ty::print::with_no_trimmed_paths! {trees.push(V1Root::debug(&format!("{:?}",statement.source_info.span),ctx).into())};
             }
 
-            let statement_tree = match statement_to_ops(statement, ctx) {
+            let mut statement_tree = match statement_to_ops(statement, ctx) {
                 Ok(ops) => ops,
                 Err(err) => {
                     rustc_middle::ty::print::with_no_trimmed_paths! {eprintln!(
@@ -252,8 +253,10 @@ pub fn add_fn<'tcx, 'asm, 'a: 'asm>(
                     rustc_middle::ty::print::with_no_trimmed_paths! {vec![(V1Root::throw(&format!("Tired to run a statement {statement:?} which failed to compile with error message {err:?}."),ctx).into())]}
                 }
             };
-            for tree in &statement_tree {
-                let Err(err) = tree.root().try_typecheck(ctx, sig_idx, &locals) else {
+            for tree in &mut statement_tree {
+                let tmp = CILRoot::from_v1(tree.root(), ctx);
+                *tree.root_mut() = cilly::cil_root::V1Root::V2(ctx.alloc_root(tmp));
+                let Err(err) = tree.root_mut().try_typecheck(ctx, sig_idx, &locals) else {
                     continue;
                 };
                 ctx.tcx().dcx().span_warn(
@@ -271,11 +274,13 @@ pub fn add_fn<'tcx, 'asm, 'a: 'asm>(
             if *crate::config::INSERT_MIR_DEBUG_COMMENTS {
                 rustc_middle::ty::print::with_no_trimmed_paths! {trees.push(V1Root::debug(&format!("{term:?}"),ctx).into())};
             }
-            let term_trees = terminator_to_ops(term, ctx).unwrap_or_else(|err| {
+            let mut term_trees = terminator_to_ops(term, ctx).unwrap_or_else(|err| {
                 panic!("Could not compile terminator {term:?} because {err:?}")
             });
-            for tree in &term_trees {
-                let Err(err) = tree.root().try_typecheck(ctx, sig_idx, &locals) else {
+            for tree in &mut term_trees {
+                let tmp = CILRoot::from_v1(tree.root(), ctx);
+                *tree.root_mut() = cilly::cil_root::V1Root::V2(ctx.alloc_root(tmp));
+                let Err(err) = tree.root_mut().try_typecheck(ctx, sig_idx, &locals) else {
                     continue;
                 };
                 ctx.tcx()

@@ -140,7 +140,7 @@ pub fn opt_node(
             ),
             CILNode::LdLocA(loc) => opt_if_fuel(CILNode::LdLoc(*loc), original, fuel),
             CILNode::LdArgA(loc) => opt_if_fuel(CILNode::LdArg(*loc), original, fuel),
-            CILNode::LdFieldAdress { addr, field } => {
+            CILNode::LdFieldAddress { addr, field } => {
                 let field_desc = asm.get_field(*field);
                 if field_desc.tpe() == asm[tpe] {
                     opt_if_fuel(
@@ -157,11 +157,13 @@ pub fn opt_node(
             }
             _ => original,
         },
-        CILNode::LdFieldAdress { addr, field } => match asm.get_node(addr) {
-            CILNode::RefToPtr(inner) => CILNode::RefToPtr(asm.alloc_node(CILNode::LdFieldAdress {
-                addr: *inner,
-                field,
-            })),
+        CILNode::LdFieldAddress { addr, field } => match asm.get_node(addr) {
+            CILNode::RefToPtr(inner) => {
+                CILNode::RefToPtr(asm.alloc_node(CILNode::LdFieldAddress {
+                    addr: *inner,
+                    field,
+                }))
+            }
             _ => original,
         },
         CILNode::BinOp(lhs, rhs, op @ (BinOp::Add | BinOp::Sub)) => {
@@ -241,7 +243,7 @@ pub fn opt_node(
                 original,
                 fuel,
             ),
-            CILNode::LdFieldAdress {
+            CILNode::LdFieldAddress {
                 addr: addr2,
                 field: field2,
             } => opt_if_fuel(

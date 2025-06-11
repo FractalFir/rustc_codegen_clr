@@ -4,7 +4,7 @@ use cilly::{
     CILRoot, Const, FieldDesc, FnSig, Int, MethodRef, Type,
 };
 use rustc_codegen_clr_ctx::function_name;
-use rustc_codegen_clr_place::{place_adress, place_set};
+use rustc_codegen_clr_place::{place_address, place_set};
 use rustc_codegen_clr_type::GetTypeExt;
 use rustc_middle::mir::AssertKind;
 
@@ -230,7 +230,7 @@ pub fn handle_terminator<'tcx>(
             } else {
                 match ty.kind() {
                     TyKind::Dynamic(_, _, rustc_middle::ty::DynKind::Dyn) => {
-                        let fat_ptr_address = place_adress(place, ctx);
+                        let fat_ptr_address = place_address(place, ctx);
                         let fat_ptr_type = ctx.type_from_cache(Ty::new_ptr(
                             ctx.tcx(),
                             ty,
@@ -299,7 +299,7 @@ pub fn handle_terminator<'tcx>(
                         vec![
                             V1Root::Call {
                                 site: ctx.alloc_methodref(mref),
-                                args: [place_adress(place, ctx)].into(),
+                                args: [place_address(place, ctx)].into(),
                             }
                             .into(),
                             V1Root::GoTo {

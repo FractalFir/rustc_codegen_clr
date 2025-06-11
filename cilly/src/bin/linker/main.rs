@@ -327,45 +327,11 @@ fn main() {
         call_alias(&mut overrides, &mut final_assembly, "pthread_create", mref);
     }
     if !*PANIC_MANAGED_BT {
-        overrides.insert(
-            final_assembly.alloc_string("_Unwind_RaiseException"),
-            Box::new(|_, asm| {
-                let rust_exception = asm.alloc_string("RustException");
-                let exception_class =
-                    asm.alloc_class_ref(ClassRef::new(rust_exception, None, false, [].into()));
-                let exception_ctor = MethodRef::new(
-                    asm.alloc_class_ref(ClassRef::new(rust_exception, None, false, [].into())),
-                    asm.alloc_string(".ctor"),
-                    asm.sig(
-                        [Type::ClassRef(exception_class), Type::Int(Int::USize)],
-                        Type::Void,
-                    ),
-                    MethodKind::Constructor,
-                    vec![].into(),
-                );
-                let arg0 = cilly::cil_node::V1Node::V2(asm.alloc_node(CILNode::LdArg(0)));
-                MethodImpl::MethodBody {
-                    blocks: vec![cilly::BasicBlock::from_v1(
-                        &cilly::basic_block::BasicBlock::new(
-                            vec![
-                                cilly::cil_root::V1Root::Throw(cilly::cil_node::V1Node::NewObj(
-                                    Box::new(cilly::cil_node::CallOpArgs {
-                                        args: Box::new([conv_usize!(arg0)]),
-                                        site: asm.alloc_methodref(exception_ctor),
-                                        is_pure: IsPure::NOT,
-                                    }),
-                                ))
-                                .into(),
-                            ],
-                            0,
-                            None,
-                        ),
-                        asm,
-                    )],
-                    locals: vec![],
-                }
-            }),
-        );
+        if *C_MODE {
+            cilly::v2::builtins::unwind::c_raise_exception(&mut final_assembly, &mut overrides);
+        } else {
+            cilly::v2::builtins::unwind::raise_exception(&mut final_assembly, &mut overrides);
+        }
     }
     if !*C_MODE {
         overrides.insert(
@@ -378,7 +344,7 @@ fn main() {
                 // 2. Create one local of the output type
                 let loc_name = asm.alloc_string("uninit");
                 let locals = vec![(Some(loc_name), asm.alloc_type(*output))];
-                // 3. Create CIL returning an uninitalized value of this type. TODO: even tough this value is shortly discarded on the Rust side, this is UB. Consider zero-initializing it.
+                // 3. Create CIL returning an uninitialized value of this type. TODO: even tough this value is shortly discarded on the Rust side, this is UB. Consider zero-initializing it.
                 let loc = asm.alloc_node(CILNode::LdLoc(0));
                 let ret = asm.alloc_root(CILRoot::Ret(loc));
                 let blocks = vec![BasicBlock::new(vec![ret], 0, None)];

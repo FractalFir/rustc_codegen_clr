@@ -17,7 +17,7 @@ use rustc_middle::{
     ty::TyKind,
 };
 
-use super::body_ty_is_by_adress;
+use super::body_ty_is_by_address;
 
 pub(super) fn local_get(
     local: usize,
@@ -232,7 +232,7 @@ fn place_elem_get<'a>(
             }
         }
         PlaceElem::Subtype(tpe) => {
-            if body_ty_is_by_adress(curr_type.as_ty().unwrap(), ctx) {
+            if body_ty_is_by_address(curr_type.as_ty().unwrap(), ctx) {
                 super::deref_op((*tpe).into(), ctx, addr_calc)
             } else {
                 addr_calc

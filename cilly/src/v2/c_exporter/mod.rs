@@ -601,7 +601,7 @@ impl CExporter {
                     PtrCastRes::ISize => format!("(intptr_t)({node})"),
                 }
             }
-            CILNode::LdFieldAdress { addr, field } => {
+            CILNode::LdFieldAddress { addr, field } => {
                 let addr = asm[addr].clone();
                 let addr = Self::node_to_string(addr, asm, locals, inputs, sig)?;
                 let field = asm[field];
@@ -726,7 +726,7 @@ impl CExporter {
                     class_member_name(&asm[class.name()], &escape_nonfn_name(&asm[field.name()]));
                 fname.to_string()
             }
-            CILNode::LdStaticFieldAdress(static_field_idx) => {
+            CILNode::LdStaticFieldAddress(static_field_idx) => {
                 let field = asm[static_field_idx];
                 let class = asm[field.owner()].clone();
                 let fname =

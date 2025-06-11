@@ -379,7 +379,7 @@ pub fn call_inner<'tcx>(
             for arg in other_args.iter().skip(1) {
                 call_args.push(handle_operand(&arg.node, ctx));
             }
-            // "Rust call" is wierd, and not at all optimized for .NET. Passing all the arguments in a tuple is bad for performance and simplicty. Thus, unpacking this tuple and forcing "Rust call" to be
+            // "Rust call" is weird, and not at all optimized for .NET. Passing all the arguments in a tuple is bad for performance and simplicty. Thus, unpacking this tuple and forcing "Rust call" to be
             // "normal" is far easier and better for performance.
             let last_arg_type = ctx.monomorphize(last_arg.node.ty(ctx.body(), ctx.tcx()));
             match last_arg_type.kind() {
@@ -609,7 +609,7 @@ pub fn call_inner<'tcx>(
         MethodKind::Static,
         vec![].into(),
     );
-    // Hande
+    // Handle
     let site = ctx.alloc_methodref(call_site);
     if is_void {
         vec![V1Root::Call {

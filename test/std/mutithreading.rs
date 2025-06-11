@@ -90,7 +90,7 @@ unsafe fn main_0() -> core::ffi::c_int {
     //let pt_j = pthread_detach(thid);
     printf(c"pt_j %u\n".as_ptr(), pt_j as u32);
     printf(
-        c"Recived message \"%s\" from thread.\n".as_ptr(),
+        c"Received message \"%s\" from thread.\n".as_ptr(),
         res as *mut u8,
     );
     exit(0 as core::ffi::c_int);

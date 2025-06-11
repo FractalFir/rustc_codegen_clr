@@ -156,12 +156,12 @@ pub enum V1Root {
 pub type SFI = Box<(std::ops::Range<u64>, std::ops::Range<u64>, IString)>;
 impl V1Root {
     pub fn try_typecheck(
-        &self,
+        &mut self,
         asm: &mut Assembly,
         fn_sig: Interned<FnSig>,
         locals: &[LocalDef],
     ) -> Result<(), TypeCheckError> {
-        let Self::V2(root) = self else { return Ok(()) };
+        let Self::V2(root) = self else { panic!() };
         asm[*root].clone().typecheck(fn_sig, locals, asm)
     }
     #[must_use]

@@ -92,7 +92,7 @@ impl SIMDVector {
         let name = asm.alloc_string(format!("System.Runtime.Intrinsics.Vector{}", self.bits()));
         asm.alloc_class_ref(ClassRef::new(name, Some(asm_name), false, vec![].into()))
     }
-    /// Returns the ammount of elements in this [`SIMDVec`].
+    /// Returns the amount of elements in this [`SIMDVec`].
     /// ```
     /// # use cilly::tpe::simd::{SIMDElem,SIMDVector};
     /// # use cilly::{Float,Int};

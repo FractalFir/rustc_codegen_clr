@@ -22,6 +22,7 @@ pub use int128::*;
 pub mod f16;
 pub use f16::*;
 pub mod simd;
+pub mod unwind;
 
 pub fn insert_swap_at_generic(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
     let name = asm.alloc_string("swap_at_generic");
@@ -588,7 +589,7 @@ fn insert_catch_unwind(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
             target: 2,
             source: 0,
         });
-        let exit_try_faliure = asm.alloc_root(CILRoot::ExitSpecialRegion {
+        let exit_try_failure = asm.alloc_root(CILRoot::ExitSpecialRegion {
             target: 3,
             source: 0,
         });
@@ -641,7 +642,7 @@ fn insert_catch_unwind(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
                                 set_exception,
                                 rethrow_if_wrong_exception,
                                 calli_catch,
-                                exit_try_faliure,
+                                exit_try_failure,
                             ],
                             1,
                             None,

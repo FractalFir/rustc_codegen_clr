@@ -179,7 +179,7 @@ impl Assembly {
     ) -> Interned<CILNode> {
         let addr = addr.into_idx(self);
         let field = field.into_idx(self);
-        self.alloc_node(CILNode::LdFieldAdress { addr, field })
+        self.alloc_node(CILNode::LdFieldAddress { addr, field })
     }
     pub fn typecheck(&mut self) {
         let method_def_idxs: Box<[_]> = self.method_defs.keys().copied().collect();
@@ -1255,7 +1255,7 @@ impl Assembly {
                 | CILNode::FloatCast { .. }
                 | CILNode::RefToPtr(_)
                 | CILNode::PtrCast(_, _)
-                | CILNode::LdFieldAdress { .. }
+                | CILNode::LdFieldAddress { .. }
                 | CILNode::LdField { .. }
                 | CILNode::LdInd { .. }
                 | CILNode::SizeOf(_)
@@ -1265,7 +1265,7 @@ impl Assembly {
                 | CILNode::CallI(_)
                 | CILNode::LocAlloc { .. }
                 | CILNode::LdStaticField(_)
-                | CILNode::LdStaticFieldAdress(_)
+                | CILNode::LdStaticFieldAddress(_)
                 | CILNode::LdTypeToken(_)
                 | CILNode::LdLen(_)
                 | CILNode::LocAllocAlgined { .. }
@@ -1462,7 +1462,7 @@ impl Assembly {
     }
 
     pub(crate) fn guaranted_align(&self) -> u8 {
-        *GUARANTED_ALIGN
+        *GUARANTEED_ALIGN
     }
 
     pub fn max_static_size(&self) -> usize {
@@ -1494,7 +1494,7 @@ impl Assembly {
         stotic: impl IntoAsmIndex<Interned<StaticFieldDesc>>,
     ) -> Interned<CILNode> {
         let stotic = stotic.into_idx(self);
-        self.alloc_node(CILNode::LdStaticFieldAdress(stotic))
+        self.alloc_node(CILNode::LdStaticFieldAddress(stotic))
     }
     /// Transmutes a value from one type to another.
     pub fn transmute_on_stack(
@@ -1541,14 +1541,26 @@ impl Assembly {
         const EMPTY: [Interned<CILNode>; 0] = [];
         self.call(uninit_val, &EMPTY, IsPure::PURE)
     }
+
+    pub(crate) fn ld_arg(&mut self, arg: u32) -> Interned<CILNode> {
+        self.alloc_node(CILNode::LdArg(arg))
+    }
+
+    pub(crate) fn throw(
+        &mut self,
+        exception: impl IntoAsmIndex<Interned<CILNode>>,
+    ) -> Interned<CILRoot> {
+        let exception = exception.into_idx(self);
+        self.alloc_root(CILRoot::Throw(exception))
+    }
 }
-config!(GUARANTED_ALIGN, u8, 8);
+config!(GUARANTEED_ALIGN, u8, 8);
 config!(MAX_STATIC_SIZE, usize, 16);
 /// An initializer, which runs before everything else. By convention, it is used to initialize static / const data. Should not execute any user code
 pub const CCTOR: &str = ".cctor";
 /// An thread-local initializer. Runs before each thread starts. By convention, it is used to initialize thread local data. Should not execute any user code.
 pub const TCCTOR: &str = ".tcctor";
-/// An intializer, which runs after the [`CCTOR`] and [`TCCTOR`], but before the [`ENTRYPOINT`]. Meant to execute user code, is roughly equivalnt to `.init_array` on GNU.
+/// An initializer, which runs after the [`CCTOR`] and [`TCCTOR`], but before the [`ENTRYPOINT`]. Meant to execute user code, is roughly equivalnt to `.init_array` on GNU.
 pub const USER_INIT: &str = "static_init";
 /// The entrypoint of a program
 pub const ENTRYPOINT: &str = "entrypoint";

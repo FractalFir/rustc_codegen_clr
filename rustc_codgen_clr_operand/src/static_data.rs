@@ -48,7 +48,7 @@ pub fn add_static(def_id: DefId, ctx: &mut MethodCompileCtx<'_, '_>) -> Interned
         None,
         false,
     );
-    let ptr = ctx.alloc_node(CILNode::LdStaticFieldAdress(sfld));
+    let ptr = ctx.alloc_node(CILNode::LdStaticFieldAddress(sfld));
     let ptr = ctx.cast_ptr(ptr, Int::U8);
     let ptr = ptr;
     let initialzer = allocation_initializer_method(&alloc.0, &symbol, ctx, ptr, true);

@@ -41,25 +41,25 @@ pub enum TypeCheckError {
     DerfWrongPtr {
         /// Expected type
         expected: Type,
-        /// Recived type
+        /// Received type
         got: Type,
     },
-    /// A call instruction was passed a wrong ammount of args.
+    /// A call instruction was passed a wrong amount of args.
     CallArgcWrong {
-        /// The signature-specifed ammount of args
+        /// The signature-specified amount of args
         expected: usize,
-        /// The recived ammount of args.
+        /// The received amount of args.
         got: usize,
         /// The name of this method
         mname: IString,
     },
     /// A call instruction was passed a wrong argument type.
     CallArgTypeWrong {
-        /// The recived type
+        /// The received type
         got: String,
         /// The expected type
         expected: String,
-        /// The inddex of this argument
+        /// The index of this argument
         idx: usize,
         /// The called method
         mname: IString,
@@ -92,7 +92,7 @@ pub enum TypeCheckError {
         tpe: Type,
         op: UnOp,
     },
-    /// Incorrect ammount of args to an indirect call
+    /// Incorrect amount of args to an indirect call
     IndirectCallArgcWrong {
         expected: usize,
         got: usize,
@@ -115,7 +115,7 @@ pub enum TypeCheckError {
     },
     /// Invalid index into a managed array
     ArrIndexInvalidType {
-        /// Recived index type
+        /// Received index type
         index_tpe: Type,
     },
     /// An indirect call with a non-fn-pointer type
@@ -136,7 +136,7 @@ pub enum TypeCheckError {
     LocalAssigementWrong {
         /// Index of the local.
         loc: u32,
-        /// Recived type.
+        /// Received type.
         got: String,
         /// Expected type
         expected: String,
@@ -148,18 +148,18 @@ pub enum TypeCheckError {
         /// Rhs side of the compare
         rhs: Type,
     },
-    /// A write instruction was passed an adress of incorrect type.
+    /// A write instruction was passed an address of incorrect type.
     WriteWrongAddr {
         /// Expected addr type
         addr: String,
-        /// Recived type
+        /// Received type
         tpe: String,
     },
     /// A write instruction was passed a value of incorrect type.
     WriteWrongValue {
         /// The expected type
         tpe: Type,
-        /// The recived type.
+        /// The received type.
         value: Type,
     },
     /// Incorrect argument to a branch instruction
@@ -180,7 +180,7 @@ pub enum TypeCheckError {
         field_tpe: Type,
         /// The reference to the field.
         fld: Interned<FieldDesc>,
-        /// The recived type.
+        /// The received type.
         val: Type,
     },
     /// An instruction attempted to access a field that does not exist.
@@ -800,7 +800,7 @@ impl CILNode {
                 }
                 Ok(res.as_ref().as_type())
             }
-            CILNode::LdFieldAdress { addr, field } => {
+            CILNode::LdFieldAddress { addr, field } => {
                 let field = *asm.get_field(*field);
                 let addr = asm.get_node(*addr).clone();
                 let addr_tpe = addr.typecheck(sig, locals, asm)?;
@@ -935,7 +935,7 @@ impl CILNode {
                 let sfld = *asm.get_static_field(*sfld);
                 Ok(sfld.tpe())
             }
-            CILNode::LdStaticFieldAdress(sfld) => {
+            CILNode::LdStaticFieldAddress(sfld) => {
                 let sfld = *asm.get_static_field(*sfld);
                 Ok(asm.nptr(sfld.tpe()))
             }
@@ -1144,8 +1144,18 @@ impl CILRoot {
                     | crate::cilnode::MethodKind::Virtual
                     | crate::cilnode::MethodKind::Constructor => (),
                 }
-                for arg in args {
-                    let _arg = asm[*arg].clone().typecheck(sig, locals, asm)?;
+                for (index, (arg, expected)) in
+                    args.iter().zip(call_sig.inputs().iter()).enumerate()
+                {
+                    let arg = asm[*arg].clone().typecheck(sig, locals, asm)?;
+                    if !arg.is_assignable_to(*expected, asm) {
+                        return Err(TypeCheckError::CallArgTypeWrong {
+                            got: arg.mangle(asm),
+                            expected: expected.mangle(asm),
+                            idx: index,
+                            mname: asm[mref.name()].into(),
+                        });
+                    }
                 }
                 Ok(())
             }

@@ -170,7 +170,7 @@ impl Iterator for CILIter<'_> {
                     | CILNode::IntCast { input: val, .. }
                     | CILNode::FloatCast { input: val, .. }
                     | CILNode::LdField { addr: val, .. }
-                    | CILNode::LdFieldAdress { addr: val, .. }
+                    | CILNode::LdFieldAddress { addr: val, .. }
                     | CILNode::LdInd { addr: val, .. }
                     | CILNode::IsInst(val, _)
                     | CILNode::CheckedCast(val, _)
@@ -204,7 +204,7 @@ impl Iterator for CILIter<'_> {
                     | CILNode::LdLocA(_)
                     | CILNode::SizeOf(_)
                     | CILNode::LdStaticField(_)
-                    | CILNode::LdStaticFieldAdress(_)
+                    | CILNode::LdStaticFieldAddress(_)
                     | CILNode::LdFtn(_)
                     | CILNode::LdTypeToken(_)
                     | CILNode::LocAllocAlgined { .. }
@@ -480,7 +480,7 @@ impl<'this, T: Iterator<Item = CILIterElem> + 'this> TpeIter<'this> for T {
                         crate::cilnode::PtrCastRes::USize => None,
                         crate::cilnode::PtrCastRes::ISize => None,
                     },
-                    CILNode::LdFieldAdress { field, .. } | CILNode::LdField { field, .. } => {
+                    CILNode::LdFieldAddress { field, .. } | CILNode::LdField { field, .. } => {
                         let field = asm.get_field(field);
                         let class = Type::ClassRef(field.owner());
                         let tpe = field.tpe();
@@ -502,7 +502,7 @@ impl<'this, T: Iterator<Item = CILIterElem> + 'this> TpeIter<'this> for T {
                         let tpe = field.tpe();
                         Some(Box::new([class, tpe].into_iter()))
                     }
-                    CILNode::LdStaticFieldAdress(sfld) => {
+                    CILNode::LdStaticFieldAddress(sfld) => {
                         let field = asm.get_static_field(sfld);
                         let class = Type::ClassRef(field.owner());
                         let tpe = field.tpe();

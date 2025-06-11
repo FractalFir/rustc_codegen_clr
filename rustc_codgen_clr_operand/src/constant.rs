@@ -208,7 +208,7 @@ fn load_scalar_ptr(
                 let mref = ctx.alloc_methodref(mref);
                 let environ = ctx.alloc_node(cilly::v2::CILNode::call(mref, []));
                 let environ = ctx.annon_const(environ);
-                return ctx.alloc_node(cilly::v2::CILNode::LdStaticFieldAdress(environ));
+                return ctx.alloc_node(cilly::v2::CILNode::LdStaticFieldAddress(environ));
             }
             let attrs = ctx.tcx().codegen_fn_attrs(def_id);
 
@@ -216,7 +216,7 @@ fn load_scalar_ptr(
                 // TODO: this could cause issues if the pointer to the static is not imediatly dereferenced.
                 let site = get_fn_from_static_name(&name, ctx);
                 let cst = ctx.annon_const(cilly::v2::CILNode::LdFtn(site));
-                return ctx.alloc_node(cilly::v2::CILNode::LdStaticFieldAdress(cst));
+                return ctx.alloc_node(cilly::v2::CILNode::LdStaticFieldAddress(cst));
             }
             if let Some(section) = attrs.link_section {
                 panic!("static {name} requires special linkage in section {section:?}");

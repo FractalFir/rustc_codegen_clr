@@ -10,7 +10,7 @@ use cilly::{
 };
 use rustc_codegen_clr_call::CallInfo;
 use rustc_codegen_clr_ctx::function_name;
-use rustc_codegen_clr_place::{place_address_raw, place_adress, place_get};
+use rustc_codegen_clr_place::{place_address, place_address_raw, place_get};
 use rustc_codegen_clr_type::{
     adt::enum_tag_info,
     r#type::{fat_ptr_to, get_type},
@@ -92,8 +92,8 @@ pub fn handle_rvalue<'tcx>(
         // TODO: check the exact semantics of `WrapUnsafeBinder` once it has some documentation.
         Rvalue::WrapUnsafeBinder(operand, _unknown_ty) => (vec![], handle_operand(operand, ctx)),
         Rvalue::CopyForDeref(place) => (vec![], place_get(place, ctx)),
-        Rvalue::Ref(_region, _borrow_kind, place) => (vec![], place_adress(place, ctx)),
-        Rvalue::RawPtr(_mutability, place) => (vec![], place_adress(place, ctx)),
+        Rvalue::Ref(_region, _borrow_kind, place) => (vec![], place_address(place, ctx)),
+        Rvalue::RawPtr(_mutability, place) => (vec![], place_address(place, ctx)),
         Rvalue::Cast(
             CastKind::PointerCoercion(PointerCoercion::UnsafeFnPointer, _),
             operand,
@@ -312,7 +312,7 @@ pub fn handle_rvalue<'tcx>(
             let operand_ty = operand.ty(ctx.body(), ctx.tcx());
             operand
                 .constant()
-                .expect("function must be constant in order to take its adress!");
+                .expect("function must be constant in order to take its address!");
             let operand_ty = ctx.monomorphize(operand_ty);
 
             let (instance, _subst_ref) = if let TyKind::FnDef(def_id, subst_ref) = operand_ty.kind()
@@ -331,7 +331,7 @@ pub fn handle_rvalue<'tcx>(
             let function_name = function_name(ctx.tcx().symbol_name(instance));
             let function_sig = crate::function_sig::sig_from_instance_(instance, ctx)
                 .expect("Could not get function signature when trying to get a function pointer!");
-            //FIXME: propely handle `#[track_caller]`
+            //FIXME: properly handle `#[track_caller]`
             let call_site = MethodRef::new(
                 *ctx.main_module(),
                 ctx.alloc_string(function_name),
@@ -343,7 +343,7 @@ pub fn handle_rvalue<'tcx>(
         }
 
         Rvalue::Discriminant(place) => {
-            let addr = place_adress(place, ctx);
+            let addr = place_address(place, ctx);
             let owner_ty = ctx.monomorphize(place.ty(ctx.body(), ctx.tcx()).ty);
             let owner = ctx.type_from_cache(owner_ty);
 
@@ -442,7 +442,7 @@ fn repeat<'tcx>(
     let array_dotnet = array.clone().as_class_ref().expect("Invalid array type.");
     // Check if the element is byte sized. If so, use initblk to quickly initialize this array.
     if compiletime_sizeof(element_ty, ctx.tcx()) == 1 {
-        let place_address = place_adress(target_location, ctx);
+        let place_address = place_address(target_location, ctx);
         let val = Box::new(element.transmute_on_stack(element_type, Type::Int(Int::U8), ctx));
         let init = V1Root::InitBlk {
             dst: Box::new(place_address.cast_ptr(ctx.nptr(Type::Int(Int::U8)))),
@@ -453,7 +453,7 @@ fn repeat<'tcx>(
     }
     // Check if there are more than SIMPLE_REPEAT_CAP elements. If so, use mecmpy to accelerate initialzation
     if times > SIMPLE_REPEAT_CAP {
-        let place_address = place_adress(target_location, ctx);
+        let place_address = place_address(target_location, ctx);
         let mut branches = Vec::new();
         let arr_ref = ctx.nref(array);
         let mref = MethodRef::new(
@@ -480,7 +480,7 @@ fn repeat<'tcx>(
             // Copy curr_len elements if possible, otherwise this is the last iteration, so copy the reminder.
             let curr_copy_size = curr_len.min(times - curr_len);
             let elem_size: cilly::Interned<cilly::v2::CILNode> = ctx.size_of(element_type);
-            // Copy curr_copy_size elements from the start of the array, starting at curr_len(the ammount of already initialized buffers)
+            // Copy curr_copy_size elements from the start of the array, starting at curr_len(the amount of already initialized buffers)
             branches.push(V1Root::CpBlk {
                 dst: Box::new(
                     V1Node::MRefToRawPtr(Box::new(place_address.clone()))
@@ -507,7 +507,7 @@ fn repeat<'tcx>(
             MethodKind::Instance,
             vec![].into(),
         );
-        let place_address = place_adress(target_location, ctx);
+        let place_address = place_address(target_location, ctx);
         let mref = ctx.alloc_methodref(mref);
         for idx in 0..times {
             branches.push(V1Root::Call {

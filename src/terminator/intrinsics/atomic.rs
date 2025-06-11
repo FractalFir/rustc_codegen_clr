@@ -3,7 +3,7 @@ use cilly::{
     call, cil_node::V1Node, cil_root::V1Root, cilnode::MethodKind, conv_usize, ClassRef, Int,
     MethodRef, Type,
 };
-use rustc_codegen_clr_place::{place_adress, place_set};
+use rustc_codegen_clr_place::{place_address, place_set};
 use rustc_codegen_clr_type::adt::field_descrptor;
 use rustc_codegen_clr_type::GetTypeExt;
 use rustc_codgen_clr_operand::handle_operand;
@@ -155,7 +155,7 @@ pub fn cxchg<'tcx>(
     V1Node::cxchng_res_val(
         exchange_res,
         comparand,
-        place_adress(destination, ctx),
+        place_address(destination, ctx),
         val_desc,
         flag_desc,
     )

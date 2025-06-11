@@ -10,7 +10,7 @@ pub mod static_data;
 use cilly::Type;
 use cilly::cil_node::V1Node;
 use rustc_codegen_clr_ctx::MethodCompileCtx;
-use rustc_codegen_clr_place::{PlaceTy, deref_op, place_adress, place_get};
+use rustc_codegen_clr_place::{PlaceTy, deref_op, place_address, place_get};
 use rustc_codegen_clr_type::GetTypeExt;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::{ConstValue, Operand};
@@ -32,7 +32,7 @@ pub fn operand_address<'tcx>(
     ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> V1Node {
     match operand {
-        Operand::Copy(place) | Operand::Move(place) => place_adress(place, ctx),
+        Operand::Copy(place) | Operand::Move(place) => place_address(place, ctx),
         Operand::Constant(const_val) => {
             let local_type = ctx.type_from_cache(operand.ty(ctx.body(), ctx.tcx()));
             let constant = crate::constant::handle_constant(const_val, ctx);
