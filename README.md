@@ -65,6 +65,7 @@ For obvious reasons, I am unable to add support for any C propietary compilers w
 However, if you have access to such a compiler, I can assist you in adding support for it.
 
 | Compiler | Status |
+|----------|--------|
 | GCC | Fully Supported & regularly tested |
 | Clang | Fully Supported & regularly tested |
 | TCC | Partially supported - issues with TLS / multithreading |
