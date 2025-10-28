@@ -791,11 +791,13 @@ run_test! {intrinsics,catch,stable}
 run_test! {intrinsics,cmp_bytes,stable}
 run_test! {intrinsics,copy_nonoverlaping,stable}
 run_test! {intrinsics,ctpop,stable}
+run_test! {intrinsics,is_val_statically_known,stable}
 run_test! {intrinsics,malloc,stable}
 run_test! {intrinsics,offset_of,stable}
 run_test! {intrinsics,overflow_ops,stable}
 run_test! {intrinsics,pow_sqrt,stable}
 run_test! {intrinsics,printf,stable}
+run_test! {intrinsics,ptr_mask,stable}
 run_test! {intrinsics,ptr_offset_from_unsigned,stable}
 run_test! {intrinsics,round,stable}
 run_test! {intrinsics,simd,stable}
@@ -803,6 +805,7 @@ run_test! {intrinsics,size_of_val,stable}
 run_test! {intrinsics,transmute,stable}
 run_test! {intrinsics,trigonometry,stable}
 run_test! {intrinsics,type_id,stable}
+run_test! {intrinsics,type_name,stable}
 run_test! {intrinsics,wrapping_ops,stable}
 run_test! {iter,fold,stable}
 run_test! {statics,thread_local,stable}
